@@ -2909,7 +2909,8 @@ function captureClassicTodoDraftState(page) {
       baseRevision: Number(row.dataset.todoEditBaseRevision),
       baseText: row.dataset.todoEditBaseText || '',
       baseMemo: row.dataset.todoEditBaseMemo || '',
-      expanded: !row.querySelector('.todo-detail')?.hidden
+      expanded: !row.querySelector('.todo-detail')?.hidden,
+      compareOpen: Boolean(row.querySelector('.todo-edit-compare-v529')?.open)
     });
   });
   const active = document.activeElement;
@@ -2947,20 +2948,99 @@ function showClassicTodoEditConflict(row, latest) {
   if (!detail || !save || !title || !memo) return;
   row.dataset.todoEditConflict = 'true';
   save.disabled = true;
+
   const alert = document.createElement('div');
   alert.className = 'todo-edit-conflict-v527';
   alert.setAttribute('role', 'status');
   const headline = document.createElement('strong');
   headline.textContent = '別の操作で更新されています';
   const message = document.createElement('p');
-  message.textContent = '入力中の内容は残っています。古い内容での上書きを防ぐため、保存を停止しました。必要な文章をコピーしてから最新内容を読み込んでください。';
+  message.textContent = '入力中の内容は残っています。最新内容と比較してから編集し直してください。古い改訂番号での保存や自動結合は行いません。';
+
   const compare = document.createElement('details');
+  compare.className = 'todo-edit-compare-v529';
   const summary = document.createElement('summary');
-  summary.textContent = '最新の内容を確認';
-  const latestText = document.createElement('p');
-  latestText.className = 'todo-edit-latest-v527';
-  latestText.textContent = 'やること：' + latest.text + '\nメモ：' + (latest.memo || '（なし）');
-  compare.append(summary, latestText);
+  summary.textContent = '自分の下書きと共有の最新内容を比較';
+  const grid = document.createElement('div');
+  grid.className = 'todo-edit-compare-columns-v529';
+  const column = (label, kind) => {
+    const panel = document.createElement('section');
+    panel.className = 'todo-edit-version-v529 todo-edit-' + kind + '-v529';
+    if (kind === 'latest') panel.classList.add('todo-edit-latest-v527');
+    panel.setAttribute('aria-label', label);
+    const heading = document.createElement('h6');
+    heading.textContent = label;
+    const titleLabel = document.createElement('small');
+    titleLabel.textContent = 'やること';
+    const titleText = document.createElement('p');
+    titleText.className = 'todo-edit-compare-title-v529';
+    const memoLabel = document.createElement('small');
+    memoLabel.textContent = 'メモ';
+    const memoText = document.createElement('p');
+    memoText.className = 'todo-edit-compare-memo-v529';
+    panel.append(heading, titleLabel, titleText, memoLabel, memoText);
+    return { panel, titleText, memoText };
+  };
+  const mine = column('自分の下書き（未保存）', 'mine');
+  const remote = column('共有の最新内容', 'latest');
+  grid.append(mine.panel, remote.panel);
+  const differences = document.createElement('p');
+  differences.className = 'todo-edit-differences-v529';
+  differences.setAttribute('aria-live', 'polite');
+  // The local editor remains editable, but Save is blocked until the user
+  // explicitly chooses the latest baseline. No implicit merge or write.
+  const differenceLabel = (draft, base, server) => {
+    if (draft === server) return '同じ内容';
+    if (draft !== base && server !== base) return '両方が変更';
+    if (server !== base) return '共有側が変更';
+    if (draft !== base) return '自分だけ変更';
+    return '差分あり';
+  };
+  const refreshComparison = () => {
+    const current = state.todoRaw[row.dataset.todoId] || latest;
+    mine.titleText.textContent = title.value || '（空欄）';
+    mine.memoText.textContent = memo.value || '（なし）';
+    remote.titleText.textContent = current.text || '（空欄）';
+    remote.memoText.textContent = current.memo || '（なし）';
+    differences.textContent = 'やること：' +
+      differenceLabel(title.value.trim(), row.dataset.todoEditBaseText || '', current.text) +
+      '　／　メモ：' +
+      differenceLabel(memo.value.trim(), row.dataset.todoEditBaseMemo || '', current.memo || '');
+  };
+  title.addEventListener('input', refreshComparison);
+  memo.addEventListener('input', refreshComparison);
+  refreshComparison();
+  compare.append(summary, differences, grid);
+
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.className = 'ghost-button todo-edit-copy-v529';
+  copy.textContent = '自分の下書きをコピー';
+  copy.addEventListener('click', async () => {
+    const content = 'やること：' + title.value + '\nメモ：\n' + memo.value;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard-unavailable');
+      await navigator.clipboard.writeText(content);
+      toast('下書きをコピーしました');
+    } catch {
+      // Some browser/privacy settings prohibit clipboard access. Show an
+      // explicitly selectable text area instead of losing the recovery path.
+      let fallback = alert.querySelector('.todo-edit-copy-fallback-v529');
+      if (!fallback) {
+        fallback = document.createElement('textarea');
+        fallback.className = 'todo-edit-copy-fallback-v529';
+        fallback.readOnly = true;
+        fallback.rows = 5;
+        fallback.setAttribute('aria-label', '手動コピーする下書き');
+        alert.appendChild(fallback);
+      }
+      fallback.value = content;
+      fallback.focus();
+      fallback.select();
+      toast('下書きを選択しました。コピーして保管してください。');
+    }
+  });
+
   const reload = document.createElement('button');
   reload.type = 'button';
   reload.className = 'ghost-button todo-edit-reload-v527';
@@ -2980,11 +3060,16 @@ function showClassicTodoEditConflict(row, latest) {
     delete row.dataset.todoEditConflict;
     delete row.dataset.todoDraftDirtyV527;
     save.disabled = false;
+    title.removeEventListener('input', refreshComparison);
+    memo.removeEventListener('input', refreshComparison);
     alert.remove();
     title.dispatchEvent(new Event('input', { bubbles: true }));
     title.focus({ preventScroll: true });
   });
-  alert.append(headline, message, compare, reload);
+  const actions = document.createElement('div');
+  actions.className = 'todo-edit-conflict-actions-v529';
+  actions.append(copy, reload);
+  alert.append(headline, message, compare, actions);
   detail.appendChild(alert);
 }
 
@@ -3040,6 +3125,8 @@ function restoreClassicTodoDraftState(page, snapshot) {
     if (Number(draft.baseRevision) !== Number(current.revision)
       || draft.baseText !== current.text || draft.baseMemo !== (current.memo || '')) {
       showClassicTodoEditConflict(row, current);
+      const compare = row.querySelector('.todo-edit-compare-v529');
+      if (compare && draft.compareOpen) compare.open = true;
     }
   }
   classicTodoRecoveryDrafts = recovery;

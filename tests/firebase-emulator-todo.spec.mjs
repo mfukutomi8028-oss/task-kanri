@@ -284,6 +284,23 @@ test('remote changes keep a draft visible and require loading latest before savi
   await expect(row.locator('.todo-detail-save')).toBeDisabled();
   await row.locator('.todo-edit-conflict-v527 summary').click();
   await expect(row.locator('.todo-edit-latest-v527')).toContainText('ほかの端末が更新した件名');
+  const mine = row.locator('.todo-edit-mine-v529');
+  const remote = row.locator('.todo-edit-latest-v529');
+  await expect(mine).toContainText('私が編集中の件名');
+  await expect(mine).toContainText('途中まで入力した文章');
+  await expect(remote).toContainText('先方の追加事項');
+  await expect(row.locator('.todo-edit-differences-v529')).toContainText('両方が変更');
+
+  // Comparison follows further draft typing; it never writes into Firebase.
+  await row.locator('.todo-detail textarea').fill('さらに下書きを修正した文章');
+  await expect(mine).toContainText('さらに下書きを修正した文章');
+  await expect(row.locator('.todo-detail-save')).toBeDisabled();
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 812 });
+    const overflow = await row.locator('.todo-edit-compare-columns-v529').evaluate(
+      node => node.scrollWidth > node.clientWidth + 2);
+    expect(overflow, 'comparison should fit mobile viewport at ' + width + 'px').toBe(false);
+  }
   await expect(await readTodo(id)).toMatchObject({ text: 'ほかの端末が更新した件名', memo: '先方の追加事項', revision: 2 });
 
   page.once('dialog', dialog => dialog.accept());
