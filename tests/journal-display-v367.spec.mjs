@@ -3005,3 +3005,99 @@ test('JOURNAL V548 mobile case reader survives sort, search, facets and Japanese
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V549 latest focus wins across filtering, Firebase repaint and IME on phones',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch(),source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      'window.__journalV549TriggerSync = () => scheduleSubscribedRender();\nfunction scheduleSubscribedRender() {'
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),editor=page.locator('#taskDialog');
+  for(const title of ['JOURNAL V549 A','JOURNAL V549 B','JOURNAL V549 C']){
+    await board.locator('[data-j420-new-task]').click();
+    await editor.locator('#taskTitle').fill(title);
+    await editor.locator('#taskForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+  }
+  await board.locator('[data-j420-layout="list"]').click();
+  const list=page.locator('#listView'),rows=list.locator('[data-j425-row]');
+  const query=list.locator('[data-j425-query]'),sort=list.locator('[data-j425-sort]');
+  await sort.selectOption('title');
+  await query.fill('JOURNAL V549');
+  await expect(rows).toHaveCount(3);
+  await rows.filter({hasText:'JOURNAL V549 B'}).click();
+  const reader=list.locator('.j425-task-preview.j491-inline-detail');
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V549 B');
+
+  // A subscription was queued before the search redraw. The user moves to
+  // the sort control afterwards; an old search-focus frame must not steal it.
+  await page.evaluate(()=>{
+    window.__journalV549TriggerSync();
+    const search=document.querySelector('#listView [data-j425-query]');
+    search.value='JOURNAL V549 B';
+    search.dispatchEvent(new Event('input',{bubbles:true}));
+    document.querySelector('#listView [data-j425-sort]').focus();
+  });
+  await page.evaluate(()=>new Promise(done=>
+    requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(done)))));
+  await expect(sort).toBeFocused();
+  await expect(query).toHaveValue('JOURNAL V549 B');
+  await expect(rows).toHaveCount(1);
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V549 B');
+
+  // Reverse ordering: local input rerender starts first, then the subscription.
+  // One winner restores the most recent query and its exact caret position.
+  await page.evaluate(()=>{
+    const search=document.querySelector('#listView [data-j425-query]');
+    search.focus();
+    search.value='JOURNAL V549';
+    search.setSelectionRange(7,7);
+    search.dispatchEvent(new Event('input',{bubbles:true}));
+    window.__journalV549TriggerSync();
+  });
+  await page.evaluate(()=>new Promise(done=>
+    requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(done)))));
+  await expect(rows).toHaveCount(3);
+  await expect(query).toBeFocused();
+  await expect(query).toHaveValue('JOURNAL V549');
+  expect(await query.evaluate(el=>el.selectionStart)).toBe(7);
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V549 B');
+
+  // An active composition must survive a queued subscription without the
+  // underlying input node being replaced. The final result selects C.
+  await page.setViewportSize({width:320,height:800});
+  const composing=await query.elementHandle();
+  await query.evaluate(input=>{
+    input.focus();
+    input.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:'C'}));
+    input.value='JOURNAL V549 C';
+    input.dispatchEvent(new InputEvent('input',{
+      bubbles:true,isComposing:true,inputType:'insertCompositionText',data:'C'
+    }));
+    window.__journalV549TriggerSync();
+  });
+  await page.evaluate(()=>new Promise(done=>
+    requestAnimationFrame(()=>requestAnimationFrame(done))));
+  expect(await composing.evaluate(el=>el.isConnected)).toBe(true);
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V549 B');
+  await query.evaluate(input=>
+    input.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,data:'C'})));
+  await page.evaluate(()=>new Promise(done=>
+    requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(done)))));
+  await expect(rows).toHaveCount(1);
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V549 C');
+  await expect(query).toHaveValue('JOURNAL V549 C');
+  await expect(query).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});
