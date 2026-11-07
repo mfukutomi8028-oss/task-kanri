@@ -1546,3 +1546,28 @@ test('JOURNAL V548 keeps an open case reader across explicit search/filter/sort 
   assert.match(index,/input\.addEventListener\('compositionend'/);
   assert.doesNotMatch(handler+index,/(?:runTransaction|persistTask|commitTaskDraft|updateDatabase|onValue)\s*\(/i);
 });
+
+
+test('JOURNAL V549 discards stale filter focus when subscription sees a newer user focus',()=>{
+  const app=read('app.js');
+  const capture=app.slice(app.indexOf('function journalCaptureTaskPageSyncAnchorV530('),
+    app.indexOf('function journalNearestSurvivingTaskV532('));
+  const start=app.indexOf('let journalIndexRefreshTokenV515=0;');
+  const end=app.indexOf('function journalIndexV425(tasks){',start);
+  const helper=app.slice(start,end);
+  assert.ok(capture.length>300&&helper.length>300);
+  assert.match(helper,/let journalIndexPendingFocusV549=null/);
+  assert.match(helper,/const pendingFocusV549=\{token,findNextControl\}/);
+  assert.match(helper,/journalIndexPendingFocusV549=pendingFocusV549/);
+  assert.match(helper,/if\(journalIndexPendingFocusV549===pendingFocusV549\)/);
+  assert.match(helper,/journalIndexPendingFocusV549=null/);
+  assert.match(helper,/token!==journalIndexRefreshTokenV515/);
+  assert.match(helper,/current\.isConnected&&current!==target\)return/);
+  assert.match(capture,/if\(layout==='list'&&active&&journalIndexPendingFocusV549/);
+  assert.match(capture,/active!==journalIndexPendingFocusV549\.findNextControl\(\)/);
+  assert.match(capture,/\+\+journalIndexRefreshTokenV515/);
+  assert.match(capture,/journalIndexPendingFocusV549=null/);
+  assert.match(capture,/const focus=journalTaskSyncDescriptorV530/);
+  assert.doesNotMatch(capture+helper,
+    /(?:runTransaction|persistTask|commitTaskDraft|updateDatabase|onValue)\s*\(/i);
+});

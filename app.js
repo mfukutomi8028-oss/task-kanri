@@ -7194,6 +7194,14 @@ function journalCaptureTaskPageSyncAnchorV530(layout){
     ||elements.taskDialog?.open||elements.timelineMoveDialog?.open
     ||elements.detailPanel?.classList.contains('open'))return null;
   const active=root.contains(document.activeElement)?document.activeElement:null;
+  // V549: a remote repaint can arrive before V515's pending filter-focus
+  // frame. If the user has focused a DIFFERENT control in the meantime,
+  // invalidate the old request and let this subscription restore the latest.
+  if(layout==='list'&&active&&journalIndexPendingFocusV549
+    &&active!==journalIndexPendingFocusV549.findNextControl()){
+    ++journalIndexRefreshTokenV515;
+    journalIndexPendingFocusV549=null;
+  }
   const focus=journalTaskSyncDescriptorV530(root,layout,active);
   const visible=el=>{
     const rect=el.getBoundingClientRect();
@@ -7576,6 +7584,9 @@ function journalIndexPreviewV425(t,index){
 // JOURNAL V515: all index controls return to their replacement after the
 // canonical paper-list rerender. No extra filter state or saved record is used.
 let journalIndexRefreshTokenV515=0;
+// V549: only a still-current filter action may restore its control focus.
+// The subscription snapshot may cancel it when a later user focus wins.
+let journalIndexPendingFocusV549=null;
 // V548: a one-render, view-only reading anchor for *explicit* search/filter/
 // sort operations. Subscription updates keep their separate V530 owner.
 let journalIndexExplicitReaderV548=null;
@@ -7583,6 +7594,8 @@ function journalRefreshIndexV515(tasks,previousControl,findNextControl,onRestore
   const previousTop=previousControl.getBoundingClientRect().top;
   const wasVisible=previousTop>=0&&previousTop<=window.innerHeight;
   const token=++journalIndexRefreshTokenV515;
+  const pendingFocusV549={token,findNextControl};
+  journalIndexPendingFocusV549=pendingFocusV549;
   const root=elements.listView;
   const selectedId=journalIndexStateV425.selected;
   const oldRows=[...root.querySelectorAll('[data-j425-row]')];
@@ -7598,10 +7611,17 @@ function journalRefreshIndexV515(tasks,previousControl,findNextControl,onRestore
   try{journalIndexV425(tasks);}
   finally{journalIndexExplicitReaderV548=null;}
   requestAnimationFrame(()=>{
+    if(journalIndexPendingFocusV549===pendingFocusV549)
+      journalIndexPendingFocusV549=null;
     if(token!==journalIndexRefreshTokenV515||!journalTaskV411()
       ||elements.listView.hidden)return;
     const target=findNextControl();
     if(!target)return;
+    // An explicit click/Tab after this filter changed is newer than the
+    // scheduled focus recovery. Do not steal it back, even after sync.
+    const current=document.activeElement;
+    if(current&&current!==document.body&&current!==document.documentElement
+      &&current.isConnected&&current!==target)return;
     target.focus({preventScroll:true});
     onRestore?.(target);
     if(wasVisible&&document.scrollingElement){
