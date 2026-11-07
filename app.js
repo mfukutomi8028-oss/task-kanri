@@ -2909,7 +2909,8 @@ function captureClassicTodoDraftState(page) {
       baseRevision: Number(row.dataset.todoEditBaseRevision),
       baseText: row.dataset.todoEditBaseText || '',
       baseMemo: row.dataset.todoEditBaseMemo || '',
-      expanded: !row.querySelector('.todo-detail')?.hidden
+      expanded: !row.querySelector('.todo-detail')?.hidden,
+      compareOpen: Boolean(row.querySelector('.todo-edit-compare-v529')?.open)
     });
   });
   const active = document.activeElement;
@@ -3059,6 +3060,8 @@ function showClassicTodoEditConflict(row, latest) {
     delete row.dataset.todoEditConflict;
     delete row.dataset.todoDraftDirtyV527;
     save.disabled = false;
+    title.removeEventListener('input', refreshComparison);
+    memo.removeEventListener('input', refreshComparison);
     alert.remove();
     title.dispatchEvent(new Event('input', { bubbles: true }));
     title.focus({ preventScroll: true });
@@ -3122,6 +3125,8 @@ function restoreClassicTodoDraftState(page, snapshot) {
     if (Number(draft.baseRevision) !== Number(current.revision)
       || draft.baseText !== current.text || draft.baseMemo !== (current.memo || '')) {
       showClassicTodoEditConflict(row, current);
+      const compare = row.querySelector('.todo-edit-compare-v529');
+      if (compare && draft.compareOpen) compare.open = true;
     }
   }
   classicTodoRecoveryDrafts = recovery;
