@@ -2389,3 +2389,59 @@ test('JOURNAL V525 returns to the same diary day after earlier entries change he
   expect(geometry.top).toBeLessThan(220);
   expect(geometry.overflow).toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V528 remote repaint keeps diary date and focused add action on phones',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  // Instrument the JavaScript response only in this browser test; no debug
+  // entry point is included in the deployed application.
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch();
+    const source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      'window.__journalV528TriggerSync = () => scheduleSubscribedRender();\nfunction scheduleSubscribedRender() {'
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  const diary=page.locator('#timelineView');
+  const picker=diary.locator('[data-j505-date-jump]');
+  const options=await picker.locator('option').evaluateAll(items=>
+    items.map(x=>x.value).filter(Boolean));
+  const chosen=options[8];
+  await picker.selectOption(chosen);
+  const day=diary.locator('.jv-chronicle-day')
+    .filter({has:diary.locator('[data-jv-date="'+chosen+'"]')});
+  const heading=day.locator('.jv-date');
+  await expect(heading).toBeFocused();
+  const top=await day.evaluate(el=>el.getBoundingClientRect().top);
+  await page.evaluate(()=>window.__journalV528TriggerSync());
+  await expect.poll(()=>page.evaluate(()=>new Promise(resolve=>
+    requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(
+      document.activeElement?.classList.contains('jv-date')
+    )))
+  ))).toBe(true);
+  await expect(heading).toBeFocused();
+  expect(Math.abs((await day.evaluate(el=>el.getBoundingClientRect().top))-top))
+    .toBeLessThanOrEqual(38);
+  const add=day.locator('[data-jv-add-date]').first();
+  await add.scrollIntoViewIfNeeded();
+  await add.focus();
+  const addTop=await add.evaluate(el=>el.getBoundingClientRect().top);
+  await page.evaluate(()=>window.__journalV528TriggerSync());
+  await expect(add).toBeFocused();
+  expect(Math.abs((await add.evaluate(el=>el.getBoundingClientRect().top))-addTop))
+    .toBeLessThanOrEqual(38);
+  await page.setViewportSize({width:320,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+  // User navigation must not inherit the remote repaint's reading anchor.
+  await diary.locator('[data-timeline-next]').click();
+  await expect(diary.locator('[data-timeline-next]')).toBeFocused();
+});
