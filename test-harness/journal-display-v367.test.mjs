@@ -1683,3 +1683,25 @@ test('JOURNAL V556 keeps the visible note section across sync and phone width ch
   assert.doesNotMatch(anchor+capture+restore,
     /(?:persistTask|runTransaction|commitTaskDraft|setDoc|onValue)\s*\(/i);
 });
+
+
+test('JOURNAL V558 note return keeps modal source and newer focus across phone resize',()=>{
+  const app=read('app.js');
+  const modal=app.slice(app.indexOf('function journalOpenTaskNoteV519('),
+    app.indexOf('// JOURNAL V507: transient source'));
+  const reader=app.slice(app.indexOf('function journalCaptureAtelierReaderAnchorV556('),
+    app.indexOf('// V553: invalidate queued mobile note navigation'));
+  assert.ok(modal.length>1400&&reader.length>1200);
+  assert.match(modal,/viewportHeight:window\.innerHeight/);
+  assert.match(modal,/current\.getClientRects\(\)\.length/);
+  assert.match(modal,/current\.matches\('button,input,select,textarea,a,\[tabindex\]'\)/);
+  assert.match(modal,/target===button/);
+  assert.match(modal,/origin\.top\/origin\.viewportHeight\*window\.innerHeight/);
+  assert.match(modal,/scrolling\.scrollTop\+=rect\.top-desired/);
+  assert.match(modal,/if\(board&&journalAtelierInlineOpenV494\)/);
+  assert.match(modal,/journalCaptureAtelierReaderAnchorV556\(\)/);
+  assert.match(reader,/if\(elements\.detailPanel\?\.classList\.contains\('open'\)\|\|elements\.taskDialog\?\.open\)return/);
+  assert.match(reader,/anchor\.id!==journalAtelierSelectedV420/);
+  assert.doesNotMatch(modal+reader,
+    /(?:persistTask|runTransaction|commitTaskDraft|setDoc|onValue)\s*\(/i);
+});
