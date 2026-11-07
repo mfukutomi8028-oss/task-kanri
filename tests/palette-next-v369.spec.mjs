@@ -1890,6 +1890,26 @@ for(const width of [320,390,1366]){
   await page.locator('[data-pn-memo-clear-filter]').click();
   await expect(tiles).toHaveCount(4);
   await expect(page.locator('[data-pn-memo-filter="all"]')).toHaveAttribute('aria-pressed','true');
+  // No-match feedback must explain whether search, color, or both filtered out items.
+  const memoSearch=page.locator('#pnSearch');
+  const emptyMemo=page.locator('#paletteNextRoot .pn-memo-empty-state');
+  await memoSearch.fill('存在しない語句');
+  await expect(tiles).toHaveCount(0);
+  await expect(emptyMemo).toContainText('検索に一致するメモはありません');
+  await page.locator('[data-pn-memo-filter="mint"]').click();
+  await expect(emptyMemo).toContainText('検索語と選択した色に一致するメモはありません');
+  const resetEmpty=emptyMemo.locator('[data-pn-memo-reset-empty]');
+  await expect(resetEmpty).toBeVisible();
+  expect(await resetEmpty.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  await resetEmpty.click();
+  await expect(memoSearch).toHaveValue('');
+  await expect(memoSearch).toBeFocused();
+  await expect(page.locator('[data-pn-memo-filter="all"]')).toHaveAttribute('aria-pressed','true');
+  await expect(tiles).toHaveCount(4);
+  await page.locator('[data-pn-memo-filter="lavender"]').click();
+  await expect(emptyMemo).toContainText('この色に該当するメモはありません');
+  await emptyMemo.locator('[data-pn-memo-reset-empty]').click();
+  await expect(tiles).toHaveCount(4);
   const before=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
     .find(memo=>memo.id==='palette-sort-c')?.updatedAt);
   await tiles.filter({hasText:'ウ：手順'}).click();
