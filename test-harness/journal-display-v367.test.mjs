@@ -1043,7 +1043,7 @@ test('JOURNAL V507 chronology move resumes at actual destination and offers an o
   assert.match(chronicle,/journalOpenTimelineMoveV507\(b\.dataset\.moveToTimeline\)/);
   assert.match(chronicle,/selector\?\.focus\(\{preventScroll:true\}\)/);
   const save=app.slice(app.indexOf('async function confirmTimelineMove('),app.indexOf('function openTaskDialog(',app.indexOf('async function confirmTimelineMove(')));
-  assert.match(save,/if\(!result\.ok\) return showWriteFailure/);
+  assert.match(save,/if\s*\(!result\.ok\) return showWriteFailure/);
   assert.match(save,/if\(journalSource\)journalTimelineMoveCommittedV507=true/);
   assert.match(save,/if\(journalSource\)journalRevealTimelineMoveV507\(journalSource,task\.id,dueDate,dueChanged\)/);
   assert.match(css,/JOURNAL V507/);
