@@ -6689,3 +6689,27 @@ html[data-wb-display="journal"] #timelineView .j511-chronicle-travel {
     outline:2px solid var(--j-accent)!important;outline-offset:2px;
   }
 }
+
+/* JOURNAL V516 — mobile atelier should grow with its actual contents, not
+   reserve a blank 480px desk when only a few cases are displayed. */
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #boardView .j420-atelier-desk {
+    min-height:0;
+    padding-bottom:10px;
+  }
+  html[data-wb-display="journal"] #boardView .j420-atelier-workbench {
+    gap:7px;
+  }
+  html[data-wb-display="journal"] #boardView .j420-island-grid {
+    gap:9px;
+  }
+  html[data-wb-display="journal"] #boardView .j420-atelier-task:focus-visible,
+  html[data-wb-display="journal"] #boardView .j420-atelier-index button:focus-visible {
+    outline:2px solid var(--j-accent)!important;
+    outline-offset:2px;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-time-controls>button,
+  html[data-wb-display="journal"] #timelineView .jv-time-controls>select {
+    min-height:44px;
+  }
+}
