@@ -102,43 +102,24 @@ async function boot(page) {
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
   await page.waitForFunction(() => document.getElementById('connectionPill')?.textContent?.includes('共同編集ON'), undefined, { timeout: 30_000 });
 
-  // The workflow taskMap is a localStorage-backed convenience API, not the
-  // authoritative Firebase subscription boundary. Wait for the canonical app
-  // renderer instead so this test proves the seeded remote task is usable.
+  // The canonical read bridge deliberately omits comment content, and the
+  // localStorage task cache is not an authoritative Firebase subscription API.
+  // Confirm the seeded remote task revision, then assert its real comment DOM.
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
+  await expect.poll(() => page.evaluate(() =>
+    window.WorkBoardPaletteBridge?.readSnapshot?.()
+      ?.tasks?.find(task => task.id === 'task-reply-v215')?.revision ?? null
+  ), { timeout: 30_000 }).toBe(7);
   await page.waitForSelector('[data-task-id="task-reply-v215"]', { timeout: 30_000 });
-  // A task card may mount before the canonical RTDB payload (including its
-  // comments) reaches the shared read cache. Verify the real remote comment
-  // rather than injecting a separate local fixture to make this test pass.
-  await expect.poll(async () => page.evaluate(({room}) => {
-    const taskId = 'task-reply-v215', parentId = 'parent-v215';
-    let cached;
-    try {
-      const cache = JSON.parse(localStorage.getItem(`system-task-tasks:${room}`) || '[]');
-      cached = Array.isArray(cache) ? cache.find(item => item?.id === taskId) : null;
-    } catch { cached = null; }
-    let canonical;
-    try {
-      canonical = window.WorkBoardPaletteBridge?.readSnapshot?.()
-        ?.tasks?.find(item => item?.id === taskId);
-    } catch { canonical = null; }
-    const shape = value => Array.isArray(value) ? 'array'
-      : value === null ? 'null' : typeof value;
-    const hasParent = task => Array.isArray(task?.comments)
-      && task.comments.some(comment => comment.id === parentId);
-    return {
-      cachedHasParent: hasParent(cached),
-      canonicalHasParent: hasParent(canonical),
-      cacheCommentShape: shape(cached?.comments),
-      canonicalCommentShape: shape(canonical?.comments),
-      cachedRevision: cached?.revision ?? null,
-      canonicalRevision: canonical?.revision ?? null
-    };
-  }, {room:ROOM}), {timeout:30000}).toMatchObject({cachedHasParent:true});
   await page.evaluate(() => document.querySelector('[data-task-id="task-reply-v215"]')?.click());
   await expect(page.locator('.task-detail-tab-v149[data-tab="comments"]')).toBeVisible({ timeout: 15_000 });
   await page.evaluate(() => document.querySelector('.task-detail-tab-v149[data-tab="comments"]')?.click());
   await expect(page.locator('.task-detail-panel-v149[data-tab-panel="comments"]')).toBeVisible();
+  const parent = page.locator('.activity-comment[data-comment-id="parent-v215"]');
+  await expect(parent, 'A remote parent comment must be usable in the real detail UI').toBeVisible({ timeout: 30_000 });
+  await expect(parent).toContainText('親コメントです');
+  await expect(parent.locator('[data-comment-reply-target="parent-v215"]')).toBeVisible();
+
 
   expect(pageErrors).toEqual([]);
   expect(productionRequests).toEqual([]);
