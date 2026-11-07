@@ -1714,6 +1714,8 @@ test('JOURNAL V500 recent log opens the correct filtered-out task on phone and d
   await editor.locator('#taskDescription').fill('引継ぎ番号:'+('Z'.repeat(140)));
   await editor.locator('#taskForm button[type="submit"]').click();
   await expect(editor).toBeHidden();
+  // V502: filters are intentionally folded on phones until the bookmark opens.
+  await board.locator('[data-j502-toggle-index]').click();
   await board.locator('[data-j420-view="waiting"]').click();
   await expect(board.locator('[data-j420-task-id]').filter({hasText:title})).toHaveCount(0);
   const log=board.locator('[data-j420-log-task]').filter({hasText:title});
@@ -1740,4 +1742,46 @@ test('JOURNAL V500 recent log opens the correct filtered-out task on phone and d
   await expect(board.locator('[data-j420-view="all"]')).toHaveAttribute('aria-pressed','true');
   await expect(note.locator('.j420-note-lead h4')).toHaveText(title);
   await expect(note.locator('.j420-note-lead h4')).toBeFocused();
+});
+
+test('JOURNAL V502 phone index folds without losing filters and the selected note stays usable',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,320);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  const toggle=board.locator('[data-j502-toggle-index]');
+  const index=board.locator('.j420-atelier-index');
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-expanded','false');
+  await expect(index.locator('[data-j420-view="waiting"]')).toBeHidden();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await index.locator('[data-j420-view="waiting"]').click();
+  await expect(board.locator('[data-j420-view="waiting"]')).toHaveAttribute('aria-pressed','true');
+  await expect(board.locator('[data-j502-toggle-index]')).toHaveAttribute('aria-expanded','true');
+  await board.locator('[data-j502-toggle-index]').click();
+  await expect(board.locator('[data-j420-view="waiting"]')).toBeHidden();
+  const create=board.locator('[data-j420-new-task]');
+  await expect(create).toBeVisible();
+  await create.click();
+  const dialog=page.locator('#taskDialog');
+  await dialog.locator('#taskTitle').fill('JOURNAL V502 机上の狭幅確認');
+  await dialog.locator('#taskDescription').fill('LONG'+('X'.repeat(180)));
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  await board.locator('[data-j502-toggle-index]').click();
+  await board.locator('[data-j420-view="all"]').click();
+  const row=board.locator('[data-j420-task-id]').filter({hasText:'JOURNAL V502 机上の狭幅確認'});
+  await row.click();
+  const note=board.locator('#j494AtelierNote');
+  await expect(note).toBeVisible();
+  await expect(note.locator('[data-j420-note-edit]')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  await page.setViewportSize({width:390,height:900});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  await note.locator('[data-j494-atelier-back]').click();
+  await expect(row).toBeFocused();
+  await page.setViewportSize({width:1366,height:900});
+  await expect(index.locator('[data-j420-view="all"]')).toBeVisible();
+  await expect(toggle).toBeHidden();
 });
