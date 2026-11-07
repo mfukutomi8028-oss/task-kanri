@@ -2918,7 +2918,11 @@ test('Origin searches completed ToDos by explicit opt-in without changing progre
  await expect(workspace.locator('#originCompletedTodos .todo-entry')).toHaveCount(1);
  const jump=workspace.locator('[data-action="jump-result"][data-kind="todos"]');
  await expect(jump).toBeEnabled();
+ // The result jump must also recover if history was manually collapsed.
+ await workspace.locator('.origin-todo-archive-toggle').click();
+ await expect(workspace.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','false');
  await jump.click();
+ await expect(workspace.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','true');
  await expect(workspace.locator('#originCompletedTodos .todo-text')).toBeFocused();
  await expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
 });
