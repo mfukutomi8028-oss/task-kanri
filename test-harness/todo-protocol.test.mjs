@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { TODO_MEMO_MAX_LENGTH, canPromoteTodo, canonicalTodoMap, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment } from '../todo-sync-v136.js';
+import { TODO_MEMO_MAX_LENGTH, canPromoteTodo, canonicalTodoMap, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment, todoDataSignature } from '../todo-sync-v136.js';
 
 const todo = (id, revision = 1, extra = {}) => ({ id, text: id, owner: 'A', order: revision * 1024, revision, createdAt: revision, ...extra });
 
@@ -72,4 +72,27 @@ test('promotion is allowed only for the exact current id, owner, and revision', 
   const current = todo('a', 4); assert.equal(canPromoteTodo({ todoId: 'a', owner: 'A', baseRevision: 4 }, current), true);
   assert.equal(canPromoteTodo({ todoId: 'a', owner: 'A', baseRevision: 3 }, current), false);
   assert.equal(canPromoteTodo({ todoId: 'a', owner: 'B', baseRevision: 4 }, current), false);
+});
+
+test('ToDo signature ignores snapshot key order and barrier acknowledgements but detects visible/history changes', () => {
+  const a = canonicalTodoMap({
+    first: todo('first', 2, { text: '編集前', memo: '編集中の記述' }),
+    archive: todo('archive', 1, { completed: true, completedAt: 1720000000000 })
+  });
+  const same = canonicalTodoMap({ archive: a.archive, first: { ...a.first } });
+  assert.equal(todoDataSignature(a), todoDataSignature(same));
+  const acknowledged = reduceTodoSync(
+    { roomId: 'r', raw: a, barriers: {} },
+    { type: 'receive-authoritative-snapshot', roomId: 'r', value: same }
+  );
+  assert.equal(todoDataSignature(a), todoDataSignature(acknowledged.raw));
+  assert.notEqual(todoDataSignature(a),
+    todoDataSignature({ ...a, first: { ...a.first, memo: '別のメモ' } }));
+  assert.notEqual(todoDataSignature(a),
+    todoDataSignature({ ...a, first: { ...a.first, revision: 3 } }));
+  assert.notEqual(todoDataSignature(a),
+    todoDataSignature({ ...a, archive: { ...a.archive, completedAt: 1720000001000 } }));
+  assert.notEqual(todoDataSignature(a), todoDataSignature({ first: a.first }));
+  assert.equal(todoDataSignature(a, 'A'),
+    todoDataSignature({ ...a, other: normalizeTodo(todo('other', 1, { owner: 'B' })) }, 'A'));
 });

@@ -12,7 +12,7 @@ import {
   isRecurringDeleteCandidate
 } from './recurrence-series-v354.js';
 import { createWorkspaceWriteCoordinator } from "./workspace-write-v538.js";
-import { TODO_MAX_LENGTH, TODO_MEMO_MAX_LENGTH, canonicalTodoRecord, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment, canPromoteTodo } from './todo-sync-v136.js';
+import { TODO_MAX_LENGTH, TODO_MEMO_MAX_LENGTH, canonicalTodoRecord, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment, canPromoteTodo, todoDataSignature } from './todo-sync-v136.js';
 
 let initializeApp, getDatabase, connectDatabaseEmulator, ref, get, onValue, set, update, push, remove, serverTimestamp, runTransaction;
 
@@ -1041,9 +1041,13 @@ function mergeSubscribedCollection(collection, value) {
 }
 
 function applyTodoSync(action) {
+  const previousSignature = todoDataSignature(state.todoRaw);
   const next = reduceTodoSync({ roomId: ROOM_ID, raw: state.todoRaw, barriers: state.todoBarriers }, action);
   state.todoRaw = next.raw;
   state.todoBarriers = next.barriers;
+  // Acknowledging a local write can clear a barrier without changing the
+  // canonical ToDo records. Do not redraw or rewrite the cache for such echoes.
+  if (previousSignature === todoDataSignature(next.raw)) return;
   state.todos = Object.entries(next.raw).flatMap(([id, record]) => {
     const todo = canonicalTodoRecord(id, record);
     return todo ? [todo] : [];
@@ -2870,8 +2874,22 @@ function journalTodoV425() {
   }
 }
 
+let classicTodoRenderedPage = null;
+let classicTodoRenderedSignature = '';
 function renderTodoView() {
   if(typeof document!=='undefined' && document.documentElement?.dataset?.wbDisplay==='journal') return journalTodoV425();
+  // Other collection subscriptions also call renderCore(). Reuse the Classic
+  // ToDo DOM when its own canonical data and write state are unchanged, so a
+  // background task/schedule update cannot erase an unsaved ToDo draft.
+  const isClassicTodo = document.documentElement?.dataset?.wbDisplay === 'classic';
+  const signature = isClassicTodo ? JSON.stringify([
+    ROOM_ID, normalizeUser(getCurrentUser()), todayISO(),
+    todoDataSignature(state.todoRaw, normalizeUser(getCurrentUser())),
+    [...state.inFlightOperations.keys()].filter(key => key.startsWith('todo-')).sort()
+  ]) : '';
+  const currentPage = elements.todoView?.querySelector('.todo-page');
+  if (isClassicTodo && currentPage && currentPage === classicTodoRenderedPage
+    && signature === classicTodoRenderedSignature) return;
   // Snapshot search focus before canonical rendering replaces the search sidecar.
   // Only restore an actively focused search, never steal focus from a ToDo editor.
   const previousSearch = elements.todoView?.querySelector('.todo-search-input-v145');
@@ -2945,6 +2963,10 @@ function renderTodoView() {
   `;
 
   bindTodoWorkspace(elements.todoView);
+  if (isClassicTodo) {
+    classicTodoRenderedPage = elements.todoView?.querySelector('.todo-page');
+    classicTodoRenderedSignature = signature;
+  }
   if (searchAnchor) {
     // ToDo tools adopt the new .todo-page via a root MutationObserver.
     // The next frame runs after that adoption without introducing another observer.

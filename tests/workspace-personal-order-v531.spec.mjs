@@ -295,3 +295,43 @@ for (const width of [320, 390]) {
     await expect(row).toBeVisible();
   });
 }
+
+for (const width of [320, 390]) {
+  test('Classic ToDo keeps unsaved input and existing DOM on unrelated redraw at ' + width + 'px', async ({ page }) => {
+    const now = Date.now();
+    await page.setViewportSize({ width, height: 812 });
+    await boot(page, 'test-v525-todo-unrelated-render-' + width, {
+      historical: [
+        { id: 'v525-first', text: '未編集のToDo', memo: '保存済みメモ', completed: false,
+          completedAt: 0, owner: '福冨', order: 0, revision: 1, createdAt: now, updatedAt: now },
+        { id: 'v525-second', text: 'もう一つのToDo', memo: '', completed: false,
+          completedAt: 0, owner: '福冨', order: 1024, revision: 1, createdAt: now - 5000, updatedAt: now }
+      ]
+    });
+    await page.locator('#todayView [data-layout-jump="todos"]').first().click();
+    const todoPage = page.locator('#todoView .todo-page');
+    const row = page.locator('#todoView [data-todo-id="v525-first"]');
+    await row.locator('.todo-summary-button').click();
+    await row.locator('.todo-detail input').fill('まだ保存していない件名');
+    await row.locator('.todo-detail textarea').fill('まだ保存していないメモ');
+    await page.locator('#todayTodoInput').fill('作成途中の別のToDo');
+    await row.evaluate(node => { node.closest('.todo-page').dataset.testIdentityV525 = 'keep'; });
+    const previousScroll = await page.evaluate(() => document.scrollingElement.scrollTop);
+
+    // Clicking the already-active Classic layout calls the same canonical
+    // render path as unrelated Firebase collection subscriptions.
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]')?.click());
+    await expect(todoPage).toHaveAttribute('data-test-identity-v525', 'keep');
+    await expect(row.locator('.todo-detail input')).toHaveValue('まだ保存していない件名');
+    await expect(row.locator('.todo-detail textarea')).toHaveValue('まだ保存していないメモ');
+    await expect(page.locator('#todayTodoInput')).toHaveValue('作成途中の別のToDo');
+    const nextScroll = await page.evaluate(() => document.scrollingElement.scrollTop);
+    expect(Math.abs(nextScroll - previousScroll)).toBeLessThan(2);
+
+    // A real ToDo write still redraws and shows committed canonical data.
+    await row.locator('.todo-detail-save').click();
+    await expect(row.locator('.todo-text')).toHaveText('まだ保存していない件名');
+    await expect(row.locator('.todo-detail textarea')).toHaveValue('まだ保存していないメモ');
+    await expect(todoPage).not.toHaveAttribute('data-test-identity-v525', 'keep');
+  });
+}
