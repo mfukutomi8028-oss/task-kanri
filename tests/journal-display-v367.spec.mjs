@@ -1944,13 +1944,15 @@ test('JOURNAL V507 phone chronicle restores cancelled moves and navigates to the
   await result.getByRole('button',{name:'元の日誌へ戻る'}).click();
   await expect(timeline.locator('.jv-day-records[data-jv-date="'+originalDate+'"]')).toBeVisible();
   await expect(timeline.locator('.jv-day-records[data-jv-date="'+originalDate+'"]').locator('xpath=..').locator('.jv-date')).toBeFocused();
-  const weekUp=timeline.locator('.j507-week-up button').first();
-  await expect(weekUp).toBeVisible();
-  await weekUp.click();
+  // V513: the sticky shortcut supersedes duplicated per-week navigation.
+  await expect(timeline.locator('[data-j507-up]')).toHaveCount(0);
+  const stickyPicker=timeline.locator('.j511-chronicle-travel [data-j511-date-picker]');
+  await expect(stickyPicker).toBeVisible();
+  await stickyPicker.click();
   await expect(timeline.locator('[data-j505-date-jump]')).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(2);
   await page.setViewportSize({width:390,height:900});
-  await expect(timeline.locator('.j507-week-up button').first()).toBeVisible();
+  await expect(stickyPicker).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(2);
 });
 
@@ -2010,6 +2012,8 @@ test('JOURNAL V511 phone diary navigation and lower note-return stay reachable',
   const list=page.locator('#listView');
   const row=list.locator('[data-j425-row]').filter({hasText:title});
   await expect(row).toBeVisible();
+  await row.scrollIntoViewIfNeeded();
+  const sourceTop=await row.evaluate(el=>el.getBoundingClientRect().top);
   await row.click();
   const preview=list.locator('.j425-task-preview.j491-inline-detail');
   await expect(preview).toBeVisible();
@@ -2017,6 +2021,8 @@ test('JOURNAL V511 phone diary navigation and lower note-return stay reachable',
   await preview.locator('.j511-task-return-end').click();
   await expect(preview).toBeHidden();
   await expect(row).toBeFocused();
+  const returnTop=await row.evaluate(el=>el.getBoundingClientRect().top);
+  expect(Math.abs(returnTop-sourceTop)).toBeLessThanOrEqual(35);
   await list.locator('[data-j425-task-layout="timeline"]').click();
   const diary=page.locator('#timelineView');
   const nav=diary.locator('.j511-chronicle-travel');
