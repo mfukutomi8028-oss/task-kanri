@@ -6777,3 +6777,44 @@ html[data-wb-display="journal"] #listView .j518-index-empty button {
 html[data-wb-display="journal"] #listView .j518-index-empty button:focus-visible {
   outline:2px solid var(--j-accent)!important;outline-offset:2px;
 }
+
+
+/* JOURNAL V520 — quiet, contextual empty state for filtered task shelves.
+   Every actionable control remains readable at 320px without making the
+   decorative paper shelves or other display modes denser. */
+html[data-wb-display="journal"] #boardView .j520-atelier-empty {
+  box-sizing:border-box;grid-column:1/-1;min-width:0;
+  padding:16px 14px;margin:0 0 8px;
+  border:1px dashed var(--j-border);border-radius:6px;
+  background:var(--j-paper-alt);color:var(--j-ink);
+}
+html[data-wb-display="journal"] #boardView .j520-atelier-empty strong {
+  display:block;margin-bottom:5px;font:800 15px/1.55 var(--j-text);
+  overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #boardView .j520-atelier-empty p {
+  margin:0 0 12px;color:var(--j-muted);font:500 12px/1.65 var(--j-text);
+  overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #boardView .j520-atelier-empty button {
+  box-sizing:border-box;min-height:44px;max-width:100%;
+  border:1px solid var(--j-border)!important;border-radius:4px!important;
+  background:var(--j-soft)!important;color:var(--j-accent)!important;
+  padding:9px 13px;font:750 12px/1.5 var(--j-text);
+  white-space:normal;overflow-wrap:anywhere;cursor:pointer;
+}
+html[data-wb-display="journal"] #boardView .j520-atelier-empty button:focus-visible {
+  outline:2px solid var(--j-accent)!important;outline-offset:2px;
+}
+html[data-wb-display="journal"] #boardView .j520-index-filter-count {
+  display:block;margin-top:3px;color:var(--j-accent);
+  font:750 11px/1.35 var(--j-text);
+}
+
+/* Hide unoccupied decorative shelves only on small screens. Using a class
+   keeps the layout correct even if the viewport changes without a rerender. */
+@media(max-width:760px){
+  html[data-wb-display="journal"] #boardView .j420-island.j520-empty-island {
+    display:none!important;
+  }
+}

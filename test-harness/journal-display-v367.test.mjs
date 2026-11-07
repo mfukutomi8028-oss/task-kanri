@@ -1195,3 +1195,27 @@ test('JOURNAL V519 reuses one detail close observer to return desk and index act
   assert.match(app,/journalOpenTaskNoteV519\(filters.selected,'list','detail'/);
   assert.match(app,/journalOpenTaskNoteV519\(row\.dataset\.j425Row,'list','row'/);
 });
+
+
+test('JOURNAL V520 desk exposes empty filter recovery without creating new writers',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalAtelierV420(tasks){');
+  const end=app.indexOf('// State is view-only, scoped to JOURNAL;',start);
+  assert.ok(start>0&&end>start);
+  const desk=app.slice(start,end);
+  assert.match(desk,/const compactGroups=/);
+  assert.match(desk,/viewTasks\.length>0/);
+  assert.match(desk,/j520-empty-island/);
+  assert.match(desk,/activeFilterCountV520/);
+  assert.match(desk,/data-j520-empty-reset/);
+  assert.match(desk,/data-j520-empty-new/);
+  assert.match(desk,/const resetAtelierV520=/);
+  assert.match(desk,/journalAtelierRefreshTokenV516/);
+  assert.match(desk,/el\.getClientRects\(\)\.length>0/);
+  assert.match(desk,/data-j420-search/);
+  assert.doesNotMatch(desk,/(?:runTransaction|commitTaskDraft|persistTask|firebase\.database)\s*\(/i);
+  assert.match(css,/JOURNAL V520/);
+  assert.match(css,/\.j520-empty-island/);
+  assert.match(css,/\.j520-index-filter-count/);
+  assert.match(css,/\.j520-atelier-empty button/);
+});

@@ -2229,3 +2229,44 @@ test('JOURNAL V519 mobile task detail closes onto originating desk and index con
   await expect(listAction).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V520 mobile desk hides unused shelves and recovers from zero results',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  await board.locator('[data-j420-new-task]').click();
+  const dialog=page.locator('#taskDialog');
+  const title='JOURNAL V520 空棚と絞り込み復帰';
+  await dialog.locator('#taskTitle').fill(title);
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  await expect(board.locator('[data-j420-task-id]').filter({hasText:title})).toBeVisible();
+  await expect(board.locator('.j420-island.j520-empty-island:visible')).toHaveCount(0);
+
+  await board.locator('[data-j502-toggle-index]').click();
+  await board.locator('[data-j420-view="material"]').click();
+  const empty=board.locator('.j520-atelier-empty');
+  await expect(empty).toBeVisible();
+  await expect(board.locator('.j420-island:visible')).toHaveCount(0);
+  await board.locator('[data-j502-toggle-index]').click();
+  await expect(board.locator('.j520-index-filter-count')).toHaveText('1条件適用中');
+  await empty.locator('[data-j520-empty-reset]').click();
+  await expect(board.locator('[data-j420-search]')).toBeFocused();
+  await expect(board.locator('[data-j420-task-id]').filter({hasText:title})).toBeVisible();
+
+  const search=board.locator('[data-j420-search]');
+  await search.fill('J520_NEVER_MATCH');
+  await expect(board.locator('.j520-atelier-empty [data-j520-empty-reset]')).toBeVisible();
+  await board.locator('[data-j520-empty-reset]').click();
+  await expect(search).toHaveValue('');
+  await expect(search).toBeFocused();
+  await expect(board.locator('[data-j420-task-id]').filter({hasText:title})).toBeVisible();
+
+  await page.setViewportSize({width:1366,height:900});
+  expect(await board.locator('.j420-island.j520-empty-island:visible').count()).toBeGreaterThan(0);
+  await page.setViewportSize({width:320,height:800});
+  await expect(board.locator('.j420-island.j520-empty-island:visible')).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});

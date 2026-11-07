@@ -6219,9 +6219,15 @@ function journalAtelierV420(tasks){
     {id:'week',roman:'Ⅳ',title:'今週の締切',items:collect(week)},
     {id:'other',roman:'Ⅴ',title:'その他の案件',items:collect(()=>true)},
   ];
-  // On focused views retain only useful islands; in All keep the four main paper shelves.
+  // JOURNAL V520: leave the decorative four-shelf layout on an unfiltered
+  // desktop desk, but never reserve empty shelves on phones or filtered views.
+  const compactGroups=journalAtelierViewV420!=='all'
+    ||Boolean(journalAtelierCategoryV420)||Boolean(elements.searchInput.value.trim());
   const displayGroups=groups.filter(g=>g.id!=='other'||g.items.length)
-    .filter(g=>journalAtelierViewV420==='all'||g.items.length);
+    .filter(g=>g.items.length||(!compactGroups&&viewTasks.length>0));
+  const activeFilterCountV520=Number(journalAtelierViewV420!=='all')
+    +Number(Boolean(journalAtelierCategoryV420))
+    +Number(Boolean(elements.searchInput.value.trim()));
   const categories=[...new Set([...(state.categories||[]),...tasks.map(t=>t.category)].filter(Boolean))];
   const counts=views.map(v=>({ ...v,count:tasks.filter(viewFns[v.id]).length }));
   const dueSoon=tasks.filter(t=>t.dueDate&&week(t)).length;
@@ -6231,19 +6237,19 @@ function journalAtelierV420(tasks){
     journalAtelierInlineOpenV494=false;
   }
   const chosen=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
-  const renderGroup=g=>`<section class="j420-island j420-island-${g.id}" aria-label="${g.title}">
+  const renderGroup=g=>`<section class="j420-island j420-island-${g.id} ${g.items.length?'':'j520-empty-island'}" aria-label="${g.title}">
     <header><span class="j420-island-roman">${g.roman}</span><h3>${g.title}</h3><small>${g.items.length} 件</small><svg class="j425-island-pin" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#pin"></use></svg></header>
     <div class="j420-island-items">${g.items.map(journalAtelierCardV420).join('')||'<p class="j420-island-empty">この棚の案件はありません</p>'}</div>
   </section>`;
   elements.boardView.innerHTML=`<div class="j420-atelier">
     <header class="j420-atelier-hero">
       <div><span class="j420-eyebrow">03 / TASK ATELIER</span><h2>案件アトリエ</h2></div>
-      <div class="j420-atelier-stats"><span><small>表示中</small><strong>${tasks.length}<em>件</em></strong></span><span><small>今日動かす</small><strong>${counts[1].count}<em>件</em></strong></span><span><small>確認待ち</small><strong>${counts[2].count}<em>件</em></strong></span><span class="j420-late"><small>今週の期限</small><strong>${dueSoon}<em>件</em></strong></span></div>
+      <div class="j420-atelier-stats"><span><small>表示中</small><strong>${viewTasks.length}<em>件</em></strong></span><span><small>今日動かす</small><strong>${counts[1].count}<em>件</em></strong></span><span><small>確認待ち</small><strong>${counts[2].count}<em>件</em></strong></span><span class="j420-late"><small>今週の期限</small><strong>${dueSoon}<em>件</em></strong></span></div>
     </header>
     <div class="j420-atelier-workbench">
       <aside class="j420-atelier-index" aria-label="案件索引" data-j502-index-open="${journalIndexExpandedV502}">
         <span class="j420-ribbon" aria-hidden="true"></span>
-        <button type="button" class="j502-index-toggle" data-j502-toggle-index aria-expanded="${journalIndexExpandedV502}" aria-controls="j502IndexContents"><span>案件索引・絞り込み</span><span class="j502-index-state">${journalIndexExpandedV502?'閉じる':'開く'}</span></button>
+        <button type="button" class="j502-index-toggle" data-j502-toggle-index aria-expanded="${journalIndexExpandedV502}" aria-controls="j502IndexContents"><span>案件索引・絞り込み${activeFilterCountV520?'<small class="j520-index-filter-count">'+activeFilterCountV520+'条件適用中</small>':''}</span><span class="j502-index-state">${journalIndexExpandedV502?'閉じる':'開く'}</span></button>
         <div class="j502-index-contents" id="j502IndexContents">
         <h3>案件索引</h3><small>VIEW & CATEGORY</small>
         <h4>作業のしおり</h4>
@@ -6267,7 +6273,11 @@ function journalAtelierV420(tasks){
             <button type="button" data-j420-layout="timeline" title="日付日誌">日誌</button>
           </div>
         </div>
-        <div class="j420-island-grid">${displayGroups.map(renderGroup).join('')||'<div class="j420-atelier-empty">表示条件に合う案件がありません。左の索引を切り替えるか、絞り込みを解除してください。</div>'}</div>
+        <div class="j420-island-grid">${displayGroups.map(renderGroup).join('')||`<div class="j420-atelier-empty j520-atelier-empty" role="status">
+          <strong>${activeFilterCountV520?'条件に合う案件がありません':'登録された案件はありません'}</strong>
+          <p>${activeFilterCountV520?'表示条件を解除すると、他の案件を確認できます。':'新しいタスクを作成すると、机上に表示されます。'}</p>
+          ${activeFilterCountV520?'<button type="button" data-j520-empty-reset>条件を解除して案件を表示</button>':'<button type="button" data-j520-empty-new>＋ タスクを追加</button>'}
+        </div>`}</div>
         <div class="j420-stationery j420-atelier-stationery" aria-hidden="true"><img class="j441-atelier-cards" src="./assets/journal-atelier-cards-v441.svg" alt="" decoding="async"><span class="j420-stamp">JOURNAL / TASK ATELIER</span></div>
       </section>
       <aside class="j420-atelier-log" aria-label="進行ログ">
@@ -6335,11 +6345,35 @@ function journalAtelierV420(tasks){
     journalAtelierCategoryV420=value;
     journalRefreshAtelierControlV516(tasks,btn,()=>[...elements.boardView.querySelectorAll('[data-j420-category]')].find(el=>el.dataset.j420Category===value));
   }));
-  root.querySelectorAll('[data-j420-reset-view]').forEach(btn=>btn.addEventListener('click',()=>{
-    journalAtelierViewV420='all';journalAtelierCategoryV420='';
-    if(elements.searchInput.value){elements.searchInput.value='';elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}))}
-    else journalAtelierV420(tasks);
-  }));
+  // The toolbar and the empty-state recovery share a single reset path.
+  const resetAtelierV520=(source,focusSearch)=>{
+    const previousTop=source.getBoundingClientRect().top;
+    const wasVisible=previousTop>=0&&previousTop<=window.innerHeight;
+    const token=++journalAtelierRefreshTokenV516;
+    journalAtelierReturnAnchorV516=null;
+    journalAtelierViewV420='all';
+    journalAtelierCategoryV420='';
+    if(elements.searchInput.value){
+      elements.searchInput.value='';
+      elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}));
+    }else journalAtelierV420(tasks);
+    requestAnimationFrame(()=>{
+      if(token!==journalAtelierRefreshTokenV516||!journalTaskV411()||elements.boardView.hidden)return;
+      const target=[...elements.boardView.querySelectorAll(focusSearch?'[data-j420-search]':'[data-j420-reset-view]')]
+        .find(el=>el.getClientRects().length>0)
+        ||elements.boardView.querySelector('[data-j420-new-task]');
+      if(!target)return;
+      target.focus({preventScroll:true});
+      if(!focusSearch&&wasVisible&&document.scrollingElement){
+        document.scrollingElement.scrollTop+=target.getBoundingClientRect().top-previousTop;
+      }else target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+    });
+  };
+  root.querySelectorAll('[data-j420-reset-view]').forEach(btn=>btn.addEventListener('click',event=>
+    resetAtelierV520(event.currentTarget,false)));
+  root.querySelector('[data-j520-empty-reset]')?.addEventListener('click',event=>
+    resetAtelierV520(event.currentTarget,true));
+  root.querySelector('[data-j520-empty-new]')?.addEventListener('click',()=>openTaskDialog());
   root.querySelectorAll('[data-j420-layout]').forEach(btn=>btn.addEventListener('click',()=>journalSwitchTaskPageV509(btn.dataset.j420Layout)));
   bindJournalAtelierNoteActionsV420(root);
   journalPositionAtelierNoteV494(root);
