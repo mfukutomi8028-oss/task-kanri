@@ -2987,6 +2987,7 @@ function showClassicTodoEditConflict(row, latest) {
   const differences = document.createElement('p');
   differences.className = 'todo-edit-differences-v529';
   differences.setAttribute('aria-live', 'polite');
+  let refreshSelectionPreview = () => {};
   // The local editor remains editable, but Save is blocked until the user
   // explicitly chooses the latest baseline. No implicit merge or write.
   const differenceLabel = (draft, base, server) => {
@@ -3006,11 +3007,79 @@ function showClassicTodoEditConflict(row, latest) {
       differenceLabel(title.value.trim(), row.dataset.todoEditBaseText || '', current.text) +
       '　／　メモ：' +
       differenceLabel(memo.value.trim(), row.dataset.todoEditBaseMemo || '', current.memo || '');
+    refreshSelectionPreview();
   };
   title.addEventListener('input', refreshComparison);
   memo.addEventListener('input', refreshComparison);
   refreshComparison();
   compare.append(summary, differences, grid);
+
+  // Selection only revises the local form; it must never write to Firebase.
+  // For differing fields the user must make an explicit choice. Identical
+  // fields may safely preselect the local value without losing information.
+  const resolution = document.createElement('section');
+  resolution.className = 'todo-edit-resolution-v530';
+  resolution.setAttribute('aria-label', '項目ごとに取り込む内容を選択');
+  const resolutionHeading = document.createElement('h6');
+  resolutionHeading.textContent = '編集に使う内容を選ぶ';
+  const resolutionHelp = document.createElement('p');
+  resolutionHelp.textContent = '件名とメモを別々に選択できます。ここでは共有データを保存しません。選択後に内容を確認して、通常の「内容を保存」で確定してください。';
+  const choices = document.createElement('div');
+  choices.className = 'todo-edit-resolution-choices-v530';
+  const createChoice = (field, label, localValue, remoteValue) => {
+    const holder = document.createElement('label');
+    holder.className = 'todo-edit-resolution-field-v530';
+    const caption = document.createElement('span');
+    caption.textContent = label;
+    const select = document.createElement('select');
+    select.dataset.todoResolveField = field;
+    select.className = 'todo-edit-resolution-select-v530';
+    for (const [value, name] of [
+      ['', '取り込む内容を選択'],
+      ['mine', '自分の下書き'],
+      ['latest', '共有の最新内容']
+    ]) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = name;
+      select.appendChild(option);
+    }
+    select.value = localValue === remoteValue ? 'mine' : '';
+    holder.append(caption, select);
+    choices.appendChild(holder);
+    return select;
+  };
+  const titleChoice = createChoice('text', 'やること', title.value.trim(), latest.text);
+  const memoChoice = createChoice('memo', 'メモ', memo.value.trim(), latest.memo || '');
+  const preview = document.createElement('div');
+  preview.className = 'todo-edit-resolution-preview-v530';
+  preview.setAttribute('aria-live', 'polite');
+  const previewText = document.createElement('p');
+  previewText.className = 'todo-edit-preview-text-v530';
+  const previewMemo = document.createElement('p');
+  previewMemo.className = 'todo-edit-preview-memo-v530';
+  preview.append(previewText, previewMemo);
+  const resume = document.createElement('button');
+  resume.type = 'button';
+  resume.className = 'ghost-button todo-edit-resume-v530';
+  resume.textContent = '選択した内容で編集を再開';
+  resume.disabled = true;
+  const selectedValue = (choice, draft, remote) =>
+    choice.value === 'mine' ? draft : (choice.value === 'latest' ? remote : null);
+  refreshSelectionPreview = () => {
+    const current = state.todoRaw[row.dataset.todoId] || latest;
+    const textValue = selectedValue(titleChoice, title.value, current.text);
+    const memoValue = selectedValue(memoChoice, memo.value, current.memo || '');
+    previewText.textContent = 'やること：' + (textValue === null ? '未選択' : textValue || '（空欄）');
+    previewMemo.textContent = 'メモ：' + (memoValue === null ? '未選択' : memoValue || '（なし）');
+    resume.disabled = textValue === null || memoValue === null
+      || !textValue.trim() || textValue.length > TODO_MAX_LENGTH
+      || memoValue.length > TODO_MEMO_MAX_LENGTH;
+  };
+  titleChoice.addEventListener('change', refreshSelectionPreview);
+  memoChoice.addEventListener('change', refreshSelectionPreview);
+  refreshSelectionPreview();
+  resolution.append(resolutionHeading, resolutionHelp, choices, preview, resume);
 
   const copy = document.createElement('button');
   copy.type = 'button';
@@ -3041,6 +3110,54 @@ function showClassicTodoEditConflict(row, latest) {
     }
   });
 
+  const applySelectedRevision = (current, nextText, nextMemo) => {
+    // A successful rebase changes only the local editor baseline, and existing
+    // optimistic-concurrency checks still protect the eventual save.
+    title.value = nextText;
+    memo.value = nextMemo;
+    row.dataset.todoEditBaseText = current.text;
+    row.dataset.todoEditBaseMemo = current.memo || '';
+    row.dataset.todoEditBaseRevision = String(current.revision);
+    delete row.dataset.todoEditConflict;
+    if (nextText.trim() !== current.text || nextMemo.trim() !== (current.memo || '')) {
+      row.dataset.todoDraftDirtyV527 = 'true';
+    } else {
+      delete row.dataset.todoDraftDirtyV527;
+    }
+    save.disabled = false;
+    title.removeEventListener('input', refreshComparison);
+    memo.removeEventListener('input', refreshComparison);
+    alert.remove();
+    title.dispatchEvent(new Event('input', { bubbles: true }));
+    title.focus({ preventScroll: true });
+  };
+  resume.addEventListener('click', () => {
+    const current = state.todoRaw[row.dataset.todoId];
+    if (!row.isConnected || !current || current.owner !== normalizeUser(getCurrentUser())) {
+      toast('元のToDoが見つかりません。下書きをコピーしてください。', true);
+      return;
+    }
+    // Do not rebase to a revision that changed after the user reviewed the
+    // comparison. Require a fresh review instead of silently picking new text.
+    if (Number(current.revision) !== Number(latest.revision)
+      || current.text !== latest.text || (current.memo || '') !== (latest.memo || '')) {
+      toast('共有データが再度変更されました。最新内容を確認してください。', true);
+      render();
+      return;
+    }
+    const nextText = selectedValue(titleChoice, title.value, current.text);
+    const nextMemo = selectedValue(memoChoice, memo.value, current.memo || '');
+    if (nextText === null || nextMemo === null || !nextText.trim()
+      || nextText.length > TODO_MAX_LENGTH || nextMemo.length > TODO_MEMO_MAX_LENGTH) return;
+    const fieldName = choice => choice.value === 'mine' ? '自分の下書き' : '共有の最新内容';
+    const confirmed = window.confirm('やること：' + fieldName(titleChoice)
+      + '\nメモ：' + fieldName(memoChoice)
+      + '\nこの組み合わせで編集を再開しますか？'
+      + '\nこの操作ではまだ共有データを保存しません。');
+    if (!confirmed) return;
+    applySelectedRevision(current, nextText, nextMemo);
+  });
+
   const reload = document.createElement('button');
   reload.type = 'button';
   reload.className = 'ghost-button todo-edit-reload-v527';
@@ -3052,24 +3169,12 @@ function showClassicTodoEditConflict(row, latest) {
       toast('元のToDoは表示できません。入力内容をコピーしてください。', true);
       return;
     }
-    title.value = current.text;
-    memo.value = current.memo || '';
-    row.dataset.todoEditBaseText = current.text;
-    row.dataset.todoEditBaseMemo = current.memo || '';
-    row.dataset.todoEditBaseRevision = String(current.revision);
-    delete row.dataset.todoEditConflict;
-    delete row.dataset.todoDraftDirtyV527;
-    save.disabled = false;
-    title.removeEventListener('input', refreshComparison);
-    memo.removeEventListener('input', refreshComparison);
-    alert.remove();
-    title.dispatchEvent(new Event('input', { bubbles: true }));
-    title.focus({ preventScroll: true });
+    applySelectedRevision(current, current.text, current.memo || '');
   });
   const actions = document.createElement('div');
   actions.className = 'todo-edit-conflict-actions-v529';
   actions.append(copy, reload);
-  alert.append(headline, message, compare, actions);
+  alert.append(headline, message, compare, resolution, actions);
   detail.appendChild(alert);
 }
 

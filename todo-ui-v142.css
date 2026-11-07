@@ -282,3 +282,65 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Ver.530: explicit manual resolution of each concurrent ToDo field. */
+.todo-workspace .todo-edit-resolution-v530 {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--wb-ui-accent-line, var(--wb-ui-line, currentColor));
+  border-radius: 10px;
+  background: var(--wb-ui-hover, transparent);
+}
+.todo-workspace .todo-edit-resolution-v530 h6,
+.todo-workspace .todo-edit-resolution-v530 p {
+  margin: 0;
+  line-height: 1.5;
+}
+.todo-workspace .todo-edit-resolution-v530 h6 { font-size: 1em; }
+.todo-workspace .todo-edit-resolution-choices-v530 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.todo-workspace .todo-edit-resolution-field-v530 {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  font-weight: 600;
+}
+.todo-workspace .todo-edit-resolution-select-v530 {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid var(--wb-ui-line, currentColor);
+  border-radius: 8px;
+  background: var(--wb-ui-panel, transparent);
+  color: inherit;
+  font: inherit;
+}
+.todo-workspace .todo-edit-resolution-preview-v530 {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 9px;
+  border-radius: 8px;
+  background: var(--wb-ui-panel, transparent);
+}
+.todo-workspace .todo-edit-resolution-preview-v530 p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.todo-workspace .todo-edit-resume-v530:disabled {
+  opacity: .56;
+  cursor: not-allowed;
+}
+@media (max-width: 720px) {
+  .todo-workspace .todo-edit-resolution-choices-v530 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

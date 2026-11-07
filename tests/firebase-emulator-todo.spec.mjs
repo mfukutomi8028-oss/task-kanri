@@ -343,3 +343,48 @@ test('an unrelated remote edit keeps the unsaved ToDo and create form, and delet
   await expect(await readTodo(draftId)).toBeNull();
   expect(productionRequests).toEqual([]);
 });
+
+test('manual conflict resolution chooses draft title and latest memo without writing until Save', async ({ page }) => {
+  const id = 'todo-selective-rebase-v530';
+  const first = todoRecord(id, 'もとの件名', { memo: 'もとのメモ' });
+  await putDb('rooms/' + ROOM + '/todos/' + id, first);
+  await page.setViewportSize({ width: 390, height: 812 });
+  const { productionRequests } = await bootTodoPage(page);
+  const row = page.locator('#todoView [data-todo-id="' + id + '"]');
+  await row.locator('.todo-summary-button').click();
+  await row.locator('.todo-detail input').fill('手元で書いた新しい件名');
+  await row.locator('.todo-detail textarea').fill('自分のメモ案');
+  await putDb('rooms/' + ROOM + '/todos/' + id, {
+    ...first, text: '共有側の件名', memo: '共有側の重要メモ',
+    revision: 2, updatedAt: first.updatedAt + 1000
+  });
+  await expect(row.locator('.todo-edit-conflict-v527')).toBeVisible({ timeout: 30000 });
+  const apply = row.locator('.todo-edit-resume-v530');
+  await expect(apply).toBeDisabled();
+  await row.locator('[data-todo-resolve-field="text"]').selectOption('mine');
+  await expect(apply).toBeDisabled();
+  await row.locator('[data-todo-resolve-field="memo"]').selectOption('latest');
+  await expect(apply).toBeEnabled();
+  await expect(row.locator('.todo-edit-preview-text-v530')).toContainText('手元で書いた新しい件名');
+  await expect(row.locator('.todo-edit-preview-memo-v530')).toContainText('共有側の重要メモ');
+  expect(await readTodo(id)).toMatchObject({ text: '共有側の件名', memo: '共有側の重要メモ', revision: 2 });
+
+  page.once('dialog', dialog => dialog.dismiss());
+  await apply.click();
+  await expect(row.locator('.todo-detail-save')).toBeDisabled();
+  await expect(row.locator('.todo-detail textarea')).toHaveValue('自分のメモ案');
+
+  page.once('dialog', dialog => dialog.accept());
+  await apply.click();
+  await expect(row.locator('.todo-edit-conflict-v527')).toHaveCount(0);
+  await expect(row.locator('.todo-detail input')).toHaveValue('手元で書いた新しい件名');
+  await expect(row.locator('.todo-detail textarea')).toHaveValue('共有側の重要メモ');
+  await expect(row.locator('.todo-detail-save')).toBeEnabled();
+  // Picking the fields must not perform a Firebase write by itself.
+  expect(await readTodo(id)).toMatchObject({ text: '共有側の件名', memo: '共有側の重要メモ', revision: 2 });
+  await row.locator('.todo-detail-save').click();
+  await expect.poll(() => readTodo(id), { timeout: 15000 }).toMatchObject({
+    text: '手元で書いた新しい件名', memo: '共有側の重要メモ', revision: 3
+  });
+  expect(productionRequests).toEqual([]);
+});
