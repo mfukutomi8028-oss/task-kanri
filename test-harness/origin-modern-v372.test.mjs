@@ -169,3 +169,17 @@ test('origin ToDo editing returns to a matching nearby editor while preserving g
  assert.match(source,/if\(a==='todo-search-history'\)/);
  assert.match(source,/kind==='todos'&&view==='todos'&&todoSearchHistory&&!todoCompletedOpen/);
 });
+
+test('origin ToDo search clear leaves history opt-in and search panel intact',()=>{
+ assert.match(source,/data-action="todo-clear-query"/);
+ const begin=source.indexOf(" if(a==='todo-clear-query'){");
+ const end=source.indexOf(" if(a==='todo-search-toggle'){",begin);
+ assert.ok(begin>0&&end>begin);
+ const handler=source.slice(begin,end);
+ assert.match(handler,/todoQuery=''/);
+ assert.match(handler,/todoPendingLimit=TODO_RENDER_BATCH/);
+ assert.match(handler,/todoCompletedLimit=TODO_RENDER_BATCH/);
+ assert.match(handler,/#originTodoQuery/);
+ assert.doesNotMatch(handler,/todoSearchHistory=false|todoSearchOpen=false|bridge\.dispatch|runTransaction/);
+ assert.match(source,/origin-todo-search-history-wrap\{display:flex;justify-content:flex-start;flex-wrap:wrap;gap:8px/);
+});
