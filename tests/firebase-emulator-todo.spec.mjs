@@ -322,7 +322,7 @@ test('an unrelated remote edit keeps the unsaved ToDo and create form, and delet
 
   await deleteDb('rooms/' + ROOM + '/todos/' + draftId);
   await expect(row).toHaveCount(0, { timeout: 30_000 });
-  await expect(page.locator('#todoView .todo-draft-recovery-v527 textarea')).toContainText('消えては困る下書き');
+  await expect(page.locator('#todoView .todo-draft-recovery-v527 textarea')).toHaveValue(/消えては困る下書き/);
   await expect(await readTodo(draftId)).toBeNull();
   expect(productionRequests).toEqual([]);
 });
