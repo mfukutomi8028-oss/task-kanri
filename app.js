@@ -3440,6 +3440,8 @@ function renderTodoView() {
     && signature === classicTodoRenderedSignature) return;
   const currentOwner = isClassicTodo ? normalizeUser(getCurrentUser()) : '';
   const navigationKey = isClassicTodo ? classicTodoNavigationKey(currentOwner) : '';
+  const switchingClassicTodoOwner = isClassicTodo && Boolean(currentPage?.dataset.todoOwner)
+    && currentPage.dataset.todoOwner !== currentOwner;
   if (isClassicTodo && classicTodoSearchActiveOwnerKey !== navigationKey) {
     // A shared ToDo search bridge must never carry the previous user's query
     // into a newly selected account, including when switching outside ToDo.
@@ -3460,7 +3462,10 @@ function renderTodoView() {
   // Snapshot search focus before canonical rendering replaces the search sidecar.
   // Only restore an actively focused search, never steal focus from a ToDo editor.
   const previousSearch = elements.todoView?.querySelector('.todo-search-input-v145');
-  const searchAnchor = previousSearch && document.activeElement === previousSearch
+  // A focused search in the departing user's page is never the new user's
+  // redraw anchor. Navigation snapshots already restore each owner's caret.
+  const searchAnchor = previousSearch && !switchingClassicTodoOwner
+    && document.activeElement === previousSearch
     ? { start: previousSearch.selectionStart, end: previousSearch.selectionEnd,
         top: previousSearch.getBoundingClientRect().top }
     : null;
@@ -3562,6 +3567,18 @@ function renderTodoView() {
             alignClassicTodoElementAtViewportPosition(anchor, navigationDraft.listAnchor.top);
           }
         }
+      });
+    }
+    if (switchingClassicTodoOwner && !fromNavigation) {
+      // A first-time account has no saved viewport. Do not reuse the departing
+      // account's scroller position, which may open this user's list mid-way.
+      const initialPage = classicTodoRenderedPage;
+      requestAnimationFrame(() => {
+        if (state.layout !== 'todos' || document.documentElement.dataset.wbDisplay !== 'classic'
+          || elements.todoView?.querySelector('.todo-page') !== initialPage
+          || normalizeUser(getCurrentUser()) !== currentOwner) return;
+        if (elements.mainContent) elements.mainContent.scrollTop = 0;
+        if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
       });
     }
     restoreClassicTodoDraftState(classicTodoRenderedPage, previousDraftState, { fromNavigation });
