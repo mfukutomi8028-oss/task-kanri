@@ -2900,7 +2900,7 @@
           const search=drawer.querySelector('[data-pn-series-index-search]');
           if(search)search.value='';
         }
-        if(index.status==='unchecked'&&index.viewed.has(saved.id)||
+        if(index.status==='unchecked'&&isSeriesOccurrenceReviewed(index,saved)||
           index.status==='unedited'&&
             index.edited.get(saved.id)===Number(saved.revision||0)){
           index.status='all';
