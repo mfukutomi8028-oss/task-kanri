@@ -398,6 +398,31 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await compareSearch.fill('NEXT 週次バッチテスト');
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
   await expect(compare.locator('[data-pn-series-index-edit]')).toHaveCount(3);
+  // Review the chronological next occurrence and return to the exact series controls.
+  await compare.locator('[data-pn-series-index-next-unchecked]').click();
+  const backToSeries=detail.locator('[data-pn-series-browse-back]');
+  await expect(backToSeries).toBeVisible();
+  await expect(backToSeries).toBeFocused();
+  await expect(backToSeries).toBeInViewport();
+  await expect(seriesPanel).toContainText('3件登録済み · 2件目');
+  await backToSeries.click();
+  await expect(compare).toHaveAttribute('open','');
+  await expect(compare.locator('[data-pn-series-index-next-unchecked]')).toBeFocused();
+  await expect(backToSeries).toHaveCount(0);
+  // Opening a named row has the same reversible return without resetting search.
+  const chosenViewRow=compare.locator('[data-pn-series-index-open="'+thirdInSeries+'"]');
+  await chosenViewRow.scrollIntoViewIfNeeded();
+  const viewRowOffset=await chosenViewRow.evaluate(el=>
+    el.getBoundingClientRect().top-el.closest('#pnDetail').getBoundingClientRect().top);
+  await chosenViewRow.click();
+  await expect(seriesPanel).toContainText('3件登録済み · 3件目');
+  await expect(backToSeries).toBeFocused();
+  await backToSeries.click();
+  await expect(chosenViewRow).toBeFocused();
+  const restoredViewOffset=await chosenViewRow.evaluate(el=>
+    el.getBoundingClientRect().top-el.closest('#pnDetail').getBoundingClientRect().top);
+  expect(Math.abs(restoredViewOffset-viewRowOffset)).toBeLessThanOrEqual(40);
+  await expect(compareSearch).toHaveValue('NEXT 週次バッチテスト');
   // Editing from the comparison row keeps its original screen position on return.
   const sourceRow=compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]');
   await sourceRow.scrollIntoViewIfNeeded();
