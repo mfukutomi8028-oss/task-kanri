@@ -7071,7 +7071,11 @@ function journalRestoreTaskNoteV519(){
   const current=document.activeElement;
   if(current&&current!==target&&view.contains(current)&&current.isConnected
     &&current.getClientRects().length
-    &&current.matches('button,input,select,textarea,a,[tabindex]'))return;
+    &&current.matches('button,input,select,textarea,a,[tabindex]')){
+    if(board&&journalAtelierInlineOpenV494)
+      journalCaptureAtelierReaderAnchorV556();
+    return;
+  }
   if(!target.matches('button,select,input,a,[tabindex]'))target.tabIndex=-1;
   target.focus({preventScroll:true});
   const scrolling=document.scrollingElement;
@@ -7083,6 +7087,7 @@ function journalRestoreTaskNoteV519(){
   const sourceTop=target===button?origin.top:
     target===row||(!row&&target===nearRow)?origin.rowTop:null;
   if(scrolling&&origin.width===window.innerWidth
+    &&origin.viewportHeight===window.innerHeight
     &&Number.isFinite(sourceTop)&&sourceTop>=0&&sourceTop<=window.innerHeight){
     scrolling.scrollTop+=target.getBoundingClientRect().top-sourceTop;
   }else if(scrolling&&board&&target===button
