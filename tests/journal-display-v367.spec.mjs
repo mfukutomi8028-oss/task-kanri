@@ -848,13 +848,53 @@ test('JOURNAL Ver.450 memo index lookup does not hide canonical memo cards',asyn
   await page.locator('#workMemoFormV167 button[type="submit"]').click();
   const card=page.locator('#workMemoViewV167 .work-memo-card-v167').filter({hasText:'JOURNAL索引内検索'});
   await expect(card).toBeVisible();
-  await page.locator('[data-j450-memo-find]').fill('見つからない文字');
+  const lookup=page.locator('[data-j450-memo-find]');
+  await lookup.fill('見つからない文字');
   await expect(card).toBeVisible();
-  await page.locator('[data-j450-memo-find]').fill('JOURNAL索引内検索');
+  const emptyIndex=page.locator('#workMemoViewV167 .j558-memo-index-empty');
+  await expect(emptyIndex).toContainText('検索に一致するメモはありません');
+  await expect(page.locator('#workMemoViewV167 .j-memo-index-heading-v383 small'))
+    .toHaveText(/^0 \/ \d+ 件$/);
+  await emptyIndex.locator('[data-j558-memo-index-reset]').click();
+  await expect(lookup).toHaveValue('');
+  await expect(lookup).toBeFocused();
+  await expect(emptyIndex).toBeHidden();
+  await expect(card).toBeVisible();
+  await lookup.fill('JOURNAL索引内検索');
   const item=page.locator('.j-memo-index-link-v383').filter({hasText:'JOURNAL索引内検索'});
   await expect(item).toBeVisible();
   await item.click();
   await expect(item).toHaveAttribute('aria-current','true');
+});
+
+test('JOURNAL phone memo search explains no matches and resets without hiding saved cards',async({page})=>{
+  test.setTimeout(90000);await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="memo"]').click();
+  await page.locator('#workMemoViewV167 [data-memo-new]').first().click();
+  await page.locator('#workMemoTitleV167').fill('JOURNAL検索復旧サンプル');
+  await page.locator('#workMemoBodyV167').fill('検索の対象外になっても本文は維持する');
+  await page.locator('#workMemoFormV167 button[type="submit"]').click();
+  const card=page.locator('#workMemoViewV167 .work-memo-card-v167')
+    .filter({hasText:'JOURNAL検索復旧サンプル'});
+  await expect(card).toBeVisible();
+  const finder=page.locator('#workMemoViewV167 [data-j450-memo-find]');
+  await finder.fill('存在しない検索語');
+  const notice=page.locator('#workMemoViewV167 .j558-memo-index-empty');
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText('検索に一致するメモはありません');
+  const reset=notice.locator('[data-j558-memo-index-reset]');
+  await expect(reset).toBeVisible();
+  const targetSize=await reset.evaluate(el=>el.getBoundingClientRect().height);
+  expect(targetSize).toBeGreaterThanOrEqual(44);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-
+    document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
+  await reset.click();
+  await expect(finder).toHaveValue('');
+  await expect(finder).toBeFocused();
+  await expect(notice).toBeHidden();
+  await expect(card).toBeVisible();
+  await expect(page.locator('.j-memo-index-link-v383')
+    .filter({hasText:'JOURNAL検索復旧サンプル'})).toBeVisible();
 });
 
 test('JOURNAL compact phone planner retains dates and hides unused hourly space',async({page})=>{
