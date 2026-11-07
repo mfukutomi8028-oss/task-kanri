@@ -6598,16 +6598,54 @@ function journalTaskPageV509(layout){
     layout==='list'?elements.listView:
     layout==='timeline'?elements.timelineView:null;
 }
+// JOURNAL V534: one transient user-picked case links desk, index and diary.
+// Neither filters nor canonical task records are changed by this view-only handoff.
+let journalTaskNavigationSelectionV534={layout:'',id:''};
+function journalRememberTaskNavigationV534(layout,id){
+  journalTaskNavigationSelectionV534={layout,id};
+}
+function journalTaskNavigationTargetV534(root,layout,id){
+  if(!root||!id)return null;
+  const attr=layout==='board'?'data-j420-task-id':
+    layout==='list'?'data-j425-row':'data-task-id';
+  return [...root.querySelectorAll('['+attr+']')]
+    .find(node=>node.getAttribute(attr)===id)||null;
+}
+function journalTaskNavigationSourceV534(layout,root){
+  if(!root||root.hidden)return null;
+  const id=layout==='board'?journalAtelierSelectedV420:
+    layout==='list'?journalIndexStateV425.selected:
+    (journalTaskNavigationSelectionV534.layout==='timeline'
+      ?journalTaskNavigationSelectionV534.id:'');
+  if(!id||!state.tasks.some(task=>task.id===id))return null;
+  const row=journalTaskNavigationTargetV534(root,layout,id);
+  const rect=row?.getBoundingClientRect();
+  const explicit=journalTaskNavigationSelectionV534.layout===layout
+    &&journalTaskNavigationSelectionV534.id===id;
+  return {id,follow:Boolean(explicit&&rect&&rect.width>0&&rect.height>0
+    &&rect.bottom>32&&rect.top<window.innerHeight-32)};
+}
 function journalSwitchTaskPageV509(next){
   if(!journalTaskV411()||!['board','list','timeline'].includes(next))return;
   const previous=state.layout==='tasks'?state.taskLayout:null;
   if(previous===next)return;
   const oldView=journalTaskPageV509(previous);
+  const handoffV534=journalTaskNavigationSourceV534(previous,oldView);
   if(oldView&&!oldView.hidden){
     // Relative to the top of this paper page, not the document's absolute Y.
     // This survives differing headers, card counts and responsive layouts.
     journalTaskPagePositionsV509[previous]=Math.max(0,-oldView.getBoundingClientRect().top);
     if(previous==='timeline')journalCaptureChronicleReadAnchorV525(oldView);
+  }
+  if(handoffV534?.id&&next==='board'&&journalAtelierSelectedV420!==handoffV534.id){
+    journalAtelierSelectedV420=handoffV534.id;
+    journalAtelierInlineOpenV494=false;
+    journalAtelierReturnAnchorV516=null;
+  }
+  if(handoffV534?.id&&next==='list'&&journalIndexStateV425.selected!==handoffV534.id){
+    journalIndexStateV425.selected=handoffV534.id;
+    journalTaskInlineSelectedV491='';
+    journalIndexReturnAnchorV513=null;
   }
   state.layout='tasks';
   state.taskLayout=next;
@@ -6642,6 +6680,19 @@ function journalSwitchTaskPageV509(next){
     }
     if(!restoredDayV525)
       window.scrollTo({top:Math.min(maxTop,Math.max(0,pageTop+offset)),behavior:'auto'});
+    // Follow an explicitly picked, currently visible case only if the target
+    // exists in the destination's OWN filters or diary period. Otherwise keep
+    // the saved page/day reading position instead of changing any filters.
+    const handoffTargetV534=handoffV534
+      ?journalTaskNavigationTargetV534(view,next,handoffV534.id):null;
+    const handoffVisibleV534=handoffTargetV534
+      &&(next==='timeline'||handoffTargetV534.classList.contains('is-selected'));
+    if(handoffV534?.follow&&handoffVisibleV534){
+      handoffTargetV534.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
+      handoffTargetV534.focus({preventScroll:true});
+      journalRememberTaskNavigationV534(next,handoffV534.id);
+      return;
+    }
     // Give the keyboard a useful anchor inside the restored viewport.
     const items=[...view.querySelectorAll(
       '[data-j420-task-id],[data-j425-row],[data-j494-open-task]')];
@@ -6740,6 +6791,7 @@ let journalTimelineMoveCommittedV507=false;
 // The original row and its viewport offset are owned by the JOURNAL reader,
 // not by a separate editor or persistence path.
 function journalRememberTimelineSourceV505(id){
+  journalRememberTaskNavigationV534('timeline',id);
   journalTaskNoteReturnV519=null;
   journalTimelineReturnTaskV494=id;
   const source=[...elements.timelineView.querySelectorAll('.jv-day-item')]
@@ -7116,6 +7168,7 @@ function journalAtelierV420(tasks){
   root.querySelectorAll('[data-j420-task-id]').forEach(card=>{
     const select=()=>{
       journalAtelierSelectedV420=card.dataset.j420TaskId;
+      journalRememberTaskNavigationV534('board',journalAtelierSelectedV420);
       journalAtelierReturnAnchorV516=journalAtelierInlineMediaV494.matches
         ?{id:journalAtelierSelectedV420,top:card.getBoundingClientRect().top,width:window.innerWidth}:null;
       journalAtelierInlineOpenV494=journalAtelierInlineMediaV494.matches;
@@ -7141,6 +7194,7 @@ function journalAtelierV420(tasks){
     if(!viewFns[journalAtelierViewV420]?.(task))journalAtelierViewV420='all';
     if(journalAtelierCategoryV420&&task.category!==journalAtelierCategoryV420)journalAtelierCategoryV420='';
     journalAtelierSelectedV420=task.id;
+    journalRememberTaskNavigationV534('board',task.id);
     journalAtelierReturnAnchorV516=null;
     journalAtelierInlineOpenV494=journalAtelierInlineMediaV494.matches;
     journalAtelierV420(tasks);
@@ -7404,6 +7458,7 @@ function journalIndexV425(tasks){
   bindFavoriteButtons(root);
   root.querySelectorAll('[data-j425-row]').forEach(row=>{
     const select=()=>{filters.selected=row.dataset.j425Row;
+      journalRememberTaskNavigationV534('list',filters.selected);
       journalIndexReturnAnchorV513=journalInlineDetailMediaV491.matches
         ?{id:filters.selected,top:row.getBoundingClientRect().top,width:window.innerWidth}:null;
       journalTaskInlineSelectedV491=filters.selected;root.querySelectorAll('[data-j425-row]').forEach(el=>el.classList.toggle('is-selected',el.dataset.j425Row===filters.selected));
@@ -7501,6 +7556,7 @@ function journalNavigateChronicleV504(selector,changePeriod){
 // The date-change dialog still uses the canonical task transaction. Only its
 // source position, post-save navigation and cancel focus belong to JOURNAL.
 function journalOpenTimelineMoveV507(id){
+  journalRememberTaskNavigationV534('timeline',id);
   const row=[...elements.timelineView.querySelectorAll('.jv-day-item')]
     .find(item=>item.dataset.taskId===id);
   journalTimelineMoveSourceV507=row?{
