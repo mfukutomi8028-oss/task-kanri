@@ -1656,10 +1656,12 @@
         :button.dataset.pnSeriesIndexEdit===item.id);
     const quick=panel.querySelector(reviewing
       ?'[data-pn-series-index-next-unchecked]':'[data-pn-series-index-next-edit]');
-    const source=['quick','review-quick'].includes(view?.source)?quick:row;
+    const reviewed=panel.querySelector('[data-pn-series-index-reviewed-reveal]');
+    const source=view?.source==='review-quick'?reviewed||quick:
+      view?.source==='quick'?quick:row;
     // A viewed item can disappear from an "unchecked" filter. Do not use
     // the unrelated last-saved occurrence as a return destination.
-    const target=source||
+    const target=source||(browsing?reviewed:null)||
       (!['browse-row','review-quick'].includes(view?.source)
         ?panel.querySelector('[data-pn-series-index-reveal]'):null)||
       panel.querySelector('[data-pn-series-index-search]')||
@@ -1879,7 +1881,8 @@
       seriesIndexState.room!==state.snapshot.roomId)
       seriesIndexState={seriesId,user:state.snapshot.currentUser,
         room:state.snapshot.roomId,open:false,query:'',page:0,
-        status:'all',viewed:new Set(),edited:new Map(),browseReturn:null};
+        status:'all',viewed:new Set(),edited:new Map(),
+        browseReturn:null,reviewedReturnId:null};
     return seriesIndexState;
   }
   // Only canonical occurrences in the current inspector session are eligible.
@@ -2002,6 +2005,19 @@
           searchExcluded?'検索を解除して表示':'絞り込みを解除して表示')+'</button>':'')+
       '</div>'+seriesIndexComparisonMarkup(index,edit)+'</div>';
   }
+  function seriesIndexReviewedFeedback(item) {
+    const index=currentSeriesIndex(item),id=index.reviewedReturnId;
+    if(!id||index.status!=='unchecked')return '';
+    const row=seriesOccurrences(item).find(entry=>entry.id===id);
+    if(!row||!index.viewed.has(id)||!seriesIndexMatchesQuery(row,index.query))
+      return '';
+    return '<div class="pn-series-index-reviewed" role="status">'+
+      '<div><strong>確認した回は「未確認のみ」から外れました</strong>'+
+        '<small>'+escape(scheduleSeriesDateLabel(localDate(row.startAt))+' '+
+          localTime(row.startAt)+' · '+(row.title||'無題の予定'))+'</small></div>'+
+      '<button type="button" data-pn-series-index-reviewed-reveal="'+escape(row.id)+'">'+
+        '確認した回を表示</button></div>';
+  }
   function seriesIndexResults(item) {
     const index=currentSeriesIndex(item),rows=filteredSeriesIndex(item);
     const all=seriesOccurrences(item);
@@ -2084,7 +2100,7 @@
         ?'絞り込み内の未編集を編集 ›':'次の未編集を編集 ›')+'</button>':'';
     const quick=jump||editJump
       ?'<div class="pn-series-index-quick">'+jump+editJump+'</div>':'';
-    return saved+progress+quick+toolbar+list+nav;
+    return saved+seriesIndexReviewedFeedback(item)+progress+quick+toolbar+list+nav;
   }
   function seriesIndexMarkup(item) {
     const index=currentSeriesIndex(item);
@@ -2734,6 +2750,7 @@
         index.room!==state.snapshot.roomId)return;
       // Reset only on explicit user request; never erase review/edit marks.
       index.query='';index.status='all';index.page=0;
+      index.reviewedReturnId=null;
       const search=drawer.querySelector('[data-pn-series-index-search]');
       const status=drawer.querySelector('[data-pn-series-index-status]');
       if(search)search.value='';
@@ -2741,6 +2758,35 @@
       refreshSeriesIndexResults();
       search?.scrollIntoView({block:'nearest',behavior:'instant'});
       search?.focus({preventScroll:true});
+      return;
+    }
+    if(target.dataset.pnSeriesIndexReviewedReveal){
+      const current=state.detail?.kind==='schedule'
+        ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+      const index=seriesIndexState,id=target.dataset.pnSeriesIndexReviewedReveal;
+      if(state.busy||state.editor||!current?.recurrenceSeriesId||
+        !target.closest('[data-pn-series-index]')||
+        index?.seriesId!==current.recurrenceSeriesId||
+        index.user!==state.snapshot.currentUser||
+        index.room!==state.snapshot.roomId||
+        index.status!=='unchecked'||index.reviewedReturnId!==id||
+        !index.viewed.has(id))return;
+      const viewed=seriesOccurrences(current).find(row=>row.id===id);
+      if(!viewed||!seriesIndexMatchesQuery(viewed,index.query))return;
+      // Explicitly reveal this item, without losing the search or review marks.
+      index.status='all';index.reviewedReturnId=null;
+      const select=drawer.querySelector('[data-pn-series-index-status]');
+      if(select)select.value='all';
+      const position=filteredSeriesIndex(current).findIndex(row=>row.id===id);
+      if(position<0)return;
+      index.page=Math.floor(position/8);
+      refreshSeriesIndexResults();
+      const found=[...drawer.querySelectorAll('[data-pn-series-index-open]')]
+        .find(button=>button.dataset.pnSeriesIndexOpen===id);
+      (found||drawer.querySelector('[data-pn-series-index-search]'))
+        ?.scrollIntoView({block:'nearest',behavior:'instant'});
+      (found||drawer.querySelector('[data-pn-series-index-search]'))
+        ?.focus({preventScroll:true});
       return;
     }
     if(target.hasAttribute('data-pn-series-index-reveal')){
@@ -2827,6 +2873,9 @@
         back.user!==state.snapshot.currentUser||
         back.room!==state.snapshot.roomId)return;
       index.browseReturn=null;index.open=true;
+      index.reviewedReturnId=index.status==='unchecked'&&
+        index.viewed.has(current.id)&&
+        seriesIndexMatchesQuery(current,index.query)?current.id:null;
       seriesIndexReturnPage(current,back.view);
       updateDetail();
       if(!restoreSeriesIndexReturn(current,back.view))
@@ -2846,6 +2895,7 @@
         return;
       }
       const index=currentSeriesIndex(current);
+      index.reviewedReturnId=null;
       index.browseReturn={id:next.id,route:state.route,
         user:state.snapshot.currentUser,room:state.snapshot.roomId,
         view:captureSeriesIndexReturn(target)};
@@ -2866,6 +2916,7 @@
       const pageRows=filteredSeriesIndex(current).slice(index.page*8,(index.page+1)*8);
       const targetRow=pageRows.find(row=>row.id===target.dataset.pnSeriesIndexOpen);
       if(!targetRow||!target.closest('[data-pn-series-index]'))return;
+      index.reviewedReturnId=null;
       index.browseReturn={id:targetRow.id,route:state.route,
         user:state.snapshot.currentUser,room:state.snapshot.roomId,
         view:captureSeriesIndexReturn(target)};
@@ -3371,6 +3422,7 @@
         seriesIndexState?.seriesId!==current.recurrenceSeriesId)return;
       seriesIndexState.query=event.target.value;
       seriesIndexState.page=0;
+      seriesIndexState.reviewedReturnId=null;
       refreshSeriesIndexResults(); // Keep input focus and cursor position.
       return;
     }
@@ -3409,6 +3461,7 @@
         !['all','unchecked','unedited'].includes(el.value))return;
       seriesIndexState.status=el.value;
       seriesIndexState.page=0;
+      seriesIndexState.reviewedReturnId=null;
       refreshSeriesIndexResults();
       return;
     }

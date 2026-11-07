@@ -366,6 +366,33 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await compare.locator('[data-pn-series-index-status]').selectOption('unchecked');
   // The inspected first occurrence is reviewed even when opened from Day view.
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(2);
+  // After reviewing another occurrence, keep the unchecked filter and explain
+  // where the row went instead of silently changing the user's search.
+  const lastUnchecked=await compare.locator('[data-pn-series-index-open]').last()
+    .getAttribute('data-pn-series-index-open');
+  const reviewViewport=page.viewportSize();
+  await page.setViewportSize({width:320,height:800});
+  await compare.locator('[data-pn-series-index-open="'+lastUnchecked+'"]').click();
+  await expect(detail.locator('[data-pn-series-browse-back]')).toBeFocused();
+  await detail.locator('[data-pn-series-browse-back]').click();
+  const reviewedNotice=compare.locator('.pn-series-index-reviewed');
+  const revealReviewed=reviewedNotice.locator('[data-pn-series-index-reviewed-reveal]');
+  await expect(reviewedNotice).toContainText('未確認のみ');
+  await expect(compare.locator('[data-pn-series-index-status]')).toHaveValue('unchecked');
+  await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(1);
+  await expect(revealReviewed).toBeFocused();
+  for(const width of [320,390]){
+    await page.setViewportSize({width,height:800});
+    await expect(revealReviewed).toBeVisible();
+    expect(await reviewedNotice.evaluate(el=>el.scrollWidth-el.clientWidth))
+      .toBeLessThanOrEqual(2);
+  }
+  await revealReviewed.click();
+  await expect(compare.locator('[data-pn-series-index-status]')).toHaveValue('all');
+  await expect(compare.locator('[data-pn-series-index-open="'+lastUnchecked+'"]'))
+    .toBeFocused();
+  await expect(reviewedNotice).toHaveCount(0);
+  await page.setViewportSize(reviewViewport);
   await compare.locator('[data-pn-series-index-status]').selectOption('unedited');
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
   await compare.locator('[data-pn-series-index-status]').selectOption('all');
