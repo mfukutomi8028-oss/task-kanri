@@ -111,8 +111,20 @@
     }
   }
 
+  // Firebase can encode sparse comment lists as numeric-key objects.
+  // A shared reader keeps decoration, replies and reactions consistent.
+  function commentRecords(value) {
+    if (Array.isArray(value)) return value.filter(item => item && typeof item === "object");
+    if (!value || typeof value !== "object") return [];
+    return Object.entries(value)
+      .sort(([a], [b]) => /^\d+$/.test(a) && /^\d+$/.test(b)
+        ? Number(a) - Number(b) : a.localeCompare(b))
+      .map(([, item]) => item)
+      .filter(item => item && typeof item === "object");
+  }
+
   function commentsForTask(task) {
-    return [...(Array.isArray(task?.comments) ? task.comments : [])]
+    return [...commentRecords(task?.comments)]
       .filter(comment => comment && typeof comment === "object" && commentId(comment))
       .sort((a, b) => Number(b?.createdAt || 0) - Number(a?.createdAt || 0));
   }
@@ -524,10 +536,11 @@
       let conflict = false;
       const target = api.ref(api.db, `rooms/${roomId()}/tasks/${taskId}`);
       const result = await api.runTransaction(target, current => {
-        if (!current || !Array.isArray(current.comments)) { missing = true; return; }
-        const index = current.comments.findIndex(item => String(item?.id || "") === commentIdValue);
+        if (!current || !commentRecords(current.comments).length) { missing = true; return; }
+        const currentComments = commentRecords(current.comments);
+        const index = currentComments.findIndex(item => String(item?.id || "") === commentIdValue);
         if (index < 0) { missing = true; return; }
-        const comments = current.comments.map(item => item && typeof item === "object" ? { ...item } : item);
+        const comments = currentComments.map(item => ({ ...item }));
         const comment = { ...comments[index] };
         const reactions = comment.reactions && typeof comment.reactions === "object" ? { ...comment.reactions } : {};
         const users = normalizeReactionUsers(reactions[emoji]);
@@ -545,7 +558,7 @@
 
       const saved = result.snapshot?.val() || {};
       if (!result.committed) {
-        if (saved && typeof saved === "object" && Array.isArray(saved.comments)) writeCachedTask(taskId, saved);
+        if (saved && typeof saved === "object" && commentRecords(saved.comments).length) writeCachedTask(taskId, saved);
         schedulePatch(0);
         if (conflict) {
           showMessage("別の端末でリアクションが更新されています。最新の状態を反映しました。", true);
@@ -556,7 +569,7 @@
       }
       if (missing) throw new Error("reaction-missing");
       writeCachedTask(taskId, saved);
-      const savedComment = (Array.isArray(saved.comments) ? saved.comments : []).find(item => String(item?.id || "") === commentIdValue);
+      const savedComment = commentRecords(saved.comments).find(item => String(item?.id || "") === commentIdValue);
       const added = normalizeReactionUsers(savedComment?.reactions?.[emoji]).includes(user);
       if (intendedPressed && added) {
         const recipient = String(savedComment?.author || "");
@@ -620,9 +633,10 @@
     const replyType = String(type || '作業メモ');
     const createdAt = Date.now();
     const result = await api.runTransaction(target, current => {
-      if (!current || !Array.isArray(current.comments)) { missing = true; return; }
-      if (!current.comments.some(comment => String(comment?.id || '') === parentId)) { missing = true; return; }
-      const comments = current.comments.map(comment => comment && typeof comment === 'object' ? { ...comment } : comment);
+      if (!current) { missing = true; return; }
+      const sourceComments = commentRecords(current.comments);
+      if (!sourceComments.some(comment => String(comment?.id || '') === parentId)) { missing = true; return; }
+      const comments = sourceComments.map(comment => ({ ...comment }));
       comments.push({ id: replyId, author: user, type: replyType, text, createdAt, replyTo: parentId });
       const history = [...(Array.isArray(current.history) ? current.history : []), {
         id: historyId,
@@ -638,7 +652,7 @@
     if (!result.committed || missing) throw new Error('reply-conflict');
     const saved = result.snapshot?.val() || {};
     writeCachedTask(taskId, saved);
-    const parent = (Array.isArray(saved.comments) ? saved.comments : []).find(comment => String(comment?.id || '') === parentId);
+    const parent = commentRecords(saved.comments).find(comment => String(comment?.id || '') === parentId);
     const recipient = String(parent?.author || '');
     await deliverPersonal(recipient, cleanEventId('reply', taskId, replyId, recipient), {
       taskId,

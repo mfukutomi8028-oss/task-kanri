@@ -63,9 +63,9 @@ test('Ver.251 reply audit remains valid in later product releases and reply writ
 });
 
 test('reply transaction revalidates the parent against server current before appending', () => {
-  assert.match(interaction, /if \(!current \|\| !Array\.isArray\(current\.comments\)\) \{ missing = true; return; \}/);
-  assert.match(interaction, /if \(!current\.comments\.some\(comment => String\(comment\?\.id \|\| ''\) === parentId\)\) \{ missing = true; return; \}/);
-  assert.match(interaction, /const comments = current\.comments\.map\(comment => comment && typeof comment === 'object' \? \{ \.\.\.comment \} : comment\)/);
+  assert.match(interaction, /const sourceComments = commentRecords\(current\.comments\)/);
+  assert.match(interaction, /sourceComments\.some\(comment => String\(comment\?\.id \|\| ''\) === parentId\)/);
+  assert.match(interaction, /const comments = sourceComments\.map\(comment => \(\{ \.\.\.comment \}\)\)/);
   assert.match(interaction, /comments\.push\(\{ id: replyId, author: user, type: replyType, text, createdAt, replyTo: parentId \}\)/);
 });
 
@@ -80,7 +80,7 @@ test('reply transaction appends history from server current and increments revis
 test('reply notification is emitted only after a committed snapshot and uses the committed parent author', () => {
   assert.match(interaction, /if \(!result\.committed \|\| missing\) throw new Error\('reply-conflict'\)/);
   assert.match(interaction, /const saved = result\.snapshot\?\.val\(\) \|\| \{\};/);
-  assert.match(interaction, /const parent = \(Array\.isArray\(saved\.comments\) \? saved\.comments : \[\]\)\.find\(comment => String\(comment\?\.id \|\| ''\) === parentId\)/);
+  assert.match(interaction, /const parent = commentRecords\(saved\.comments\)\.find\(comment => String\(comment\?\.id \|\| ''\) === parentId\)/);
   assert.match(interaction, /await deliverPersonal\(recipient, cleanEventId\('reply', taskId, replyId, recipient\), \{/);
 });
 }
@@ -88,4 +88,15 @@ test('reply notification is emitted only after a committed snapshot and uses the
 test('Ver.504 retired Ver.251 reply Protocol stays absent', () => {
   assert.equal(fs.existsSync(path.join(ROOT, 'test-harness', 'comment-reply-boundary-v251.test.mjs')), false,
     'retired Ver.251 reply Protocol must not reappear');
+});
+
+
+test('RTDB sparse comment collections are normalized before rendering and both remote writes', () => {
+  const app = read('app.js');
+  const commentSource = read('comment-reactions-v191.js');
+  assert.match(app, /function normalizeComments\(comments\)/);
+  assert.match(app, /Object\.entries\(comments\)\.sort/);
+  assert.match(commentSource, /function commentRecords\(value\)/);
+  assert.match(commentSource, /const currentComments = commentRecords\(current\.comments\)/);
+  assert.match(commentSource, /const sourceComments = commentRecords\(current\.comments\)/);
 });

@@ -1404,7 +1404,15 @@ function clampWeekday(value) {
 
 
 function normalizeComments(comments) {
-  return (Array.isArray(comments) ? comments : []).map(comment => ({
+  // RTDB may return sparse numeric-key arrays as objects. Preserve server
+  // comment order and IDs instead of silently dropping the entire thread.
+  const records = Array.isArray(comments) ? comments
+    : comments && typeof comments === "object"
+      ? Object.entries(comments).sort(([a], [b]) =>
+          /^\d+$/.test(a) && /^\d+$/.test(b) ? Number(a) - Number(b) : a.localeCompare(b)
+        ).map(([, item]) => item)
+      : [];
+  return records.filter(comment => comment && typeof comment === "object").map(comment => ({
     ...comment,
     id: comment.id ? String(comment.id) : '',
     author: normalizeUser(comment.author || getCurrentUser()),
