@@ -1618,7 +1618,7 @@ test('JOURNAL V553 pages through displayed desk cases without business writes',(
   assert.match(atelier,/token!==journalAtelierPageTokenV553/);
   // V554 supersedes the V553 note-containment heuristic: a newer focus
   // anywhere (including another note control) must never be overwritten.
-  assert.match(atelier,/const activeAtRequestV554=document\\.activeElement/);
+  assert.match(atelier,/const activeAtRequestV554=document\.activeElement/);
   assert.match(atelier,/current!==activeAtRequestV554/);
   assert.match(atelier,/journalAtelierSelectedV420!==id/);
   assert.match(atelier,/data-j494-atelier-back/);
