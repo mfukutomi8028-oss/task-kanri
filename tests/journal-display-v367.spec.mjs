@@ -1953,3 +1953,43 @@ test('JOURNAL V507 phone chronicle restores cancelled moves and navigates to the
   await expect(timeline.locator('.j507-week-up button').first()).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(2);
 });
+
+test('JOURNAL V509 mobile task pages reopen at the previous reading offset',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  const index=page.locator('#listView');
+  const diary=page.locator('#timelineView');
+  await board.locator('[data-j420-layout="timeline"]').click();
+  await expect(diary.locator('.j509-chronicle-switch')).toBeVisible();
+  await diary.locator('[data-j509-layout="list"]').click();
+  await expect(index.locator('.j425-task-index')).toBeVisible();
+  await index.locator('[data-j425-task-layout="board"]').click();
+  await expect(board.locator('.j420-atelier')).toBeVisible();
+  await board.locator('[data-j420-layout="timeline"]').click();
+  await expect(diary.locator('.jv-chronicle-day').first()).toBeVisible();
+  // Keep the diary in the middle of a long page. A programmatic click
+  // avoids Playwright's automatic scroll-to-top on the offscreen toolbar.
+  const saved=await diary.evaluate(el=>{
+    const absolute=window.scrollY+el.getBoundingClientRect().top;
+    window.scrollTo({top:absolute+145,behavior:'auto'});
+    return Math.max(0,-el.getBoundingClientRect().top);
+  });
+  expect(saved).toBeGreaterThan(40);
+  await diary.locator('[data-j509-layout="board"]').evaluate(el=>el.click());
+  await expect(board.locator('.j420-atelier')).toBeVisible();
+  await board.locator('[data-j420-layout="timeline"]').evaluate(el=>el.click());
+  await expect(diary.locator('.j509-chronicle-switch')).toBeVisible();
+  await expect.poll(()=>diary.evaluate(el=>Math.max(0,-el.getBoundingClientRect().top)))
+    .toBeGreaterThanOrEqual(saved-15);
+  await page.setViewportSize({width:320,height:900});
+  const measures=await diary.locator('.j509-chronicle-switch').evaluate(nav=>({
+    width:nav.getBoundingClientRect().width,
+    buttons:[...nav.querySelectorAll('button')].map(b=>b.getBoundingClientRect().height),
+    overflow:document.documentElement.scrollWidth-innerWidth
+  }));
+  expect(measures.width).toBeLessThanOrEqual(320);
+  expect(measures.buttons.every(height=>height>=43)).toBeTruthy();
+  expect(measures.overflow).toBeLessThanOrEqual(2);
+});
