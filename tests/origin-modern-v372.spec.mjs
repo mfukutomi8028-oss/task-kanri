@@ -2459,6 +2459,15 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await task.locator('[data-action="list-quick-edit"]').click();
  const taskForm=sheet.locator('#editForm[data-kind="tasks"]');
  await expect(taskForm).toBeVisible();
+ const taskOptional=taskForm.locator('.origin-task-optional');
+ await expect(taskOptional).toHaveJSProperty('open',false);
+ await expect(taskForm.locator('[name="desc"]')).toBeVisible();
+ const taskColumns=await taskForm.locator('.form-grid').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);
+ expect(taskColumns).toBe(2);
+ await taskOptional.locator('summary').click();
+ await expect(taskOptional).toHaveJSProperty('open',true);
+ await expect(taskOptional.locator('[name="requester"]')).toBeVisible();
+ await taskForm.locator('[name="requester"]').fill('編集フォームの確認');
  await taskForm.locator('[name="title"]').fill('直接編集するタスク・更新');
  await sheet.locator('button[form="editForm"]').click();
  const changedTask=host.locator('.origin-task-collection .item-row',{hasText:'直接編集するタスク・更新'});
@@ -2475,6 +2484,9 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await todo.locator('[data-action="list-quick-edit"]').click();
  const todoForm=sheet.locator('#editForm[data-kind="todos"]');
  await expect(todoForm).toBeVisible();
+ await expect(todoForm.locator('.origin-todo-status-field')).toBeVisible();
+ const statusLayout=await todoForm.locator('.origin-todo-status-field').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);
+ expect(statusLayout).toBe(2);
  await todoForm.locator('[name="memo"]').fill('一覧から補足を更新');
  await sheet.locator('button[form="editForm"]').click();
  await expect(todo.locator('.todo-text')).toBeFocused();
@@ -2501,6 +2513,18 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await note.locator('[data-action="list-quick-edit"]').click();
  const memoForm=sheet.locator('#editForm[data-kind="memos"]');
  await expect(memoForm).toBeVisible();
+ const memoFields=memoForm.locator('.origin-memo-edit-fields');
+ const memoStructure=await memoFields.evaluate(el=>({
+  first:el.firstElementChild?.querySelector('input[name="title"]')!==null,
+  second:el.children[1]?.querySelector('input[name="paperColor"]')!==null,
+  columns:getComputedStyle(el.querySelector('.origin-memo-palette')).gridTemplateColumns.split(' ').length,
+  bodyHeight:el.querySelector('[name="body"]').getBoundingClientRect().height
+ }));
+ expect(memoStructure.first).toBe(true);
+ expect(memoStructure.second).toBe(true);
+ expect(memoStructure.columns).toBe(3);
+ expect(memoStructure.bodyHeight).toBeGreaterThanOrEqual(160);
+ await expect(memoFields.locator('input[name="paperColor"]')).toHaveCount(6);
  await memoForm.locator('[name="body"]').fill('一覧から本文を更新');
  await sheet.locator('button[form="editForm"]').click();
  await expect(note.locator('.memo-card')).toBeFocused();
