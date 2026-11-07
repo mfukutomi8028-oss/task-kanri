@@ -7203,10 +7203,18 @@ function journalCaptureTaskPageSyncAnchorV530(layout){
   // V532: remember the previous order only during remote repaint. IDs remain
   // canonical; deleted items resolve to the following row, then preceding row.
   const rowAttr=layout==='board'?'data-j420-task-id':'data-j425-row';
-  const order=[...root.querySelectorAll('['+rowAttr+']')].map(el=>el.getAttribute(rowAttr));
+  const rows=[...root.querySelectorAll('['+rowAttr+']')];
+  const order=rows.map(el=>el.getAttribute(rowAttr));
+  const selected=layout==='board'?journalAtelierSelectedV420:journalIndexStateV425.selected;
+  // V546: the phone's inline reader is a viewing choice. Keep it alive when
+  // a remote update removes its selected row but leaves another visible case.
+  const inlineReader=layout==='list'&&journalInlineDetailMediaV491.matches
+    &&journalTaskInlineSelectedV491===selected
+    &&Boolean(root.querySelector('.j425-task-preview.j491-inline-detail'));
+  const selectedRow=inlineReader?rows.find(el=>el.getAttribute(rowAttr)===selected):null;
   return {token,layout,focus,anchor:journalTaskSyncDescriptorV530(root,layout,anchorNode),
     top:anchorNode?.getBoundingClientRect().top??null,width:window.innerWidth,search,
-    order,selected:layout==='board'?journalAtelierSelectedV420:journalIndexStateV425.selected};
+    order,selected,inlineReader,rowTop:selectedRow?.getBoundingClientRect().top??null};
 }
 function journalNearestSurvivingTaskV532(snapshot,available){
   const existing=new Set(available);
@@ -7231,16 +7239,23 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
     if(current&&current!==document.body&&current!==document.documentElement
       &&current.isConnected)return;
     const rowAttr=snapshot.layout==='board'?'data-j420-task-id':'data-j425-row';
+    // If the last matching case disappears while the phone reader is open,
+    // bring its existing empty-state recovery action into the same viewport.
+    const emptyReaderV546=snapshot.layout==='list'&&snapshot.inlineReader
+      &&!root.querySelector('[data-j425-row]');
+    const emptyTargetV546=emptyReaderV546
+      ?root.querySelector('[data-j518-empty-reset]')||root.querySelector('.j518-index-empty')
+      :null;
     const selectedNode=[...root.querySelectorAll('['+rowAttr+']')]
       .find(el=>el.getAttribute(rowAttr)===snapshot.selected);
-    const anchor=journalTaskSyncLocateV530(root,snapshot.anchor)
+    const anchor=emptyTargetV546||journalTaskSyncLocateV530(root,snapshot.anchor)
       ||(snapshot.anchor?.name===rowAttr&&!selectedNode
         ?root.querySelector('['+rowAttr+'].is-selected'):null);
     if(anchor&&document.scrollingElement&&Number.isFinite(snapshot.top)
       &&snapshot.width===window.innerWidth)
       document.scrollingElement.scrollTop+=anchor.getBoundingClientRect().top-snapshot.top;
     else if(anchor)anchor.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
-    let target=journalTaskSyncLocateV530(root,snapshot.focus);
+    let target=emptyTargetV546||journalTaskSyncLocateV530(root,snapshot.focus);
     if(target?.matches('[data-j540-case-step]')&&target.disabled){
       // A subscription may leave the reader at the first/last visible case.
       // Never put keyboard focus on a now-disabled navigation button.
@@ -7584,6 +7599,7 @@ function journalIndexV425(tasks){
   if(filters.sort==='title')ordered.sort((a,b)=>a.title.localeCompare(b.title,'ja'));
   if(filters.sort==='priority'){const rank={緊急:0,高:1,中:2,低:3};ordered.sort((a,b)=>(rank[a.priority]??4)-(rank[b.priority]??4))}
   if(!ordered.some(t=>t.id===filters.selected)){
+    const previousSelectedV546=filters.selected;
     const returnAnchorV538=journalTaskNoteReturnV519?.layout==='list'
       &&journalTaskNoteReturnV519.id===filters.selected
       ?journalTaskNoteReturnV519:null;
@@ -7592,14 +7608,15 @@ function journalIndexV425(tasks){
       :returnAnchorV538
         ?journalNearestSurvivingTaskV532(returnAnchorV538,ordered.map(t=>t.id))
         :ordered[0]?.id||'';
-    // V491's inline note must not follow a deleted row or stale selection.
-    // Preserve a continuous mobile reader only when the edited task was its
-    // source and a filtered successor still exists. Other filter changes keep
-    // the established V491 closed-reader behavior.
-    const continueReaderV544=Boolean(returnAnchorV538?.inlineReader&&filters.selected);
+    // Reuse the V544 edit return and the V532 nearby choice for a remote
+    // deletion. Explicit search/filter actions still close the old reader.
+    const continueReaderV544=Boolean(filters.selected&&(
+      returnAnchorV538?.inlineReader
+      ||(syncAnchorV530?.inlineReader&&syncAnchorV530.selected===previousSelectedV546)));
+    const readerAnchorV546=returnAnchorV538?.inlineReader?returnAnchorV538:syncAnchorV530;
     journalTaskInlineSelectedV491=continueReaderV544?filters.selected:'';
     journalIndexReturnAnchorV513=continueReaderV544
-      ?{id:filters.selected,top:returnAnchorV538.rowTop,width:returnAnchorV538.width}
+      ?{id:filters.selected,top:readerAnchorV546?.rowTop,width:readerAnchorV546?.width}
       :null;
   }
   const selected=ordered.find(t=>t.id===filters.selected);
@@ -7622,9 +7639,14 @@ function journalIndexV425(tasks){
     </article>`};
   // JOURNAL V518: keep a contextual, accessible recovery action next to
   // empty results; do not create another data/filter owner.
+  const emptiedReaderV546=Boolean(syncAnchorV530?.inlineReader&&!ordered.length);
   const emptyResultsV518=`<div class="j425-blank j518-index-empty" role="status">
     <strong>${tasks.length?'一致する案件がありません':'登録された案件はありません'}</strong>
-    <p>${tasks.length?'検索・絞り込み条件を見直してください。':'上部の「タスクを追加」から登録できます。'}</p>
+    <p>${emptiedReaderV546
+      ?(tasks.length
+        ?'閲覧中の案件が同期更新で表示対象から外れました。検索条件はそのままです。条件を解除すると他の案件を表示できます。'
+        :'閲覧中の案件が同期更新で削除されました。上部の「タスクを追加」から登録できます。')
+      :(tasks.length?'検索・絞り込み条件を見直してください。':'上部の「タスクを追加」から登録できます。')}</p>
     ${tasks.length?'<button type="button" data-j518-empty-reset>条件を解除して一覧を表示</button>':''}
   </div>`;
   elements.listView.innerHTML=`<div class="j425-task-index">
