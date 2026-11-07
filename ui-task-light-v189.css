@@ -433,3 +433,26 @@ body.v146-quick-status-saving #taskDialog::backdrop {
     line-height: 1.35;
   }
 }
+
+
+/* Classic mobile task-detail tabs/close buttons, owned by the active task CSS.
+   Frozen ui-task-detail-responsive-v192.css remains byte-identical to v151. */
+@media (max-width: 520px) {
+  .task-detail-tabs-v149 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .task-detail-tab-v149 {
+    min-height: 44px !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+  }
+  #closeDetail,
+  #closeTaskDialog {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    flex: 0 0 44px;
+  }
+}
