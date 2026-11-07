@@ -1343,8 +1343,12 @@ function keepOriginEditorFieldVisible(field=mount.activeElement){
  if(!body||!field||!body.contains(field)||!field.matches('input,select,textarea'))return;
  const viewport=body.getBoundingClientRect(),bounds=field.getBoundingClientRect();
  const top=viewport.top+12,bottom=viewport.bottom-22;
- if(bounds.bottom>bottom)body.scrollTop+=bounds.bottom-bottom;
- else if(bounds.top<top)body.scrollTop-=top-bounds.top;
+ // When a field is invalid, keep its inline explanation visible as well.
+ const note=field.dataset.originFieldInvalid==='true'?body.querySelector('#originFieldError'):null;
+ const visibleEnd=Math.max(bounds.bottom,note?.getBoundingClientRect().bottom||bounds.bottom);
+ if(visibleEnd>bottom)body.scrollTop+=visibleEnd-bottom;
+ const updated=field.getBoundingClientRect();
+ if(updated.top<top)body.scrollTop-=top-updated.top;
 }
 function clearOriginFieldError(form){
  if(!form)return;
