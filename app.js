@@ -2910,7 +2910,10 @@ function captureClassicTodoDraftState(page) {
       baseText: row.dataset.todoEditBaseText || '',
       baseMemo: row.dataset.todoEditBaseMemo || '',
       expanded: !row.querySelector('.todo-detail')?.hidden,
-      compareOpen: Boolean(row.querySelector('.todo-edit-compare-v529')?.open)
+      compareOpen: Boolean(row.querySelector('.todo-edit-compare-v529')?.open),
+      comparedVersion: row.dataset.todoEditComparedVersion || '',
+      resolveText: row.querySelector('[data-todo-resolve-field="text"]')?.value || '',
+      resolveMemo: row.querySelector('[data-todo-resolve-field="memo"]')?.value || ''
     });
   });
   const active = document.activeElement;
@@ -2947,6 +2950,9 @@ function showClassicTodoEditConflict(row, latest) {
   const memo = row.querySelector('.todo-detail textarea');
   if (!detail || !save || !title || !memo) return;
   row.dataset.todoEditConflict = 'true';
+  row.dataset.todoEditComparedVersion = JSON.stringify([
+    latest.revision, latest.text, latest.memo || ''
+  ]);
   save.disabled = true;
 
   const alert = document.createElement('div');
@@ -3119,6 +3125,7 @@ function showClassicTodoEditConflict(row, latest) {
     row.dataset.todoEditBaseMemo = current.memo || '';
     row.dataset.todoEditBaseRevision = String(current.revision);
     delete row.dataset.todoEditConflict;
+    delete row.dataset.todoEditComparedVersion;
     if (nextText.trim() !== current.text || nextMemo.trim() !== (current.memo || '')) {
       row.dataset.todoDraftDirtyV527 = 'true';
     } else {
@@ -3232,6 +3239,20 @@ function restoreClassicTodoDraftState(page, snapshot) {
       showClassicTodoEditConflict(row, current);
       const compare = row.querySelector('.todo-edit-compare-v529');
       if (compare && draft.compareOpen) compare.open = true;
+      // Preserve decisions across unrelated subscribed data changes. A change
+      // to this ToDo's latest revision invalidates previous choices.
+      const latestVersion = JSON.stringify([
+        current.revision, current.text, current.memo || ''
+      ]);
+      if (draft.comparedVersion && draft.comparedVersion === latestVersion) {
+        for (const [field, value] of [['text', draft.resolveText], ['memo', draft.resolveMemo]]) {
+          const select = row.querySelector('[data-todo-resolve-field="' + field + '"]');
+          if (select && ['mine', 'latest'].includes(value)) {
+            select.value = value;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+      }
     }
   }
   classicTodoRecoveryDrafts = recovery;

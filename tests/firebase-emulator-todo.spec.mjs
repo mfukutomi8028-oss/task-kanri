@@ -347,7 +347,9 @@ test('an unrelated remote edit keeps the unsaved ToDo and create form, and delet
 test('manual conflict resolution chooses draft title and latest memo without writing until Save', async ({ page }) => {
   const id = 'todo-selective-rebase-v530';
   const first = todoRecord(id, 'もとの件名', { memo: 'もとのメモ' });
-  await putDb('rooms/' + ROOM + '/todos/' + id, first);
+  const unrelatedId = 'todo-unrelated-choice-v530';
+  const unrelated = todoRecord(unrelatedId, '別件のToDo', { order: 200 });
+  await putDb('rooms/' + ROOM + '/todos', { [id]: first, [unrelatedId]: unrelated });
   await page.setViewportSize({ width: 390, height: 812 });
   const { productionRequests } = await bootTodoPage(page);
   const row = page.locator('#todoView [data-todo-id="' + id + '"]');
@@ -366,6 +368,14 @@ test('manual conflict resolution chooses draft title and latest memo without wri
   await row.locator('[data-todo-resolve-field="memo"]').selectOption('latest');
   await expect(apply).toBeEnabled();
   await expect(row.locator('.todo-edit-preview-text-v530')).toContainText('手元で書いた新しい件名');
+  await expect(row.locator('.todo-edit-preview-memo-v530')).toContainText('共有側の重要メモ');
+  // Changing a different ToDo must not reset the selection or draft.
+  await putDb('rooms/' + ROOM + '/todos/' + unrelatedId, {
+    ...unrelated, text: '別件だけ更新', revision: 2, updatedAt: unrelated.updatedAt + 1000
+  });
+  await expect(page.locator('#todoView [data-todo-id="' + unrelatedId + '"] .todo-text')).toHaveText('別件だけ更新');
+  await expect(row.locator('[data-todo-resolve-field="text"]')).toHaveValue('mine');
+  await expect(row.locator('[data-todo-resolve-field="memo"]')).toHaveValue('latest');
   await expect(row.locator('.todo-edit-preview-memo-v530')).toContainText('共有側の重要メモ');
   expect(await readTodo(id)).toMatchObject({ text: '共有側の件名', memo: '共有側の重要メモ', revision: 2 });
 
