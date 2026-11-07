@@ -966,3 +966,16 @@ test('JOURNAL V500 recent activity opens the requested task across desk filters'
   assert.match(css,/JOURNAL V500/);
   assert.match(css,/\.j420-project-note\.j494-inline-note \.j420-note-checks li/);
 });
+
+test('JOURNAL V502 phone index is view-only and uses one canonical set of filters',()=>{
+  const app=read('app.js');
+  assert.match(app,/let journalIndexExpandedV502=false/);
+  assert.match(app,/data-j502-index-open="/);
+  assert.match(app,/aria-controls="j502IndexContents"/);
+  assert.match(app,/journalIndexExpandedV502=!journalIndexExpandedV502/);
+  assert.match(app,/data-j502-toggle-index/);
+  assert.match(css,/JOURNAL V502/);
+  assert.match(css,/\.j420-atelier-index\[data-j502-index-open="false"\] \.j502-index-contents/);
+  assert.match(css,/\.j420-note-actions button/);
+  assert.doesNotMatch(app.slice(app.indexOf("root.querySelector('[data-j502-toggle-index]')"),app.indexOf("root.querySelector('[data-j420-new-task]')")),/(?:runTransaction|persistTask|updateDatabase)\s*\(/);
+});
