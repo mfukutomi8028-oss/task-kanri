@@ -6357,3 +6357,12 @@ html[data-wb-display="journal"] #timelineView .j494-day-actions button:focus-vis
     scroll-margin-top:54px;
   }
 }
+
+/* JOURNAL V500 — keep unbroken identifiers and long checklist labels inside
+   the selected mobile notebook instead of widening the entire task atelier. */
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #boardView .j420-project-note.j494-inline-note .j420-note-checks li,
+  html[data-wb-display="journal"] #boardView .j420-project-note.j494-inline-note .j420-note-lead small {
+    min-width:0;overflow-wrap:anywhere;word-break:break-word;
+  }
+}

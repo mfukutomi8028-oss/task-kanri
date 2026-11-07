@@ -950,3 +950,19 @@ test('JOURNAL V497 mobile detail retains a useful sticky title and fresh open fo
   assert.match(css,/detail-title:focus/);
   assert.doesNotMatch(folio,/(?:runTransaction|onValue|persistTask|updateDatabase)\s*\(/);
 });
+
+test('JOURNAL V500 recent activity opens the requested task across desk filters',()=>{
+  const app=read('app.js');
+  const start=app.indexOf("root.querySelectorAll('[data-j420-log-task]')");
+  const end=app.indexOf("root.querySelector('[data-j420-new-task]')",start);
+  assert.ok(start>0&&end>start);
+  const jump=app.slice(start,end);
+  assert.match(jump,/const task=tasks\.find\(t=>t\.id===btn\.dataset\.j420LogTask\)/);
+  assert.match(jump,/if\(!viewFns\[journalAtelierViewV420\]\?\.\(task\)\)journalAtelierViewV420='all'/);
+  assert.match(jump,/if\(journalAtelierCategoryV420&&task\.category!==journalAtelierCategoryV420\)journalAtelierCategoryV420=''/);
+  assert.match(jump,/journalAtelierSelectedV420=task\.id/);
+  assert.match(jump,/journalFocusAtelierNoteV500\(elements\.boardView,true\)/);
+  assert.equal((app.match(/journalFocusAtelierNoteV500\(/g)||[]).length,3);
+  assert.match(css,/JOURNAL V500/);
+  assert.match(css,/\.j420-project-note\.j494-inline-note \.j420-note-checks li/);
+});

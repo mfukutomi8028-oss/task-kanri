@@ -1701,3 +1701,43 @@ test('JOURNAL V495 mobile task folio keeps primary actions short and returns fro
   await folio.locator('#closeDetail').click();
   await expect(launch).toBeFocused();
 });
+
+test('JOURNAL V500 recent log opens the correct filtered-out task on phone and desktop',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  await board.locator('[data-j420-new-task]').click();
+  const editor=page.locator('#taskDialog');
+  const title='JOURNAL V500 最近の記録から開く案件';
+  await editor.locator('#taskTitle').fill(title);
+  await editor.locator('#taskDescription').fill('引継ぎ番号:'+('Z'.repeat(140)));
+  await editor.locator('#taskForm button[type="submit"]').click();
+  await expect(editor).toBeHidden();
+  await board.locator('[data-j420-view="waiting"]').click();
+  await expect(board.locator('[data-j420-task-id]').filter({hasText:title})).toHaveCount(0);
+  const log=board.locator('[data-j420-log-task]').filter({hasText:title});
+  await expect(log).toBeVisible();
+  await log.click();
+  await expect(board.locator('[data-j420-view="all"]')).toHaveAttribute('aria-pressed','true');
+  const row=board.locator('[data-j420-task-id]').filter({hasText:title});
+  const note=board.locator('#j494AtelierNote');
+  await expect(row).toBeVisible();
+  await expect(row).toHaveAttribute('aria-expanded','true');
+  await expect(note).toBeVisible();
+  await expect(note.locator('.j420-note-lead h4')).toHaveText(title);
+  await expect(note.locator('.j420-note-lead h4')).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
+    .toBeLessThanOrEqual(2);
+  await page.setViewportSize({width:320,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
+    .toBeLessThanOrEqual(2);
+  await page.setViewportSize({width:1366,height:900});
+  await expect.poll(()=>note.evaluate(el=>el.parentElement?.classList.contains('j420-atelier'))).toBe(true);
+  await board.locator('[data-j420-view="waiting"]').click();
+  await expect(board.locator('[data-j420-task-id]').filter({hasText:title})).toHaveCount(0);
+  await board.locator('[data-j420-log-task]').filter({hasText:title}).click();
+  await expect(board.locator('[data-j420-view="all"]')).toHaveAttribute('aria-pressed','true');
+  await expect(note.locator('.j420-note-lead h4')).toHaveText(title);
+  await expect(note.locator('.j420-note-lead h4')).toBeFocused();
+});

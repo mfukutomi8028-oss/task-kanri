@@ -5943,6 +5943,22 @@ if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
 // Escape belongs to JOURNAL's existing folio keyboard handler (v411).
 // The return observer above restores focus after the canonical close action.
 
+// JOURNAL V500: share the jump into the selected paper note between the
+// actual desk cards and the recent-activity log. No editor state is duplicated.
+function journalFocusAtelierNoteV500(root,includeDesktop=false){
+  if(!includeDesktop&&!journalAtelierInlineMediaV494.matches)return;
+  requestAnimationFrame(()=>{
+    if(!root?.isConnected||!journalTaskV411())return;
+    const note=root.querySelector('#j494AtelierNote');
+    if(!note||(journalAtelierInlineMediaV494.matches&&!note.classList.contains('j494-inline-note')))return;
+    const heading=note.querySelector('.j420-note-lead h4');
+    if(!heading)return;
+    note.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
+    heading.tabIndex=-1;
+    heading.focus({preventScroll:true});
+  });
+}
+
 function journalAtelierCardV420(t) {
   const due=t.dueDate?escapeHtml(t.dueDate.slice(5).replace('-','/')):'期限なし';
   return `<article class="j420-atelier-task ${journalAtelierSelectedV420===t.id?'is-selected':''} ${isOverdue(t)?'is-overdue':''}" data-j420-task-id="${escapeHtml(t.id)}" tabindex="0" role="button" aria-controls="j494AtelierNote" aria-expanded="false" aria-label="${escapeHtml(t.title)}を案件ノートで見る">
@@ -6079,28 +6095,24 @@ function journalAtelierV420(tasks){
       if(currentNote)currentNote.outerHTML=journalAtelierNoteV420(chosenTask);
       bindJournalAtelierNoteActionsV420(root);
       journalPositionAtelierNoteV494(root);
-      if(journalAtelierInlineMediaV494.matches)requestAnimationFrame(()=>{
-        const note=root.querySelector('#j494AtelierNote.j494-inline-note');
-        if(!note||!root.isConnected)return;
-        note.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
-        const heading=note.querySelector('.j420-note-lead h4');
-        if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
-      });
+      journalFocusAtelierNoteV500(root);
     };
     card.addEventListener('click',select);
     card.addEventListener('dblclick',e=>{e.preventDefault();openTaskEditorById(card.dataset.j420TaskId)});
     card.addEventListener('keydown',e=>{if(e.target!==card)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}});
   });
   root.querySelectorAll('[data-j420-log-task]').forEach(btn=>btn.addEventListener('click',()=>{
-    journalAtelierSelectedV420=btn.dataset.j420LogTask;
+    const task=tasks.find(t=>t.id===btn.dataset.j420LogTask);
+    if(!task)return;
+    // The recent log is available even while a view/category hides this task.
+    // Clear only the incompatible filters, so the requested record is never
+    // silently replaced by the first record in the narrowed view.
+    if(!viewFns[journalAtelierViewV420]?.(task))journalAtelierViewV420='all';
+    if(journalAtelierCategoryV420&&task.category!==journalAtelierCategoryV420)journalAtelierCategoryV420='';
+    journalAtelierSelectedV420=task.id;
     journalAtelierInlineOpenV494=journalAtelierInlineMediaV494.matches;
     journalAtelierV420(tasks);
-    if(journalAtelierInlineMediaV494.matches)requestAnimationFrame(()=>{
-      const note=elements.boardView.querySelector('#j494AtelierNote.j494-inline-note');
-      note?.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
-      const heading=note?.querySelector('.j420-note-lead h4');
-      if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
-    });
+    journalFocusAtelierNoteV500(elements.boardView,true);
   }));
   root.querySelector('[data-j420-new-task]')?.addEventListener('click',()=>openTaskDialog());
   root.querySelectorAll('[data-j420-view]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierViewV420=btn.dataset.j420View;journalAtelierV420(tasks)}));
