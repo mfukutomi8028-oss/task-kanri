@@ -1127,7 +1127,8 @@ test('JOURNAL V515 list rerenders restore the exact filter, sorting or search co
   assert.match(handler,/token!==journalIndexRefreshTokenV515/);
   assert.doesNotMatch(handler,/(?:runTransaction|persistTask|commitTaskDraft|updateDatabase|onValue)\s*\(/);
   const index=app.slice(end,app.indexOf('function journalNavigateChronicleV504(',end));
-  assert.equal((index.match(/journalRefreshIndexV515\(tasks,/g)||[]).length,6);
+  // Six existing index controls plus V518's contextual empty-result reset.
+  assert.equal((index.match(/journalRefreshIndexV515\(tasks,/g)||[]).length,7);
   assert.match(index,/journalRefreshIndexV515\(tasks,input,/);
   assert.match(index,/el\.setSelectionRange\(cursor,cursor\)/);
   assert.match(index,/node\.dataset\.j430Facet===key&&node\.dataset\.j430Value===value/);
