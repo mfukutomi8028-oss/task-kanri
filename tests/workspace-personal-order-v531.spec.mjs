@@ -143,3 +143,48 @@ test('business memo order is editable without changing shared memos and remains 
   await clickDesktopMemo(page);
   await expect(page.locator('#workMemoViewV167 .work-memo-card-v167').first().locator('h4')).toHaveText('古い業務メモ');
 });
+
+
+for (const width of [320, 390]) {
+  test('Classic ToDo save keeps the same row, scroll anchor and keyboard focus at ' + width + 'px', async ({ page }) => {
+    test.slow();
+    const now = Date.now();
+    const historical = Array.from({ length: 26 }, (_, index) => ({
+      id: 'save-return-' + index,
+      text: 'ToDoの一覧行 ' + index,
+      memo: '保存前のメモ ' + index,
+      completed: false,
+      completedAt: 0,
+      order: index * 1024,
+      owner: '福冨',
+      revision: 1,
+      createdAt: now - index * 60_000,
+      updatedAt: now - index * 60_000
+    }));
+    await page.setViewportSize({ width, height: 812 });
+    await boot(page, 'test-v531-save-return-' + width, { historical });
+    await page.locator('#todayView [data-layout-jump="todos"]').first().click();
+    const row = page.locator('#todoView .todo-item[data-todo-id="save-return-12"]');
+    await expect(row).toBeVisible();
+    await row.locator('.todo-summary-button').click();
+    const newTitle = 'ToDoの編集・保存後も同じ位置 ' + width;
+    await row.locator('.todo-detail input').fill(newTitle);
+    await row.locator('.todo-detail textarea').fill('保存したメモを維持します');
+    const save = row.locator('.todo-detail-save');
+    await save.scrollIntoViewIfNeeded();
+    const oldTop = await save.evaluate(node => node.getBoundingClientRect().top);
+    await save.click();
+    await expect(row.locator('.todo-text')).toHaveText(newTitle);
+    await expect(row.locator('.todo-detail textarea')).toHaveValue('保存したメモを維持します');
+    await expect(row.locator('.todo-detail-save')).toBeFocused();
+    const newTop = await row.locator('.todo-detail-save').evaluate(node => node.getBoundingClientRect().top);
+    expect(Math.abs(newTop - oldTop), 'save should not jump to a different screen position').toBeLessThan(22);
+
+    // Validation failure must not trigger success-only focus/scroll recovery.
+    await row.locator('.todo-detail input').fill('');
+    await row.locator('.todo-detail-save').click();
+    await expect(row.locator('.todo-detail input')).toHaveValue('');
+    await expect(row.locator('.todo-text')).toHaveText(newTitle);
+    await expect(row.locator('.todo-detail')).toBeVisible();
+  });
+}
