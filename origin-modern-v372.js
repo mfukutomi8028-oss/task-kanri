@@ -245,6 +245,7 @@
 #editForm .origin-save-recovery p{margin:0 0 8px;overflow-wrap:anywhere}
 #editForm .origin-save-recovery-actions{display:flex;gap:7px;flex-wrap:wrap}
 #editForm .origin-save-recovery-actions button{min-height:44px;color:var(--ink);border-color:var(--line);background:var(--paper)}
+#editForm .origin-save-recovery-actions button[hidden]{display:none}
 #editForm #originDraftCopyFallback{display:block;width:100%;min-height:104px;margin-top:8px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);resize:vertical;white-space:pre-wrap}
 `));
     document.body.appendChild(host);
