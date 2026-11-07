@@ -418,7 +418,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
      notify(label);return true;
    }
    if(result?.error==='cancelled'||result?.pending)return false;
-   const conflict=['revision-or-state-mismatch','revision-or-relation-mismatch','owner-mismatch','not-found','remote-content-changed'].includes(result?.error);
+   const conflict=['revision-or-state-mismatch','revision-or-relation-mismatch','conflict','owner-mismatch','not-found','remote-content-changed'].includes(result?.error);
    const todoInvalid=command.type.startsWith('todo.')&&result?.error==='invalid-input';
    const scheduleInvalid=command.type.startsWith('schedule.')&&result?.error==='invalid-input';
    const msg=conflict
@@ -432,7 +432,9 @@ async function send(command,label,{close=false,returnToTask=false}={}){
        : scheduleInvalid
          ? '予定を保存できませんでした。担当者・分類・関連タスクなどの入力を確認してください。入力内容は保持されています。'
          : '保存できませんでした。入力内容は保持されています。';
-   showEditorSaveError(msg);
+   const validation=todoInvalid||scheduleInvalid||['invalid-input','invalid-category','invalid-tags'].includes(result?.error);
+   const editableWrite=/\.(create|update)$/.test(command.type);
+   showEditorSaveError(msg,!editableWrite||validation?'validation':conflict?'conflict':'retry');
    if(todoInvalid&&panelMode==='edit'){
      const form=$('#editForm'),field=result.field==='memo'?'memo':'title';
      requestAnimationFrame(()=>{if(form?.isConnected&&panelMode==='edit')markOriginInvalidField(form,field,msg)});
@@ -1340,8 +1342,9 @@ function panelShow(kind,id,edit=false,seed={}){
  const footer=originPanelFooter(kind,id,true,v);
  $('#sheet').innerHTML=sheetFrame('EDIT · '+singular[kind],id?singular[kind]+'を編集':singular[kind]+'を新規作成',f,footer);
  originEditorInitialHeight=window.visualViewport?.height||window.innerHeight;
- if(kind==='events'||kind==='tasks'){
-   const original=id?(kind==='events'?snapshot.schedules.find(x=>x.id===id):snapshot.tasks.find(x=>x.id===id)):null;
+ if(kind==='events'||kind==='tasks'||kind==='memos'){
+   const original=id?(kind==='events'?snapshot.schedules.find(x=>x.id===id):
+     kind==='tasks'?snapshot.tasks.find(x=>x.id===id):memoItems.find(x=>x.id===id)):null;
    const f=$('#editForm');
    f.dataset.revision=String(original?.revision??0);
    f.dataset.ownerRoom=String(snapshot.roomId);
@@ -1707,6 +1710,8 @@ function focusSearchResult(button){
 }
 function openCreateMenu(){const m=$('#createMenu');m.hidden=!m.hidden;if(!m.hidden)m.innerHTML=`${[['tasks','共有タスク','tasks'],['todos','個人ToDo','todo'],['events','予定','calendar'],['memos','業務メモ','notes']].map(([k,n,ic])=>`<button class="pop-row" type="button" data-action="new" data-kind="${k}">${icon(ic,19)} ${n}を作成</button>`).join('')}`}
 async function saveForm(f){
+ if(busy)return false;
+ hideOriginSaveRecovery();
  const fd=new FormData(f),kind=f.dataset.kind,id=f.dataset.id;
  const title=String(fd.get('title')||'').trim();
  if(!title){
@@ -1717,10 +1722,11 @@ async function saveForm(f){
   return false;
  }
  if(kind==='events'){
-   const invalid=(message,field)=>{
+   const invalid=(message,field,reason='validation')=>{
      const region=f.querySelector('#originScheduleError');
      if(region){region.textContent=message;region.hidden=false}
      markOriginInvalidField(f,field,message);
+     if(reason==='conflict')showOriginSaveRecovery('conflict');
      return false;
    };
    const startAt=String(fd.get('startAt')||''),endAt=String(fd.get('endAt')||'');
@@ -1729,11 +1735,11 @@ async function saveForm(f){
      return invalid('開始日時と終了日時を入力してください。','startAt');
    if(end<=start)return invalid('終了日時は開始日時より後にしてください。','endAt');
    if(f.dataset.ownerRoom!==snapshot.roomId||f.dataset.ownerUser!==snapshot.currentUser)
-     return invalid('共有ルームまたは利用者が変わりました。開き直してください。','title');
+     return invalid('共有ルームまたは利用者が変わりました。開き直してください。','title','conflict');
    const revision=Number(f.dataset.revision);
    const record=id?snapshot.schedules.find(x=>x.id===id):null;
    if(!Number.isSafeInteger(revision)||revision<0||(id&&(!record||Number(record.revision)!==revision)))
-     return invalid('ほかの端末で変更されました。編集中の入力を保っています。','title');
+     return invalid('ほかの端末で変更されました。編集中の入力を保っています。','title','conflict');
    const values={title,startAt,endAt,
      assignee:String(fd.get('assignee')||snapshot.currentUser),
      category:String(fd.get('category')||snapshot.categories[0]||'その他'),
@@ -1748,7 +1754,8 @@ async function saveForm(f){
  if(kind==='tasks'){
   const rev=Number(f.dataset.revision),error=f.querySelector('#originTaskError');
   if(f.dataset.ownerRoom!==snapshot.roomId||f.dataset.ownerUser!==snapshot.currentUser||(!Number.isSafeInteger(rev)||rev<0)||(id&&Number(existing?.revision)!==rev)){
-    if(error){error.hidden=false;error.textContent='ほかの端末で変更された可能性があります。入力内容を保持しています。'}return false;
+    if(error){error.hidden=false;error.textContent='ほかの端末で変更された可能性があります。入力内容を保持しています。'}
+    showOriginSaveRecovery('conflict');return false;
   }
   const rows=[...f.querySelectorAll('.origin-checkrow')].map(x=>({text:x.querySelector('[name="checkText"]').value.trim(),done:x.querySelector('[name="checkDone"]').checked})).filter(x=>x.text);
   if(rows.map(x=>x.text).join('\n').length>6000){
@@ -1773,7 +1780,14 @@ async function saveForm(f){
   return send({type:'todo.create',text:title,memo:String(fd.get('memo')||'')},'ToDoを追加しました',{close:true});
  }
  if(kind==='memos'){
-  return send({type:'memo.'+(id?'update':'create'),id,revision:existing?.revision||0,
+  const revision=Number(f.dataset.revision);
+  if(f.dataset.ownerRoom!==snapshot.roomId||f.dataset.ownerUser!==snapshot.currentUser
+    ||!Number.isSafeInteger(revision)||revision<0
+    ||(id&&(!existing||Number(existing.revision)!==revision))){
+    showEditorSaveError('他端末でメモが変更されました。入力内容を保持しています。','conflict');
+    return false;
+  }
+  return send({type:'memo.'+(id?'update':'create'),id,revision,
     ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
     title,category:String(fd.get('category')||memoBridge?.categories?.[0]||'その他'),
     body:String(fd.get('body')||''),tags:(existing?.tags||[]).join(','),
@@ -1799,6 +1813,16 @@ async function deleteItem(kind,id){
 }
 function setTheme(){theme=theme==='dark'?'light':'dark';initTheme()}
 function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dataset.kind,value=el.dataset.value;
+ if(a==='origin-copy-draft'){
+   const form=$('#editForm');if(form&&!busy)void copyOriginDraft(form);
+   return;
+ }
+ if(a==='origin-save-again'){
+   const form=$('#editForm'),panel=form?.querySelector('#originSaveRecovery');
+   if(!busy&&form?.dataset.id&&panel?.dataset.reason==='retry'
+     &&['tasks','events','memos'].includes(form.dataset.kind))form.requestSubmit();
+   return;
+ }
  if(a==='related-event-menu'){
   if(!panelOpen||panelMode!=='detail'||panelKind!=='tasks')return;
   const entry=el.closest('.origin-related-entry'),menu=entry?.querySelector('.origin-related-entry-actions');
@@ -2247,6 +2271,7 @@ mount.addEventListener('focusin',e=>{
  const form=e.target?.form;
  if(form?.id!=='editForm'||!e.target.matches?.('input,select,textarea'))return;
  e.preventDefault();
+ hideOriginSaveRecovery();
  if(form.querySelector('#originFieldError'))return;
  const message=e.target.validity.valueMissing?'必須項目を入力してください。':
    e.target.validity.tooLong?'入力文字数が上限を超えています。':'入力内容を確認してください。';
