@@ -2846,3 +2846,81 @@ test('JOURNAL V544 phone reader stays open after an edit leaves the filter and a
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V546 remote removals keep the active phone reader and recover an emptied search',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  // Inject a test-only Firebase subscription notification; production never
+  // exposes this helper and the user data model is not changed by the test.
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch(),source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      'window.__journalV546RemoteDelete = id => { state.tasks=state.tasks.filter(t=>t.id!==id); scheduleSubscribedRender(); };\nfunction scheduleSubscribedRender() {'
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),editor=page.locator('#taskDialog');
+  for(const title of ['JOURNAL V546 C','JOURNAL V546 A','JOURNAL V546 B','条件外の案件']){
+    await board.locator('[data-j420-new-task]').click();
+    await editor.locator('#taskTitle').fill(title);
+    await editor.locator('#taskForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+  }
+  await board.locator('[data-j420-layout="list"]').click();
+  const list=page.locator('#listView'),query=list.locator('[data-j425-query]');
+  await list.locator('[data-j425-sort]').selectOption('title');
+  await query.fill('JOURNAL V546');
+  const rows=list.locator('[data-j425-row]');
+  await expect(rows).toHaveCount(3);
+  const ids={};
+  for(const title of ['A','B','C']){
+    ids[title]=await rows.filter({hasText:'JOURNAL V546 '+title})
+      .getAttribute('data-j425-row');
+  }
+  await list.locator('[data-j425-row="'+ids.B+'"]').click();
+  const reader=list.locator('.j425-task-preview.j491-inline-detail');
+  const next=reader.locator('[data-j540-case-step="1"]');
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V546 B');
+  await next.focus();
+  await expect(next).toBeFocused();
+
+  // Selected B disappears remotely. The notebook should remain open at C.
+  await page.evaluate(id=>window.__journalV546RemoteDelete(id),ids.B);
+  await expect(rows).toHaveCount(2);
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V546 C');
+  await expect(reader.locator('[data-j540-case-step="-1"]')).toBeFocused();
+  await expect(next).toBeDisabled();
+  await expect(reader).toBeInViewport();
+
+  // No next case remains; the reverse key also becomes disabled at A.
+  await page.evaluate(id=>window.__journalV546RemoteDelete(id),ids.C);
+  await expect(rows).toHaveCount(1);
+  await expect(reader.locator('h3')).toHaveText('JOURNAL V546 A');
+  await expect(reader.locator('h3')).toBeFocused();
+
+  // The last matching case disappears; keep the user's query and make the
+  // already-existing reset action visible and keyboard reachable.
+  await page.setViewportSize({width:320,height:800});
+  await page.evaluate(id=>window.__journalV546RemoteDelete(id),ids.A);
+  await expect(rows).toHaveCount(0);
+  const empty=list.locator('.j518-index-empty');
+  const reset=empty.locator('[data-j518-empty-reset]');
+  await expect(empty).toContainText('閲覧中の案件が同期更新で表示対象から外れました');
+  await expect(reader).toBeHidden();
+  await expect(reset).toBeFocused();
+  await expect(reset).toBeInViewport();
+  await expect(query).toHaveValue('JOURNAL V546');
+
+  await reset.click();
+  await expect(rows).toHaveCount(1);
+  await expect(query).toHaveValue('');
+  await expect(query).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});
