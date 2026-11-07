@@ -1082,7 +1082,7 @@ test('JOURNAL V511 diary keeps one sticky navigator and one shared list-return o
   const index=app.slice(app.indexOf('function journalIndexV425('),app.indexOf('function journalNavigateChronicleV504('));
   assert.match(index,/root\.querySelectorAll\('\[data-j491-task-return\]'\)\.forEach/);
   assert.match(index,/const target=row\|\|root\.querySelector\('\[data-j425-query\]'\)/);
-  assert.match(index,/target\?\.focus\(\{preventScroll:true\}\)/);
+  assert.match(index,/target\.focus\(\{preventScroll:true\}\)/);
   const diary=app.slice(app.indexOf('function journalChronicleV411('),app.indexOf('function journalDayItemV411('));
   assert.match(diary,/class="j511-chronicle-travel"/);
   assert.match(diary,/data-j511-date-picker/);
