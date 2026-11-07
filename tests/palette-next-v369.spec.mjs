@@ -29,6 +29,28 @@ async function boot(page,width=1366,activate=true) {
   }
 }
 
+// Playwright can reposition a row between scrollIntoViewIfNeeded() and click.
+// The actual click position is the one Palette records for later restoration.
+async function clickSeriesRowAndCaptureOffset(drawer,row) {
+  await drawer.evaluate(el=>{
+    el.addEventListener('click',event=>{
+      const source=event.target.closest('[data-pn-series-index-open],[data-pn-series-index-edit]');
+      if(!source||!el.contains(source))return;
+      el.dataset.pnTestClickedSeriesRowOffset=String(
+        source.getBoundingClientRect().top-el.getBoundingClientRect().top);
+    },{capture:true,once:true});
+  });
+  await row.click();
+  const offset=await drawer.evaluate(el=>{
+    const value=el.dataset.pnTestClickedSeriesRowOffset;
+    delete el.dataset.pnTestClickedSeriesRowOffset;
+    return value==null?null:Number(value);
+  });
+  expect(offset).not.toBeNull();
+  expect(Number.isFinite(offset)).toBe(true);
+  return offset;
+}
+
 test('Palette directly opens NEXT; Classic, Modern and Journal remain selectable',async({page})=>{
   await boot(page,1366,false);
   await expect(page.locator('#paletteNextRoot')).toHaveCount(0);
@@ -442,9 +464,7 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   // Opening a named row has the same reversible return without resetting search.
   const chosenViewRow=compare.locator('[data-pn-series-index-open="'+thirdInSeries+'"]');
   await chosenViewRow.scrollIntoViewIfNeeded();
-  const viewRowOffset=await chosenViewRow.evaluate(el=>
-    el.getBoundingClientRect().top-el.closest('#pnDetail').getBoundingClientRect().top);
-  await chosenViewRow.click();
+  const viewRowOffset=await clickSeriesRowAndCaptureOffset(detail,chosenViewRow);
   await expect(seriesPanel).toContainText('3件登録済み · 3件目');
   await expect(backToSeries).toBeFocused();
   await backToSeries.click();
@@ -466,9 +486,7 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   // Editing from the comparison row keeps its original screen position on return.
   const sourceRow=compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]');
   await sourceRow.scrollIntoViewIfNeeded();
-  const beforeOffset=await sourceRow.evaluate(el=>
-    el.getBoundingClientRect().top-el.closest('#pnDetail').getBoundingClientRect().top);
-  await sourceRow.click();
+  const beforeOffset=await clickSeriesRowAndCaptureOffset(detail,sourceRow);
   const directSeriesEdit=detail.locator('[data-pn-form="schedule-editor"]');
   await expect(directSeriesEdit).toBeVisible();
   await expect(directSeriesEdit.locator('.pn-series-edit-scope'))
@@ -483,7 +501,7 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   const cancelledOffset=await sourceRow.evaluate(el=>
     el.getBoundingClientRect().top-el.closest('#pnDetail').getBoundingClientRect().top);
   expect(Math.abs(cancelledOffset-beforeOffset)).toBeLessThanOrEqual(40);
-  await compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]').click();
+  const savedClickOffset=await clickSeriesRowAndCaptureOffset(detail,sourceRow);
   await directSeriesEdit.locator('[name="memo"]').fill('一覧から直接編集した予定');
   await directSeriesEdit.locator('[type="submit"]').click();
   await expect(detail.locator('.pn-series-save-review'))
@@ -497,7 +515,7 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await expect(sourceRow).toBeInViewport();
   const savedOffset=await sourceRow.evaluate(el=>
     el.getBoundingClientRect().top-el.closest('#pnDetail').getBoundingClientRect().top);
-  expect(Math.abs(savedOffset-beforeOffset)).toBeLessThanOrEqual(40);
+  expect(Math.abs(savedOffset-savedClickOffset)).toBeLessThanOrEqual(40);
   await compare.locator('[data-pn-series-index-status]').selectOption('unedited');
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(2);
   await compare.locator('[data-pn-series-index-status]').selectOption('all');
@@ -534,10 +552,21 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   const upcomingButton=seriesGroup.locator('[data-pn-series-next-open]');
   await expect(upcomingButton).toBeVisible();
   const upcomingId=await upcomingButton.getAttribute('data-pn-series-next-open');
+  // "Upcoming" may be the second occurrence when the first is already in the
+  // past. Verify the actual target, then begin the edit sequence at occurrence 1.
+  const occurrenceOrder=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot()
+    .schedules.filter(row=>row.title==='NEXT 週次バッチテスト')
+    .sort((a,b)=>String(a.startAt).localeCompare(String(b.startAt)))
+    .map(row=>row.id));
+  const upcomingPosition=occurrenceOrder.indexOf(upcomingId)+1;
+  expect(upcomingPosition).toBeGreaterThan(0);
   await upcomingButton.click();
   await expect(detail).toHaveAttribute('data-inspector','schedule');
   await expect(detail.locator('.pn-inspect-hero h2')).toContainText('NEXT 週次バッチテスト');
   await expect(detail.locator('[data-pn-series-return]')).toBeVisible();
+  await expect(detail.locator('.pn-inspect-sequence-position')).toHaveText('系列内 '+upcomingPosition+' / 3');
+  for(let position=upcomingPosition;position>1;position--)
+    await detail.locator('[data-pn-inspect-step="-1"]').click();
   await expect(detail.locator('.pn-inspect-sequence-position')).toHaveText('系列内 1 / 3');
   // The next occurrence is outside the selected week but remains in this series.
   await detail.locator('[data-pn-inspect-step="1"]').click();
@@ -563,7 +592,7 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await expect(detail.locator('[data-pn-series-save-next]')).toHaveCount(0);
   await expect(detail.locator('[data-pn-inspect-edit-shortcut]')).toBeFocused();
   await detail.locator('[data-pn-inspect-step="-1"]').click();
-  await detail.locator('[data-pn-series-open="'+upcomingId+'"]').click();
+  await detail.locator('[data-pn-series-open="'+firstInSeries+'"]').click();
   await expect(detail.locator('.pn-inspect-sequence-position')).toHaveText('系列内 1 / 3');
   await detail.locator('[data-pn-inspect-step="1"]').click();
   await detail.locator('[data-pn-series-return]').click();
