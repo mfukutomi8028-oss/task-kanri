@@ -2879,3 +2879,114 @@ test('Origin ToDo editing completion returns to neighboring list row rather than
  await expect(host.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','false');
  await expect(host.locator('.origin-todo-list [data-action="todo-check"][data-id="'+nextId+'"]')).toBeFocused();
 });
+
+
+test('Origin searches completed ToDos by explicit opt-in without changing progress totals',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-completed-search-v513',320);
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(const [text,memo,done] of [
+     ['照合待ち・候補','検索対象',false],
+     ['完了済み・対象','照合待ち・履歴検索',true],
+     ['完了済み・除外','別件',true]
+   ]){
+     const r=await b.dispatch({type:'todo.create',text,memo,completed:done});
+     if(!r?.ok)throw Error('create: '+r?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ const workspace=host.locator('#workspace');
+ await expect(workspace.locator('.origin-todo-metrics')).toContainText('完了 2件');
+ await expect(workspace.locator('[role="progressbar"]')).toHaveAttribute('aria-valuenow','67');
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ const input=host.locator('#originTodoQuery');
+ await input.fill('照合待ち');
+ await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(1);
+ const historyButton=workspace.locator('[data-action="todo-search-history"]');
+ await expect(historyButton).toHaveAttribute('aria-pressed','false');
+ await expect(workspace.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','false');
+ await historyButton.click();
+ await expect(historyButton).toHaveAttribute('aria-pressed','true');
+ await expect(workspace.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','true');
+ await expect(workspace.locator('#originCompletedTodos .todo-entry')).toHaveCount(1);
+ await expect(workspace.locator('.origin-todo-search-result')).toContainText('完了履歴 1件');
+ await expect(workspace.locator('.origin-todo-metrics')).toContainText('完了 2件');
+ await expect(workspace.locator('[role="progressbar"]')).toHaveAttribute('aria-valuenow','67');
+ await input.fill('履歴検索');
+ await expect(workspace.locator('.origin-todo-list .todo-entry')).toHaveCount(0);
+ await expect(workspace.locator('#originCompletedTodos .todo-entry')).toHaveCount(1);
+ const jump=workspace.locator('[data-action="jump-result"][data-kind="todos"]');
+ await expect(jump).toBeEnabled();
+ await jump.click();
+ await expect(workspace.locator('#originCompletedTodos .todo-text')).toBeFocused();
+ await expect(page.evaluate(()=>document.documentElement.scrollWidth)).resolves.toBeLessThanOrEqual(323);
+});
+
+test('Origin keeps search and focuses the next matching edit after a ToDo leaves the query',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-query-edit-continuity-v513',390);
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(const title of ['検索候補A','検索候補B','検索候補C','別のToDo']){
+     const r=await b.dispatch({type:'todo.create',text:title,memo:'確認メモ'});
+     if(!r?.ok)throw Error('create: '+r?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ const query=host.locator('#originTodoQuery');
+ await query.fill('検索候補');
+ const rows=host.locator('.origin-todo-list .todo-entry');
+ await expect(rows).toHaveCount(3);
+ const nextId=await rows.nth(1).locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ await rows.first().locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await form.locator('[name="title"]').fill('検索結果から除外したToDo');
+ await host.locator('button[form="editForm"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(query).toHaveValue('検索候補');
+ await expect(rows).toHaveCount(2);
+ await expect(host.locator('[data-action="todo-search-toggle"]')).toHaveAttribute('aria-expanded','true');
+ await expect(host.locator('.origin-todo-list [data-action="list-quick-edit"][data-id="'+nextId+'"]')).toBeFocused();
+ await host.locator('.origin-todo-list [data-action="list-quick-edit"][data-id="'+nextId+'"]').click();
+ await expect(host.locator('#editForm [name="title"]')).toHaveValue('検索候補B');
+ await host.locator('#sheet .sheet-close').click();
+ await expect(query).toHaveValue('検索候補');
+ await expect(page.evaluate(()=>document.documentElement.scrollWidth)).resolves.toBeLessThanOrEqual(393);
+});
+
+test('Origin preserves completed history filters and edit position after saving',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-history-continuous-editor-v513',320);
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(const title of ['履歴対象A','履歴対象B','履歴対象C']){
+     const r=await b.dispatch({type:'todo.create',text:title,memo:'記録確認',completed:true});
+     if(!r?.ok)throw Error('create: '+r?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ await host.locator('[data-action="todo-search-history"]').click();
+ const query=host.locator('#originTodoQuery');
+ await query.fill('履歴対象');
+ const archive=host.locator('#originCompletedTodos .todo-entry');
+ await expect(archive).toHaveCount(3);
+ const selectedId=await archive.first().locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ const nextId=await archive.nth(1).locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ await archive.first().locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await form.locator('[name="memo"]').fill('履歴から続けて編集');
+ await host.locator('button[form="editForm"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(host.locator('#originCompletedTodos [data-action="list-quick-edit"][data-id="'+selectedId+'"]')).toBeFocused();
+ await host.locator('#originCompletedTodos [data-action="list-quick-edit"][data-id="'+selectedId+'"]').click();
+ await form.locator('[name="title"]').fill('検索条件外に変更');
+ await host.locator('button[form="editForm"]').click();
+ await expect(archive).toHaveCount(2);
+ await expect(query).toHaveValue('履歴対象');
+ await expect(host.locator('[data-action="todo-search-history"]')).toHaveAttribute('aria-pressed','true');
+ await expect(host.locator('#originCompletedTodos [data-action="list-quick-edit"][data-id="'+nextId+'"]')).toBeFocused();
+ await expect(host.locator('.origin-todo-metrics')).toContainText('完了 3件');
+});
