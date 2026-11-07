@@ -778,13 +778,18 @@ function restoreOriginTodoListReturn(context,{sameItem=false,action='todo-check'
    target=lookup(context.previousId);
    if(target)top=context.previousTop;
  }
+ // Search editing returns to the query after the last match disappears.
+ // Without a query, an empty pending list should offer "add", not archive.
+ const queryInput=todoSearchOpen&&todoQuery.trim()?root.querySelector('#originTodoQuery'):null;
+ const fallback=context.bucket==='today'
+   ?root.querySelector('[data-form="quick-todo"] [name="title"]')||root.querySelector('[data-route="todos"]')
+   :queryInput?.getClientRects().length
+     ?queryInput
+     :context.bucket==='completed'
+       ?root.querySelector('.origin-todo-archive-toggle')||root.querySelector('.origin-todo-add [name="title"]')
+       :root.querySelector('.origin-todo-add [name="title"]')||root.querySelector('.origin-todo-archive-toggle');
  const control=target?.querySelector('[data-action="'+action+'"]')||
-   target?.querySelector('[data-action="todo-check"]')||
-   (context.bucket==='today'
-     ?root.querySelector('[data-form="quick-todo"] [name="title"]')||root.querySelector('[data-route="todos"]')
-     :todoQuery&&root.querySelector('#originTodoQuery')?.getClientRects().length
-       ?root.querySelector('#originTodoQuery')
-       :root.querySelector('.origin-todo-archive-toggle')||root.querySelector('.origin-todo-add [name="title"]'));
+   target?.querySelector('[data-action="todo-check"]')||fallback;
  if(!control||!control.getClientRects().length)return false;
  control.focus({preventScroll:true});
  if(!target){
