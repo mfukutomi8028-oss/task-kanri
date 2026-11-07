@@ -148,7 +148,8 @@
       // Removing the search term from an in-progress edit must not hide the
       // unsaved editor. Retain that row through its successful redraw until
       // the user changes or clears the search.
-      const editing = Boolean(needle && !match && item.dataset.todoId === retainedEditId);
+      const editing = Boolean(needle && !match
+        && (item.dataset.todoId === retainedEditId || item.dataset.todoDraftDirtyV527 === 'true'));
       item.hidden = !(match || editing);
       if (match) matched += 1;
       if (editing) retained += 1;
