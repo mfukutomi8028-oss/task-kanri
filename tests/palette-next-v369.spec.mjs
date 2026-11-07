@@ -453,6 +453,16 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
     el.getBoundingClientRect().top-el.closest('#pnDetail').getBoundingClientRect().top);
   expect(Math.abs(restoredViewOffset-viewRowOffset)).toBeLessThanOrEqual(40);
   await expect(compareSearch).toHaveValue('NEXT 週次バッチテスト');
+  // After the final occurrence is reviewed, show completion rather than
+  // a misleading "no matches" message, and keep the existing search text.
+  await compare.locator('[data-pn-series-index-status]').selectOption('unchecked');
+  const completed=compare.locator('.pn-series-index-empty.is-complete');
+  await expect(completed).toContainText('すべて確認済み');
+  await expect(compare.locator('[data-pn-series-index-next-unchecked]')).toHaveCount(0);
+  await completed.locator('[data-pn-series-index-complete-show-all]').click();
+  await expect(compare.locator('[data-pn-series-index-status]')).toHaveValue('all');
+  await expect(compareSearch).toHaveValue('NEXT 週次バッチテスト');
+  await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
   // Editing from the comparison row keeps its original screen position on return.
   const sourceRow=compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]');
   await sourceRow.scrollIntoViewIfNeeded();
