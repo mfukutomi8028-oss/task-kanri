@@ -2264,3 +2264,57 @@ test('Palette review queue follows the next unchecked occurrence and restores th
   assert.doesNotMatch(shell.slice(begin,end)+handler,
     /bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+
+test('Palette explains why reviewed occurrences leave the unchecked filter without losing the query',()=>{
+  const begin=shell.indexOf('  function currentSeriesIndex(item) {');
+  const end=shell.indexOf('  function inspectorSeriesContext(item) {',begin);
+  assert.ok(begin>0&&end>begin);
+  const rows=Array.from({length:12},(_,i)=>({
+    id:'A'+(i+1),recurrenceSeriesId:'A',revision:1,
+    title:i===9?'特別・確認':'週次確認',
+    startAt:'2027-05-'+String(i+1).padStart(2,'0')+'T09:00'
+  }));
+  rows.push({id:'foreign',recurrenceSeriesId:'B',revision:1,
+    title:'別系列',startAt:'2027-05-06T10:00'});
+  const state={route:'schedule',detail:{kind:'schedule',id:'A1'},
+    snapshot:{schedules:rows,currentUser:'職員A',roomId:'room1'}};
+  const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
+    .replaceAll('"','&quot;');
+  const fns=new Function('state','seriesOccurrences','escape','localDate',
+    'localTime','scheduleSeriesDateLabel',
+    'let seriesIndexState=null;\n'+shell.slice(begin,end)+
+    'return {currentSeriesIndex,filteredSeriesIndex,seriesIndexResults,'+
+      'seriesIndexReviewedFeedback};'
+  )(state,item=>rows.filter(row=>row.recurrenceSeriesId===item?.recurrenceSeriesId),
+    esc,v=>String(v||'').slice(0,10),v=>String(v||'').slice(11,16),
+    v=>String(v||'').replaceAll('-','/'));
+  const index=fns.currentSeriesIndex(rows[0]);
+  index.status='unchecked';index.query='週次確認';
+  index.viewed.add('A2');index.reviewedReturnId='A2';
+  let markup=fns.seriesIndexResults(rows[0]);
+  assert.match(markup,/確認した回は「未確認のみ」から外れました/);
+  assert.match(markup,/data-pn-series-index-reviewed-reveal="A2"/);
+  assert.doesNotMatch(markup,/data-pn-series-index-open="A2"/);
+  assert.match(markup,/data-pn-series-index-open="A1"/);
+  assert.doesNotMatch(markup,/data-pn-series-index-open="foreign"/);
+  index.query='特別';
+  assert.doesNotMatch(fns.seriesIndexResults(rows[0]),/data-pn-series-index-reviewed-reveal/);
+  index.query='週次確認';index.status='all';
+  assert.doesNotMatch(fns.seriesIndexResults(rows[0]),/data-pn-series-index-reviewed-reveal/);
+  assert.match(fns.seriesIndexResults(rows[0]),/data-pn-series-index-open="A2"/);
+  const back=shell.slice(shell.indexOf("    if(target.hasAttribute('data-pn-series-browse-back'))"),
+    shell.indexOf("    if(target.dataset.pnSeriesIndexNextUnchecked){"));
+  assert.match(back,/index\.reviewedReturnId=index\.status==='unchecked'/);
+  const reveal=shell.slice(shell.indexOf('    if(target.dataset.pnSeriesIndexReviewedReveal){'),
+    shell.indexOf("    if(target.hasAttribute('data-pn-series-index-reveal'))"));
+  assert.match(reveal,/index\.status='all';index\.reviewedReturnId=null/);
+  assert.match(reveal,/seriesIndexMatchesQuery\(viewed,index\.query\)/);
+  assert.match(reveal,/index\.page=Math\.floor\(position\/8\)/);
+  const returns=shell.slice(shell.indexOf('  function captureSeriesIndexReturn('),
+    shell.indexOf('  function openEditor('));
+  assert.match(returns,/data-pn-series-index-reviewed-reveal/);
+  assert.match(css,/\.pn-series-index-reviewed button:focus-visible/);
+  assert.doesNotMatch(back+reveal+returns,
+    /bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+});
