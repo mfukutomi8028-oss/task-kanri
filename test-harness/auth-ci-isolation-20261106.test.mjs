@@ -18,9 +18,11 @@ test('authorization rules run independently and affect final regression gate', (
     assert.doesNotMatch(fb, new RegExp('npm run ' + name.replaceAll(':', '\\:')));
   }
   assert.match(fb, /npm run test:firebase/);
-  assert.match(workflow, /needs: \[protocol, browser, authorization, firebase\]/);
+  assert.match(workflow, /needs: \[scope, protocol, browser, authorization, firebase\]/);
+  assert.match(auth, /needs: scope[\s\S]*if: \$\{\{ needs\.scope\.outputs\.authorization == 'true' \}\}/);
   assert.match(workflow, /AUTHORIZATION_RESULT: \$\{\{ needs\.authorization\.result \}\}/);
-  assert.match(workflow, /test "\$AUTHORIZATION_RESULT" = "success"/);
+  assert.match(workflow, /if \[\[ "\$required" == true && "\$actual" != success \]\]/);
+  assert.match(workflow, /if \[\[ "\$required" == false && "\$actual" != skipped \]\]/);
   assert.doesNotMatch(workflow, /firebase deploy|--project task-kanri-2ad16/);
 });
 
