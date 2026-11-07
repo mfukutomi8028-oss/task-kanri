@@ -1127,7 +1127,8 @@ test('JOURNAL V515 list rerenders restore the exact filter, sorting or search co
   assert.match(handler,/token!==journalIndexRefreshTokenV515/);
   assert.doesNotMatch(handler,/(?:runTransaction|persistTask|commitTaskDraft|updateDatabase|onValue)\s*\(/);
   const index=app.slice(end,app.indexOf('function journalNavigateChronicleV504(',end));
-  assert.equal((index.match(/journalRefreshIndexV515\(tasks,/g)||[]).length,6);
+  // Six existing index controls plus V518's contextual empty-result reset.
+  assert.equal((index.match(/journalRefreshIndexV515\(tasks,/g)||[]).length,7);
   assert.match(index,/journalRefreshIndexV515\(tasks,input,/);
   assert.match(index,/el\.setSelectionRange\(cursor,cursor\)/);
   assert.match(index,/node\.dataset\.j430Facet===key&&node\.dataset\.j430Value===value/);
@@ -1152,4 +1153,22 @@ test('JOURNAL V516 desk restores the originating case and index control without 
   assert.match(css,/JOURNAL V516/);
   assert.match(css,/#boardView \.j420-atelier-desk \{\s*min-height:0/);
   assert.match(css,/#timelineView \.jv-time-controls>button/);
+});
+
+
+test('JOURNAL V518 empty index recovery reuses the canonical filter refresh and diary add',()=>{
+  const app=read('app.js');
+  const index=app.slice(app.indexOf('function journalIndexV425(tasks){'),app.indexOf('function journalNavigateChronicleV504('));
+  assert.match(index,/const emptyResultsV518=/);
+  assert.match(index,/ordered\.map\(record\)\.join\(''\)\|\|emptyResultsV518/);
+  assert.match(index,/data-j518-empty-reset/);
+  assert.match(index,/resetIndexFiltersV518\(\)/);
+  assert.match(index,/journalRefreshIndexV515\(tasks,event\.currentTarget,\(\)=>root\.querySelector\('\[data-j425-query\]'\)\)/);
+  assert.doesNotMatch(index,/(?:runTransaction|firebase\.database|setDoc|updateDoc)\s*\(/);
+  const diary=app.slice(app.indexOf('function journalChronicleV411(tasks){'));
+  assert.match(diary,/j434-chronicle-add/);
+  assert.match(diary,/data-jv-add-date/);
+  assert.match(css,/JOURNAL V518/);
+  assert.match(css,/\.jv-chronicle-day\.is-empty/);
+  assert.match(css,/\.j518-index-empty button/);
 });
