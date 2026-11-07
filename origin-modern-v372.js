@@ -400,7 +400,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  if(busy)return false;
  busy=true;
  const savingPanel=Boolean((close||returnToTask)&&panelOpen&&panelMode==='edit');
- const todoReturn=close&&savingPanel&&command.type==='todo.update'
+ const todoReturn=close&&savingPanel&&command.type==='todo.update'&&!panelReturnSearch
    ?captureOriginTodoListReturn(command.id):null;
  const beforeTodo=todoReturn?data.todos.find(item=>item.id===command.id):null;
  if(savingPanel)markOriginEditorSaving(true,command);
