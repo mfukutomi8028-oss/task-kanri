@@ -146,3 +146,24 @@ test('origin ToDo create saves requested initial status without a second write',
  assert.match(app,/record = \{ id, text, memo, completed, completedAt: completed \? now : 0, order:/);
  assert.match(app,/result = await createTodo\(command\.text, command\.memo \|\| '', command\)/);
 });
+
+
+test('origin history search uses filtered results without changing completion metrics',()=>{
+ assert.match(source,/function originVisibleCompletedTodos\(\)/);
+ assert.match(source,/const query=todoSearchHistory\?todoQuery\.trim\(\)\.toLocaleLowerCase\(\):''/);
+ assert.match(source,/const totalDone=data\.todos\.length-pending\.length/);
+ assert.match(source,/Math\.round\(totalDone\/data\.todos\.length\*100\)/);
+ assert.match(source,/data-action="todo-search-history" aria-pressed="\$\{todoSearchHistory\}"/);
+ assert.match(source,/todoSearchHistory\?' ・ 完了履歴 '\+done\.length\+'件':''/);
+ assert.match(source,/if\(todoSearchHistory\)todoCompletedOpen=true/);
+ assert.match(source,/todoSearchHistory=false;todoCompletedOpen=false/);
+});
+test('origin ToDo editing returns to a matching nearby editor while preserving global search',()=>{
+ assert.match(source,/function restoreOriginTodoListReturn\(context,\{sameItem=false,action='todo-check'\}=\{\}\)/);
+ assert.match(source,/const todoReturn=close&&savingPanel&&command\.type==='todo\.update'&&!panelReturnSearch/);
+ assert.match(source,/action:'list-quick-edit'/);
+ assert.match(source,/const sameBucket=beforeTodo&&beforeTodo\.done===command\.completed/);
+ assert.match(source,/root\.querySelector\('#originTodoQuery'\)/);
+ assert.match(source,/if\(a==='todo-search-history'\)/);
+ assert.match(source,/kind==='todos'&&view==='todos'&&todoSearchHistory&&!todoCompletedOpen/);
+});
