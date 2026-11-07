@@ -1356,11 +1356,48 @@ function clearOriginFieldError(form){
  if(field){
    field.removeAttribute('aria-invalid');
    delete field.dataset.originFieldInvalid;
+   delete field.dataset.originErrorCode;
    const ids=(field.getAttribute('aria-describedby')||'').split(/\s+/).filter(id=>id&&id!=='originFieldError');
    if(ids.length)field.setAttribute('aria-describedby',ids.join(' '));
    else field.removeAttribute('aria-describedby');
  }
  form.querySelector('#originFieldError')?.remove();
+}
+
+function reconcileOriginFieldError(form,changed){
+ const field=form?.querySelector('[data-origin-field-invalid="true"]');
+ if(!field||!changed)return;
+ const code=field.dataset.originErrorCode||'field';
+ if(code==='date-range'&&!['startAt','endAt'].includes(changed.name))return;
+ if(code==='checklist-total'&&!['checkText','checkDone'].includes(changed.name))return;
+ if(!['date-range','checklist-total'].includes(code)&&changed!==field)return;
+ let resolved=false;
+ if(code==='date-range'){
+   const start=new Date(form.elements.namedItem('startAt')?.value||'');
+   const end=new Date(form.elements.namedItem('endAt')?.value||'');
+   resolved=Number.isFinite(start.getTime())&&Number.isFinite(end.getTime())&&end>start;
+ }else if(code==='checklist-total'){
+   const texts=[...form.querySelectorAll('.origin-checkrow [name="checkText"]')]
+     .map(input=>input.value.trim()).filter(Boolean);
+   resolved=texts.join('\n').length<=6000;
+ }else{
+   resolved=field.validity.valid&&(field.name!=='title'||Boolean(field.value.trim()));
+ }
+ if(!resolved)return;
+ clearOriginFieldError(form);
+ for(const id of ['originEditorError','originScheduleError','originTaskError']){
+   const error=form.querySelector('#'+id);if(error)error.hidden=true;
+ }
+}
+function reconcileOriginChecklistAfterRemoval(){
+ const form=$('#editForm'),field=form?.querySelector('[data-origin-error-code="checklist-total"]');
+ if(!field)return;
+ const texts=[...form.querySelectorAll('.origin-checkrow [name="checkText"]')]
+   .map(input=>input.value.trim()).filter(Boolean);
+ if(texts.join('\n').length<=6000){
+   clearOriginFieldError(form);
+   const error=form.querySelector('#originTaskError');if(error)error.hidden=true;
+ }
 }
 function markOriginInvalidField(form,name,message){
  if(!form)return false;
@@ -1374,7 +1411,10 @@ function markOriginInvalidField(form,name,message){
  note.id='originFieldError';note.className='origin-field-error';note.textContent=message;
  const row=field.closest('.origin-checkrow');
  if(row)row.appendChild(note);else field.insertAdjacentElement('afterend',note);
- field.dataset.originFieldInvalid='true';field.setAttribute('aria-invalid','true');
+ field.dataset.originFieldInvalid='true';
+ field.dataset.originErrorCode=name==='checkText'&&message.includes('6,000')?'checklist-total':
+   (name==='startAt'||name==='endAt')&&message.includes('終了日時')?'date-range':'field';
+ field.setAttribute('aria-invalid','true');
  const existing=field.getAttribute('aria-describedby');
  field.setAttribute('aria-describedby',[existing,note.id].filter(Boolean).join(' '));
  field.focus({preventScroll:true});
@@ -1754,7 +1794,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
   updateOriginDraftState();return;
  }
  if(a==='task-check-add'){const c=$('#originTaskChecks');if(c){if(c.children.length>=80)return notify('チェック項目は80件以内にしてください。');c.insertAdjacentHTML('beforeend',taskCheckRow());c.lastElementChild.querySelector('[name="checkText"]')?.focus();updateOriginDraftState();}return;}
- if(a==='task-check-remove'){const row=el.closest('.origin-checkrow');const next=row?.nextElementSibling||row?.previousElementSibling;row?.remove();(next?.querySelector('[name="checkText"]')||$('#editForm [name="title"]'))?.focus();updateOriginDraftState();return;}
+ if(a==='task-check-remove'){const row=el.closest('.origin-checkrow');const next=row?.nextElementSibling||row?.previousElementSibling;row?.remove();(next?.querySelector('[name="checkText"]')||$('#editForm [name="title"]'))?.focus();reconcileOriginChecklistAfterRemoval();updateOriginDraftState();return;}
  if(a==='search-kind'){
   searchKind=['all','tasks','todos','events','memos'].includes(value)?value:'all';
   renderSearch($('#originSearchInput').value);
@@ -1874,7 +1914,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    const minutes=Number(el.dataset.minutes);
    if(!Number.isFinite(start.getTime())||![30,60,120].includes(minutes))return;
    f.elements.namedItem('endAt').value=scheduleLocalInput(new Date(start.getTime()+minutes*60000));
-   const msg=f.querySelector('#originScheduleError');if(msg)msg.hidden=true;
+   const msg=f.querySelector('#originScheduleError');if(msg&&!f.querySelector('#originFieldError'))msg.hidden=true;
    updateOriginDraftState();
    return;
  }
@@ -2045,7 +2085,7 @@ mount.addEventListener('click',e=>{
 });
 mount.addEventListener('change',e=>{
  if(e.target.closest?.('#editForm')){
-   clearOriginFieldError(e.target.closest('#editForm'));
+   reconcileOriginFieldError(e.target.closest('#editForm'),e.target);
    updateOriginDraftState();
  }
   const t=e.target;if(t.id==='originUserSelect'){
@@ -2169,10 +2209,12 @@ mount.addEventListener('input',e=>{
  }
  if(e.target.matches('[data-form="quick-todo"] [name="title"]'))quickTodoDraft=e.target.value;
  const f=e.target.form;
- if(f?.id==='editForm'&&f.dataset.kind==='tasks'){const message=f.querySelector('#originTaskError');if(message)message.hidden=true;}
+ if(f?.id==='editForm'&&f.dataset.kind==='tasks'&&!f.querySelector('#originFieldError')){const message=f.querySelector('#originTaskError');if(message)message.hidden=true;}
  if(f?.id==='editForm'){
-  clearOriginFieldError(f);
-  const error=f.querySelector('#originEditorError');if(error)error.hidden=true;
+  reconcileOriginFieldError(f,e.target);
+  if(!f.querySelector('#originFieldError')){
+   const error=f.querySelector('#originEditorError');if(error)error.hidden=true;
+  }
   updateOriginDraftState();
  }
   if(f?.id==='editForm'&&f.dataset.kind==='events'){
