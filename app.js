@@ -6221,7 +6221,7 @@ function journalAtelierV420(tasks){
   ];
   // JOURNAL V520: leave the decorative four-shelf layout on an unfiltered
   // desktop desk, but never reserve empty shelves on phones or filtered views.
-  const compactGroups=journalAtelierInlineMediaV494.matches||journalAtelierViewV420!=='all'
+  const compactGroups=journalAtelierViewV420!=='all'
     ||Boolean(journalAtelierCategoryV420)||Boolean(elements.searchInput.value.trim());
   const displayGroups=groups.filter(g=>g.id!=='other'||g.items.length)
     .filter(g=>g.items.length||(!compactGroups&&viewTasks.length>0));
@@ -6237,7 +6237,7 @@ function journalAtelierV420(tasks){
     journalAtelierInlineOpenV494=false;
   }
   const chosen=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
-  const renderGroup=g=>`<section class="j420-island j420-island-${g.id}" aria-label="${g.title}">
+  const renderGroup=g=>`<section class="j420-island j420-island-${g.id} ${g.items.length?'':'j520-empty-island'}" aria-label="${g.title}">
     <header><span class="j420-island-roman">${g.roman}</span><h3>${g.title}</h3><small>${g.items.length} 件</small><svg class="j425-island-pin" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#pin"></use></svg></header>
     <div class="j420-island-items">${g.items.map(journalAtelierCardV420).join('')||'<p class="j420-island-empty">この棚の案件はありません</p>'}</div>
   </section>`;
@@ -6359,7 +6359,8 @@ function journalAtelierV420(tasks){
     }else journalAtelierV420(tasks);
     requestAnimationFrame(()=>{
       if(token!==journalAtelierRefreshTokenV516||!journalTaskV411()||elements.boardView.hidden)return;
-      const target=elements.boardView.querySelector(focusSearch?'[data-j420-search]':'[data-j420-reset-view]')
+      const target=[...elements.boardView.querySelectorAll(focusSearch?'[data-j420-search]':'[data-j420-reset-view]')]
+        .find(el=>el.getClientRects().length>0)
         ||elements.boardView.querySelector('[data-j420-new-task]');
       if(!target)return;
       target.focus({preventScroll:true});
