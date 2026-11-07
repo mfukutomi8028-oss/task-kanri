@@ -2974,6 +2974,26 @@ function renderTodoView() {
   });
 }
 
+// Keep the same visible action at the same viewport position after Classic's
+// canonical ToDo redraw. Shared by detail save and completion transitions.
+function focusClassicTodoActionAtViewportPosition(control, previousTop) {
+  if (!control || control.disabled || !control.getClientRects().length) return false;
+  const delta = control.getBoundingClientRect().top - previousTop;
+  if (Math.abs(delta) > 1) {
+    let scrollParent = control.parentElement;
+    while (scrollParent && scrollParent !== document.documentElement) {
+      const style = getComputedStyle(scrollParent);
+      if (/auto|scroll/.test(style.overflowY)
+        && scrollParent.scrollHeight > scrollParent.clientHeight + 1) break;
+      scrollParent = scrollParent.parentElement;
+    }
+    const scroller = scrollParent || document.scrollingElement || document.documentElement;
+    scroller.scrollTop += delta;
+  }
+  control.focus({ preventScroll: true });
+  return true;
+}
+
 function bindTodoWorkspace(root = elements.todoView) {
   if (!root) return;
   const listRoot = root.querySelector('[data-todo-lists]');
@@ -3021,7 +3041,44 @@ function bindTodoWorkspace(root = elements.todoView) {
       dragHandle.setAttribute('aria-hidden', 'true');
       dragHandle.draggable = !busy;
       row.append(dragHandle);
-      const check = document.createElement('input'); check.className = 'todo-check'; check.type = 'checkbox'; check.checked = todo.completed; check.disabled = busy; check.setAttribute('aria-label', `「${todo.text}」を${todo.completed ? '未完了' : '完了'}にする`); check.addEventListener('change', () => toggleTodo(todo.id)); row.append(check);
+      const check = document.createElement('input'); check.className = 'todo-check'; check.type = 'checkbox'; check.checked = todo.completed; check.disabled = busy; check.setAttribute('aria-label', `「${todo.text}」を${todo.completed ? '未完了' : '完了'}にする`); check.addEventListener('change', async () => {
+        const sourceControl = row.querySelector('.todo-state-toggle-v144') || check;
+        const previousTop = sourceControl.getBoundingClientRect().top;
+        const focused = document.activeElement;
+        const fromCurrentAction = focused === sourceControl || focused === check
+          || focused === document.body || focused === document.documentElement;
+        const visibleSiblings = [...(row.parentElement?.children || [])]
+          .filter(item => item.classList.contains('todo-item') && !item.hidden && item.getClientRects().length);
+        const position = visibleSiblings.indexOf(row);
+        const neighborIds = [visibleSiblings[position + 1]?.dataset.todoId,
+          visibleSiblings[position - 1]?.dataset.todoId].filter(Boolean);
+        const result = await toggleTodo(todo.id);
+        // Failed writes and switches to other screens must not move the cursor.
+        if (!result?.ok || !fromCurrentAction || state.layout !== 'todos'
+          || document.documentElement.dataset.wbDisplay !== 'classic') return;
+        // The root observer adds the visible completion buttons after the
+        // canonical redraw. Use one frame, not another permanent observer.
+        requestAnimationFrame(() => {
+          if (state.layout !== 'todos' || document.documentElement.dataset.wbDisplay !== 'classic'
+            || ![document.body, document.documentElement].includes(document.activeElement)) return;
+          const page = elements.todoView?.querySelector('.todo-page');
+          if (!page) return;
+          const usable = control => Boolean(control && !control.disabled && control.getClientRects().length);
+          const toggleForId = id => page.querySelector(
+            `[data-todo-id="${cssEscape(id)}"] .todo-state-toggle-v144`);
+          // Continue with the next visible item in the original section.
+          // When the section becomes empty, choose the closest usable action.
+          const neighbor = neighborIds.map(toggleForId).find(usable);
+          const fallbacks = [toggleForId(todo.id),
+            page.querySelector('.todo-list.is-completed .todo-completed-toggle-v145'),
+            page.querySelector('.todo-search-reset-v145'),
+            page.querySelector('.todo-search-input-v145')].filter(usable);
+          const closest = fallbacks.sort((a, b) =>
+            Math.abs(a.getBoundingClientRect().top - previousTop)
+              - Math.abs(b.getBoundingClientRect().top - previousTop))[0];
+          focusClassicTodoActionAtViewportPosition(neighbor || closest, previousTop);
+        });
+      }); row.append(check);
 
       const content = document.createElement('div'); content.className = 'todo-content';
       const summary = document.createElement('button'); summary.type = 'button'; summary.className = 'todo-summary-button'; summary.disabled = busy; summary.setAttribute('aria-expanded', expanded ? 'true' : 'false'); summary.setAttribute('aria-controls', `todo-detail-${todo.id}`);
@@ -3054,19 +3111,7 @@ function bindTodoWorkspace(root = elements.todoView) {
         const currentSave = currentRow?.querySelector('.todo-detail-save');
         if (!currentSave || currentSave.disabled || !currentSave.getClientRects().length) return;
 
-        const delta = currentSave.getBoundingClientRect().top - oldTop;
-        if (Math.abs(delta) > 1) {
-          let scrollParent = currentSave.parentElement;
-          while (scrollParent && scrollParent !== document.documentElement) {
-            const style = getComputedStyle(scrollParent);
-            if (/auto|scroll/.test(style.overflowY)
-              && scrollParent.scrollHeight > scrollParent.clientHeight + 1) break;
-            scrollParent = scrollParent.parentElement;
-          }
-          const scroller = scrollParent || document.scrollingElement || document.documentElement;
-          scroller.scrollTop += delta;
-        }
-        currentSave.focus({ preventScroll: true });
+        focusClassicTodoActionAtViewportPosition(currentSave, oldTop);
       });
       detailFooter.append(detailHint, save); detail.append(detailFooter); content.append(detail); row.append(content);
 
