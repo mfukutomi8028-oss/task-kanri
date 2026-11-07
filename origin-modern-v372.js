@@ -1269,9 +1269,9 @@ function restoreDetailFocus(kind,id){
  let target=visible.find(button=>button.dataset.id===id);
  // If the item left this filter or was removed, return to a nearby visible row.
  if(!target&&detailSequence?.kind===kind&&detailSequence?.view===view){
-   const ids=detailSequence.ids,index=ids.indexOf(id);
-   const nearest=ids.slice(Math.max(0,index+1)).concat(ids.slice(0,Math.max(0,index)).reverse());
-   target=nearest.map(candidate=>visible.find(button=>button.dataset.id===candidate))
+   const visibleById=new Map(visible.map(button=>[button.dataset.id,button]));
+   target=originAdjacentReturnIds(kind,id,visibleById.keys())
+     .map(candidate=>visibleById.get(candidate))
      .find(Boolean);
  }
  const navigation=window.innerWidth<=770?$('#mobileNav'):$('#desktopNav');
