@@ -1281,3 +1281,30 @@ test('JOURNAL V525 diary view switch restores semantic date with pixel fallback'
   assert.match(nav,/active\?\.focus\(\{preventScroll:true\}\)/);
   assert.doesNotMatch(nav,/(?:persistTask|commitTaskDraft|runTransaction|firebase|onValue)\s*\(/i);
 });
+
+
+test('JOURNAL V528 restores reading and focus only for remote subscription paints',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('let journalSubscribedRenderV528 = false;');
+  const render=app.slice(start,app.indexOf('function render() {',start));
+  assert.match(render,/journalSubscribedRenderV528 = true/);
+  assert.match(render,/try \{ render\(\); \}/);
+  assert.match(render,/finally \{ journalSubscribedRenderV528 = false; \}/);
+  const first=app.indexOf('let journalChronicleSyncRestoreTokenV528=0;');
+  const last=app.indexOf('function journalChronicleV411(tasks){',first);
+  assert.ok(first>0&&last>first);
+  const helper=app.slice(first,last);
+  assert.match(helper,/journalCaptureChronicleSyncAnchorV528/);
+  assert.match(helper,/journalRestoreChronicleSyncAnchorV528/);
+  assert.match(helper,/if\(!journalSubscribedRenderV528\|\|!journalTaskV411\(\)\|\|root\.hidden/);
+  assert.match(helper,/j511-chronicle-travel/);
+  assert.match(helper,/focusAttr/);
+  assert.match(helper,/root\.querySelectorAll\('\['\+anchor\.focusAttr\+'\]'\)/);
+  assert.match(helper,/journalChronicleSyncRestoreTokenV528/);
+  assert.match(helper,/scrolling\.scrollTop\+=day\.getBoundingClientRect\(\)\.top-anchor\.top/);
+  assert.match(helper,/focus\.focus\(\{preventScroll:true\}\)/);
+  assert.doesNotMatch(helper,/(?:persistTask|runTransaction|updateDoc|firebase\.database|setDoc)\s*\(/);
+  const diary=app.slice(last,app.indexOf('function journalDayItemV411(',last));
+  assert.match(diary,/const syncAnchorV528=journalCaptureChronicleSyncAnchorV528\(elements\.timelineView\)/);
+  assert.match(diary,/journalRestoreChronicleSyncAnchorV528\(syncAnchorV528,root\)/);
+});
