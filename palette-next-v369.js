@@ -2629,7 +2629,7 @@
         notify('対象の予定が更新されました。現在の系列をご確認ください。');
         return;
       }
-      scheduleSavedReview=null;
+      // Let openEditor capture the previous save review's return token first.
       state.detail={kind:'schedule',id:candidate.id};
       openEditor('schedule',candidate.id,target); // Existing revision-aware single-record editor.
       return;
