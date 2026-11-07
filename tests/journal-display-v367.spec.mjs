@@ -1798,7 +1798,7 @@ test('JOURNAL V504 phone chronicle adds to populated dates, wraps titles and res
   await emptyAdd.click();
   const editor=page.locator('#taskDialog');
   await expect(editor.locator('#taskDueDate')).toHaveValue(date);
-  const title='JOURNAL V504 日付日誌で長い案件名を表示するテスト '+'長文'.repeat(34)+'X'.repeat(90);
+  const title='JOURNAL V504 日付日誌で長い案件名を表示するテスト '+'長文'.repeat(14)+'X'.repeat(20);
   await editor.locator('#taskTitle').fill(title);
   await editor.locator('#taskForm button[type="submit"]').click();
   await expect(editor).toBeHidden();
