@@ -6891,8 +6891,24 @@ function journalCaptureTaskPageSyncAnchorV530(layout){
     value:active.value,start:active.selectionStart,end:active.selectionEnd,
     direction:active.selectionDirection
   }:null;
+  // V532: remember the previous order only during remote repaint. IDs remain
+  // canonical; deleted items resolve to the following row, then preceding row.
+  const rowAttr=layout==='board'?'data-j420-task-id':'data-j425-row';
+  const order=[...root.querySelectorAll('['+rowAttr+']')].map(el=>el.getAttribute(rowAttr));
   return {token,layout,focus,anchor:journalTaskSyncDescriptorV530(root,layout,anchorNode),
-    top:anchorNode?.getBoundingClientRect().top??null,width:window.innerWidth,search};
+    top:anchorNode?.getBoundingClientRect().top??null,width:window.innerWidth,search,
+    order,selected:layout==='board'?journalAtelierSelectedV420:journalIndexStateV425.selected};
+}
+function journalNearestSurvivingTaskV532(snapshot,available){
+  const existing=new Set(available);
+  if(existing.has(snapshot.selected))return snapshot.selected;
+  const index=snapshot.order.indexOf(snapshot.selected);
+  if(index<0)return available[0]||'';
+  for(let i=index+1;i<snapshot.order.length;i++)
+    if(existing.has(snapshot.order[i]))return snapshot.order[i];
+  for(let i=index-1;i>=0;i--)
+    if(existing.has(snapshot.order[i]))return snapshot.order[i];
+  return available[0]||'';
 }
 function journalRestoreTaskPageSyncAnchorV530(snapshot){
   if(!snapshot)return;
@@ -6905,15 +6921,26 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
     const current=document.activeElement;
     if(current&&current!==document.body&&current!==document.documentElement
       &&current.isConnected)return;
-    const anchor=journalTaskSyncLocateV530(root,snapshot.anchor);
+    const rowAttr=snapshot.layout==='board'?'data-j420-task-id':'data-j425-row';
+    const selectedNode=[...root.querySelectorAll('['+rowAttr+']')]
+      .find(el=>el.getAttribute(rowAttr)===snapshot.selected);
+    const anchor=journalTaskSyncLocateV530(root,snapshot.anchor)
+      ||(snapshot.anchor?.name===rowAttr&&!selectedNode
+        ?root.querySelector('['+rowAttr+'].is-selected'):null);
     if(anchor&&document.scrollingElement&&Number.isFinite(snapshot.top)
       &&snapshot.width===window.innerWidth)
       document.scrollingElement.scrollTop+=anchor.getBoundingClientRect().top-snapshot.top;
     else if(anchor)anchor.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
     let target=journalTaskSyncLocateV530(root,snapshot.focus);
-    if(!target&&snapshot.focus)
-      target=journalTaskSyncLocateV530(root,snapshot.anchor)
+    if(!target&&snapshot.focus){
+      // A deleted or filtered-out row must not send keyboard focus to a
+      // stale note or the first unrelated record.
+      target=snapshot.focus.name===rowAttr
+        ?root.querySelector('['+rowAttr+'].is-selected')
+        :null;
+      target ||=journalTaskSyncLocateV530(root,snapshot.anchor)
         ||root.querySelector(snapshot.layout==='board'?'[data-j420-search]':'[data-j425-query]');
+    }
     if(!target)return;
     if(!target.matches('button,input,select,a,[tabindex]'))target.tabIndex=-1;
     target.focus({preventScroll:true});
@@ -6975,8 +7002,11 @@ function journalAtelierV420(tasks){
   const dueSoon=tasks.filter(t=>t.dueDate&&week(t)).length;
   const activities=[...tasks].filter(t=>Number(t.updatedAt)>0).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,6);
   if(!viewTasks.some(t=>t.id===journalAtelierSelectedV420)){
-    journalAtelierSelectedV420=viewTasks[0]?.id||'';
+    journalAtelierSelectedV420=syncAnchorV530
+      ?journalNearestSurvivingTaskV532(syncAnchorV530,viewTasks.map(t=>t.id))
+      :viewTasks[0]?.id||'';
     journalAtelierInlineOpenV494=false;
+    journalAtelierReturnAnchorV516=null;
   }
   const chosen=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
   const renderGroup=g=>`<section class="j420-island j420-island-${g.id} ${g.items.length?'':'j520-empty-island'}" aria-label="${g.title}">
@@ -7225,7 +7255,14 @@ function journalIndexV425(tasks){
   if(filters.sort==='updated')ordered.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   if(filters.sort==='title')ordered.sort((a,b)=>a.title.localeCompare(b.title,'ja'));
   if(filters.sort==='priority'){const rank={緊急:0,高:1,中:2,低:3};ordered.sort((a,b)=>(rank[a.priority]??4)-(rank[b.priority]??4))}
-  if(!ordered.some(t=>t.id===filters.selected))filters.selected=ordered[0]?.id||'';
+  if(!ordered.some(t=>t.id===filters.selected)){
+    filters.selected=syncAnchorV530
+      ?journalNearestSurvivingTaskV532(syncAnchorV530,ordered.map(t=>t.id))
+      :ordered[0]?.id||'';
+    // V491's inline note must not follow a deleted row or stale selection.
+    journalTaskInlineSelectedV491='';
+    journalIndexReturnAnchorV513=null;
+  }
   const selected=ordered.find(t=>t.id===filters.selected);
   const statuses=[...new Set(tasks.map(t=>t.status).filter(Boolean))];
   const categories=[...new Set(tasks.map(t=>t.category).filter(Boolean))];
@@ -7624,6 +7661,16 @@ function journalRestoreChronicleSyncAnchorV528(anchor,root){
     }
     if(!focus&&(anchor.focusAttr||anchor.focusDate))
       focus=day?.querySelector('.jv-date')||root.querySelector('[data-j505-date-jump]');
+    // V532: when a task is removed or its due date changes, its old
+    // action no longer exists. Stay in the original day instead of
+    // focusing an unrelated action on another day.
+    if(focus&&anchor.focusAttr&&['data-task-id','data-j494-open-task','data-move-to-timeline'].includes(anchor.focusAttr)
+      &&anchor.date){
+      const owner=focus.closest('.jv-chronicle-day');
+      const ownerDate=owner?.querySelector('[data-jv-date]')?.dataset.jvDate;
+      if(ownerDate&&ownerDate!==anchor.date)
+        focus=day?.querySelector('.jv-date')||focus;
+    }
     if(focus){
       if(!focus.matches('button,select,input,a,[tabindex]'))focus.tabIndex=-1;
       focus.focus({preventScroll:true});
