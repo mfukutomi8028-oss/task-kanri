@@ -2097,3 +2097,35 @@ test('JOURNAL V515 phone index keeps sorting and filter focus after list redraws
   await expect(list.locator('[data-j425-sort]')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+test('JOURNAL V516 phone desk returns to its source card and filter keeps focus',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  const view=board.locator('[data-j420-view="all"]');
+  await board.locator('[data-j502-toggle-index]').click();
+  await view.click();
+  await expect(view).toBeFocused();
+  await board.locator('[data-j502-toggle-index]').click();
+  const card=board.locator('[data-j420-task-id]').first();
+  await expect(card).toBeVisible();
+  await card.scrollIntoViewIfNeeded();
+  const top=await card.evaluate(el=>el.getBoundingClientRect().top);
+  await card.click();
+  const note=board.locator('#j494AtelierNote');
+  await expect(note).toHaveClass(/j494-inline-note/);
+  await note.locator('[data-j494-atelier-back]').click();
+  await expect(card).toBeFocused();
+  expect(Math.abs((await card.evaluate(el=>el.getBoundingClientRect().top))-top)).toBeLessThanOrEqual(35);
+  const deskHeight=await board.locator('.j420-atelier-desk').evaluate(el=>({
+    minHeight:getComputedStyle(el).minHeight,
+    width:el.getBoundingClientRect().width,
+    overflow:document.documentElement.scrollWidth-innerWidth
+  }));
+  expect(deskHeight.minHeight).toBe('0px');
+  expect(deskHeight.width).toBeLessThanOrEqual(390);
+  expect(deskHeight.overflow).toBeLessThanOrEqual(2);
+  await page.setViewportSize({width:320,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
