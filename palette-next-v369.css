@@ -3014,3 +3014,52 @@ html[data-wb-palette-next-preview="true"] body{
 @media(max-width:390px){
   #paletteNextRoot .pn-series-index-reviewed button{width:100%}
 }
+
+/* Palette: canonical-revision review status; no persisted read receipts. */
+#paletteNextRoot .pn-series-index-rereview{
+  border-color:color-mix(in srgb,var(--pn-coral) 32%,var(--pn-border));
+  color:var(--pn-strong);
+  background:color-mix(in srgb,var(--pn-coral) 11%,var(--pn-paper));
+}
+#paletteNextRoot .pn-series-index-update-tag{
+  display:inline-flex;justify-self:start;padding:2px 7px;border-radius:7px;
+  border:1px solid color-mix(in srgb,var(--pn-coral) 35%,var(--pn-border));
+  background:color-mix(in srgb,var(--pn-coral) 12%,var(--pn-paper));
+  color:var(--pn-ink);font-size:11px;font-weight:810;font-style:normal;
+}
+#paletteNextRoot .pn-series-index-empty.is-complete{
+  display:grid;justify-items:start;gap:7px;min-width:0;
+  padding:14px;border:1px solid var(--pn-border);border-radius:12px;
+  background:var(--pn-soft);color:var(--pn-ink);
+}
+#paletteNextRoot .pn-series-index-empty.is-complete strong{
+  font-size:13px;line-height:1.5;font-weight:840;
+}
+#paletteNextRoot .pn-series-index-empty.is-complete small{
+  font-size:11px;line-height:1.55;color:var(--pn-muted);
+}
+#paletteNextRoot .pn-series-index-empty.is-complete button,
+#paletteNextRoot .pn-series-reconfirm button{
+  min-height:44px;max-width:100%;padding:9px 13px;
+  border:1px solid var(--pn-border);border-radius:10px;
+  background:var(--pn-paper);color:var(--pn-strong);
+  font-size:12px;font-weight:810;cursor:pointer;touch-action:manipulation;
+}
+#paletteNextRoot .pn-series-reconfirm{
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;
+  padding:11px 13px;border:1px solid color-mix(in srgb,var(--pn-coral) 35%,var(--pn-border));
+  border-radius:12px;background:color-mix(in srgb,var(--pn-coral) 10%,var(--pn-paper));
+  color:var(--pn-ink);
+}
+#paletteNextRoot .pn-series-reconfirm strong{font-size:12px;font-weight:840}
+#paletteNextRoot .pn-series-reconfirm>span{
+  flex:1 1 175px;color:var(--pn-muted);font-size:11px;line-height:1.5;
+}
+#paletteNextRoot .pn-series-reconfirm :is(button):focus-visible,
+#paletteNextRoot .pn-series-index-empty.is-complete button:focus-visible{
+  outline:3px solid var(--pn-accent);outline-offset:2px;
+}
+@media(max-width:390px){
+  #paletteNextRoot .pn-series-reconfirm button,
+  #paletteNextRoot .pn-series-index-empty.is-complete button{width:100%}
+}
