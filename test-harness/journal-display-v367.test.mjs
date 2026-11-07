@@ -1584,7 +1584,7 @@ test('JOURNAL V552 preserves mobile desk note across remote removal without new 
   assert.ok(sync.length>300&&restore.length>300&&atelier.length>300);
   assert.match(sync,/const atelierInlineReaderV552=layout==='board'&&journalAtelierInlineMediaV494\.matches/);
   assert.match(sync,/journalAtelierInlineOpenV494/);
-  assert.match(sync,/atelierInlineReaderV552\};/);
+  assert.match(sync,/atelierInlineReaderV552[,}]/);
   assert.match(atelier,/journalAtelierInlineOpenV494=Boolean\(syncAnchorV530\?\.atelierInlineReaderV552/);
   assert.match(atelier,/閲覧中の案件が同期更新で表示対象から外れました/);
   assert.match(restore,/const emptyAtelierV552=snapshot\.layout==='board'&&snapshot\.atelierInlineReaderV552/);
@@ -1652,4 +1652,34 @@ test('JOURNAL V554 latest focus beats queued card and pager restoration',()=>{
   assert.match(desk,/current!==activeAtRequestV554/);
   assert.match(desk,/token!==journalAtelierPageTokenV553/);
   assert.doesNotMatch(note+desk,/(?:persistTask|runTransaction|commitTaskDraft|setDoc|onValue)\s*\(/i);
+});
+
+
+test('JOURNAL V556 keeps the visible note section across sync and phone width changes',()=>{
+  const app=read('app.js');
+  const anchor=app.slice(app.indexOf('let journalAtelierReaderAnchorV556=null;'),
+    app.indexOf('// V553: invalidate queued mobile note navigation'));
+  const capture=app.slice(app.indexOf('function journalCaptureTaskPageSyncAnchorV530('),
+    app.indexOf('function journalNearestSurvivingTaskV532('));
+  const restore=app.slice(app.indexOf('function journalRestoreTaskPageSyncAnchorV530('),
+    app.indexOf('function journalAtelierV420(tasks){'));
+  assert.ok(anchor.length>1200&&capture.length>400&&restore.length>500);
+  assert.match(anchor,/\.j420-note-description/);
+  assert.match(anchor,/\.j420-note-checks/);
+  assert.match(anchor,/window\.addEventListener\('scroll'/);
+  assert.match(anchor,/passive:true/);
+  assert.match(anchor,/window\.addEventListener\('resize'/);
+  assert.match(anchor,/anchor\.width===window\.innerWidth/);
+  assert.match(anchor,/anchor\.id!==journalAtelierSelectedV420/);
+  assert.match(anchor,/!note\.contains\(current\)/);
+  assert.match(anchor,/journalCaptureAtelierReaderAnchorV556\(\)/);
+  assert.match(capture,/const readerAnchorV556=layout==='board'&&atelierInlineReaderV552/);
+  assert.match(capture,/focusWasVisibleV556:Boolean\(active&&visible\(active\)\)/);
+  assert.match(restore,/const savedReadingV556=snapshot\.readerAnchorV556/);
+  assert.match(restore,/savedReadingV556\.id===journalAtelierSelectedV420/);
+  assert.match(restore,/const readingOffscreenV556=snapshot\.layout==='board'/);
+  assert.match(restore,/!snapshot\.focusWasVisibleV556/);
+  assert.match(restore,/&&\!readingOffscreenV556/);
+  assert.doesNotMatch(anchor+capture+restore,
+    /(?:persistTask|runTransaction|commitTaskDraft|setDoc|onValue)\s*\(/i);
 });

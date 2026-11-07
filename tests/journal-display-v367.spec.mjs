@@ -3351,3 +3351,84 @@ test('JOURNAL V554 latest focused control wins over card/pager frames and remote
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V556 long phone note stays at its reading section after sync and width changes',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch(),source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      'window.__journalV556RemoteRepaint = () => scheduleSubscribedRender();\nfunction scheduleSubscribedRender() {'
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+
+  const board=page.locator('#boardView'),dialog=page.locator('#taskDialog');
+  const longMemo='引継ぎを確認しながら案件ノートを読み進める。'.repeat(250);
+  for(const title of ['JOURNAL V556 深い案件ノート A','JOURNAL V556 深い案件ノート B']){
+    await board.locator('[data-j420-new-task]').click();
+    await dialog.locator('#taskTitle').fill(title);
+    await dialog.locator('#taskDescription').fill(longMemo);
+    await dialog.locator('#taskForm button[type="submit"]').click();
+    await expect(dialog).toBeHidden();
+  }
+  const search=board.locator('[data-j420-search]');
+  await search.fill('JOURNAL V556');
+  const cards=board.locator('[data-j420-task-id]');
+  await expect(cards).toHaveCount(2);
+  await cards.first().click();
+  const note=board.locator('#j494AtelierNote.j494-inline-note');
+  const section=note.locator('.j420-note-description');
+  const pager=note.locator('.j553-atelier-pager');
+  await expect(section).toBeVisible();
+  expect(await section.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThan(800);
+
+  // Read well below the title. The focused title is now offscreen, so a
+  // remote subscription must not scroll back to the title on repaint.
+  await section.evaluate(el=>{
+    const rect=el.getBoundingClientRect();
+    window.scrollTo({top:Math.max(0,window.scrollY+rect.top+Math.min(420,rect.height*.4)-72),behavior:'instant'});
+  });
+  const settle=()=>page.evaluate(()=>new Promise(done=>
+    requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(done)))));
+  await settle();
+  const before=await section.evaluate(el=>el.getBoundingClientRect().top);
+  expect(before).toBeLessThan(-120);
+  await page.evaluate(()=>window.__journalV556RemoteRepaint());
+  await settle();
+  const afterSync=await section.evaluate(el=>el.getBoundingClientRect().top);
+  expect(Math.abs(afterSync-before)).toBeLessThanOrEqual(75);
+  await expect(note).toBeVisible();
+  await expect(search).toHaveValue('JOURNAL V556');
+
+  // 390→320 and back: neither change crosses the 760px media breakpoint,
+  // so the dedicated width anchor must preserve the current reading section.
+  await page.setViewportSize({width:320,height:800});
+  await settle();
+  const afterNarrow=await section.evaluate(el=>el.getBoundingClientRect().top);
+  expect(Math.abs(afterNarrow-afterSync)).toBeLessThanOrEqual(75);
+  await page.setViewportSize({width:390,height:800});
+  await settle();
+  const afterWide=await section.evaluate(el=>el.getBoundingClientRect().top);
+  expect(Math.abs(afterWide-afterNarrow)).toBeLessThanOrEqual(75);
+
+  // Explicit case paging still works normally, including its focus owner.
+  await pager.locator('[data-j553-case-step="1"]').click();
+  await expect(pager.locator('[data-j553-case-position]')).toHaveText('2 / 2 件');
+  await expect(pager.locator('[data-j553-case-step="-1"]')).toBeFocused();
+
+  // If the user subsequently focuses the search control, an additional
+  // phone width change must not steal that focus to repair the note.
+  await search.focus();
+  await page.setViewportSize({width:320,height:800});
+  await settle();
+  await expect(search).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});
