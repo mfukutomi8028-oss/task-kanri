@@ -1262,3 +1262,22 @@ test('JOURNAL V523 retains one selected day and opens the existing picker from t
   assert.match(css,/JOURNAL V523/);
   assert.match(css,/\.j511-date-picker \.j523-selected-date/);
 });
+
+
+test('JOURNAL V525 diary view switch restores semantic date with pixel fallback',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('let journalChronicleReadAnchorV525=null;');
+  const end=app.indexOf('// JOURNAL V494:',start);
+  assert.ok(start>0&&end>start);
+  const nav=app.slice(start,end);
+  assert.match(nav,/function journalCaptureChronicleReadAnchorV525\(view\)/);
+  assert.match(nav,/j511-chronicle-travel/);
+  assert.match(nav,/visibleHeight>=Math\.min\(32,Math\.max\(12,rect\.height\*\.2\)\)/);
+  assert.match(nav,/date,top:day\.getBoundingClientRect\(\)\.top,width:window\.innerWidth/);
+  assert.match(nav,/if\(previous==='timeline'\)journalCaptureChronicleReadAnchorV525\(oldView\)/);
+  assert.match(nav,/anchor\.start===toISODate\(getTimelineStartDate\(\)\)&&anchor\.range===state\.timelineRange/);
+  assert.match(nav,/window\.scrollY\+day\.getBoundingClientRect\(\)\.top-anchor\.top/);
+  assert.match(nav,/if\(!restoredDayV525\)/);
+  assert.match(nav,/active\?\.focus\(\{preventScroll:true\}\)/);
+  assert.doesNotMatch(nav,/(?:persistTask|commitTaskDraft|runTransaction|firebase|onValue)\s*\(/i);
+});
