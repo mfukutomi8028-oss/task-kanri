@@ -2951,6 +2951,39 @@ function trackClassicTodoEditorBlur(event) {
 function classicTodoNavigationKey(owner) {
   return ROOM_ID + ':' + String(owner || '');
 }
+// Keep just the nearby visible IDs, not the entire long list. If another
+// device deletes the current row, the next survivor takes priority.
+function captureClassicTodoListAnchor(page) {
+  if (!page) return null;
+  const rows = [...page.querySelectorAll('.todo-list .todo-item[data-todo-id]')]
+    .filter(row => !row.hidden && !row.closest('.todo-list')?.hidden && row.getClientRects().length);
+  const index = rows.findIndex(row => {
+    const rect = row.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < window.innerHeight;
+  });
+  if (index < 0) return null;
+  return {
+    id: rows[index].dataset.todoId,
+    top: rows[index].getBoundingClientRect().top,
+    nextIds: rows.slice(index + 1, index + 51).map(row => row.dataset.todoId),
+    previousIds: rows.slice(Math.max(0, index - 50), index).reverse().map(row => row.dataset.todoId)
+  };
+}
+function restoreClassicTodoListAnchor(page, anchor) {
+  const rows = [...page.querySelectorAll('.todo-list .todo-item[data-todo-id]')]
+    .filter(row => !row.hidden && !row.closest('.todo-list')?.hidden && row.getClientRects().length);
+  const byId = new Map(rows.map(row => [row.dataset.todoId, row]));
+  const candidates = [anchor?.id, ...(anchor?.nextIds || []), ...(anchor?.previousIds || [])];
+  const target = candidates.map(id => byId.get(id)).find(Boolean);
+  if (target && Number.isFinite(anchor?.top)) {
+    alignClassicTodoElementAtViewportPosition(target, anchor.top);
+    return;
+  }
+  // If the last match disappeared, keep the query and bring the existing
+  // reset button into view without taking focus from another control.
+  const reset = page.querySelector('.todo-search-empty-v145:not([hidden]) .todo-search-reset-v145');
+  if (reset?.getClientRects().length) reset.scrollIntoView({ block: 'nearest' });
+}
 function rememberClassicTodoNavigationDraft() {
   if (document.documentElement.dataset.wbDisplay !== 'classic') return;
   const page = elements.todoView?.querySelector('.todo-page');
@@ -2963,17 +2996,8 @@ function rememberClassicTodoNavigationDraft() {
   snapshot.scrollDocument = document.scrollingElement?.scrollTop || 0;
   snapshot.searchQuery = page.querySelector('.todo-search-input-v145')?.value
     ?? window.WorkBoardTodoSearchBridgeV393?.getQuery?.() ?? '';
-  // Anchor to a visible ToDo so newly synced rows above it cannot shift the
-  // reader to an unrelated item. Raw scroll values remain the fallback.
-  const visibleRow = [...page.querySelectorAll('.todo-list .todo-item[data-todo-id]')]
-    .find(row => {
-      if (row.hidden || row.closest('.todo-list')?.hidden || !row.getClientRects().length) return false;
-      const rect = row.getBoundingClientRect();
-      return rect.bottom > 0 && rect.top < window.innerHeight;
-    });
-  snapshot.listAnchor = visibleRow
-    ? { id: visibleRow.dataset.todoId, top: visibleRow.getBoundingClientRect().top }
-    : null;
+  // Keep the same reader position when data changes on another device.
+  snapshot.listAnchor = captureClassicTodoListAnchor(page);
   snapshot.roomId = ROOM_ID;
   snapshot.owner = owner;
   snapshot.recoveryDrafts = classicTodoRecoveryOwner === owner
@@ -3458,6 +3482,11 @@ function renderTodoView() {
     ? captureClassicTodoDraftState(currentPage)
     : (navigationDraft?.owner === currentOwner && navigationDraft?.roomId === ROOM_ID
       ? navigationDraft : null);
+  // Direct saves and user navigation already own their focus restoration.
+  // Capture this anchor only for subscribed updates to the current user's list.
+  const subscribedListAnchor = isClassicTodo && journalSubscribedRenderV528
+    && currentPage?.dataset.todoOwner === currentOwner && !elements.todoView.hidden
+    ? captureClassicTodoListAnchor(currentPage) : null;
   classicTodoCommittedEditIds.clear();
   // Snapshot search focus before canonical rendering replaces the search sidecar.
   // Only restore an actively focused search, never steal focus from a ToDo editor.
@@ -3560,13 +3589,15 @@ function renderTodoView() {
           || normalizeUser(getCurrentUser()) !== navigationDraft.owner) return;
         if (elements.mainContent) elements.mainContent.scrollTop = navigationDraft.scrollMain;
         if (document.scrollingElement) document.scrollingElement.scrollTop = navigationDraft.scrollDocument;
-        if (navigationDraft.listAnchor) {
-          const anchor = [...restoredPage.querySelectorAll('.todo-list .todo-item[data-todo-id]')]
-            .find(row => row.dataset.todoId === navigationDraft.listAnchor.id);
-          if (anchor && !anchor.hidden && !anchor.closest('.todo-list')?.hidden) {
-            alignClassicTodoElementAtViewportPosition(anchor, navigationDraft.listAnchor.top);
-          }
-        }
+        restoreClassicTodoListAnchor(restoredPage, navigationDraft.listAnchor);
+      });
+    } else if (subscribedListAnchor) {
+      const updatedPage = classicTodoRenderedPage;
+      requestAnimationFrame(() => {
+        if (state.layout !== 'todos' || document.documentElement.dataset.wbDisplay !== 'classic'
+          || elements.todoView?.querySelector('.todo-page') !== updatedPage
+          || normalizeUser(getCurrentUser()) !== currentOwner) return;
+        restoreClassicTodoListAnchor(updatedPage, subscribedListAnchor);
       });
     }
     if (switchingClassicTodoOwner && !fromNavigation) {
