@@ -419,8 +419,10 @@ async function send(command,label,{close=false,returnToTask=false}={}){
      if(close)closePanel(true,false);
      syncSnapshot();render();
      if(returning){
-       const moved=todoReturn&&beforeTodo&&beforeTodo.done!==command.completed;
-       if(moved&&restoreOriginTodoListReturn(todoReturn)){
+       // Search matches and history position may change even when the status
+       // stays the same (for example, changing a title removes a query result).
+       const sameBucket=beforeTodo&&beforeTodo.done===command.completed;
+       if(todoReturn&&restoreOriginTodoListReturn(todoReturn,{sameItem:Boolean(sameBucket),action:'list-quick-edit'})){
          panelReturnAnchor=null;panelReturnSearch=null;scheduleGlobalReturn=null;
        }else restorePanelReturnPosition(returning.kind,returning.id);
      }
@@ -756,7 +758,7 @@ function captureOriginTodoListReturn(id){
    previousId:index>=0?order[index-1]||'':'',
    previousTop:previous?.getBoundingClientRect().top??source.getBoundingClientRect().top};
 }
-function restoreOriginTodoListReturn(context,{sameItem=false}={}){
+function restoreOriginTodoListReturn(context,{sameItem=false,action='todo-check'}={}){
  if(!context||context.view!==view||context.room!==snapshot.roomId||
    context.user!==snapshot.currentUser||panelOpen)return false;
  const root=$('#workspace');
@@ -771,10 +773,13 @@ function restoreOriginTodoListReturn(context,{sameItem=false}={}){
    target=lookup(context.previousId);
    if(target)top=context.previousTop;
  }
- const control=target?.querySelector('[data-action="todo-check"]')||
+ const control=target?.querySelector('[data-action="'+action+'"]')||
+   target?.querySelector('[data-action="todo-check"]')||
    (context.bucket==='today'
      ?root.querySelector('[data-form="quick-todo"] [name="title"]')||root.querySelector('[data-route="todos"]')
-     :root.querySelector('.origin-todo-archive-toggle')||root.querySelector('.origin-todo-add [name="title"]'));
+     :todoQuery&&root.querySelector('#originTodoQuery')?.getClientRects().length
+       ?root.querySelector('#originTodoQuery')
+       :root.querySelector('.origin-todo-archive-toggle')||root.querySelector('.origin-todo-add [name="title"]'));
  if(!control||!control.getClientRects().length)return false;
  control.focus({preventScroll:true});
  const rect=(target||control).getBoundingClientRect();
