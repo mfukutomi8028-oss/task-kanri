@@ -5958,7 +5958,9 @@ if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
       .find(row=>row.dataset.taskId===id);
     const originalDay=date?[...elements.timelineView.querySelectorAll('[data-jv-date]')]
       .find(day=>day.dataset.jvDate===date):null;
-    const fallback=originalDay?.querySelector('[data-jv-add-date]')||originalDay
+    const fallback=originalDay?.querySelector('[data-jv-add-date]')
+      ||originalDay?.closest('.jv-chronicle-day')?.querySelector('.j504-day-add')
+      ||originalDay
       ||(undated?elements.timelineView.querySelector('[data-jv-undated] h4'):null);
     const target=original?.querySelector('[data-j494-open-task]')||original||fallback
       ||elements.timelineView.querySelector('[data-timeline-range]');
