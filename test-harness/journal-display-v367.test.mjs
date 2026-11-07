@@ -1041,7 +1041,8 @@ test('JOURNAL V507 chronology move resumes at actual destination and offers an o
   const chronicle=app.slice(end,app.indexOf('function journalDayItemV411(',end));
   assert.doesNotMatch(chronicle,/data-j507-up/);
   assert.match(chronicle,/journalOpenTimelineMoveV507\(b\.dataset\.moveToTimeline\)/);
-  assert.match(chronicle,/selector\?\.focus\(\{preventScroll:true\}\)/);
+  // V523 checks the picker exists before focusing it, so direct focus is safe.
+  assert.match(chronicle,/selector\.focus\(\{preventScroll:true\}\)/);
   const save=app.slice(app.indexOf('async function confirmTimelineMove('),app.indexOf('function openTaskDialog(',app.indexOf('async function confirmTimelineMove(')));
   assert.match(save,/if\s*\(!result\.ok\) return showWriteFailure/);
   assert.match(save,/if\(journalSource\)journalTimelineMoveCommittedV507=true/);
