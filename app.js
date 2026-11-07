@@ -5928,8 +5928,15 @@ journalAtelierInlineMediaV494.addEventListener('change',()=>
 // The existing detail panel remains the single owner of open/close and editing.
 // Only the originating journal row is remembered for keyboard focus restoration.
 let journalTimelineReturnTaskV494='';
+let journalTimelineReturnDateV504='';
+let journalTimelineReturnUndatedV504=false;
 function journalOpenTimelineDetailV494(id){
   journalTimelineReturnTaskV494=id;
+  // Keep the source day when a status or due-date update removes the row.
+  const source=[...elements.timelineView.querySelectorAll('.jv-day-item')]
+    .find(row=>row.dataset.taskId===id);
+  journalTimelineReturnDateV504=source?.closest('[data-jv-date]')?.dataset.jvDate||'';
+  journalTimelineReturnUndatedV504=Boolean(source?.closest('[data-jv-undated]'));
   selectTask(id);
   if(elements.detailPanel.classList.contains('open')){
     elements.detailPanel.scrollTop=0;
@@ -5941,11 +5948,22 @@ if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
   new MutationObserver(()=>{
     if(!journalTimelineReturnTaskV494||elements.detailPanel.classList.contains('open'))return;
     const id=journalTimelineReturnTaskV494;
+    const date=journalTimelineReturnDateV504;
+    const undated=journalTimelineReturnUndatedV504;
     journalTimelineReturnTaskV494='';
+    journalTimelineReturnDateV504='';
+    journalTimelineReturnUndatedV504=false;
     if(!journalTaskV411()||elements.timelineView.hidden)return;
     const original=[...elements.timelineView.querySelectorAll('.jv-day-item')]
       .find(row=>row.dataset.taskId===id);
-    const target=original?.querySelector('[data-j494-open-task]')||original;
+    const originalDay=date?[...elements.timelineView.querySelectorAll('[data-jv-date]')]
+      .find(day=>day.dataset.jvDate===date):null;
+    const fallback=originalDay?.querySelector('[data-jv-add-date]')||originalDay
+      ||(undated?elements.timelineView.querySelector('[data-jv-undated] h4'):null);
+    const target=original?.querySelector('[data-j494-open-task]')||original||fallback
+      ||elements.timelineView.querySelector('[data-timeline-range]');
+    // Fallback headings and date shelves are not normally focusable.
+    if(target&&!target.matches('button,select,input,a,[tabindex]'))target.tabIndex=-1;
     target?.focus({preventScroll:true});
     target?.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
   }).observe(elements.detailPanel,{attributes:true,attributeFilter:['class']});
@@ -6326,9 +6344,21 @@ function journalIndexV425(tasks){
   if(input){let composing=false;const apply=()=>{filters.query=input.value;const cursor=input.selectionStart??input.value.length;journalIndexV425(tasks);requestAnimationFrame(()=>{const el=elements.listView.querySelector('[data-j425-query]');if(el){el.focus({preventScroll:true});try{el.setSelectionRange(cursor,cursor)}catch{}}})};input.addEventListener('compositionstart',()=>composing=true);input.addEventListener('compositionend',()=>{composing=false;apply()});input.addEventListener('input',e=>{if(!composing&&!e.isComposing)apply()})}
 }
 
+// JOURNAL V504: paging rerenders the toolbar. Re-focus its replacement and
+// show the beginning of the selected period rather than losing keyboard context.
+function journalNavigateChronicleV504(selector,changePeriod){
+  changePeriod();
+  requestAnimationFrame(()=>{
+    if(!journalTaskV411()||elements.timelineView.hidden)return;
+    elements.timelineView.querySelector('.jv-section-head')
+      ?.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
+    elements.timelineView.querySelector(selector)?.focus({preventScroll:true});
+  });
+}
+
 function journalChronicleV411(tasks){
 const start=getTimelineStartDate(),dates=Array.from({length:getTimelineDays(start)},(_,i)=>addDays(start,i));
-const dateRows=dates.map(d=>{const date=toISODate(d),items=tasks.filter(t=>t.dueDate===date);return `<section class="jv-chronicle-day ${isTodayDate(d)?'is-today':''} ${items.length?'':'is-empty'}"><div class="jv-date"><strong>${d.getDate()}</strong><span>${['日','月','火','水','木','金','土'][d.getDay()]}曜</span><small>${d.getMonth()+1}月</small></div><div class="jv-day-records" data-jv-date="${date}">${items.map(journalDayItemV411).join('')||`<button type="button" class="j434-chronicle-add" data-jv-add-date="${date}">＋ この日にタスクを書く</button>`}</div></section>`}).join('');
+const dateRows=dates.map(d=>{const date=toISODate(d),items=tasks.filter(t=>t.dueDate===date);return `<section class="jv-chronicle-day ${isTodayDate(d)?'is-today':''} ${items.length?'':'is-empty'}"><div class="jv-date"><strong>${d.getDate()}</strong><span>${['日','月','火','水','木','金','土'][d.getDay()]}曜</span><small>${d.getMonth()+1}月</small>${items.length?`<button type="button" class="j504-day-add" data-jv-add-date="${date}" aria-label="${date}にタスクを追加" title="この日にタスクを追加"><span aria-hidden="true">＋</span><span aria-hidden="true">追加</span></button>`:""}</div><div class="jv-day-records" data-jv-date="${date}">${items.map(journalDayItemV411).join('')||`<button type="button" class="j434-chronicle-add" data-jv-add-date="${date}">＋ この日にタスクを書く</button>`}</div></section>`}).join('');
 const undated=tasks.filter(t=>!t.dueDate);
 elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section>`;
 bindTaskDragSources(elements.timelineView);
@@ -6347,10 +6377,10 @@ root.addEventListener('dragover',e=>{if(!isTaskDragEvent(e))return;const zone=e.
 root.addEventListener('dragleave',e=>{const zone=e.target.closest('[data-jv-date],[data-jv-undated]');if(zone&&!zone.contains(e.relatedTarget))zone.classList.remove('jv-dropping')});
 root.addEventListener('drop',async e=>{const zone=e.target.closest('[data-jv-date],[data-jv-undated]');if(!zone)return;const payload=getTaskDragPayload(e);if(!payload)return;e.preventDefault();e.stopPropagation();zone.classList.remove('jv-dropping');try{await moveTaskByDrag(payload.id,{dueDate:zone.dataset.jvDate||'',source:'timeline'})}finally{cleanupTaskDragUi()}});
 }
-root.querySelector('[data-timeline-prev]')?.addEventListener('click',()=>shiftTimeline(-1));
-root.querySelector('[data-timeline-next]')?.addEventListener('click',()=>shiftTimeline(1));
-root.querySelector('[data-timeline-today]')?.addEventListener('click',()=>setTimelineStart(state.timelineRange==='month'?toISODate(startOfMonth(startOfToday())):todayISO()));
-root.querySelector('[data-timeline-range]')?.addEventListener('change',e=>setTimelineRange(e.target.value));
+root.querySelector('[data-timeline-prev]')?.addEventListener('click',()=>journalNavigateChronicleV504('[data-timeline-prev]',()=>shiftTimeline(-1)));
+root.querySelector('[data-timeline-next]')?.addEventListener('click',()=>journalNavigateChronicleV504('[data-timeline-next]',()=>shiftTimeline(1)));
+root.querySelector('[data-timeline-today]')?.addEventListener('click',()=>journalNavigateChronicleV504('[data-timeline-today]',()=>setTimelineStart(state.timelineRange==='month'?toISODate(startOfMonth(startOfToday())):todayISO())));
+root.querySelector('[data-timeline-range]')?.addEventListener('change',e=>journalNavigateChronicleV504('[data-timeline-range]',()=>setTimelineRange(e.target.value)));
 }
 
 function journalDayItemV411(t){return `<article class="jv-day-item ${taskStateClasses(t)}" role="button" tabindex="0" draggable="true" data-task-drag-id="${escapeHtml(t.id)}" data-task-id="${escapeHtml(t.id)}"><strong>${escapeHtml(t.title)}</strong><span>${escapeHtml(t.status)}</span><small>${escapeHtml(t.assignee||'未割当')}</small><div class="j494-day-actions"><button type="button" data-j494-open-task="${escapeHtml(t.id)}" aria-label="${escapeHtml(t.title)}の詳細を見る">詳細を見る</button><button type="button" data-move-to-timeline="${escapeHtml(t.id)}">日付変更</button></div></article>`}
