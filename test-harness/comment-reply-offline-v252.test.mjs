@@ -100,3 +100,14 @@ test('RTDB sparse comment collections are normalized before rendering and both r
   assert.match(commentSource, /const currentComments = commentRecords\(current\.comments\)/);
   assert.match(commentSource, /const sourceComments = commentRecords\(current\.comments\)/);
 });
+
+test('remote comment UI consumes the canonical subscribed task instead of requiring a local cache', () => {
+  const app = read('app.js');
+  const comments = read('comment-reactions-v191.js');
+  assert.match(app, /readCommentTask\(taskId\)/);
+  assert.match(app, /comments: JSON\.parse\(JSON\.stringify\(task\.comments \|\| \[\]\)\)/);
+  assert.match(comments, /const canonical = window\.WorkBoardPaletteBridge\?\.readCommentTask/);
+  assert.match(comments, /if \(typeof canonical === "function"\) return canonical\(taskId\)/);
+  assert.match(comments, /function patch\(\)[\s\S]*const task = readCurrentCommentTask\(taskId\)/);
+  assert.match(comments, /function openReply\([\s\S]*const task = readCurrentCommentTask\(taskId\)/);
+});
