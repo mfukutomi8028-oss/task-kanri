@@ -373,7 +373,7 @@ test('Origin mobile searches are visible before secondary task and memo filters'
 });
 
 test('Origin ToDo search filters pending titles and memos without hiding existing features',()=>{
- assert.match(origin,/todoSearchOpen=false,todoQuery='',todoComposing=false/);
+ assert.match(origin,/todoSearchOpen=false,todoSearchHistory=false,todoQuery='',todoComposing=false/);
  assert.match(origin,/const q=todoQuery\.trim\(\)\.toLocaleLowerCase\(\)/);
  assert.match(origin,/function originVisiblePendingTodos\(\)/);
  assert.match(origin,/data\.todos\.filter\(t=>!t\.done&&\(!query\|\|\[t\.title,t\.memo\]/);
@@ -384,7 +384,7 @@ test('Origin ToDo search filters pending titles and memos without hiding existin
  assert.match(origin,/id="originTodoQuery"/);
  assert.match(origin,/aria-expanded="\$\{todoSearchOpen\}"/);
  assert.match(origin,/if\(a==='todo-search-toggle'\)/);
- assert.match(origin,/if\(!todoSearchOpen\)\{todoQuery='';todoPendingLimit=TODO_RENDER_BATCH;\}/);
+ assert.match(origin,/if\(!todoSearchOpen\)\{todoQuery='';todoSearchHistory=false;todoPendingLimit=TODO_RENDER_BATCH;todoCompletedLimit=TODO_RENDER_BATCH;\}/);
  assert.match(origin,/function updateTodoQuery\(input\)/);
  assert.match(origin,/if\(!e\.isComposing&&!todoComposing\)updateTodoQuery\(e\.target\)/);
  assert.match(origin,/if\(taskComposing\|\|memoComposing\|\|scheduleComposing\|\|todoComposing\)return/);
