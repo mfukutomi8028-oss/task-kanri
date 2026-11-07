@@ -2448,7 +2448,14 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  const sheet=host.locator('#sheet');
  await host.locator('#mobileNav [data-route="tasks"]').click();
  const task=host.locator('.origin-task-collection .item-row',{hasText:'直接編集するタスク'});
+ await expect(task.locator('.origin-task-detail-arrow')).toBeVisible();
+ await expect(task.locator('[data-action="task-done"]')).toBeVisible();
  await expect(task.locator('[data-action="list-quick-edit"]')).toBeVisible();
+ const taskEditHit=await task.locator('[data-action="list-quick-edit"]').evaluate(button=>({
+   width:button.getBoundingClientRect().width,height:button.getBoundingClientRect().height,
+   display:getComputedStyle(button).display
+ }));
+ expect(taskEditHit).toMatchObject({width:44,height:44,display:'inline-flex'});
  await task.locator('[data-action="list-quick-edit"]').click();
  const taskForm=sheet.locator('#editForm[data-kind="tasks"]');
  await expect(taskForm).toBeVisible();
@@ -2461,6 +2468,10 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await sheet.locator('.sheet-close').click();
  await host.locator('#mobileNav [data-route="todos"]').click();
  const todo=host.locator('.origin-todo-list .todo-entry',{hasText:'直接編集するToDo'});
+ await expect(todo.locator('[data-action="list-quick-edit"]')).toBeVisible();
+ await expect(todo.locator('.todo-edit[data-action="open"]')).toBeVisible();
+ const todoEditWidth=await todo.locator('[data-action="list-quick-edit"]').evaluate(el=>el.getBoundingClientRect().width);
+ expect(todoEditWidth).toBeGreaterThanOrEqual(44);
  await todo.locator('[data-action="list-quick-edit"]').click();
  const todoForm=sheet.locator('#editForm[data-kind="todos"]');
  await expect(todoForm).toBeVisible();
@@ -2472,6 +2483,21 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await sheet.locator('.sheet-close').click();
  await host.locator('#mobileNav [data-route="notes"]').click();
  const note=host.locator('.origin-memo-shell',{hasText:'直接編集するメモ'});
+ const actionRow=note.locator('.origin-memo-action-row');
+ await expect(actionRow.locator('.origin-memo-colors [data-action="memo-color"]')).not.toHaveCount(0);
+ await expect(actionRow.locator(':scope > [data-action="list-quick-edit"]')).toBeVisible();
+ const positionBefore=await actionRow.locator(':scope > [data-action="list-quick-edit"]').evaluate(el=>el.getBoundingClientRect().left);
+ await actionRow.locator('.origin-memo-colors').evaluate(el=>{el.scrollLeft=el.scrollWidth;});
+ const positionAfter=await actionRow.locator(':scope > [data-action="list-quick-edit"]').evaluate(el=>el.getBoundingClientRect().left);
+ expect(Math.abs(positionAfter-positionBefore)).toBeLessThan(1);
+ const memoEditSize=await actionRow.locator(':scope > [data-action="list-quick-edit"]').evaluate(el=>({
+   width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height
+ }));
+ expect(memoEditSize.width).toBeGreaterThanOrEqual(44);
+ expect(memoEditSize.height).toBeGreaterThanOrEqual(44);
+ await host.locator('[data-action="memo-layout"][data-value="list"]').click();
+ await expect(note.locator('.origin-memo-action-row > [data-action="list-quick-edit"]')).toBeVisible();
+ await host.locator('[data-action="memo-layout"][data-value="cards"]').click();
  await note.locator('[data-action="list-quick-edit"]').click();
  const memoForm=sheet.locator('#editForm[data-kind="memos"]');
  await expect(memoForm).toBeVisible();
