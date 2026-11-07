@@ -7240,8 +7240,8 @@ function journalCaptureTaskPageSyncAnchorV530(layout){
   const selectedRow=inlineReader?rows.find(el=>el.getAttribute(rowAttr)===selected):null;
   return {token,layout,focus,anchor:journalTaskSyncDescriptorV530(root,layout,anchorNode),
     top:anchorNode?.getBoundingClientRect().top??null,width:window.innerWidth,search,
-    order,selected,inlineReader,atelierInlineReaderV552,
-    rowTop:selectedRow?.getBoundingClientRect().top??null};
+    order,selected,inlineReader,rowTop:selectedRow?.getBoundingClientRect().top??null,
+    atelierInlineReaderV552};
 }
 function journalNearestSurvivingTaskV532(snapshot,available){
   const existing=new Set(available);
