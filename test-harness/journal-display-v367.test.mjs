@@ -906,10 +906,10 @@ test('JOURNAL V494 task desk note moves one node and timeline detail restores fo
   assert.match(app,/data-j494-atelier-back/);
   assert.match(app,/data-j494-open-task/);
   assert.match(app,/journalOpenTimelineDetailV494/);
-  assert.match(app,/MutationObserver\(\(\)=>\{/);
+  assert.match(app,/new MutationObserver\(journalRestoreTaskOriginV536\)/);
   assert.match(app,/target\?\.focus\(\{preventScroll:true\}\)/);
-  // JOURNAL's folio handler already owns Escape; the return observer only
-  // restores focus after a canonical close. Never install two close listeners.
+  // The folio owns Escape. The existing detail observer and one dialog-close
+  // hook now share the same resolver rather than duplicating return handlers.
   assert.doesNotMatch(app,/event\.key!=='Escape'\|\|!journalTaskV411\(\)/);
   assert.match(js,/if\(event\.key==='Escape'\)\{event\.preventDefault\(\);event\.stopPropagation\(\);close\.click\(\);return\}/);
   assert.match(css,/JOURNAL V494/);
@@ -994,8 +994,9 @@ test('JOURNAL V504 chronicle keeps keyboard context and lets populated days crea
   assert.match(chronicle,/\.jv-section-head'\)\s*\?\.scrollIntoView/);
   assert.match(chronicle,/\.focus\(\{preventScroll:true\}\)/);
   assert.match(app,/journalTimelineReturnDateV504=source\?\.closest\('\[data-jv-date\]'\)/);
-  assert.match(app,/originalDay\?\.querySelector\('\[data-jv-add-date\]'\)/);
-  assert.match(app,/originalDay\?\.closest\('\.jv-chronicle-day'\)\?\.querySelector\('\.j504-day-add'\)/);
+  assert.match(app,/const sourceDay=originalDay\?\.closest\('\.jv-chronicle-day'\)/);
+  assert.match(app,/const fallback=sourceDay\?\.querySelector\('\.jv-date'\)/);
+  assert.match(app,/sourceDay\?\.querySelector\('h4'\)/);
   assert.match(css,/JOURNAL V504/);
   assert.match(css,/\.jv-day-item>strong/);
   assert.match(css,/\.j504-day-add/);
