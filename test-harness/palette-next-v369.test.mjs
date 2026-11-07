@@ -1810,9 +1810,10 @@ test('Palette comparison identifies a saved edit and recovers an occurrence hidd
   assert.ok(begin>0&&finish>begin);
   const handler=shell.slice(begin,finish);
   new Function('state','seriesIndexState','seriesOccurrences','filteredSeriesIndex',
-    'drawer','refreshSeriesIndexResults','target',
+    'seriesIndexMatchesQuery','drawer','refreshSeriesIndexResults','target',
     'function trigger(){'+handler+'}trigger();'
-  )(state,index,seriesOccurrences,fns.filteredSeriesIndex,drawer,()=>{refreshed++},target);
+  )(state,index,seriesOccurrences,fns.filteredSeriesIndex,fns.seriesIndexMatchesQuery,
+    drawer,()=>{refreshed++},target);
   assert.equal(index.query,'');
   assert.equal(search.value,'');
   assert.equal(index.page,1);
@@ -2057,4 +2058,65 @@ test('Palette series next-edit traverses only canonical unedited occurrences wit
   assert.match(css,/\.pn-series-save-edit-next:focus-visible/);
   assert.doesNotMatch(shell.slice(begin,end)+handler,
     /bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+});
+
+
+test('Palette counts a read in Day view and filters unedited recurrences without crossing series',()=>{
+  const begin=shell.indexOf('  function currentSeriesIndex(item) {');
+  const middle=shell.indexOf('  function inspectorSeriesContext(item) {',begin);
+  const end=shell.indexOf('  function inspectorScheduleContext(item,linked) {',middle);
+  assert.ok(begin>0&&middle>begin&&end>middle);
+  const rows=Array.from({length:12},(_,i)=>({
+    id:'A'+(i+1),recurrenceSeriesId:'A',revision:1,
+    title:i===5?'特別会議':'通常会議',
+    startAt:'2027-06-'+String(i+1).padStart(2,'0')+'T09:00',
+    assignee:'職員A'
+  }));
+  rows.push({id:'other',recurrenceSeriesId:'B',revision:1,title:'別系列',
+    startAt:'2027-06-03T14:00'});
+  const state={route:'schedule',scheduleView:'day',
+    detail:{kind:'schedule',id:'A1'},
+    snapshot:{schedules:rows,currentUser:'職員A',roomId:'room1'}};
+  const escape=v=>String(v??'').replaceAll('&','&amp;').replaceAll('"','&quot;');
+  const localDate=v=>String(v||'').slice(0,10);
+  const localTime=v=>String(v||'').slice(11,16);
+  const seriesOccurrences=item=>rows.filter(row=>
+    row.recurrenceSeriesId===item?.recurrenceSeriesId)
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const fns=new Function('state','seriesOccurrences','escape','localDate','localTime',
+    'scheduleSeriesDateLabel','dateParts','inspectorReturnPoint',
+    'let seriesIndexState=null;\n'+shell.slice(begin,middle)+shell.slice(middle,end)+
+    'return {currentSeriesIndex,filteredSeriesIndex,'+
+      'nextUneditedSeriesOccurrence,inspectorSeriesContext,seriesIndexResults};'
+  )(state,seriesOccurrences,escape,localDate,localTime,
+    v=>String(v||'').replaceAll('-','/'),v=>String(v||'').slice(5),null);
+  const index=fns.currentSeriesIndex(rows[0]);
+  assert.equal(index.viewed.size,0);
+  const panel=fns.inspectorSeriesContext(rows[0]);
+  assert.match(panel,/確認済み <strong>1<\/strong>/);
+  assert.equal(index.viewed.has('A1'),true);
+  index.status='unchecked';
+  assert.equal(fns.filteredSeriesIndex(rows[0]).length,11);
+  index.status='unedited';
+  index.edited.set('A2',1);
+  assert.equal(fns.filteredSeriesIndex(rows[0]).length,11);
+  assert.match(fns.seriesIndexResults(rows[0]),/data-pn-series-index-next-edit=/);
+  assert.doesNotMatch(fns.seriesIndexResults(rows[0]),/data-pn-series-index-open="A2"/);
+  index.query='特別会議';
+  assert.deepEqual(fns.filteredSeriesIndex(rows[0]).map(x=>x.id),['A6']);
+  assert.equal(fns.nextUneditedSeriesOccurrence(rows[0]).id,'A6');
+  index.edited.set('A6',1);
+  assert.equal(fns.nextUneditedSeriesOccurrence(rows[0]),null);
+  rows[5].revision=2;
+  assert.equal(fns.nextUneditedSeriesOccurrence(rows[0]).id,'A6');
+  assert.doesNotMatch(fns.seriesIndexResults(rows[0]),/data-pn-series-index-open="other"/);
+  state.route='today';
+  fns.inspectorSeriesContext(rows[2]);
+  assert.equal(index.viewed.has('A3'),true);
+  const feedback=shell.slice(shell.indexOf('    if(target.hasAttribute('+
+    "'data-pn-series-review-index'"),shell.indexOf('    if(target.dataset.pnSeriesIndexOpen){'));
+  assert.match(feedback,/index\.page=Math\.floor\(position\/8\)/);
+  assert.match(feedback,/data-pn-series-index-reveal/);
+  assert.match(shell,/resume\.viaSeriesIndex\|\|state\.route==='schedule'/);
+  assert.doesNotMatch(shell.slice(begin,end),/bridge\.dispatch\(|runTransaction\(/);
 });
