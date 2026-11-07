@@ -2316,6 +2316,15 @@ html[data-wb-palette-next-preview="true"] body{
   font-size:12px;font-weight:770;
 }
 #paletteNextRoot .pn-memo-filter-clear:hover{background:var(--pn-soft)}
+#paletteNextRoot .pn-memo-empty-state{
+  display:grid;justify-items:center;gap:12px;min-width:0;text-align:center;
+}
+#paletteNextRoot .pn-memo-empty-state p{
+  margin:0;color:var(--pn-muted);overflow-wrap:anywhere;
+}
+#paletteNextRoot .pn-memo-empty-state .pn-button{
+  min-height:44px;max-width:100%;white-space:normal;overflow-wrap:anywhere;
+}
 #paletteNextRoot .pn-memo-sort select:focus-visible,
 #paletteNextRoot .pn-memo-filter-clear:focus-visible{
   outline:2px solid var(--pn-focus);outline-offset:2px;
