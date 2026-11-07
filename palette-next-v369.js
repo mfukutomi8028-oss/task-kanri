@@ -1923,7 +1923,8 @@
     const list=rows.length
       ?'<ol class="pn-series-index-list">'+slice.map(row=>{
         const selected=row.id===item.id;
-        const edited=Boolean(index.edited.get(row.id)===Number(row.revision||0));
+        const edited=Boolean((markSaved&&latest.id===row.id)||
+          index.edited.get(row.id)===Number(row.revision||0));
         const checked=index.viewed.has(row.id);
         return '<li class="pn-series-index-entry'+(edited?' was-saved':'')+'">'+
           '<button type="button" class="pn-series-index-item'+
