@@ -2594,3 +2594,31 @@ test('Origin mobile editor identifies an empty required title and keeps the unsa
  expect(saved).toMatchObject({text:'未入力エラーを修正しました',memo:'編集中に保持する補足'});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
 });
+
+test('Origin inline error persists through unrelated edits until the invalid value is corrected',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-conditional-validation-20261107',320);
+ await host.locator('#mobileNav [data-route="calendar"]').click();
+ await host.locator('.agenda-day-head button[data-kind="events"]').first().click();
+ const form=host.locator('#editForm[data-kind="events"]');
+ const day=(await form.locator('[name="startAt"]').inputValue()).slice(0,10);
+ await form.locator('[name="title"]').fill('日時の整合性');
+ await form.locator('[name="startAt"]').fill(day+'T16:00');
+ await form.locator('[name="endAt"]').fill(day+'T15:00');
+ await host.locator('button[form="editForm"]').click();
+ await expect(form.locator('#originFieldError')).toContainText('終了日時は開始日時より後');
+ await form.locator('[name="location"]').fill('会議室A');
+ await expect(form.locator('#originFieldError')).toBeVisible();
+ await expect(form.locator('[name="endAt"]')).toHaveAttribute('aria-invalid','true');
+ await form.locator('[name="startAt"]').fill(day+'T14:00');
+ await expect(form.locator('#originFieldError')).toHaveCount(0);
+ await expect(form.locator('[name="endAt"]')).not.toHaveAttribute('aria-invalid','true');
+ await form.locator('[name="title"]').fill('');
+ await host.locator('button[form="editForm"]').click();
+ await expect(form.locator('#originFieldError')).toBeVisible();
+ await form.locator('[name="location"]').fill('会議室B');
+ await expect(form.locator('#originFieldError')).toBeVisible();
+ await form.locator('[name="title"]').fill('日時を修正しました');
+ await expect(form.locator('#originFieldError')).toHaveCount(0);
+ await expect(page.locator('#scheduleDialog')).toBeHidden();
+});
