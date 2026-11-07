@@ -2419,3 +2419,75 @@ test('Origin ToDo progressively renders pending and archived rows with continuou
  expect(afterCreation.filter(todo=>todo.completed)).toHaveLength(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
+
+
+test('Origin task, ToDo and note rows edit directly and restore the inspected list row',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-list-quick-edit-v499-room',320);
+ const ids=await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge,memoBridge=window.WorkBoardPaletteMemoBridgeV369,s=bridge.readSnapshot();
+  const task=await bridge.dispatch({
+   type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,
+   title:'直接編集するタスク',description:'編集前の説明',assignee:s.currentUser,
+   status:s.statuses[0],priority:'中',category:s.categories[0],requester:'',
+   tags:'',checklist:'',checklistDone:[],dueDate:'',dueTime:'',pinned:false
+  });
+  if(!task?.ok)throw Error('task create '+task?.error);
+  const todo=await bridge.dispatch({type:'todo.create',text:'直接編集するToDo',memo:'編集前の補足'});
+  if(!todo?.ok)throw Error('todo create '+todo?.error);
+  const note=await memoBridge.dispatch({type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
+   title:'直接編集するメモ',body:'編集前の本文',category:'手順',tags:[],pinned:false,paperColor:'ivory'});
+  if(!note?.ok)throw Error('memo create '+note?.error);
+  return {
+   task:bridge.readSnapshot().tasks.find(x=>x.title==='直接編集するタスク')?.id,
+   todo:bridge.readSnapshot().todos.find(x=>x.text==='直接編集するToDo')?.id,
+   memo:memoBridge.readSnapshot().find(x=>x.title==='直接編集するメモ')?.id
+  };
+ });
+ expect(Object.values(ids).every(Boolean)).toBe(true);
+ const sheet=host.locator('#sheet');
+ await host.locator('#mobileNav [data-route="tasks"]').click();
+ const task=host.locator('.origin-task-collection .item-row',{hasText:'直接編集するタスク'});
+ await expect(task.locator('[data-action="list-quick-edit"]')).toBeVisible();
+ await task.locator('[data-action="list-quick-edit"]').click();
+ const taskForm=sheet.locator('#editForm[data-kind="tasks"]');
+ await expect(taskForm).toBeVisible();
+ await taskForm.locator('[name="title"]').fill('直接編集するタスク・更新');
+ await sheet.locator('button[form="editForm"]').click();
+ const changedTask=host.locator('.origin-task-collection .item-row',{hasText:'直接編集するタスク・更新'});
+ await expect(changedTask.locator('.item-name')).toBeFocused();
+ await changedTask.locator('.item-name').click();
+ await expect(sheet.locator('#panelHeading')).toHaveText('直接編集するタスク・更新');
+ await sheet.locator('.sheet-close').click();
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ const todo=host.locator('.origin-todo-list .todo-entry',{hasText:'直接編集するToDo'});
+ await todo.locator('[data-action="list-quick-edit"]').click();
+ const todoForm=sheet.locator('#editForm[data-kind="todos"]');
+ await expect(todoForm).toBeVisible();
+ await todoForm.locator('[name="memo"]').fill('一覧から補足を更新');
+ await sheet.locator('button[form="editForm"]').click();
+ await expect(todo.locator('.todo-text')).toBeFocused();
+ await todo.locator('.todo-edit').click();
+ await expect(sheet).toContainText('一覧から補足を更新');
+ await sheet.locator('.sheet-close').click();
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ const note=host.locator('.origin-memo-shell',{hasText:'直接編集するメモ'});
+ await note.locator('[data-action="list-quick-edit"]').click();
+ const memoForm=sheet.locator('#editForm[data-kind="memos"]');
+ await expect(memoForm).toBeVisible();
+ await memoForm.locator('[name="body"]').fill('一覧から本文を更新');
+ await sheet.locator('button[form="editForm"]').click();
+ await expect(note.locator('.memo-card')).toBeFocused();
+ await expect(note.locator('[data-action="memo-color"]')).not.toHaveCount(0);
+ await note.locator('.memo-card').click();
+ await expect(sheet).toContainText('一覧から本文を更新');
+ await sheet.locator('.sheet-close').click();
+ const state=await page.evaluate(ids=>{
+  const task=window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.id===ids.task);
+  const todo=window.WorkBoardPaletteBridge.readSnapshot().todos.find(x=>x.id===ids.todo);
+  const memo=window.WorkBoardPaletteMemoBridgeV369.readSnapshot().find(x=>x.id===ids.memo);
+  return {task:task?.title,todo:todo?.memo,memo:memo?.body};
+ },ids);
+ expect(state).toEqual({task:'直接編集するタスク・更新',todo:'一覧から補足を更新',memo:'一覧から本文を更新'});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
