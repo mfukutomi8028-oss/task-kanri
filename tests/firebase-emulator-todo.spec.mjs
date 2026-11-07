@@ -492,7 +492,6 @@ test('Classic bulk removal and insertion keep a useful filtered reading position
   const search = page.locator('#todoView .todo-search-input-v145');
   await search.fill('大量変更確認');
 
-  const idAt = index => '#todoView [data-todo-id="v544-bulk-' + index + '"]';
   const originalIds = await page.locator('#todoView .todo-list:not(.is-completed) .todo-item[data-todo-id]')
     .evaluateAll(nodes => nodes.filter(node => !node.hidden).map(node => node.dataset.todoId));
   expect(originalIds.length).toBe(205);
@@ -530,6 +529,7 @@ test('Classic bulk removal and insertion keep a useful filtered reading position
     await fallbackRow.evaluate(node => node.getBoundingClientRect().top) - captured.top
   ) < 90, { timeout: 10_000 }).toBe(true);
   await expect(search).toHaveValue('大量変更確認');
+  const beforeInsertTop = await fallbackRow.evaluate(node => node.getBoundingClientRect().top);
 
   // A second batch inserts many matching rows before the reader. The surviving
   // anchor ID now takes priority over any stale scroll offset or index.
@@ -543,6 +543,9 @@ test('Classic bulk removal and insertion keep a useful filtered reading position
   await expect(page.locator('#todoView [data-todo-id="v544-new-0"]'))
     .toBeAttached({ timeout: 30_000 });
   await expect(fallbackRow).toBeVisible();
+  await expect.poll(async () => Math.abs(
+    await fallbackRow.evaluate(node => node.getBoundingClientRect().top) - beforeInsertTop
+  ) < 90, { timeout: 10_000 }).toBe(true);
   await expect(search).toHaveValue('大量変更確認');
   expect(productionRequests).toEqual([]);
 });
