@@ -214,3 +214,33 @@ test('saves a structured reply, appends one history record, increments revision 
   expect(pageErrors).toEqual([]);
   expect(productionRequests).toEqual([]);
 });
+
+test('indexed Firebase comment object preserves parent, reply and reaction through the real UI', async ({ page }) => {
+  const seeded = taskRecord('task-reply-v215');
+  // A sparse array with its first populated entry at index 2 is represented
+  // by RTDB as an object. The client must preserve its actual parent comment.
+  await putDb(`rooms/${ROOM}/tasks/task-reply-v215`, {
+    ...seeded, comments: { '2': seeded.comments[0] }
+  });
+  await boot(page);
+  const parent = page.locator('.activity-comment[data-comment-id="parent-v215"]');
+  await expect(parent).toBeVisible({ timeout: 15_000 });
+  await parent.locator('[data-comment-reply-target="parent-v215"]').click();
+  await page.locator('#commentText').fill('疎なコメントから返信');
+  await page.locator('#commentForm button[type="submit"]').click();
+  await expect.poll(async () => {
+    const task = await readDb(`rooms/${ROOM}/tasks/task-reply-v215`);
+    const comments = Array.isArray(task?.comments) ? task.comments : Object.values(task?.comments || {});
+    return {
+      revision: task?.revision,
+      hasParent: comments.some(comment => comment?.id === 'parent-v215'),
+      reply: comments.find(comment => comment?.replyTo === 'parent-v215') || null,
+      reaction: comments.find(comment => comment?.id === 'parent-v215')?.reactions || null
+    };
+  }, { timeout: 20_000 }).toMatchObject({
+    revision: 8,
+    hasParent: true,
+    reply: { text: '疎なコメントから返信', replyTo: 'parent-v215' },
+    reaction: { '👍': ['森井'] }
+  });
+});
