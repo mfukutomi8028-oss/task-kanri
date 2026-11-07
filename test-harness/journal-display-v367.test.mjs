@@ -1368,3 +1368,30 @@ test('JOURNAL V532 reconciles deleted desk/list selections without new record ow
   assert.match(diary,/ownerDate!==anchor\.date/);
   assert.match(diary,/day\?\.querySelector\('\.jv-date'\)/);
 });
+
+test('JOURNAL V534 transfers only view-level case selection and retains page/day anchors',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('let journalTaskNavigationSelectionV534=');
+  const end=app.indexOf('// JOURNAL V494:',start);
+  assert.ok(start>0&&end>start);
+  const nav=app.slice(start,end);
+  assert.match(nav,/function journalRememberTaskNavigationV534\(layout,id\)/);
+  assert.match(nav,/function journalTaskNavigationSourceV534\(layout,root\)/);
+  assert.match(nav,/function journalTaskNavigationTargetV534\(root,layout,id\)/);
+  assert.match(nav,/const handoffV534=journalTaskNavigationSourceV534\(previous,oldView\)/);
+  assert.match(nav,/journalAtelierSelectedV420=handoffV534\.id/);
+  assert.match(nav,/journalIndexStateV425\.selected=handoffV534\.id/);
+  assert.match(nav,/const handoffVisibleV534=handoffTargetV534/);
+  assert.match(nav,/next==='timeline'/);
+  assert.match(nav,/handoffV534\?\.follow&&handoffVisibleV534/);
+  assert.match(nav,/journalChronicleReadAnchorV525/);
+  assert.match(nav,/journalTaskPagePositionsV509\[next\]/);
+  assert.doesNotMatch(nav,/(?:runTransaction|persistTask|commitTaskDraft|onValue|firebase\.database)\s*\(/i);
+  const board=app.slice(app.indexOf('function journalAtelierV420(tasks){'),
+    app.indexOf('// State is view-only, scoped to JOURNAL;',start));
+  const list=app.slice(app.indexOf('function journalIndexV425(tasks){'),
+    app.indexOf('// JOURNAL V504: paging rerenders the toolbar.'));
+  assert.match(board,/journalRememberTaskNavigationV534\('board',journalAtelierSelectedV420\)/);
+  assert.match(list,/journalRememberTaskNavigationV534\('list',filters\.selected\)/);
+  assert.match(app,/function journalRememberTimelineSourceV505\(id\)\{\s*journalRememberTaskNavigationV534\('timeline',id\)/);
+});
