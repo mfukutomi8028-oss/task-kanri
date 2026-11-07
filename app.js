@@ -2946,7 +2946,7 @@ function showClassicTodoEditConflict(row, latest) {
   alert.className = 'todo-edit-conflict-v527';
   alert.setAttribute('role', 'status');
   const headline = document.createElement('strong');
-  headline.textContent = 'ほかの端末で更新されています';
+  headline.textContent = '別の操作で更新されています';
   const message = document.createElement('p');
   message.textContent = '入力中の内容は残っています。古い内容での上書きを防ぐため、保存を停止しました。必要な文章をコピーしてから最新内容を読み込んでください。';
   const compare = document.createElement('details');
@@ -3094,10 +3094,8 @@ function restoreClassicTodoDraftState(page, snapshot) {
           + (focus.field === 'memo' ? 'textarea' : 'input'))
       : page.querySelector('#' + focus.field);
     if (!field || !field.getClientRects().length) return;
-    const delta = field.getBoundingClientRect().top - focus.top;
-    const scroller = document.scrollingElement || document.documentElement;
-    if (Math.abs(delta) > 1) scroller.scrollTop += delta;
-    field.focus({ preventScroll: true });
+    // Reuse Classic's existing nested-scroller-aware focus recovery.
+    if (!focusClassicTodoActionAtViewportPosition(field, focus.top)) return;
     if (focus.start != null && focus.end != null) {
       field.setSelectionRange(focus.start, focus.end);
     }
