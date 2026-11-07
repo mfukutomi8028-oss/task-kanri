@@ -159,6 +159,19 @@
 .origin-todo-more-actions button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 @media(max-width:420px){.origin-todo-more>span{width:100%;text-align:center}.origin-todo-more-actions{width:100%}.origin-todo-more-actions button{flex:1 1 112px}}
 `));
+    mount.querySelector('style').appendChild(document.createTextNode(`
+/* Origin list edit shortcuts: keep each title/card as the original detail target. */
+.origin-list-quick-edit{display:inline-flex;align-items:center;justify-content:center;flex:none;width:36px;height:36px;min-width:36px;padding:0!important;border:1px solid var(--line)!important;border-radius:9px;background:var(--paper)!important;color:var(--ink-soft)!important;cursor:pointer}
+.origin-list-quick-edit:hover{border-color:var(--accent)!important;color:var(--accent-dark)!important;background:var(--accent-bg)!important}
+.origin-list-quick-edit:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.origin-memo-colors>.origin-list-quick-edit{width:auto;min-width:44px;height:38px;padding:0 9px!important;gap:5px;font-size:12px;font-weight:750}
+.origin-task-collection .row-last{min-width:0}
+@media(max-width:420px){
+ .origin-task-collection .row-last{gap:5px}
+ .origin-memo-colors>.origin-list-quick-edit{min-height:44px}
+ .origin-todo-main .todo-entry>.origin-list-quick-edit{width:34px;min-width:34px}
+}
+`));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -521,7 +534,7 @@ function taskRow(t){
  const urgent=!t.completed&&t.due&&t.due<base;
  const dateText=t.due?humanDue(t.due)+(t.dueTime?' '+t.dueTime:''):'期限なし';
  const due=t.due?`<span class="origin-task-mobile-due ${urgent?'urgent':''}">${esc(dateText)}</span>`:'';
- return `<div class="item-row"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}" title="${esc(t.title)}">${esc(t.title)}</button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}<span class="origin-task-mobile-assignee">${esc(t.assignee||'担当未設定')}</span></div></div><span class="item-assignee">${esc(t.assignee||'未設定')}</span><span class="item-date ${urgent?'urgent':''}">${esc(dateText)}</span><div class="row-last"><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
+ return `<div class="item-row"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}" title="${esc(t.title)}">${esc(t.title)}</button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}<span class="origin-task-mobile-assignee">${esc(t.assignee||'担当未設定')}</span></div></div><span class="item-assignee">${esc(t.assignee||'未設定')}</span><span class="item-date ${urgent?'urgent':''}">${esc(dateText)}</span><div class="row-last"><button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="tasks" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を編集" title="タスクを編集">${icon('edit',15)}</button><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
 }
 // Pending and completed ToDos use bounded initial rendering, like tasks and notes.
 const TODO_RENDER_BATCH=24;
@@ -562,7 +575,7 @@ function renderTodos(){
  </div></section>`;
 }
 function todoRow(t){
- return `<div class="todo-entry"><input type="checkbox" class="todo-check" data-action="todo-check" data-id="${esc(t.id)}" ${t.done?'checked':''} aria-label="${esc(t.title)}を${t.done?'未完了へ戻す':'完了にする'}"/><button type="button" class="todo-text ${t.done?'done':''}" data-action="open" data-kind="todos" data-id="${esc(t.id)}" title="${esc(t.title)}">${esc(t.title)}</button><button type="button" class="todo-edit" data-action="open" data-kind="todos" data-id="${esc(t.id)}" aria-label="${esc(t.title)}の詳細を開く">${icon('right',15)}</button></div>`;
+ return `<div class="todo-entry"><input type="checkbox" class="todo-check" data-action="todo-check" data-id="${esc(t.id)}" ${t.done?'checked':''} aria-label="${esc(t.title)}を${t.done?'未完了へ戻す':'完了にする'}"/><button type="button" class="todo-text ${t.done?'done':''}" data-action="open" data-kind="todos" data-id="${esc(t.id)}" title="${esc(t.title)}">${esc(t.title)}</button><button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="todos" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を編集" title="ToDoを編集">${icon('edit',15)}</button><button type="button" class="todo-edit" data-action="open" data-kind="todos" data-id="${esc(t.id)}" aria-label="${esc(t.title)}の詳細を開く">${icon('right',15)}</button></div>`;
 }
 function originScheduleMeta(e){
  const items=[];
@@ -721,7 +734,7 @@ function renderNotes(){
     <button type="button" data-action="memo-layout" data-value="cards" aria-pressed="${memoLayout==='cards'}">カード</button>
     <button type="button" data-action="memo-layout" data-value="list" aria-pressed="${memoLayout==='list'}">一覧</button></div>
     ${filtered?'<button type="button" data-action="memo-reset">絞り込みを解除</button>':''}</div></div>
- <div class="memo-grid ${memoLayout==='list'?'origin-memo-list':''}">${items.length?mountedMemos.map(m=>`<div class="origin-memo-shell" data-paper-color="${memoColor(m.paperColor)}"><button class="memo-card" data-action="open" data-kind="memos" data-id="${esc(m.id)}" title="${esc(m.title)}"><span class="memo-icon">${icon('notes',19)}</span><h3>${esc(m.title)}</h3><p>${esc(m.body)}</p><span class="memo-bottom"><span class="origin-memo-metadata"><span class="origin-memo-category">${esc(m.category||'分類なし')}</span><time class="origin-memo-date">${Number.isFinite(m.updated)&&m.updated>0?new Date(m.updated).toLocaleDateString('ja-JP'):'更新日未設定'}</time></span><span class="${m.pinned?'origin-memo-pinned':'origin-memo-next'}">${m.pinned?'固定 '+icon('pin',15):icon('right',15)}</span></span></button><div class="origin-memo-colors"><span>色変更</span>${memoColors.map(([value,label])=>`<button type="button" class="origin-color-dot" data-paper-color="${value}" data-action="memo-color" data-id="${esc(m.id)}" data-value="${value}" aria-label="${esc(m.title)}を${label}に変更" title="${label}" aria-pressed="${memoColor(m.paperColor)===value}"></button>`).join('')}</div></div>`).join(''):empty('該当するメモがありません','絞り込みを解除するか、新しいメモを作成してください。')}</div>
+ <div class="memo-grid ${memoLayout==='list'?'origin-memo-list':''}">${items.length?mountedMemos.map(m=>`<div class="origin-memo-shell" data-paper-color="${memoColor(m.paperColor)}"><button class="memo-card" data-action="open" data-kind="memos" data-id="${esc(m.id)}" title="${esc(m.title)}"><span class="memo-icon">${icon('notes',19)}</span><h3>${esc(m.title)}</h3><p>${esc(m.body)}</p><span class="memo-bottom"><span class="origin-memo-metadata"><span class="origin-memo-category">${esc(m.category||'分類なし')}</span><time class="origin-memo-date">${Number.isFinite(m.updated)&&m.updated>0?new Date(m.updated).toLocaleDateString('ja-JP'):'更新日未設定'}</time></span><span class="${m.pinned?'origin-memo-pinned':'origin-memo-next'}">${m.pinned?'固定 '+icon('pin',15):icon('right',15)}</span></span></button><div class="origin-memo-colors"><span>色変更</span>${memoColors.map(([value,label])=>`<button type="button" class="origin-color-dot" data-paper-color="${value}" data-action="memo-color" data-id="${esc(m.id)}" data-value="${value}" aria-label="${esc(m.title)}を${label}に変更" title="${label}" aria-pressed="${memoColor(m.paperColor)===value}"></button>`).join('')}<button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="memos" data-id="${esc(m.id)}" aria-label="${esc(m.title)}を編集" title="メモを編集">${icon('edit',14)} 編集</button></div></div>`).join(''):empty('該当するメモがありません','絞り込みを解除するか、新しいメモを作成してください。')}</div>
  ${memoRemaining>0?`<div class="origin-memo-more" role="group" aria-label="メモの追加表示"><span>${mountedMemos.length} / ${items.length}件を表示</span><div class="origin-memo-more-actions"><button type="button" data-action="memo-load-more" aria-label="メモをさらに${Math.min(MEMO_RENDER_BATCH,memoRemaining)}件表示">${icon('plus',15)} あと${Math.min(MEMO_RENDER_BATCH,memoRemaining)}件</button><button type="button" data-action="memo-show-all" aria-label="残りのメモ${memoRemaining}件をすべて表示">残りすべて</button></div></div>`:''}`;
 }
 const singular={tasks:'タスク',todos:'ToDo',events:'予定',memos:'メモ'};
@@ -1759,6 +1772,18 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    return;
  }
  if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;detailTrail=[];panelReturnSearch=null;panelReturnAnchor=null;scheduleGlobalReturn=null;$('#createMenu').hidden=true;return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
+ if(a==='list-quick-edit'){
+   const routes={tasks:'tasks',todos:'todos',memos:'notes'};
+   if(panelOpen||routes[kind]!==view||!id||!findItem(kind,id))return;
+   // Preserve the source card's sequence and scroll context: the shortcut
+   // is a sibling button rather than the detail-opening title/card.
+   const card=originReturnCard(kind,id);
+   if(!card)return;
+   detailTrail=[];panelReturnSearch=null;scheduleGlobalReturn=null;
+   panelReturnAnchor=captureOriginReturnAnchor(kind,id,card);
+   captureDetailSequence(kind,id,card);
+   return panelShow(kind,id,true);
+ }
  if(a==='open'||a==='search-open'){
    if(!panelOpen){
      detailTrail=[];panelReturnSearch=a==='search-open'?{kind,id}:null;
