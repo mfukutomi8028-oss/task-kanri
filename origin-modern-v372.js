@@ -1767,6 +1767,12 @@ function renderSearch(q){
 }
 // Focus the first visible record; do not change filter state or canonical data.
 function focusOriginFirstResult(kind){
+ // A user may collapse history while searching; reveal matching history only
+ // when the pending list has no result, so the jump button is never a dead end.
+ if(kind==='todos'&&view==='todos'&&todoSearchHistory&&!todoCompletedOpen
+   &&!originVisiblePendingTodos().length&&originVisibleCompletedTodos().length){
+   todoCompletedOpen=true;render();
+ }
  const selectors={
   tasks:'.origin-task-collection [data-action="open"][data-kind="tasks"]',
   todos:'.origin-todo-list [data-action="open"][data-kind="todos"],#originCompletedTodos [data-action="open"][data-kind="todos"]',
