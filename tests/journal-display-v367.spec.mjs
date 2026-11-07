@@ -2349,3 +2349,43 @@ test('JOURNAL V523 keeps the chosen date through page switches and opens sticky 
   await expect(sticky.locator('.j523-selected-date')).toBeEmpty();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V525 returns to the same diary day after earlier entries change height',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  const diary=page.locator('#timelineView');
+  const jump=diary.locator('[data-j505-date-jump]');
+  const dates=await jump.locator('option').evaluateAll(items=>
+    items.map(item=>item.value).filter(Boolean));
+  const chosen=dates[9];
+  await jump.selectOption(chosen);
+  const day=diary.locator('.jv-chronicle-day')
+    .filter({has:diary.locator('.jv-day-records[data-jv-date="'+chosen+'"]')});
+  await expect(day).toBeVisible();
+  const sourceTop=await day.evaluate(el=>el.getBoundingClientRect().top);
+  await diary.locator('[data-j509-layout="list"]').click();
+
+  // Simulate new records growing a date earlier than the one being read.
+  // The old pixel offset would land on the wrong date after this change.
+  await page.addStyleTag({content:
+    'html[data-wb-display="journal"] #timelineView .jv-chronicle-day:first-of-type {min-height:950px!important;}'});
+  await page.locator('#listView [data-j425-task-layout="timeline"]').click();
+  await expect(jump).toHaveValue(chosen);
+  const restoredTop=await day.evaluate(el=>el.getBoundingClientRect().top);
+  expect(Math.abs(restoredTop-sourceTop)).toBeLessThanOrEqual(38);
+
+  await page.setViewportSize({width:320,height:800});
+  await diary.locator('[data-j509-layout="list"]').click();
+  await page.locator('#listView [data-j425-task-layout="timeline"]').click();
+  const heading=day.locator('.jv-date');
+  const geometry=await heading.evaluate(el=>({
+    top:el.getBoundingClientRect().top,
+    overflow:document.documentElement.scrollWidth-innerWidth
+  }));
+  expect(geometry.top).toBeGreaterThanOrEqual(-2);
+  expect(geometry.top).toBeLessThan(220);
+  expect(geometry.overflow).toBeLessThanOrEqual(2);
+});
