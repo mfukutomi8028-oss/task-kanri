@@ -422,3 +422,64 @@ for (const width of [320, 390]) {
     await expect(page.locator('#todayTodoInput')).toHaveValue('');
   });
 }
+
+
+for (const width of [320, 390]) {
+  test('Classic ToDo restores actual editor caret after a focused navigation button at ' + width + 'px', async ({ page }) => {
+    const now = Date.now();
+    const room = 'test-v534-focus-return-' + width;
+    await page.setViewportSize({ width, height: 812 });
+    await boot(page, room, {
+      historical: [{
+        id: 'v534-editor-' + width, text: '元の件名', memo: '元のメモ',
+        completed: false, completedAt: 0, order: 0, owner: '福冨',
+        revision: 1, createdAt: now, updatedAt: now
+      }]
+    });
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+    const row = page.locator('#todoView [data-todo-id="v534-editor-' + width + '"]');
+    await row.locator('.todo-summary-button').click();
+    const editor = row.locator('.todo-detail textarea');
+    await editor.fill('未保存メモの選択文字列');
+    await editor.evaluate(node => {
+      node.focus();
+      node.setSelectionRange(3, 8);
+    });
+    // Focus changes to a sidebar control before renderCore captures the draft.
+    // This is the failure path in the old implementation.
+    await page.evaluate(() => {
+      const nav = document.querySelector('.nav-item[data-layout="tasks"]');
+      nav.focus({ preventScroll: true });
+      nav.click();
+    });
+    await expect(page.locator('#todoView .todo-page')).toHaveCount(0);
+    await page.evaluate(() => {
+      const nav = document.querySelector('.nav-item[data-layout="todos"]');
+      nav.focus({ preventScroll: true });
+      nav.click();
+    });
+    await expect(editor).toHaveValue('未保存メモの選択文字列');
+    await expect(editor).toBeFocused();
+    expect(await editor.evaluate(node => [node.selectionStart, node.selectionEnd])).toEqual([3, 8]);
+
+    const compose = page.locator('#todayTodoInput');
+    await compose.fill('新規作成中の文章');
+    await compose.evaluate(node => {
+      node.focus();
+      node.setSelectionRange(2, 6);
+    });
+    await page.evaluate(() => {
+      const nav = document.querySelector('.nav-item[data-layout="today"]');
+      nav.focus({ preventScroll: true });
+      nav.click();
+    });
+    await page.evaluate(() => {
+      const nav = document.querySelector('.nav-item[data-layout="todos"]');
+      nav.focus({ preventScroll: true });
+      nav.click();
+    });
+    await expect(compose).toHaveValue('新規作成中の文章');
+    await expect(compose).toBeFocused();
+    expect(await compose.evaluate(node => [node.selectionStart, node.selectionEnd])).toEqual([2, 6]);
+  });
+}

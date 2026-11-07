@@ -2921,6 +2921,29 @@ let classicTodoRecoveryOwner = '';
 // observers or Firebase writes: leaving and returning use the same draft logic
 // as canonical ToDo redraws.
 const classicTodoNavigationDrafts = new Map();
+// A WeakMap avoids holding onto detached ToDo pages after canonical redraws.
+// Clicking a navigation button blurs the editor before renderCore() captures it.
+const classicTodoBlurredFocus = new WeakMap();
+function trackClassicTodoEditorBlur(event) {
+  const page = event.currentTarget;
+  const field = event.target;
+  if (!field?.matches?.('.todo-detail input, .todo-detail textarea, #todayTodoInput, #todayTodoMemo')) return;
+  const next = event.relatedTarget;
+  // A normal move to another editor/action within ToDo is not a navigation
+  // return anchor. Page-local layout jump buttons are exceptions.
+  if (next && page.contains(next) && !next.closest?.('[data-layout-jump]')) {
+    classicTodoBlurredFocus.delete(page);
+    return;
+  }
+  const row = field.closest('.todo-item[data-todo-id]');
+  classicTodoBlurredFocus.set(page, {
+    ...(row ? { id: row.dataset.todoId, field: field.matches('textarea') ? 'memo' : 'text' }
+      : { field: field.id }),
+    start: field.selectionStart,
+    end: field.selectionEnd,
+    top: field.getBoundingClientRect().top
+  });
+}
 function classicTodoNavigationKey(owner) {
   return ROOM_ID + ':' + String(owner || '');
 }
@@ -2929,7 +2952,7 @@ function rememberClassicTodoNavigationDraft() {
   const page = elements.todoView?.querySelector('.todo-page');
   const owner = page?.dataset.todoOwner;
   if (!page || !owner) return;
-  const snapshot = captureClassicTodoDraftState(page);
+  const snapshot = captureClassicTodoDraftState(page, { departing: true });
   if (!snapshot) return;
   // Both main and page may scroll depending on the viewport and layout.
   snapshot.scrollMain = elements.mainContent?.scrollTop || 0;
@@ -2941,7 +2964,7 @@ function rememberClassicTodoNavigationDraft() {
   classicTodoNavigationDrafts.set(classicTodoNavigationKey(owner), snapshot);
 }
 
-function captureClassicTodoDraftState(page) {
+function captureClassicTodoDraftState(page, { departing = false } = {}) {
   if (!page) return null;
   const drafts = [];
   page.querySelectorAll('.todo-item[data-todo-id]').forEach(row => {
@@ -2980,6 +3003,10 @@ function captureClassicTodoDraftState(page) {
       focus.top = active.getBoundingClientRect().top;
     }
   }
+  // The current focus is often the sidebar button by the time we capture.
+  // Use the editor's last blur only for deliberate layout/user navigation;
+  // ordinary Firebase redraws must not steal focus from unrelated controls.
+  if (!focus && departing) focus = classicTodoBlurredFocus.get(page) || null;
   return {
     drafts,
     focus,
@@ -3233,7 +3260,7 @@ function showClassicTodoEditConflict(row, latest) {
   detail.appendChild(alert);
 }
 
-function restoreClassicTodoDraftState(page, snapshot) {
+function restoreClassicTodoDraftState(page, snapshot, { fromNavigation = false } = {}) {
   if (!page) return;
   const owner = normalizeUser(getCurrentUser());
   if (classicTodoRecoveryOwner !== owner) {
@@ -3353,9 +3380,14 @@ function restoreClassicTodoDraftState(page, snapshot) {
 
   const focus = snapshot?.focus;
   if (focus) requestAnimationFrame(() => {
+    const active = document.activeElement;
+    const navigationControl = fromNavigation && (
+      active?.matches?.('.nav-item[data-layout="todos"], #currentUserSelect')
+      || active?.closest?.('[data-layout-jump="todos"], [data-open-todo]')
+    );
     if (state.layout !== 'todos' || document.documentElement.dataset.wbDisplay !== 'classic'
       || elements.todoView?.querySelector('.todo-page') !== page
-      || ![document.body, document.documentElement].includes(document.activeElement)) return;
+      || (![document.body, document.documentElement].includes(active) && !navigationControl)) return;
     const field = focus.id
       ? page.querySelector('.todo-item[data-todo-id="' + cssEscape(focus.id) + '"] .todo-detail '
           + (focus.field === 'memo' ? 'textarea' : 'input'))
@@ -3469,11 +3501,13 @@ function renderTodoView() {
   if (isClassicTodo) {
     classicTodoRenderedPage = elements.todoView?.querySelector('.todo-page');
     classicTodoRenderedPage.dataset.todoOwner = normalizeUser(getCurrentUser());
+    classicTodoRenderedPage.addEventListener('focusout', trackClassicTodoEditorBlur);
     classicTodoRenderedSignature = signature;
-    restoreClassicTodoDraftState(classicTodoRenderedPage, previousDraftState);
-    if (navigationDraft && previousDraftState === navigationDraft) {
+    const fromNavigation = Boolean(navigationDraft && previousDraftState === navigationDraft);
+    if (fromNavigation) {
       classicTodoNavigationDrafts.delete(navigationKey);
       const restoredPage = classicTodoRenderedPage;
+      // Queue scroll restoration before the editor's focus/selection frame.
       requestAnimationFrame(() => {
         if (state.layout !== 'todos' || document.documentElement.dataset.wbDisplay !== 'classic'
           || elements.todoView?.querySelector('.todo-page') !== restoredPage
@@ -3482,6 +3516,7 @@ function renderTodoView() {
         if (document.scrollingElement) document.scrollingElement.scrollTop = navigationDraft.scrollDocument;
       });
     }
+    restoreClassicTodoDraftState(classicTodoRenderedPage, previousDraftState, { fromNavigation });
   }
   if (searchAnchor) {
     // ToDo tools adopt the new .todo-page via a root MutationObserver.
