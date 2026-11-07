@@ -1624,6 +1624,15 @@ test('Origin mobile ToDo search opens on demand and finds pending title or memo'
  await query.fill('ネットワーク');
  await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(2);
  await expect(host.locator('.origin-todo-search-result')).toContainText('表示 2件');
+ const clearQuery=host.locator('[data-action="todo-clear-query"]');
+ await expect(clearQuery).toBeVisible();
+ expect(await clearQuery.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+ await clearQuery.click();
+ await expect(query).toHaveValue('');
+ await expect(query).toBeFocused();
+ await expect(searchButton).toHaveAttribute('aria-expanded','true');
+ await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(3);
+ await query.fill('ネットワーク');
  await query.press('Enter');
  const selected=await host.locator('.origin-todo-list .todo-text').first().evaluate(
   el=>el.getRootNode().activeElement===el
@@ -2935,6 +2944,14 @@ test('Origin searches completed ToDos by explicit opt-in without changing progre
  await jump.click();
  await expect(workspace.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','true');
  await expect(workspace.locator('#originCompletedTodos .todo-text')).toBeFocused();
+ // Clearing the keyword keeps the completion-history opt-in and open search.
+ await workspace.locator('[data-action="todo-clear-query"]').click();
+ await expect(input).toHaveValue('');
+ await expect(input).toBeFocused();
+ await expect(historyButton).toHaveAttribute('aria-pressed','true');
+ await expect(workspace.locator('#originCompletedTodos .todo-entry')).toHaveCount(2);
+ await expect(workspace.locator('.origin-todo-list .todo-entry')).toHaveCount(1);
+ await expect(host.locator('[data-action="todo-search-toggle"]')).toHaveAttribute('aria-expanded','true');
  await expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
 });
 
