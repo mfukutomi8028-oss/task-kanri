@@ -6459,7 +6459,7 @@ html[data-wb-display="journal"] #timelineView .j504-day-add:focus-visible {
     grid-template-columns:64px minmax(0,1fr)!important;
   }
   html[data-wb-display="journal"] #timelineView .jv-date {
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
     gap:2px;min-width:0;padding:8px 4px!important;
   }
   html[data-wb-display="journal"] #timelineView .jv-date strong {
