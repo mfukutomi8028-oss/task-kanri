@@ -440,6 +440,7 @@ test('remote ToDo removal restores a nearby filtered row and keeps a zero-result
   await search.fill('遠隔表示');
   await page.locator('#todoView [data-todo-id="v542-remote-18"] .todo-summary-button')
     .scrollIntoViewIfNeeded();
+  await search.evaluate(node => { node.focus({ preventScroll: true }); node.setSelectionRange(1, 3); });
   const anchor = await page.locator('#todoView').evaluate(root => {
     const rows = [...root.querySelectorAll('.todo-list .todo-item[data-todo-id]')]
       .filter(node => !node.hidden && !node.closest('.todo-list')?.hidden && node.getClientRects().length);
@@ -458,9 +459,12 @@ test('remote ToDo removal restores a nearby filtered row and keeps a zero-result
   await expect(page.locator('#todoView [data-todo-id="' + anchor.id + '"]')).toHaveCount(0, { timeout: 30000 });
   const next = page.locator('#todoView [data-todo-id="' + anchor.nextId + '"]');
   await expect(next).toBeVisible();
-  const after = await next.evaluate(node => node.getBoundingClientRect().top);
-  expect(Math.abs(after - anchor.top)).toBeLessThan(80);
+  await expect.poll(async () => Math.abs(
+    await next.evaluate(node => node.getBoundingClientRect().top) - anchor.top
+  ) < 80, { timeout: 5000 }).toBe(true);
   await expect(search).toHaveValue('遠隔表示');
+  await expect(search).toBeFocused();
+  expect(await search.evaluate(node => [node.selectionStart, node.selectionEnd])).toEqual([1, 3]);
 
   // While viewing another menu, the final matching ToDo is deleted.
   await search.fill('遠隔表示 27');

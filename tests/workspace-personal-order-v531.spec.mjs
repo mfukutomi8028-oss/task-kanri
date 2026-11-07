@@ -697,8 +697,9 @@ for (const width of [320, 390]) {
     await expect(page.locator('#todoView [data-todo-id="' + anchor.id + '"]')).toHaveCount(0);
     const next = page.locator('#todoView [data-todo-id="' + anchor.nextId + '"]');
     await expect(next).toBeVisible();
-    const after = await next.evaluate(node => node.getBoundingClientRect().top);
-    expect(Math.abs(after - anchor.top), 'next surviving item stays near the lost anchor').toBeLessThan(80);
+    await expect.poll(async () => Math.abs(
+      await next.evaluate(node => node.getBoundingClientRect().top) - anchor.top
+    ) < 80, { timeout: 5000 }).toBe(true);
 
     // A zero-result query must not be cleared by navigation or a stale anchor.
     await search.fill('該当しない検索語542');

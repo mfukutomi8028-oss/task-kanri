@@ -3305,7 +3305,7 @@ function showClassicTodoEditConflict(row, latest) {
   detail.appendChild(alert);
 }
 
-function restoreClassicTodoDraftState(page, snapshot, { fromNavigation = false } = {}) {
+function restoreClassicTodoDraftState(page, snapshot, { fromNavigation = false, preserveSearchViewport = false } = {}) {
   if (!page) return;
   const owner = normalizeUser(getCurrentUser());
   if (classicTodoRecoveryOwner !== owner) {
@@ -3440,8 +3440,11 @@ function restoreClassicTodoDraftState(page, snapshot, { fromNavigation = false }
         ? page.querySelector('.todo-search-input-v145')
         : page.querySelector('#' + focus.field));
     if (!field || !field.getClientRects().length) return;
-    // Reuse Classic's existing nested-scroller-aware focus recovery.
-    if (!focusClassicTodoActionAtViewportPosition(field, focus.top)) return;
+    // When an item was deleted, the list/recovery reset already owns the
+    // viewport. Restore the search caret without undoing the row alignment.
+    if (preserveSearchViewport && focus.field === 'search') {
+      field.focus({ preventScroll: true });
+    } else if (!focusClassicTodoActionAtViewportPosition(field, focus.top)) return;
     if (focus.start != null && focus.end != null) {
       field.setSelectionRange(focus.start, focus.end);
     }
@@ -3612,7 +3615,9 @@ function renderTodoView() {
         if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
       });
     }
-    restoreClassicTodoDraftState(classicTodoRenderedPage, previousDraftState, { fromNavigation });
+    restoreClassicTodoDraftState(classicTodoRenderedPage, previousDraftState, {
+      fromNavigation, preserveSearchViewport: fromNavigation || Boolean(subscribedListAnchor)
+    });
   }
   if (searchAnchor) {
     // ToDo tools adopt the new .todo-page via a root MutationObserver.
@@ -3622,10 +3627,14 @@ function renderTodoView() {
         || ![document.body, document.documentElement].includes(document.activeElement)) return;
       const search = elements.todoView?.querySelector('.todo-search-input-v145');
       if (!search || !search.getClientRects().length) return;
-      const delta = search.getBoundingClientRect().top - searchAnchor.top;
-      if (Math.abs(delta) > 1) {
-        const scroller = document.scrollingElement || document.documentElement;
-        scroller.scrollTop += delta;
+      // The subscribed list anchor is the scroll owner. Search still retains
+      // its focus and selection, but must not reverse that position correction.
+      if (!subscribedListAnchor) {
+        const delta = search.getBoundingClientRect().top - searchAnchor.top;
+        if (Math.abs(delta) > 1) {
+          const scroller = document.scrollingElement || document.documentElement;
+          scroller.scrollTop += delta;
+        }
       }
       search.focus({ preventScroll: true });
       if (searchAnchor.start != null && searchAnchor.end != null) {
