@@ -2,6 +2,7 @@
 (function installTodoToolsV145() {
   const STORAGE_KEY = 'workBoardTodoCompletedCollapsed';
   let query = '';
+  let retainedEditId = '';
   let completedCollapsed = false;
 
   try {
@@ -61,6 +62,7 @@
     // Filtering can change focusable rows; avoid updating mid-IME.
     let composingSearch = false;
     const searchNow = () => {
+      retainedEditId = ''; // Explicitly changing the query ends the temporary edit exception.
       query = input.value;
       clear.hidden = !query;
       applySearch(page);
@@ -75,15 +77,18 @@
       searchNow();
     });
 
-    clear.addEventListener('click', () => {
-      query = '';
-      input.value = '';
-      clear.hidden = true;
-      applySearch(page);
-      input.focus();
-    });
+    clear.addEventListener('click', () => resetSearch(page));
 
     return tools;
+  }
+
+  function resetSearch(page) {
+    query = '';
+    retainedEditId = '';
+    const input = page.querySelector('.todo-search-input-v145');
+    if (input) input.value = '';
+    applySearch(page);
+    input?.focus();
   }
 
   function compactHeaderIntoTools(page, tools) {
@@ -135,11 +140,19 @@
     const needle = normalize(query);
     const items = [...page.querySelectorAll('.todo-list .todo-item')];
     let visible = 0;
+    let matched = 0;
+    let retained = 0;
 
     for (const item of items) {
       const match = !needle || todoHaystack(item).includes(needle);
-      item.hidden = !match;
-      if (match) visible += 1;
+      // Removing the search term from an in-progress edit must not hide the
+      // unsaved editor. Retain that row through its successful redraw until
+      // the user changes or clears the search.
+      const editing = Boolean(needle && !match && item.dataset.todoId === retainedEditId);
+      item.hidden = !(match || editing);
+      if (match) matched += 1;
+      if (editing) retained += 1;
+      if (match || editing) visible += 1;
     }
 
     page.querySelectorAll('.todo-list').forEach(section => {
@@ -164,17 +177,27 @@
       if (!empty) {
         empty = document.createElement('p');
         empty.className = 'todo-search-empty-v145';
+        const message = document.createElement('span');
+        message.className = 'todo-search-empty-message-v145';
+        const reset = document.createElement('button');
+        reset.type = 'button';
+        reset.className = 'ghost-button todo-search-reset-v145';
+        reset.textContent = '検索を解除して一覧へ戻る';
+        reset.addEventListener('click', () => resetSearch(page));
+        empty.append(message, document.createTextNode(' '), reset);
         const workspace = page.querySelector('.todo-workspace');
         workspace?.appendChild(empty);
       }
-      setText(empty, `「${query.trim()}」に一致するToDoはありません。`);
+      setText(empty.querySelector('.todo-search-empty-message-v145'), `「${query.trim()}」に一致するToDoはありません。`);
       empty.hidden = false;
     } else if (empty) {
       empty.hidden = true;
     }
 
     const result = tools.querySelector('.todo-search-result-v145');
-    setText(result, needle ? `${visible}件 / ${items.length}件` : `全${items.length}件`);
+    setText(result, needle
+      ? `${matched}件 / ${items.length}件${retained ? '（編集中・保存後のToDoを一時表示）' : ''}`
+      : `全${items.length}件`);
     const clear = tools.querySelector('.todo-search-clear-v145');
     if (clear) clear.hidden = !query;
   }
@@ -187,6 +210,7 @@
       const next = String(value || '');
       if (next === query) return;
       query = next;
+      retainedEditId = '';
       const page = document.getElementById('todoView')?.querySelector('.todo-page');
       const input = page?.querySelector('.todo-search-input-v145');
       if (input) input.value = query;
@@ -227,6 +251,8 @@
     root.addEventListener('input', event => {
       if (!query) return;
       if (!event.target?.matches?.('.todo-detail input, .todo-detail textarea')) return;
+      const row = event.target.closest('.todo-item[data-todo-id]');
+      if (row?.dataset.todoId) retainedEditId = row.dataset.todoId;
       const page = event.target.closest('.todo-page');
       if (page) applySearch(page);
     });

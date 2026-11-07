@@ -188,3 +188,49 @@ for (const width of [320, 390]) {
     await expect(row.locator('.todo-detail')).toBeVisible();
   });
 }
+
+for (const width of [320, 390]) {
+  test('Classic searched ToDo remains editable through search-term changes and returns to the list at ' + width + 'px', async ({ page }) => {
+    const now = Date.now();
+    const historical = [
+      { id: 'search-edited-' + width, text: '備品を確認する', memo: '旧検索キーワードを含むメモ', completed: false,
+        completedAt: 0, order: 0, owner: '福冨', revision: 1, createdAt: now, updatedAt: now },
+      { id: 'search-other-' + width, text: '別件のToDo', memo: '', completed: false,
+        completedAt: 0, order: 1024, owner: '福冨', revision: 1, createdAt: now - 1000, updatedAt: now - 1000 }
+    ];
+    await page.setViewportSize({ width, height: 812 });
+    await boot(page, 'test-v531-search-edit-return-' + width, { historical });
+    await page.locator('#todayView [data-layout-jump="todos"]').first().click();
+    const search = page.locator('#todoView .todo-search-input-v145');
+    const row = page.locator('#todoView [data-todo-id="search-edited-' + width + '"]');
+
+    await search.fill('旧検索キーワード');
+    await expect(row).toBeVisible();
+    await row.locator('.todo-summary-button').click();
+    await row.locator('.todo-detail textarea').fill('新しく書き直したメモ');
+    await expect(row).toBeVisible();
+    await expect(page.locator('#todoView .todo-search-result-v145')).toContainText('一時表示');
+    await row.locator('.todo-detail-save').click();
+    await expect(row.locator('.todo-detail textarea')).toHaveValue('新しく書き直したメモ');
+    await expect(row.locator('.todo-detail-save')).toBeFocused();
+    await expect(row).toBeVisible();
+
+    await search.fill('一致するToDoがない語句');
+    await expect(row).toBeHidden();
+    await expect(page.locator('#todoView .todo-search-reset-v145')).toBeVisible();
+    await page.locator('#todoView .todo-search-reset-v145').click();
+    await expect(search).toHaveValue('');
+    await expect(search).toBeFocused();
+    await expect(row).toBeVisible();
+
+    // A canonical remote/local refresh while search has focus must restore
+    // the search cursor without affecting the editor-save focus behavior.
+    await search.fill('備品');
+    await search.evaluate(input => { input.focus(); input.setSelectionRange(1, 2); });
+    await page.evaluate(() => document.querySelector('#todoView .todo-state-toggle-v144')?.click());
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue('備品');
+    const caret = await search.evaluate(input => [input.selectionStart, input.selectionEnd]);
+    expect(caret).toEqual([1, 2]);
+  });
+}

@@ -2872,6 +2872,13 @@ function journalTodoV425() {
 
 function renderTodoView() {
   if(typeof document!=='undefined' && document.documentElement?.dataset?.wbDisplay==='journal') return journalTodoV425();
+  // Snapshot search focus before canonical rendering replaces the search sidecar.
+  // Only restore an actively focused search, never steal focus from a ToDo editor.
+  const previousSearch = elements.todoView?.querySelector('.todo-search-input-v145');
+  const searchAnchor = previousSearch && document.activeElement === previousSearch
+    ? { start: previousSearch.selectionStart, end: previousSearch.selectionEnd,
+        top: previousSearch.getBoundingClientRect().top }
+    : null;
   const todos = visibleTodos();
   const open = todos.filter(todo => !todo.completed);
   const completed = todos.filter(todo => todo.completed);
@@ -2938,6 +2945,25 @@ function renderTodoView() {
   `;
 
   bindTodoWorkspace(elements.todoView);
+  if (searchAnchor) {
+    // ToDo tools adopt the new .todo-page via a root MutationObserver.
+    // The next frame runs after that adoption without introducing another observer.
+    requestAnimationFrame(() => {
+      if (state.layout !== 'todos' || document.documentElement.dataset.wbDisplay !== 'classic'
+        || ![document.body, document.documentElement].includes(document.activeElement)) return;
+      const search = elements.todoView?.querySelector('.todo-search-input-v145');
+      if (!search || !search.getClientRects().length) return;
+      const delta = search.getBoundingClientRect().top - searchAnchor.top;
+      if (Math.abs(delta) > 1) {
+        const scroller = document.scrollingElement || document.documentElement;
+        scroller.scrollTop += delta;
+      }
+      search.focus({ preventScroll: true });
+      if (searchAnchor.start != null && searchAnchor.end != null) {
+        search.setSelectionRange(searchAnchor.start, searchAnchor.end);
+      }
+    });
+  }
   elements.todoView.querySelector("[data-layout-jump='today']")?.addEventListener('click', () => {
     state.layout = 'today';
     render();
