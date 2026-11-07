@@ -1145,6 +1145,8 @@ test('JOURNAL V515 list rerenders restore the exact filter, sorting or search co
   assert.match(css,/JOURNAL V515/);
   assert.match(css,/\.j425-workbench-toolbar label:first-child/);
   assert.match(css,/\.j425-workbench-toolbar \.j425-index-counter/);
+  // V430 desktop columns must not overrule V515's one-column mobile index.
+  assert.match(css,/#listView \.j425-task-index-layout\s*\{\s*grid-template-columns:minmax\(0,1fr\)!important;/);
 });
 
 test('JOURNAL V516 desk restores the originating case and index control without new writers',()=>{
