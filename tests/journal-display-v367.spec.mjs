@@ -46,6 +46,14 @@ async function choose(page, mode) {
   }
 }
 
+// The canonical task save selects the saved record and may open its detail
+// panel. Tests that continue using desk or diary controls close that panel
+// deliberately instead of clicking through a modal overlay.
+async function dismissSavedTaskDetailForTest(page) {
+  await page.locator('#closeDetail').evaluate(button=>button.click());
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
+}
+
 test('JOURNAL Today diary and Task Atelier are independent paper workspaces',async ({page})=>{
   test.setTimeout(90000);
   await boot(page,1792);await choose(page,'journal');
@@ -1618,6 +1626,7 @@ test('JOURNAL V494 desk keeps one selected task note beside its mobile card',asy
   await dialog.locator('#taskTitle').fill('JOURNAL V494 案件ノート往復');
   await dialog.locator('#taskForm button[type="submit"]').click();
   await expect(dialog).toBeHidden();
+  await dismissSavedTaskDetailForTest(page);
   const row=board.locator('[data-j420-task-id]').filter({hasText:'JOURNAL V494 案件ノート往復'});
   await expect(row).toBeVisible();
   const note=board.locator('#j494AtelierNote');
@@ -1965,6 +1974,7 @@ test('JOURNAL V507 phone chronicle restores cancelled moves and navigates to the
   await editor.locator('#taskTitle').fill(title);
   await editor.locator('#taskForm button[type="submit"]').click();
   await expect(editor).toBeHidden();
+  await dismissSavedTaskDetailForTest(page);
   const row=timeline.locator('.jv-day-item').filter({hasText:title});
   await expect(row).toBeVisible();
   const move=row.locator('[data-move-to-timeline]');
@@ -2057,6 +2067,7 @@ test('JOURNAL V511 phone diary navigation and lower note-return stay reachable',
   await editor.locator('#taskDescription').fill('一覧から開いた長文ノートの下でも戻る。'.repeat(14));
   await editor.locator('#taskForm button[type="submit"]').click();
   await expect(editor).toBeHidden();
+  await dismissSavedTaskDetailForTest(page);
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView');
   const row=list.locator('[data-j425-row]').filter({hasText:title});
@@ -2291,6 +2302,7 @@ test('JOURNAL V520 mobile desk hides unused shelves and recovers from zero resul
   await dialog.locator('#taskTitle').fill(title);
   await dialog.locator('#taskForm button[type="submit"]').click();
   await expect(dialog).toBeHidden();
+  await dismissSavedTaskDetailForTest(page);
   await expect(board.locator('[data-j420-task-id]').filter({hasText:title})).toBeVisible();
   await expect(board.locator('.j420-island.j520-empty-island:visible')).toHaveCount(0);
 
@@ -2520,6 +2532,7 @@ test('JOURNAL V530 remote snapshots preserve desk and list focus and IME text at
   await dialog.locator('#taskTitle').fill(title);
   await dialog.locator('#taskForm button[type="submit"]').click();
   await expect(dialog).toBeHidden();
+  await dismissSavedTaskDetailForTest(page);
   const card=board.locator('[data-j420-task-id]').filter({hasText:title});
   await expect(card).toBeVisible();
   await card.scrollIntoViewIfNeeded();
@@ -2587,6 +2600,7 @@ test('JOURNAL V532 remote deletion selects the next surviving desk/list case',as
     await dialog.locator('#taskTitle').fill(name);
     await dialog.locator('#taskForm button[type="submit"]').click();
     await expect(dialog).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   const cards=board.locator('[data-j420-task-id]');
   await expect(cards).toHaveCount(4);
@@ -2686,6 +2700,7 @@ test('JOURNAL V536 direct desk and index editing returns to the exact row after 
   await editor.locator('#taskTitle').fill(title);
   await editor.locator('#taskForm button[type="submit"]').click();
   await expect(editor).toBeHidden();
+  await dismissSavedTaskDetailForTest(page);
 
   const card=board.locator('[data-j420-task-id]').filter({hasText:title});
   await card.scrollIntoViewIfNeeded();
@@ -2746,6 +2761,7 @@ test('JOURNAL V538 missing edited case returns to nearby desk and index rows on 
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView');
@@ -2797,6 +2813,7 @@ test('JOURNAL V540 phone index browses filtered cases without returning to a lon
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView');
