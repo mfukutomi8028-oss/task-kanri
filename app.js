@@ -2068,6 +2068,12 @@ function renderCore() {
   const isTasks = state.layout === "tasks";
   const isDashboard = state.layout === "dashboard";
   const isSchedule = state.layout === "schedule";
+  // Classic discards its hidden ToDo DOM when a different layout is shown.
+  // Take a page-memory snapshot before it is hidden/removed, not after.
+  if (!isTodos && !elements.todoView.hidden
+    && document.documentElement.dataset.wbDisplay === 'classic') {
+    rememberClassicTodoNavigationDraft();
+  }
   document.body.classList.toggle("today-mode", isToday);
   document.body.classList.toggle("todo-mode", isTodos);
   document.body.classList.toggle("task-mode", isTasks);
@@ -2911,6 +2917,29 @@ let classicTodoRenderedSignature = '';
 let classicTodoCommittedEditIds = new Set();
 let classicTodoRecoveryDrafts = new Map();
 let classicTodoRecoveryOwner = '';
+// Short-lived in-page snapshots keyed by room and user. No new storage keys,
+// observers or Firebase writes: leaving and returning use the same draft logic
+// as canonical ToDo redraws.
+const classicTodoNavigationDrafts = new Map();
+function classicTodoNavigationKey(owner) {
+  return ROOM_ID + ':' + String(owner || '');
+}
+function rememberClassicTodoNavigationDraft() {
+  if (document.documentElement.dataset.wbDisplay !== 'classic') return;
+  const page = elements.todoView?.querySelector('.todo-page');
+  const owner = page?.dataset.todoOwner;
+  if (!page || !owner) return;
+  const snapshot = captureClassicTodoDraftState(page);
+  if (!snapshot) return;
+  // Both main and page may scroll depending on the viewport and layout.
+  snapshot.scrollMain = elements.mainContent?.scrollTop || 0;
+  snapshot.scrollDocument = document.scrollingElement?.scrollTop || 0;
+  snapshot.roomId = ROOM_ID;
+  snapshot.owner = owner;
+  snapshot.recoveryDrafts = classicTodoRecoveryOwner === owner
+    ? [...classicTodoRecoveryDrafts.entries()] : [];
+  classicTodoNavigationDrafts.set(classicTodoNavigationKey(owner), snapshot);
+}
 
 function captureClassicTodoDraftState(page) {
   if (!page) return null;
@@ -3223,6 +3252,7 @@ function restoreClassicTodoDraftState(page, snapshot) {
   // Previously disappeared drafts remain recoverable while this user stays
   // in the current tab. If an item reappears, move its draft back to the row.
   const drafts = new Map(classicTodoRecoveryDrafts);
+  for (const [id, draft] of snapshot?.recoveryDrafts || []) drafts.set(id, draft);
   for (const draft of snapshot?.drafts || []) drafts.set(draft.id, draft);
   const recovery = new Map();
   for (const [id, draft] of drafts) {
@@ -3353,9 +3383,15 @@ function renderTodoView() {
   const currentPage = elements.todoView?.querySelector('.todo-page');
   if (isClassicTodo && currentPage && currentPage === classicTodoRenderedPage
     && signature === classicTodoRenderedSignature) return;
+  const currentOwner = isClassicTodo ? normalizeUser(getCurrentUser()) : '';
+  const navigationKey = isClassicTodo ? classicTodoNavigationKey(currentOwner) : '';
+  const navigationDraft = isClassicTodo
+    ? classicTodoNavigationDrafts.get(navigationKey) : null;
   const previousDraftState = isClassicTodo && currentPage
-    && currentPage.dataset.todoOwner === normalizeUser(getCurrentUser())
-    ? captureClassicTodoDraftState(currentPage) : null;
+    && currentPage.dataset.todoOwner === currentOwner
+    ? captureClassicTodoDraftState(currentPage)
+    : (navigationDraft?.owner === currentOwner && navigationDraft?.roomId === ROOM_ID
+      ? navigationDraft : null);
   classicTodoCommittedEditIds.clear();
   // Snapshot search focus before canonical rendering replaces the search sidecar.
   // Only restore an actively focused search, never steal focus from a ToDo editor.
@@ -3435,6 +3471,17 @@ function renderTodoView() {
     classicTodoRenderedPage.dataset.todoOwner = normalizeUser(getCurrentUser());
     classicTodoRenderedSignature = signature;
     restoreClassicTodoDraftState(classicTodoRenderedPage, previousDraftState);
+    if (navigationDraft && previousDraftState === navigationDraft) {
+      classicTodoNavigationDrafts.delete(navigationKey);
+      const restoredPage = classicTodoRenderedPage;
+      requestAnimationFrame(() => {
+        if (state.layout !== 'todos' || document.documentElement.dataset.wbDisplay !== 'classic'
+          || elements.todoView?.querySelector('.todo-page') !== restoredPage
+          || normalizeUser(getCurrentUser()) !== navigationDraft.owner) return;
+        if (elements.mainContent) elements.mainContent.scrollTop = navigationDraft.scrollMain;
+        if (document.scrollingElement) document.scrollingElement.scrollTop = navigationDraft.scrollDocument;
+      });
+    }
   }
   if (searchAnchor) {
     // ToDo tools adopt the new .todo-page via a root MutationObserver.
@@ -9655,6 +9702,11 @@ function getCurrentUser() {
   return normalizeUser(state.currentUser || localStorage.getItem("systemTaskUser") || state.users[0]);
 }
 function setCurrentUser(value) {
+  // A user change redraws the ToDo page without leaving this layout.
+  // Save the old user's draft under their own key before changing identity.
+  if (state.layout === 'todos' && normalizeUser(value) !== getCurrentUser()) {
+    rememberClassicTodoNavigationDraft();
+  }
   clearTaskDialogContexts();
   state.currentUser = normalizeUser(value);
   localStorage.setItem("systemTaskUser", state.currentUser);
