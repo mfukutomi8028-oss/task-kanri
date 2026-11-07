@@ -1826,7 +1826,10 @@
   // Only canonical occurrences in the current inspector session are eligible.
   // Revision changes from other devices make a previous edit eligible again.
   function nextUneditedSeriesOccurrence(item,afterId='') {
-    const index=currentSeriesIndex(item),rows=seriesOccurrences(item);
+    const index=currentSeriesIndex(item);
+    // Active filters define the editing queue; never skip outside the visible scope.
+    const rows=index.query.trim()||index.status!=='all'
+      ?filteredSeriesIndex(item):seriesOccurrences(item);
     const origin=rows.findIndex(row=>row.id===afterId);
     for(let offset=1;offset<=rows.length;offset++){
       const row=rows[(origin+offset)%rows.length];
@@ -1835,17 +1838,22 @@
     }
     return null;
   }
-  function filteredSeriesIndex(item) {
-    const index=currentSeriesIndex(item);
-    const query=index.query.trim().toLocaleLowerCase('ja-JP');
-    const rows=seriesOccurrences(item).filter(row=>
-      index.status!=='unchecked'||!index.viewed.has(row.id));
-    if(!query)return rows;
-    return rows.filter(row=>[
+  function seriesIndexMatchesQuery(row,query) {
+    const text=String(query||'').trim().toLocaleLowerCase('ja-JP');
+    if(!text)return true;
+    return [
       row.startAt||'',localDate(row.startAt),scheduleSeriesDateLabel(localDate(row.startAt)),
       localTime(row.startAt),row.title||'',row.assignee||'',row.category||'',
       row.location||''
-    ].join(' ').toLocaleLowerCase('ja-JP').includes(query));
+    ].join(' ').toLocaleLowerCase('ja-JP').includes(text);
+  }
+  function filteredSeriesIndex(item) {
+    const index=currentSeriesIndex(item);
+    return seriesOccurrences(item).filter(row=>
+      (index.status==='all'||
+        index.status==='unchecked'&&!index.viewed.has(row.id)||
+        index.status==='unedited'&&index.edited.get(row.id)!==Number(row.revision||0))&&
+      seriesIndexMatchesQuery(row,index.query));
   }
   // The last confirmed change belongs to this inspector session only.
   // Never update canonical schedules or clear a filter without a user action.
@@ -1907,8 +1915,10 @@
     const matching=filtered.some(row=>row.id===saved.id);
     const showing=visible.some(row=>row.id===saved.id);
     const details=edit.changes?.length?'変更項目：'+edit.changes.join('・'):'保存を確認済み';
-    const situation=!matching?'検索条件から外れています。':
-      !showing?'別のページにあります。':'下の一覧で強調表示しています。';
+    const searchExcluded=!seriesIndexMatchesQuery(saved,index.query);
+    const situation=!matching
+      ?searchExcluded?'検索条件から外れています。':'確認状況の絞り込みから外れています。'
+      :!showing?'別のページにあります。':'下の一覧で強調表示しています。';
     return '<div class="pn-series-index-saved" role="status" aria-live="polite">'+
       '<div class="pn-series-index-saved-info"><strong>最後に保存した回</strong>'+
         '<span>'+escape(scheduleSeriesDateLabel(localDate(saved.startAt))+' '+
@@ -1916,7 +1926,8 @@
         '<small>'+escape(details)+'</small></div>'+
       '<div class="pn-series-index-saved-action"><span>'+situation+'</span>'+
       (!showing?'<button type="button" data-pn-series-index-reveal>'+
-        (matching?'保存した回を表示':'検索を解除して表示')+'</button>':'')+
+        (matching?'保存した回を表示':
+          searchExcluded?'検索を解除して表示':'絞り込みを解除して表示')+'</button>':'')+
       '</div>'+seriesIndexComparisonMarkup(index,edit)+'</div>';
   }
   function seriesIndexResults(item) {
@@ -1978,7 +1989,7 @@
           (index.page===0?' disabled':'')+'>‹ 前の8件</button>'+
         '<button type="button" data-pn-series-index-page="1"'+
           (index.page===totalPages-1?' disabled':'')+'>次の8件 ›</button></div>':'';
-    const upcoming=all.find(row=>!index.viewed.has(row.id));
+    const upcoming=rows.find(row=>!index.viewed.has(row.id));
     const jump=upcoming?'<button type="button" class="pn-series-index-next"'+
       ' data-pn-series-index-next-unchecked="'+escape(upcoming.id)+'">'+
       '次の未確認を開く ›</button>':'';
@@ -1987,7 +1998,8 @@
       ' class="pn-series-index-next is-edit"'+
       ' data-pn-series-index-next-edit="'+escape(editNext.id)+'"'+
       ' aria-label="次の未編集の予定「'+escape(editNext.title||'無題の予定')+'」を編集">'+
-      '次の未編集を編集 ›</button>':'';
+      (index.query.trim()||index.status!=='all'
+        ?'絞り込み内の未編集を編集 ›':'次の未編集を編集 ›')+'</button>':'';
     const quick=jump||editJump
       ?'<div class="pn-series-index-quick">'+jump+editJump+'</div>':'';
     return saved+progress+quick+count+list+nav;
@@ -2008,6 +2020,7 @@
         '<select data-pn-series-index-status aria-label="系列の確認状況で絞り込み">'+
           '<option value="all"'+(index.status==='all'?' selected':'')+'>すべて表示</option>'+
           '<option value="unchecked"'+(index.status==='unchecked'?' selected':'')+'>未確認のみ</option>'+
+          '<option value="unedited"'+(index.status==='unedited'?' selected':'')+'>未編集のみ</option>'+
         '</select></label>'+ 
       '<div data-pn-series-index-results>'+seriesIndexResults(item)+'</div></div></details>';
   }
@@ -2020,10 +2033,9 @@
   }
   function inspectorSeriesContext(item) {
     const rows=seriesOccurrences(item);
-    // Opening a canonical occurrence is an explicit review action.
-    if(state.route==='schedule'&&state.scheduleView==='series')
-      currentSeriesIndex(item).viewed.add(item.id);
+    // Opening an occurrence is a review in Day, Week, Series and Today.
     if(!rows.length)return '';
+    currentSeriesIndex(item).viewed.add(item.id);
     const index=rows.findIndex(row=>row.id===item.id);
     const previous=rows[index-1],next=rows[index+1];
     const nearby=(row,label)=>row
