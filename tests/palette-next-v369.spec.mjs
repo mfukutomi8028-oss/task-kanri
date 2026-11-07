@@ -445,6 +445,30 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await page.setViewportSize(originalViewport);
   await compare.locator('[data-pn-series-index-reset]').click();
   await compareSearch.fill('NEXT 週次バッチテスト');
+  // A canonical update outside Palette triggers the same snapshot subscriber
+  // used by remote Firebase changes. Preserve search focus and caret.
+  await compareSearch.focus();
+  await compareSearch.evaluate(el=>el.setSelectionRange(2,5));
+  const canonicalSync=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+    const row=snapshot.schedules.find(x=>x.title==='NEXT 週次バッチテスト'&&
+      x.recurrenceSeriesId&&x.startAt);
+    if(!row)return {ok:false,error:'missing test recurrence'};
+    return bridge.dispatch({
+      type:'schedule.update',id:row.id,revision:row.revision,
+      ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+      values:{title:row.title,startAt:row.startAt,endAt:row.endAt,
+        assignee:row.assignee||snapshot.currentUser,
+        category:row.category||snapshot.categories[0]||'その他',
+        location:row.location||'',memo:(row.memo||'')+' / series focus sync',
+        relatedTaskId:row.relatedTaskId||''}
+    });
+  });
+  expect(canonicalSync.ok).toBe(true);
+  await expect(compareSearch).toHaveValue('NEXT 週次バッチテスト');
+  await expect(compareSearch).toBeFocused();
+  expect(await compareSearch.evaluate(el=>[el.selectionStart,el.selectionEnd]))
+    .toEqual([2,5]);
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
   await expect(compare.locator('[data-pn-series-index-edit]')).toHaveCount(3);
   // Review the chronological next occurrence and return to the exact series controls.
