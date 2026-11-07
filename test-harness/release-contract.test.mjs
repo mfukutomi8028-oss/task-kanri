@@ -351,7 +351,7 @@ test('Ver.378 retired image files stay absent and unreferenced, while boot memo 
 });
 
 
-test('Ver.381 CI keeps a single mandatory regression gate over four isolated parallel suites', () => {
+test('CI keeps Protocol mandatory, selects impacted suites, and protects nightly full regression', () => {
   const yaml = read('.github/workflows/regression-checks.yml');
   const section = name => {
     const prefix = '\n  ' + name + ':\n';
@@ -362,75 +362,91 @@ test('Ver.381 CI keeps a single mandatory regression gate over four isolated par
     const nextJob = remainder.search(/\n  [a-z]+:\n/);
     return nextJob >= 0 ? remainder.slice(0, nextJob) : remainder;
   };
+  const scope = section('scope');
   const protocol = section('protocol');
   const browser = section('browser');
   const authorization = section('authorization');
   const firebase = section('firebase');
   const gate = section('regression');
 
-  assert.match(yaml, /group: regression-\$\{\{ github\.ref \}\}/);
-  assert.match(yaml, /cancel-in-progress: true/);
-  assert.match(protocol, /run: npm run test:protocol/);
-  assert.match(browser, /run: npm run test:ui/);
-  // Ver.435: matrix runs on isolated hosts; a single mandatory gate waits for ALL browser shards.
-  assert.match(browser, /strategy:\s*\n\s*fail-fast: false\s*\n\s*matrix:\s*\n\s*shard: \[1, 2\]/);
-  assert.match(browser, /run: npm run test:ui -- --shard=\$\{\{ matrix\.shard \}\}\/2/);
+  // Concurrent PR/main updates may supersede each other. The nightly full
+  // check must use a distinct concurrency key and never be cancelled by push.
+  assert.match(yaml, /schedule:\s*\n\s*- cron: '0 18 \* \* \*'/);
+  assert.match(yaml, /workflow_dispatch:/);
+  assert.match(yaml, /group: regression-\$\{\{ github\.event_name \}\}-/);
+  assert.match(yaml, /cancel-in-progress: \$\{\{ github\.event_name == 'push' \|\| github\.event_name == 'pull_request' \}\}/);
+  assert.match(scope, /fetch-depth: 0/);
+  assert.match(scope, /node test-harness\/ci-scope-v590\.mjs/);
+  assert.match(scope, /Diff base unavailable: force full integration verification/);
+  assert.match(scope, /mode: \$\{\{ steps\.select\.outputs\.mode \}\}/);
+  assert.match(scope, /targets: \$\{\{ steps\.select\.outputs\.targets \}\}/);
+
+  assert.match(protocol, /run: npm run test:protocol 2>&1 \| tee protocol-results\.log/);
+  assert.match(protocol, /run: \.\/release-check\.ps1/);
+  assert.doesNotMatch(protocol, /Install Chromium|Setup Java for Firebase RTDB Emulator/);
+
+  // Full mode uses two isolated browser shards. UI-only changes run only the
+  // known impacted specs (one shard); empty impacted targets must fail closed.
+  assert.match(browser, /needs: scope/);
+  assert.match(browser, /if: \$\{\{ needs\.scope\.outputs\.browser == 'true' \}\}/);
+  assert.match(browser, /fail-fast: false/);
+  assert.match(browser, /shard: \$\{\{ fromJSON\(needs\.scope\.outputs\.shards\) \}\}/);
+  assert.match(browser, /npm run test:ui -- --shard=\$\{\{ matrix\.shard \}\}\/2/);
+  assert.match(browser, /npx playwright test "\$\{selected\[@\]\}"/);
+  assert.match(browser, /Targeted checks must not be empty/);
   assert.match(browser, /name: browser-report-\$\{\{ github\.run_id \}\}-shard-\$\{\{ matrix\.shard \}\}/);
-  assert.doesNotMatch(firebase, /matrix:/);
-  assert.match(authorization, /run: npm run test:rules:v568/);
-  assert.match(authorization, /run: npm run test:rules:v577/);
-  assert.match(authorization, /run: npm run test:admin:v573/);
-  assert.doesNotMatch(firebase, /run: npm run test:rules:v568|run: npm run test:rules:v577|run: npm run test:admin:v573/);
-  assert.match(firebase, /run: npm run test:firebase/);
   assert.match(browser, /npx playwright install --with-deps chromium/);
+  assert.doesNotMatch(browser, /continue-on-error:\s*true/);
+
+  assert.match(authorization, /if: \$\{\{ needs\.scope\.outputs\.authorization == 'true' \}\}/);
+  for (const command of ['test:rules:v568', 'test:rules:v577', 'test:admin:v573',
+    'test:auth:ui:v580', 'test:migration:v582']) {
+    assert.match(authorization, new RegExp('npm run ' + command));
+    assert.doesNotMatch(firebase, new RegExp('npm run ' + command));
+  }
+  assert.match(firebase, /if: \$\{\{ needs\.scope\.outputs\.firebase == 'true' \}\}/);
+  assert.match(firebase, /run: npm run test:firebase/);
   assert.match(firebase, /npx playwright install --with-deps chromium/);
   assert.match(firebase, /Setup Java for Firebase RTDB Emulator/);
-  assert.doesNotMatch(protocol, /Install Chromium|Setup Java for Firebase RTDB Emulator/);
-  for (const name of ['protocol', 'browser', 'authorization', 'firebase']) {
+  assert.doesNotMatch(firebase, /matrix:/);
+  assert.doesNotMatch(firebase, /continue-on-error:\s*true/);
+
+  for (const name of ['scope', 'protocol', 'browser', 'authorization', 'firebase']) {
     assert.match(gate, new RegExp('needs\\.' + name + '\\.result'));
   }
-  assert.match(gate, /needs: \[protocol, browser, authorization, firebase\]/);
+  assert.match(gate, /needs: \[scope, protocol, browser, authorization, firebase\]/);
   assert.match(gate, /if: \$\{\{ always\(\) \}\}/);
-  assert.match(gate, /test "\$PROTOCOL_RESULT" = "success"/);
-  assert.match(gate, /test "\$BROWSER_RESULT" = "success"/);
-  assert.match(gate, /test "\$AUTHORIZATION_RESULT" = "success"/);
-  assert.match(gate, /test "\$FIREBASE_RESULT" = "success"/);
-  assert.match(browser, /if: failure\(\)[\s\S]*?actions\/upload-artifact@v4/);
-  assert.match(firebase, /if: failure\(\)[\s\S]*?actions\/upload-artifact@v4/);
-  // CI remains fail-closed; accelerate only dependency downloads on the same manifest.
+  assert.match(gate, /if \[\[ "\$SCOPE_RESULT" != success \|\| "\$PROTOCOL_RESULT" != success \]\]/);
+  assert.match(gate, /if \[\[ "\$required" == true && "\$actual" != success \]\]/);
+  assert.match(gate, /if \[\[ "\$required" == false && "\$actual" != skipped \]\]/);
+  assert.match(gate, /name: Summarize and enforce selected required checks/);
+  assert.match(gate, /GITHUB_STEP_SUMMARY/);
+
+  // The immutable lockfile remains authoritative and every executed suite
+  // uses an integrity-checked npm ci, never a mutable npm install.
   const cache = /uses: actions\/cache@v4[\s\S]*?path: ~\/\.npm[\s\S]*?key: npm-\$\{\{ runner\.os \}\}-node24-\$\{\{ hashFiles\('package-lock\.json'\) \}\}/;
   for (const job of [protocol, browser, authorization, firebase]) {
-    assert.match(job, cache, 'all four suites should reuse manifest-keyed npm downloads');
+    assert.match(job, cache);
+    assert.match(job, /run: npm ci --no-audit --no-fund/);
+    assert.doesNotMatch(job, /run: npm install --no-audit --no-fund/);
   }
-  assert.match(read('.github/workflows/pages.yml'), cache,
-    'Pages deployment should share npm download caching');
-  assert.match(protocol, /run: npm run test:protocol 2>&1 \| tee protocol-results\.log/);
-  assert.match(protocol, /shell: bash[\s\S]*?run: npm run test:protocol 2>&1 \| tee protocol-results\.log/);
-  assert.match(protocol, /name: protocol-report-\$\{\{ github\.run_id \}\}/);
-  assert.match(gate, /name: Summarize required regression checks/);
-  assert.match(gate, /GITHUB_STEP_SUMMARY/);
-  assert.match(gate, /needs\.(?:protocol|browser|authorization|firebase)\.result/);
-  // Lockfile is the canonical dependency resolution; no job may re-resolve transitive versions.
+  assert.match(read('.github/workflows/pages.yml'), cache);
+  assert.match(read('.github/workflows/pages.yml'), /run: npm ci --no-audit --no-fund/);
   const packageManifest = JSON.parse(read('package.json'));
   const packageLock = JSON.parse(read('package-lock.json'));
   assert.equal(packageLock.lockfileVersion, 3);
   assert.deepEqual(packageLock.packages[''].devDependencies, packageManifest.devDependencies);
-  assert.ok(Object.keys(packageLock.packages).length >= 500, 'unexpectedly small package-lock.json');
-  for (const job of [protocol, browser, authorization, firebase]) {
-    assert.match(job, /run: npm ci --no-audit --no-fund/);
-    assert.doesNotMatch(job, /run: npm install --no-audit --no-fund/);
-  }
-  assert.match(read('.github/workflows/pages.yml'), /run: npm ci --no-audit --no-fund/);
-  // Failure logs are diagnostic only. Bash pipefail retains the test process exit status.
-  assert.match(browser, /shell: bash\s*\n\s*run: npm run test:ui -- --shard=.* \| tee browser-results\.log/);
+  assert.ok(Object.keys(packageLock.packages).length >= 500);
+
+  // Failure logs remain diagnostic. CI propagates failure through pipefail
+  // and does not hide a failed suite behind the selection summary.
+  assert.match(browser, /set -euo pipefail/);
+  assert.match(browser, /browser-results\.log[\s\S]*?test-results\/\*\*\/error-context\.md/);
   assert.match(browser, /name: Summarize browser test failures[\s\S]*?if: failure\(\)/);
   assert.match(browser, /ci-failure-digest\.mjs browser-results\.log/);
-  assert.match(browser, /browser-results\.log[\s\S]*?test-results\/\*\*\/error-context\.md/);
-  assert.match(firebase, /shell: bash\s*\n\s*run: npm run test:firebase 2>&1 \| tee firebase-results\.log/);
+  assert.match(firebase, /shell: bash[\s\S]*?run: npm run test:firebase 2>&1 \| tee firebase-results\.log/);
   assert.match(firebase, /name: Summarize emulator test failures[\s\S]*?if: failure\(\)/);
   assert.match(firebase, /ci-failure-digest\.mjs firebase-results\.log/);
-  assert.doesNotMatch(browser, /continue-on-error:\s*true/);
-  assert.doesNotMatch(firebase, /continue-on-error:\s*true/);
   assert.doesNotMatch(gate, /test:ui|test:firebase|test:protocol/);
 });
 

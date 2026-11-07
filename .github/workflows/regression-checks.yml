@@ -6,15 +6,73 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # An uncancelled full safety net after the daily parallel development window.
+  schedule:
+    - cron: '0 18 * * *' # 03:00 JST
 
 permissions:
   contents: read
 
 concurrency:
-  group: regression-${{ github.ref }}
-  cancel-in-progress: true
+  # PR and main runs may be superseded. A nightly/manual full run has a
+  # separate key and is never cancelled by new commits to main.
+  group: regression-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      mode: ${{ steps.select.outputs.mode }}
+      browser: ${{ steps.select.outputs.browser }}
+      firebase: ${{ steps.select.outputs.firebase }}
+      authorization: ${{ steps.select.outputs.authorization }}
+      full_browser: ${{ steps.select.outputs.full_browser }}
+      shards: ${{ steps.select.outputs.shards }}
+      targets: ${{ steps.select.outputs.targets }}
+    steps:
+      - name: Checkout change base and head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Determine required checks (fail closed when base is unavailable)
+        id: select
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          changed="$RUNNER_TEMP/work-board-changed.txt"
+          : > "$changed"
+          if [[ "$EVENT_NAME" == 'pull_request' || "$EVENT_NAME" == 'push' ]]; then
+            if [[ "$EVENT_NAME" == 'pull_request' ]]; then base="$PR_BASE_SHA"; else base="$PUSH_BASE_SHA"; fi
+            if [[ -n "$base" && ! "$base" =~ ^0+$ ]] && git cat-file -e "$base^{commit}" 2>/dev/null; then
+              git diff --name-only "$base" HEAD > "$changed"
+            else
+              echo 'Diff base unavailable: force full integration verification' >&2
+              echo '.github/workflows/regression-checks.yml' > "$changed"
+            fi
+          fi
+          node test-harness/ci-scope-v590.mjs "$changed" "$EVENT_NAME" >> "$GITHUB_OUTPUT"
+      - name: Explain check selection
+        env:
+          MODE: ${{ steps.select.outputs.mode }}
+          TARGETS: ${{ steps.select.outputs.targets }}
+          RUN_FIREBASE: ${{ steps.select.outputs.firebase }}
+          RUN_AUTH: ${{ steps.select.outputs.authorization }}
+        shell: bash
+        run: |
+          {
+            echo '## CI verification scope'
+            echo "Mode: $MODE"
+            echo "Browser tests: ${TARGETS:-all or skipped}"
+            echo "Firebase required: $RUN_FIREBASE"
+            echo "Authorization required: $RUN_AUTH"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   protocol:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -58,12 +116,14 @@ jobs:
           retention-days: 7
 
   browser:
+    needs: scope
+    if: ${{ needs.scope.outputs.browser == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: ${{ fromJSON(needs.scope.outputs.shards) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,9 +142,20 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Browser regression smoke tests
+      - name: Browser regression (targeted PR/main or full daily)
         shell: bash
-        run: npm run test:ui -- --shard=${{ matrix.shard }}/2 2>&1 | tee browser-results.log
+        env:
+          FULL_BROWSER: ${{ needs.scope.outputs.full_browser }}
+          TARGETS: ${{ needs.scope.outputs.targets }}
+        run: |
+          set -euo pipefail
+          if [[ "$FULL_BROWSER" == 'true' ]]; then
+            npm run test:ui -- --shard=${{ matrix.shard }}/2 2>&1 | tee browser-results.log
+          else
+            read -r -a selected <<< "$TARGETS"
+            if [[ ${#selected[@]} -eq 0 ]]; then echo 'Targeted checks must not be empty' >&2; exit 1; fi
+            npx playwright test "${selected[@]}" 2>&1 | tee browser-results.log
+          fi
       - name: Summarize browser test failures
         if: failure()
         run: node test-harness/ci-failure-digest.mjs browser-results.log "Browser shard ${{ matrix.shard }}/2"
@@ -103,6 +174,8 @@ jobs:
   # These isolated candidate-rule checks protect a future Auth rollout.
   # They operate on synthetic data in localhost Emulators, never live Firebase.
   authorization:
+    needs: scope
+    if: ${{ needs.scope.outputs.authorization == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -138,6 +211,8 @@ jobs:
         run: npm run test:migration:v582
 
   firebase:
+    needs: scope
+    if: ${{ needs.scope.outputs.firebase == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -184,49 +259,50 @@ jobs:
           retention-days: 7
 
   regression:
-    needs: [protocol, browser, authorization, firebase]
+    needs: [scope, protocol, browser, authorization, firebase]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Summarize required regression checks
-        if: ${{ always() }}
+      - name: Summarize and enforce selected required checks
         env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          MODE: ${{ needs.scope.outputs.mode }}
+          NEED_BROWSER: ${{ needs.scope.outputs.browser }}
+          NEED_AUTHORIZATION: ${{ needs.scope.outputs.authorization }}
+          NEED_FIREBASE: ${{ needs.scope.outputs.firebase }}
           PROTOCOL_RESULT: ${{ needs.protocol.result }}
           BROWSER_RESULT: ${{ needs.browser.result }}
           AUTHORIZATION_RESULT: ${{ needs.authorization.result }}
           FIREBASE_RESULT: ${{ needs.firebase.result }}
         shell: bash
         run: |
+          set -euo pipefail
           {
             echo '## 回帰テスト結果'
             echo "対象コミット: \`$GITHUB_SHA\`"
+            echo "検査モード: $MODE"
             echo ''
-            echo '| テスト | 結果 |'
-            echo '| --- | --- |'
-            printf '| Protocol | %s |\n' "$PROTOCOL_RESULT"
-            printf '| Browser（2シャード） | %s |\n' "$BROWSER_RESULT"
-            printf '| 認証・権限 | %s |\n' "$AUTHORIZATION_RESULT"
-            printf '| Firebase Emulator | %s |\n' "$FIREBASE_RESULT"
+            echo '| テスト | 必要性 | 結果 |'
+            echo '| --- | --- | --- |'
+            printf '| Protocol | 必須 | %s |\n' "$PROTOCOL_RESULT"
+            printf '| Browser | %s | %s |\n' "$NEED_BROWSER" "$BROWSER_RESULT"
+            printf '| 認証・権限 | %s | %s |\n' "$NEED_AUTHORIZATION" "$AUTHORIZATION_RESULT"
+            printf '| Firebase Emulator | %s | %s |\n' "$NEED_FIREBASE" "$FIREBASE_RESULT"
             echo ''
-            echo "失敗したジョブのログと7日間保存のレポートは[Actions実行詳細]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)から確認してください。"
-            echo 'Protocol: protocol-report / Browser: browser-report-* / Firebase: emulator-report'
+            echo 'skipped は不要な検査として意図的に省略した場合のみ正常です。'
+            echo '全項目の実検証は毎日03:00 JSTまたは手動実行で行います。'
+            echo "ログ：[Actions実行詳細]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)"
           } >> "$GITHUB_STEP_SUMMARY"
-          for entry in "protocol=$PROTOCOL_RESULT" "browser=$BROWSER_RESULT" "authorization=$AUTHORIZATION_RESULT" "firebase=$FIREBASE_RESULT"; do
-            name="${entry%%=*}"
-            result="${entry#*=}"
-            if [[ "$result" != success ]]; then
-              echo "::error title=Regression $name::$name ended with $result. Inspect the corresponding job log."
+          if [[ "$SCOPE_RESULT" != success || "$PROTOCOL_RESULT" != success ]]; then
+            echo 'Required scope or Protocol checks failed' >&2; exit 1
+          fi
+          for entry in "browser:$NEED_BROWSER:$BROWSER_RESULT" "authorization:$NEED_AUTHORIZATION:$AUTHORIZATION_RESULT" "firebase:$NEED_FIREBASE:$FIREBASE_RESULT"; do
+            IFS=: read -r label required actual <<< "$entry"
+            if [[ "$required" == true && "$actual" != success ]]; then
+              echo "::error title=Regression $label::$label required but ended in $actual"; exit 1
+            fi
+            if [[ "$required" == false && "$actual" != skipped ]]; then
+              echo "::error title=Unexpected $label::$label should be skipped, got $actual"; exit 1
             fi
           done
-      - name: Confirm all regression suites passed
-        env:
-          PROTOCOL_RESULT: ${{ needs.protocol.result }}
-          BROWSER_RESULT: ${{ needs.browser.result }}
-          AUTHORIZATION_RESULT: ${{ needs.authorization.result }}
-          FIREBASE_RESULT: ${{ needs.firebase.result }}
-        run: |
-          test "$PROTOCOL_RESULT" = "success"
-          test "$BROWSER_RESULT" = "success"
-          test "$AUTHORIZATION_RESULT" = "success"
-          test "$FIREBASE_RESULT" = "success"

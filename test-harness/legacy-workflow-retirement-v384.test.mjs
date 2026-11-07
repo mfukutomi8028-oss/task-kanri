@@ -25,8 +25,10 @@ test('Ver.384: required release and regression workflows remain and do not gain 
   const checks = read('regression-checks.yml');
   assert.match(pages, /actions\/upload-pages-artifact@v3/);
   assert.match(pages, /path:\s*\.pages-runtime/);
-  assert.match(checks, /needs:\s*\[protocol,\s*browser,\s*authorization,\s*firebase\]/);
-  assert.match(checks, /Confirm all regression suites passed/);
+  assert.match(checks, /needs:\s*\[scope,\s*protocol,\s*browser,\s*authorization,\s*firebase\]/);
+  assert.match(checks, /Summarize and enforce selected required checks/);
+  assert.match(checks, /if \[\[ "\$SCOPE_RESULT" != success \|\| "\$PROTOCOL_RESULT" != success \]\]/);
+  assert.match(checks, /if \[\[ "\$required" == true && "\$actual" != success \]\]/);
   for (const [filename, code] of [['pages.yml', pages], ['regression-checks.yml', checks]]) {
     assert.doesNotMatch(code, /^\s*contents:\s*write\s*$/m,
       'active CI must not inherit the old v108 workflow write scope: ' + filename);
