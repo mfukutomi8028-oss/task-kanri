@@ -181,3 +181,47 @@
     flex-basis: 44px !important;
   }
 }
+
+/* Ver.527: preserve and explain local edits when a remote ToDo changes. */
+.todo-workspace .todo-edit-conflict-v527,
+.todo-workspace .todo-draft-recovery-v527 {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--wb-ui-accent-line, #b6ceda);
+  border-radius: 12px;
+  background: var(--wb-ui-panel, #f4f8fa);
+  color: var(--wb-ui-text, inherit);
+}
+.todo-workspace .todo-edit-conflict-v527 > p,
+.todo-workspace .todo-draft-recovery-v527 p {
+  margin: 0;
+  line-height: 1.5;
+}
+.todo-workspace .todo-edit-latest-v527 {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--wb-ui-hover, rgba(120, 150, 170, .08));
+}
+.todo-workspace .todo-edit-conflict-v527 button,
+.todo-workspace .todo-draft-recovery-v527 button {
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+  min-height: 36px;
+}
+.todo-workspace .todo-draft-recovery-v527 article {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.todo-workspace .todo-draft-recovery-v527 textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  resize: vertical;
+  font: inherit;
+}

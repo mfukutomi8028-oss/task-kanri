@@ -263,3 +263,66 @@ test('shows a Firebase-synchronized prior completion in the read-only seven-day 
   await expect(page.locator(`#todoView [data-history-todo-id="${id}"]`)).toContainText('履歴表示用メモ');
   expect(productionRequests).toEqual([]);
 });
+
+test('remote changes keep a draft visible and require loading latest before saving', async ({ page }) => {
+  const id = 'todo-concurrent-draft-v527';
+  const first = todoRecord(id, '共有の確認事項', { memo: 'もとのメモ' });
+  await putDb('rooms/' + ROOM + '/todos/' + id, first);
+  const { productionRequests } = await bootTodoPage(page);
+  const row = page.locator('#todoView [data-todo-id="' + id + '"]');
+  await row.locator('.todo-summary-button').click();
+  await row.locator('.todo-detail input').fill('私が編集中の件名');
+  await row.locator('.todo-detail textarea').fill('途中まで入力した文章');
+
+  await putDb('rooms/' + ROOM + '/todos/' + id, {
+    ...first, text: 'ほかの端末が更新した件名', memo: '先方の追加事項',
+    revision: 2, updatedAt: first.updatedAt + 1000
+  });
+  await expect(row.locator('.todo-edit-conflict-v527')).toBeVisible({ timeout: 30_000 });
+  await expect(row.locator('.todo-detail input')).toHaveValue('私が編集中の件名');
+  await expect(row.locator('.todo-detail textarea')).toHaveValue('途中まで入力した文章');
+  await expect(row.locator('.todo-detail-save')).toBeDisabled();
+  await row.locator('.todo-edit-conflict-v527 summary').click();
+  await expect(row.locator('.todo-edit-latest-v527')).toContainText('ほかの端末が更新した件名');
+  await expect(await readTodo(id)).toMatchObject({ text: 'ほかの端末が更新した件名', memo: '先方の追加事項', revision: 2 });
+
+  page.once('dialog', dialog => dialog.accept());
+  await row.locator('.todo-edit-reload-v527').click();
+  await expect(row.locator('.todo-detail input')).toHaveValue('ほかの端末が更新した件名');
+  await expect(row.locator('.todo-detail textarea')).toHaveValue('先方の追加事項');
+  await expect(row.locator('.todo-edit-conflict-v527')).toHaveCount(0);
+  await row.locator('.todo-detail textarea').fill('最新を確認してから追記した内容');
+  await row.locator('.todo-detail-save').click();
+  await expect.poll(() => readTodo(id), { timeout: 15_000 }).toMatchObject({
+    text: 'ほかの端末が更新した件名',
+    memo: '最新を確認してから追記した内容',
+    revision: 3
+  });
+  expect(productionRequests).toEqual([]);
+});
+
+test('an unrelated remote edit keeps the unsaved ToDo and create form, and deletion exposes recovery text', async ({ page }) => {
+  const draftId = 'todo-remote-draft-v527';
+  const otherId = 'todo-remote-other-v527';
+  const draft = todoRecord(draftId, '編集中の対象', { order: 10 });
+  const other = todoRecord(otherId, '別のToDo', { order: 20 });
+  await putDb('rooms/' + ROOM + '/todos', { [draftId]: draft, [otherId]: other });
+  const { productionRequests } = await bootTodoPage(page);
+  const row = page.locator('#todoView [data-todo-id="' + draftId + '"]');
+  await row.locator('.todo-summary-button').click();
+  await row.locator('.todo-detail textarea').fill('消えては困る下書き');
+  await page.locator('#todayTodoInput').fill('新規ToDoも入力途中');
+  await putDb('rooms/' + ROOM + '/todos/' + otherId, {
+    ...other, text: '別のToDoの更新', revision: 2, updatedAt: other.updatedAt + 1000
+  });
+  await expect(page.locator('#todoView [data-todo-id="' + otherId + '"] .todo-text')).toHaveText('別のToDoの更新');
+  await expect(row.locator('.todo-detail textarea')).toHaveValue('消えては困る下書き');
+  await expect(page.locator('#todayTodoInput')).toHaveValue('新規ToDoも入力途中');
+  await expect(row.locator('.todo-edit-conflict-v527')).toHaveCount(0);
+
+  await deleteDb('rooms/' + ROOM + '/todos/' + draftId);
+  await expect(row).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.locator('#todoView .todo-draft-recovery-v527 textarea')).toHaveValue(/消えては困る下書き/);
+  await expect(await readTodo(draftId)).toBeNull();
+  expect(productionRequests).toEqual([]);
+});

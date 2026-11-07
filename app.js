@@ -1041,6 +1041,11 @@ function mergeSubscribedCollection(collection, value) {
 }
 
 function applyTodoSync(action) {
+  if (action?.type === 'apply-commit' && action.sourceKind === 'todo-update') {
+    // This editor was committed successfully. Render canonical values rather
+    // than copying back its pre-commit fields as an unsaved draft.
+    for (const change of action.changes || []) classicTodoCommittedEditIds.add(String(change.id));
+  }
   const previousSignature = todoDataSignature(state.todoRaw);
   const next = reduceTodoSync({ roomId: ROOM_ID, raw: state.todoRaw, barriers: state.todoBarriers }, action);
   state.todoRaw = next.raw;
@@ -1099,7 +1104,7 @@ async function commitTodoRecord(kind, id, expectedRevision, build) {
       committed = result.snapshot?.val() ?? null;
     }
     if (committed != null && !canonicalTodoRecord(id, committed)) throw new Error('invalid-todo-record');
-    applyTodoSync({ type: 'apply-commit', roomId: ROOM_ID, changes: [{ id, record: committed, baseRevision: expectedRevision }] });
+    applyTodoSync({ type: 'apply-commit', roomId: ROOM_ID, sourceKind: kind, changes: [{ id, record: committed, baseRevision: expectedRevision }] });
     return { committed: true, affectedPaths: [path] };
   });
 }
@@ -2876,6 +2881,227 @@ function journalTodoV425() {
 
 let classicTodoRenderedPage = null;
 let classicTodoRenderedSignature = '';
+
+// Classic keeps unsaved edits in page memory only. No draft is written into
+// Firebase or localStorage, and the server remains the canonical data source.
+let classicTodoCommittedEditIds = new Set();
+let classicTodoRecoveryDrafts = new Map();
+let classicTodoRecoveryOwner = '';
+
+function captureClassicTodoDraftState(page) {
+  if (!page) return null;
+  const drafts = [];
+  page.querySelectorAll('.todo-item[data-todo-id]').forEach(row => {
+    if (classicTodoCommittedEditIds.has(row.dataset.todoId)) return;
+    const title = row.querySelector('.todo-detail input');
+    const memo = row.querySelector('.todo-detail textarea');
+    if (!title || !memo || (title.value === row.dataset.todoEditBaseText
+      && memo.value === row.dataset.todoEditBaseMemo)) return;
+    drafts.push({
+      id: row.dataset.todoId,
+      text: title.value,
+      memo: memo.value,
+      baseRevision: Number(row.dataset.todoEditBaseRevision),
+      baseText: row.dataset.todoEditBaseText || '',
+      baseMemo: row.dataset.todoEditBaseMemo || '',
+      expanded: !row.querySelector('.todo-detail')?.hidden
+    });
+  });
+  const active = document.activeElement;
+  let focus = null;
+  if (active && page.contains(active)) {
+    const row = active.closest?.('.todo-item[data-todo-id]');
+    if (row && active.matches('.todo-detail input, .todo-detail textarea')) {
+      focus = { id: row.dataset.todoId,
+        field: active.matches('textarea') ? 'memo' : 'text' };
+    } else if (active.id === 'todayTodoInput' || active.id === 'todayTodoMemo') {
+      focus = { field: active.id };
+    }
+    if (focus) {
+      focus.start = active.selectionStart;
+      focus.end = active.selectionEnd;
+      focus.top = active.getBoundingClientRect().top;
+    }
+  }
+  return {
+    drafts,
+    focus,
+    newText: page.querySelector('#todayTodoInput')?.value || '',
+    newMemo: page.querySelector('#todayTodoMemo')?.value || '',
+    composeOpen: Boolean(page.querySelector('.todo-compose-details')?.open),
+    scrollTop: document.scrollingElement?.scrollTop || 0
+  };
+}
+
+function showClassicTodoEditConflict(row, latest) {
+  if (row.querySelector('.todo-edit-conflict-v527')) return;
+  const detail = row.querySelector('.todo-detail');
+  const save = row.querySelector('.todo-detail-save');
+  const title = row.querySelector('.todo-detail input');
+  const memo = row.querySelector('.todo-detail textarea');
+  if (!detail || !save || !title || !memo) return;
+  row.dataset.todoEditConflict = 'true';
+  save.disabled = true;
+  const alert = document.createElement('div');
+  alert.className = 'todo-edit-conflict-v527';
+  alert.setAttribute('role', 'status');
+  const headline = document.createElement('strong');
+  headline.textContent = '別の操作で更新されています';
+  const message = document.createElement('p');
+  message.textContent = '入力中の内容は残っています。古い内容での上書きを防ぐため、保存を停止しました。必要な文章をコピーしてから最新内容を読み込んでください。';
+  const compare = document.createElement('details');
+  const summary = document.createElement('summary');
+  summary.textContent = '最新の内容を確認';
+  const latestText = document.createElement('p');
+  latestText.className = 'todo-edit-latest-v527';
+  latestText.textContent = 'やること：' + latest.text + '\nメモ：' + (latest.memo || '（なし）');
+  compare.append(summary, latestText);
+  const reload = document.createElement('button');
+  reload.type = 'button';
+  reload.className = 'ghost-button todo-edit-reload-v527';
+  reload.textContent = '最新の内容で編集し直す';
+  reload.addEventListener('click', () => {
+    if (!window.confirm('現在入力中の未保存内容を破棄して、最新の内容を読み込みますか？')) return;
+    const current = state.todoRaw[row.dataset.todoId];
+    if (!current || current.owner !== normalizeUser(getCurrentUser())) {
+      toast('元のToDoは表示できません。入力内容をコピーしてください。', true);
+      return;
+    }
+    title.value = current.text;
+    memo.value = current.memo || '';
+    row.dataset.todoEditBaseText = current.text;
+    row.dataset.todoEditBaseMemo = current.memo || '';
+    row.dataset.todoEditBaseRevision = String(current.revision);
+    delete row.dataset.todoEditConflict;
+    delete row.dataset.todoDraftDirtyV527;
+    save.disabled = false;
+    alert.remove();
+    title.dispatchEvent(new Event('input', { bubbles: true }));
+    title.focus({ preventScroll: true });
+  });
+  alert.append(headline, message, compare, reload);
+  detail.appendChild(alert);
+}
+
+function restoreClassicTodoDraftState(page, snapshot) {
+  if (!page) return;
+  const owner = normalizeUser(getCurrentUser());
+  if (classicTodoRecoveryOwner !== owner) {
+    classicTodoRecoveryDrafts.clear();
+    classicTodoRecoveryOwner = owner;
+  }
+  if (snapshot) {
+    const title = page.querySelector('#todayTodoInput');
+    const memo = page.querySelector('#todayTodoMemo');
+    if (title) title.value = snapshot.newText;
+    if (memo) memo.value = snapshot.newMemo;
+    const details = page.querySelector('.todo-compose-details');
+    if (details) details.open = snapshot.composeOpen;
+  }
+
+  // Previously disappeared drafts remain recoverable while this user stays
+  // in the current tab. If an item reappears, move its draft back to the row.
+  const drafts = new Map(classicTodoRecoveryDrafts);
+  for (const draft of snapshot?.drafts || []) drafts.set(draft.id, draft);
+  const recovery = new Map();
+  for (const [id, draft] of drafts) {
+    const row = page.querySelector('.todo-item[data-todo-id="' + cssEscape(id) + '"]');
+    const current = state.todoRaw[id];
+    if (!row || !current || current.owner !== owner) {
+      recovery.set(id, draft);
+      continue;
+    }
+    const title = row.querySelector('.todo-detail input');
+    const memo = row.querySelector('.todo-detail textarea');
+    const detail = row.querySelector('.todo-detail');
+    if (!title || !memo || !detail) continue;
+    // If the draft already equals the newly committed state, use the
+    // canonical values and revision rather than presenting a false conflict.
+    if (draft.text.trim() === current.text && draft.memo.trim() === (current.memo || '')) continue;
+    title.value = draft.text;
+    memo.value = draft.memo;
+    row.dataset.todoEditBaseRevision = String(draft.baseRevision);
+    row.dataset.todoEditBaseText = draft.baseText;
+    row.dataset.todoEditBaseMemo = draft.baseMemo;
+    row.dataset.todoDraftDirtyV527 = 'true';
+    const expanded = draft.expanded || Number(draft.baseRevision) !== Number(current.revision);
+    detail.hidden = !expanded;
+    row.classList.toggle('is-expanded', expanded);
+    row.querySelector('.todo-summary-button')?.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    const chevron = row.querySelector('.todo-chevron');
+    if (chevron) chevron.textContent = expanded ? '⌃' : '⌄';
+    if (expanded) state.expandedTodoIds.add(id);
+    else state.expandedTodoIds.delete(id);
+    if (Number(draft.baseRevision) !== Number(current.revision)
+      || draft.baseText !== current.text || draft.baseMemo !== (current.memo || '')) {
+      showClassicTodoEditConflict(row, current);
+    }
+  }
+  classicTodoRecoveryDrafts = recovery;
+  if (recovery.size) {
+    const block = document.createElement('section');
+    block.className = 'todo-draft-recovery-v527';
+    block.setAttribute('aria-label', '一覧から移動・削除されたToDoの下書き');
+    const heading = document.createElement('h5');
+    heading.textContent = '一覧から移動・削除されたToDoの未保存内容';
+    block.appendChild(heading);
+    for (const [id, draft] of recovery) {
+      const item = document.createElement('article');
+      const note = document.createElement('p');
+      note.textContent = '対象のToDoは現在の一覧にありません。下書きをコピーして保管してください。';
+      const saved = document.createElement('textarea');
+      saved.readOnly = true;
+      saved.rows = 5;
+      saved.value = 'やること：' + draft.text + '\nメモ：\n' + draft.memo;
+      saved.setAttribute('aria-label', '回収用の未保存ToDo');
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'ghost-button';
+      copy.textContent = '入力内容をコピー';
+      copy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(saved.value);
+          toast('下書きをコピーしました');
+        } catch (_) {
+          saved.focus();
+          saved.select();
+          toast('文章を選択しました。コピーして保存してください。');
+        }
+      });
+      const dismiss = document.createElement('button');
+      dismiss.type = 'button';
+      dismiss.className = 'ghost-button';
+      dismiss.textContent = '下書きを閉じる';
+      dismiss.addEventListener('click', () => {
+        if (!window.confirm('この下書きを画面から消しますか？')) return;
+        classicTodoRecoveryDrafts.delete(id);
+        item.remove();
+        if (!block.querySelector('article')) block.remove();
+      });
+      item.append(note, saved, copy, dismiss);
+      block.appendChild(item);
+    }
+    page.querySelector('.todo-workspace')?.appendChild(block);
+  }
+
+  const focus = snapshot?.focus;
+  if (focus) requestAnimationFrame(() => {
+    if (state.layout !== 'todos' || document.documentElement.dataset.wbDisplay !== 'classic'
+      || elements.todoView?.querySelector('.todo-page') !== page
+      || ![document.body, document.documentElement].includes(document.activeElement)) return;
+    const field = focus.id
+      ? page.querySelector('.todo-item[data-todo-id="' + cssEscape(focus.id) + '"] .todo-detail '
+          + (focus.field === 'memo' ? 'textarea' : 'input'))
+      : page.querySelector('#' + focus.field);
+    if (!field || !field.getClientRects().length) return;
+    // Reuse Classic's existing nested-scroller-aware focus recovery.
+    if (!focusClassicTodoActionAtViewportPosition(field, focus.top)) return;
+    if (focus.start != null && focus.end != null) {
+      field.setSelectionRange(focus.start, focus.end);
+    }
+  });
+}
+
 function renderTodoView() {
   if(typeof document!=='undefined' && document.documentElement?.dataset?.wbDisplay==='journal') return journalTodoV425();
   // Other collection subscriptions also call renderCore(). Reuse the Classic
@@ -2890,6 +3116,10 @@ function renderTodoView() {
   const currentPage = elements.todoView?.querySelector('.todo-page');
   if (isClassicTodo && currentPage && currentPage === classicTodoRenderedPage
     && signature === classicTodoRenderedSignature) return;
+  const previousDraftState = isClassicTodo && currentPage
+    && currentPage.dataset.todoOwner === normalizeUser(getCurrentUser())
+    ? captureClassicTodoDraftState(currentPage) : null;
+  classicTodoCommittedEditIds.clear();
   // Snapshot search focus before canonical rendering replaces the search sidecar.
   // Only restore an actively focused search, never steal focus from a ToDo editor.
   const previousSearch = elements.todoView?.querySelector('.todo-search-input-v145');
@@ -2965,7 +3195,9 @@ function renderTodoView() {
   bindTodoWorkspace(elements.todoView);
   if (isClassicTodo) {
     classicTodoRenderedPage = elements.todoView?.querySelector('.todo-page');
+    classicTodoRenderedPage.dataset.todoOwner = normalizeUser(getCurrentUser());
     classicTodoRenderedSignature = signature;
+    restoreClassicTodoDraftState(classicTodoRenderedPage, previousDraftState);
   }
   if (searchAnchor) {
     // ToDo tools adopt the new .todo-page via a root MutationObserver.
@@ -3055,6 +3287,10 @@ function bindTodoWorkspace(root = elements.todoView) {
       const busy = state.inFlightOperations.has(operationKey('todo-toggle', todo.id)) || state.inFlightOperations.has(operationKey('todo-delete', todo.id)) || state.inFlightOperations.has(operationKey('todo-reorder', todo.id)) || state.inFlightOperations.has(operationKey('todo-promote', todo.id)) || state.inFlightOperations.has(operationKey('todo-update', todo.id));
       const expanded = state.expandedTodoIds.has(todo.id);
       const row = document.createElement('li'); row.className = `todo-item${busy ? ' is-busy' : ''}${expanded ? ' is-expanded' : ''}`; row.dataset.todoId = todo.id; row.setAttribute('aria-busy', busy ? 'true' : 'false');
+      // The editor's starting revision must not advance with a remote redraw.
+      row.dataset.todoEditBaseRevision = String(todo.revision);
+      row.dataset.todoEditBaseText = todo.text;
+      row.dataset.todoEditBaseMemo = todo.memo || '';
 
       const dragHandle = document.createElement('span');
       dragHandle.className = 'todo-drag-handle-v531';
@@ -3126,7 +3362,12 @@ function bindTodoWorkspace(root = elements.todoView) {
         // the same action and its on-screen position instead of losing focus
         // or sending the user back to the beginning of a long mobile list.
         const oldTop = save.getBoundingClientRect().top;
-        const result = await updateTodoDetails(todo.id, titleInput.value, note.value);
+        const baseRevision = Number(row.dataset.todoEditBaseRevision);
+        const result = await updateTodoDetails(todo.id, titleInput.value, note.value, { revision: baseRevision });
+        if (!result?.ok && result?.error === 'revision-or-relation-mismatch') {
+          showWriteFailure(result, 'ほかの端末による変更を確認してください。');
+          render(); // Repaint latest data, retaining this unsaved draft.
+        }
         if (!result?.ok || state.layout !== 'todos'
           || document.documentElement.dataset.wbDisplay !== 'classic') return;
         const currentRow = elements.todoView?.querySelector(`[data-todo-id="${cssEscape(todo.id)}"]`);
