@@ -1716,8 +1716,8 @@
       focused?.hasAttribute('data-pn-series-index-summary')?'summary':
       focused?.hasAttribute('data-pn-series-index-complete-show-all')?'complete':
       focused?.hasAttribute('data-pn-series-index-reviewed-reveal')?'reveal':null;
-    const focusedRow=focused?.closest?.('.pn-series-index-entry')
-      ?.querySelector('[data-pn-series-index-open]');
+    const focusedRow=inPanel?focused?.closest?.('.pn-series-index-entry')
+      ?.querySelector('[data-pn-series-index-open]'):null;
     const bounds=drawer.getBoundingClientRect();
     const visible=[...panel.querySelectorAll('[data-pn-series-index-open]')]
       .find(button=>{
@@ -1786,6 +1786,7 @@
       case 'reveal': target=buttons('[data-pn-series-index-reviewed-reveal]')
         .find(button=>button.dataset.pnSeriesIndexReviewedReveal===token.focusId);break;
     }
+    if(target?.disabled)target=null;
     const anchor=token.anchorId?matchingRow(token.anchorId):null;
     // Keep the same record in view if it survived reordering. Never focus
     // another record when the former one disappeared from the filter.
