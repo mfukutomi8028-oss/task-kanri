@@ -3130,36 +3130,42 @@ test('JOURNAL V552 phone desk note survives remote removals and offers empty rec
   await query.fill('JOURNAL V552');
   const cards=board.locator('[data-j420-task-id]');
   await expect(cards).toHaveCount(3);
-  const ids={};
-  for(const key of ['A','B','C'])
-    ids[key]=await cards.filter({hasText:'JOURNAL V552 '+key}).getAttribute('data-j420-task-id');
+  // Use the actual visible order, not creation/title order, to check the
+  // existing V532 next-then-previous fallback regardless of default sort.
+  const chosen=cards.nth(1),next=cards.nth(2),last=cards.nth(0);
+  const chosenId=await chosen.getAttribute('data-j420-task-id');
+  const nextId=await next.getAttribute('data-j420-task-id');
+  const lastId=await last.getAttribute('data-j420-task-id');
+  const chosenTitle=await chosen.locator('.j420-card-content strong').innerText();
+  const nextTitle=await next.locator('.j420-card-content strong').innerText();
+  const lastTitle=await last.locator('.j420-card-content strong').innerText();
 
-  await board.locator('[data-j420-task-id="'+ids.B+'"]').click();
+  await chosen.click();
   const note=board.locator('#j494AtelierNote.j494-inline-note');
   const heading=note.locator('.j420-note-lead h4');
-  await expect(heading).toHaveText('JOURNAL V552 B');
+  await expect(heading).toHaveText(chosenTitle);
   await expect(heading).toBeFocused();
 
   // The selected remote case disappears. Continue on the neighboring C
   // without folding the phone's open notebook or moving off the reading area.
-  await page.evaluate(id=>window.__journalV552RemoteDelete(id),ids.B);
+  await page.evaluate(id=>window.__journalV552RemoteDelete(id),chosenId);
   await expect(cards).toHaveCount(2);
   await expect(note).toBeVisible();
-  await expect(heading).toHaveText('JOURNAL V552 C');
+  await expect(heading).toHaveText(nextTitle);
   await expect(heading).toBeFocused();
   await expect(note).toBeInViewport();
-  await expect(board.locator('[data-j420-task-id="'+ids.C+'"]')).toHaveAttribute('aria-expanded','true');
+  await expect(board.locator('[data-j420-task-id="'+nextId+'"]')).toHaveAttribute('aria-expanded','true');
 
   await page.setViewportSize({width:320,height:800});
-  await page.evaluate(id=>window.__journalV552RemoteDelete(id),ids.C);
+  await page.evaluate(id=>window.__journalV552RemoteDelete(id),nextId);
   await expect(cards).toHaveCount(1);
   await expect(note).toBeVisible();
-  await expect(heading).toHaveText('JOURNAL V552 A');
+  await expect(heading).toHaveText(lastTitle);
   await expect(heading).toBeFocused();
 
   // The last matching case goes away but an unrelated case still exists:
   // expose the already-existing reset instead of focusing a hidden note.
-  await page.evaluate(id=>window.__journalV552RemoteDelete(id),ids.A);
+  await page.evaluate(id=>window.__journalV552RemoteDelete(id),lastId);
   await expect(cards).toHaveCount(0);
   const empty=board.locator('.j520-atelier-empty'),reset=empty.locator('[data-j520-empty-reset]');
   await expect(empty).toContainText('閲覧中の案件が同期更新で表示対象から外れました');
