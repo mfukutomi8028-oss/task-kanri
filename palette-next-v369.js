@@ -1691,6 +1691,129 @@
     return true;
   }
 
+  // Snapshot notifications rebuild the inspector. Keep the visible series row
+  // as a temporary anchor so sorting, editing on another device, or pagination
+  // changes do not silently move the user's work position.
+  function captureSeriesLiveSync() {
+    const item=state.detail?.kind==='schedule'
+      ?state.snapshot.schedules.find(row=>row.id===state.detail.id):null;
+    const panel=drawer.querySelector('[data-pn-series-index]');
+    const index=seriesIndexState;
+    if(!active()||state.editor||state.busy||!item?.recurrenceSeriesId||
+      !panel?.open||index?.seriesId!==item.recurrenceSeriesId||
+      index.user!==state.snapshot.currentUser||
+      index.room!==state.snapshot.roomId)return null;
+    const focused=document.activeElement,inPanel=panel.contains(focused);
+    const focusType=!inPanel?null:
+      focused?.hasAttribute('data-pn-series-index-search')?'search':
+      focused?.hasAttribute('data-pn-series-index-status')?'status':
+      focused?.hasAttribute('data-pn-series-index-open')?'open':
+      focused?.hasAttribute('data-pn-series-index-edit')?'edit':
+      focused?.hasAttribute('data-pn-series-index-next-unchecked')?'next-unchecked':
+      focused?.hasAttribute('data-pn-series-index-next-edit')?'next-edit':
+      focused?.hasAttribute('data-pn-series-index-reset')?'reset':
+      focused?.hasAttribute('data-pn-series-index-page')?'page':
+      focused?.hasAttribute('data-pn-series-index-summary')?'summary':
+      focused?.hasAttribute('data-pn-series-index-complete-show-all')?'complete':
+      focused?.hasAttribute('data-pn-series-index-reviewed-reveal')?'reveal':null;
+    const focusedRow=inPanel?focused?.closest?.('.pn-series-index-entry')
+      ?.querySelector('[data-pn-series-index-open]'):null;
+    const bounds=drawer.getBoundingClientRect();
+    const visible=[...panel.querySelectorAll('[data-pn-series-index-open]')]
+      .find(button=>{
+        const rect=button.getBoundingClientRect();
+        return rect.bottom>bounds.top+48&&rect.top<bounds.bottom-8;
+      });
+    const anchor=focusedRow||visible;
+    const offset=anchor
+      ?anchor.getBoundingClientRect().top-bounds.top:null;
+    return {id:item.id,seriesId:item.recurrenceSeriesId,
+      route:state.route,user:index.user,room:index.room,
+      query:index.query,status:index.status,
+      anchorId:anchor?.dataset.pnSeriesIndexOpen||null,
+      offset:Number.isFinite(offset)?offset:null,
+      scrollTop:Math.max(0,drawer.scrollTop),
+      focusType,focusId:focusType==='open'?focused.dataset.pnSeriesIndexOpen:
+        focusType==='edit'?focused.dataset.pnSeriesIndexEdit:
+        focusType==='page'?focused.dataset.pnSeriesIndexPage:
+        focusType==='reveal'?focused.dataset.pnSeriesIndexReviewedReveal:null,
+      selection:focusType==='search'&&Number.isInteger(focused.selectionStart)
+        ?[focused.selectionStart,focused.selectionEnd]:null};
+  }
+  function matchSeriesLiveSync(token) {
+    if(!token||state.route!==token.route||
+      state.detail?.kind!=='schedule'||state.detail.id!==token.id||
+      seriesIndexState?.seriesId!==token.seriesId||
+      seriesIndexState.user!==state.snapshot.currentUser||
+      seriesIndexState.user!==token.user||
+      seriesIndexState.room!==state.snapshot.roomId||
+      seriesIndexState.room!==token.room||
+      seriesIndexState.query!==token.query||
+      seriesIndexState.status!==token.status)return null;
+    const current=state.snapshot.schedules.find(row=>row.id===token.id);
+    return current?.recurrenceSeriesId===token.seriesId?current:null;
+  }
+  function prepareSeriesLiveSync(token) {
+    const item=matchSeriesLiveSync(token);
+    if(!item||!token.anchorId)return;
+    // Resolve the anchor against canonical IDs AFTER the new snapshot arrived.
+    const position=filteredSeriesIndex(item)
+      .findIndex(row=>row.id===token.anchorId);
+    if(position>=0)seriesIndexState.page=Math.floor(position/8);
+  }
+  function restoreSeriesLiveSync(token) {
+    if(!matchSeriesLiveSync(token))return;
+    const panel=drawer.querySelector('[data-pn-series-index]');
+    if(!panel?.open)return;
+    const rowButtons=[...panel.querySelectorAll('[data-pn-series-index-open]')];
+    const matchingRow=id=>rowButtons.find(button=>button.dataset.pnSeriesIndexOpen===id);
+    const buttons=selector=>[...panel.querySelectorAll(selector)];
+    let target=null;
+    switch(token.focusType){
+      case 'search': target=panel.querySelector('[data-pn-series-index-search]');break;
+      case 'status': target=panel.querySelector('[data-pn-series-index-status]');break;
+      case 'open': target=matchingRow(token.focusId);break;
+      case 'edit': target=buttons('[data-pn-series-index-edit]')
+        .find(button=>button.dataset.pnSeriesIndexEdit===token.focusId);break;
+      case 'next-unchecked':
+        target=panel.querySelector('[data-pn-series-index-next-unchecked]');break;
+      case 'next-edit': target=panel.querySelector('[data-pn-series-index-next-edit]');break;
+      case 'reset': target=panel.querySelector('[data-pn-series-index-reset]');break;
+      case 'page': target=buttons('[data-pn-series-index-page]')
+        .find(button=>button.dataset.pnSeriesIndexPage===token.focusId);break;
+      case 'summary': target=panel.querySelector('[data-pn-series-index-summary]');break;
+      case 'complete': target=panel.querySelector('[data-pn-series-index-complete-show-all]');break;
+      case 'reveal': target=buttons('[data-pn-series-index-reviewed-reveal]')
+        .find(button=>button.dataset.pnSeriesIndexReviewedReveal===token.focusId);break;
+    }
+    if(target?.disabled)target=null;
+    const anchor=token.anchorId?matchingRow(token.anchorId):null;
+    // Keep the same record in view if it survived reordering. Never focus
+    // another record when the former one disappeared from the filter.
+    if(anchor&&Number.isFinite(token.offset)&&
+      !['search','status','summary'].includes(token.focusType)){
+      const rect=drawer.getBoundingClientRect();
+      const current=anchor.getBoundingClientRect().top-rect.top;
+      const sticky=drawer.querySelector('.pn-detail-nav');
+      const minimum=sticky?sticky.getBoundingClientRect().bottom-rect.top+8:12;
+      const wanted=Math.min(Math.max(token.offset,minimum),
+        Math.max(minimum,drawer.clientHeight-64));
+      if(Number.isFinite(current))
+        drawer.scrollTop=Math.max(0,drawer.scrollTop+current-wanted);
+    }
+    if(token.focusType){
+      if(!target)target=panel.querySelector('[data-pn-series-index-search]')||
+        panel.querySelector('[data-pn-series-index-summary]');
+      if(!target)return;
+      if(!anchor||['search','status','summary'].includes(token.focusType))
+        target.scrollIntoView({block:'nearest',behavior:'instant'});
+      target.focus({preventScroll:true});
+      if(token.focusType==='search'&&target.hasAttribute('data-pn-series-index-search')&&
+        token.selection&&typeof target.setSelectionRange==='function')
+        target.setSelectionRange(...token.selection);
+    }
+  }
+
   function openEditor(kind,id='',trigger=null,override=null) {
     if(state.busy || !['task','memo','schedule'].includes(kind))return;
     if(state.editor&&!confirmLeaveEditor())return;
@@ -3701,6 +3824,8 @@
     attributes:true,attributeFilter:['data-wb-display','data-wb-color-mode','data-wb-color-theme']
   });
   bridge.subscribe(snapshot=>{
+    const seriesPosition=state.snapshot.currentUser===snapshot.currentUser
+      ?captureSeriesLiveSync():null;
     if(state.snapshot.currentUser!==snapshot.currentUser){
       // A user can be switched outside Palette. Do not retain the prior
       // person's searches, filters, drafts or an open item editor.
@@ -3708,7 +3833,11 @@
       resetAccountViewState();
     }
     state.snapshot=snapshot;
-    if(active())render();
+    if(active()){
+      prepareSeriesLiveSync(seriesPosition);
+      render();
+      restoreSeriesLiveSync(seriesPosition);
+    }
   });
   memoBridge?.subscribe?.(items=>{
     state.memos=items;
