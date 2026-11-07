@@ -2927,7 +2927,7 @@ const classicTodoBlurredFocus = new WeakMap();
 function trackClassicTodoEditorBlur(event) {
   const page = event.currentTarget;
   const field = event.target;
-  if (!field?.matches?.('.todo-detail input, .todo-detail textarea, #todayTodoInput, #todayTodoMemo')) return;
+  if (!field?.matches?.('.todo-detail input, .todo-detail textarea, #todayTodoInput, #todayTodoMemo, .todo-search-input-v145')) return;
   const next = event.relatedTarget;
   // A normal move to another editor/action within ToDo is not a navigation
   // return anchor. Page-local layout jump buttons are exceptions.
@@ -2938,7 +2938,7 @@ function trackClassicTodoEditorBlur(event) {
   const row = field.closest('.todo-item[data-todo-id]');
   classicTodoBlurredFocus.set(page, {
     ...(row ? { id: row.dataset.todoId, field: field.matches('textarea') ? 'memo' : 'text' }
-      : { field: field.id }),
+      : { field: field.matches('.todo-search-input-v145') ? 'search' : field.id }),
     start: field.selectionStart,
     end: field.selectionEnd,
     top: field.getBoundingClientRect().top
@@ -2957,6 +2957,19 @@ function rememberClassicTodoNavigationDraft() {
   // Both main and page may scroll depending on the viewport and layout.
   snapshot.scrollMain = elements.mainContent?.scrollTop || 0;
   snapshot.scrollDocument = document.scrollingElement?.scrollTop || 0;
+  snapshot.searchQuery = page.querySelector('.todo-search-input-v145')?.value
+    ?? window.WorkBoardTodoSearchBridgeV393?.getQuery?.() ?? '';
+  // Anchor to a visible ToDo so newly synced rows above it cannot shift the
+  // reader to an unrelated item. Raw scroll values remain the fallback.
+  const visibleRow = [...page.querySelectorAll('.todo-list .todo-item[data-todo-id]')]
+    .find(row => {
+      if (row.hidden || row.closest('.todo-list')?.hidden || !row.getClientRects().length) return false;
+      const rect = row.getBoundingClientRect();
+      return rect.bottom > 0 && rect.top < window.innerHeight;
+    });
+  snapshot.listAnchor = visibleRow
+    ? { id: visibleRow.dataset.todoId, top: visibleRow.getBoundingClientRect().top }
+    : null;
   snapshot.roomId = ROOM_ID;
   snapshot.owner = owner;
   snapshot.recoveryDrafts = classicTodoRecoveryOwner === owner
@@ -2996,6 +3009,8 @@ function captureClassicTodoDraftState(page, { departing = false } = {}) {
         field: active.matches('textarea') ? 'memo' : 'text' };
     } else if (active.id === 'todayTodoInput' || active.id === 'todayTodoMemo') {
       focus = { field: active.id };
+    } else if (active.matches('.todo-search-input-v145')) {
+      focus = { field: 'search' };
     }
     if (focus) {
       focus.start = active.selectionStart;
@@ -3391,7 +3406,9 @@ function restoreClassicTodoDraftState(page, snapshot, { fromNavigation = false }
     const field = focus.id
       ? page.querySelector('.todo-item[data-todo-id="' + cssEscape(focus.id) + '"] .todo-detail '
           + (focus.field === 'memo' ? 'textarea' : 'input'))
-      : page.querySelector('#' + focus.field);
+      : (focus.field === 'search'
+        ? page.querySelector('.todo-search-input-v145')
+        : page.querySelector('#' + focus.field));
     if (!field || !field.getClientRects().length) return;
     // Reuse Classic's existing nested-scroller-aware focus recovery.
     if (!focusClassicTodoActionAtViewportPosition(field, focus.top)) return;
@@ -3506,14 +3523,29 @@ function renderTodoView() {
     const fromNavigation = Boolean(navigationDraft && previousDraftState === navigationDraft);
     if (fromNavigation) {
       classicTodoNavigationDrafts.delete(navigationKey);
+      // The search sidecar owns the query. Restore via its existing bridge
+      // instead of creating a second filter state or persistent storage.
+      const searchBridge = window.WorkBoardTodoSearchBridgeV393;
+      if (searchBridge?.getQuery?.() !== navigationDraft.searchQuery) {
+        searchBridge?.setQuery?.(navigationDraft.searchQuery ?? '');
+      }
       const restoredPage = classicTodoRenderedPage;
-      // Queue scroll restoration before the editor's focus/selection frame.
+      // MutationObserver adopts the ToDo search/filter before this frame.
+      // Restore scroll, then align the same visible item even when a remote
+      // update inserted or removed rows while another menu was open.
       requestAnimationFrame(() => {
         if (state.layout !== 'todos' || document.documentElement.dataset.wbDisplay !== 'classic'
           || elements.todoView?.querySelector('.todo-page') !== restoredPage
           || normalizeUser(getCurrentUser()) !== navigationDraft.owner) return;
         if (elements.mainContent) elements.mainContent.scrollTop = navigationDraft.scrollMain;
         if (document.scrollingElement) document.scrollingElement.scrollTop = navigationDraft.scrollDocument;
+        if (navigationDraft.listAnchor) {
+          const anchor = [...restoredPage.querySelectorAll('.todo-list .todo-item[data-todo-id]')]
+            .find(row => row.dataset.todoId === navigationDraft.listAnchor.id);
+          if (anchor && !anchor.hidden && !anchor.closest('.todo-list')?.hidden) {
+            alignClassicTodoElementAtViewportPosition(anchor, navigationDraft.listAnchor.top);
+          }
+        }
       });
     }
     restoreClassicTodoDraftState(classicTodoRenderedPage, previousDraftState, { fromNavigation });
@@ -3549,11 +3581,11 @@ function renderTodoView() {
 
 // Keep the same visible action at the same viewport position after Classic's
 // canonical ToDo redraw. Shared by detail save and completion transitions.
-function focusClassicTodoActionAtViewportPosition(control, previousTop) {
-  if (!control || control.disabled || !control.getClientRects().length) return false;
-  const delta = control.getBoundingClientRect().top - previousTop;
+function alignClassicTodoElementAtViewportPosition(element, previousTop) {
+  if (!element?.getClientRects().length) return false;
+  const delta = element.getBoundingClientRect().top - previousTop;
   if (Math.abs(delta) > 1) {
-    let scrollParent = control.parentElement;
+    let scrollParent = element.parentElement;
     while (scrollParent && scrollParent !== document.documentElement) {
       const style = getComputedStyle(scrollParent);
       if (/auto|scroll/.test(style.overflowY)
@@ -3563,6 +3595,11 @@ function focusClassicTodoActionAtViewportPosition(control, previousTop) {
     const scroller = scrollParent || document.scrollingElement || document.documentElement;
     scroller.scrollTop += delta;
   }
+  return true;
+}
+
+function focusClassicTodoActionAtViewportPosition(control, previousTop) {
+  if (!control || control.disabled || !alignClassicTodoElementAtViewportPosition(control, previousTop)) return false;
   control.focus({ preventScroll: true });
   return true;
 }
