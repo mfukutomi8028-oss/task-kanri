@@ -217,3 +217,24 @@ test('origin empty ToDo result restores the appropriate section control',()=>{
  assert.match(restore,/control\.focus\(\{preventScroll:true\}\)/);
  assert.match(restore,/control\.scrollIntoView\(\{block:'nearest',inline:'nearest',behavior:'instant'\}\)/);
 });
+
+
+test('origin return targets stay within filtered task and memo sequences',()=>{
+ assert.match(source,/function originAdjacentReturnIds\(kind,id,currentIds\)/);
+ assert.match(source,/const allowed=new Set\(currentIds\)/);
+ assert.match(source,/ids\.slice\(index\+1\)\.concat\(ids\.slice\(0,index\)\.reverse\(\)\)/);
+ assert.match(source,/function revealOriginAdjacentReturnCard\(kind,id\)/);
+ assert.match(source,/taskVisible\(\)\.map\(t=>t\.id\)/);
+ assert.match(source,/originVisibleMemos\(\)\.map\(m=>m\.id\)/);
+ assert.match(source,/scheduleWeekResultIds:\[\]/);
+ assert.match(source,/const target=revealOriginReturnCard\(kind,id\)\|\|revealOriginAdjacentReturnCard\(kind,id\)/);
+ assert.match(source,/anchor\.action==='list-quick-edit'/);
+ assert.match(source,/panelReturnAnchor=captureOriginReturnAnchor\(kind,id,el\)/);
+ assert.match(source,/kind==='events'\?\s*'.*origin-agenda-entry/s);
+});
+test('origin calendar return keeps global search order and reveals compact week day rows',()=>{
+ assert.match(source,/const resultId=\[saved\.id,\.\.\.originAdjacentReturnIds\('events',saved\.id,available\)\]/);
+ assert.match(source,/const resultIndex=available\.indexOf\(resultId\)/);
+ assert.match(source,/scheduleExpandedDays\.add\(event\.date\)/);
+ assert.match(source,/kind==='events'\?\$\('#workspace \[data-action="schedule-filter-toggle"\]'\)/);
+});

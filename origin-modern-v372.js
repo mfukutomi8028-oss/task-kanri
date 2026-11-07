@@ -1165,19 +1165,50 @@ function originReturnCard(kind,id){
  const selector=kind==='tasks'
   ?'.origin-task-collection .item-name[data-action="open"][data-kind="tasks"]'
   :kind==='memos'?'.memo-grid .memo-card[data-action="open"][data-kind="memos"]'
-  :kind==='todos'?'.origin-todo-main .todo-text[data-action="open"][data-kind="todos"]':'';
+  :kind==='todos'?'.origin-todo-main .todo-text[data-action="open"][data-kind="todos"]'
+  :kind==='events'?
+    '.mobile-agenda .agenda-entry[data-action="open"][data-kind="events"],.week-board .schedule-event[data-action="open"][data-kind="events"],.origin-day-entry[data-action="open"][data-kind="events"],.origin-agenda-entry[data-action="open"][data-kind="events"]':'';
  if(!selector)return null;
  return Array.from($('#workspace').querySelectorAll(selector))
   .find(button=>button.dataset.id===id&&button.getClientRects().length)||null;
 }
+function originReturnRow(kind,card){
+ if(!card)return null;
+ return kind==='tasks'?card.closest('.item-row')
+  :kind==='todos'?card.closest('.todo-entry')
+  :kind==='memos'?card.closest('.origin-memo-shell')
+  :card;
+}
 function captureOriginReturnAnchor(kind,id,trigger){
- if(!((view==='tasks'&&kind==='tasks')||(view==='notes'&&kind==='memos')||(view==='todos'&&kind==='todos')))return null;
+ if(!((view==='tasks'&&kind==='tasks')||(view==='notes'&&kind==='memos')
+   ||(view==='todos'&&kind==='todos')||(view==='calendar'&&kind==='events')))return null;
  const card=originReturnCard(kind,id);
  if(!card||!trigger)return null;
- const sameTodoRow=kind==='todos'&&trigger.closest('.todo-entry')===card.closest('.todo-entry');
- if(!sameTodoRow&&!card.contains(trigger)&&card!==trigger)return null;
- const row=kind==='tasks'?card.closest('.item-row'):kind==='todos'?card.closest('.todo-entry'):card.closest('.origin-memo-shell');
- return row?{view,kind,id,top:row.getBoundingClientRect().top}:null;
+ const row=originReturnRow(kind,card);
+ const sameRow=Boolean(row&&row===originReturnRow(kind,trigger));
+ if(!sameRow&&!card.contains(trigger)&&card!==trigger)return null;
+ return row?{view,kind,id,top:row.getBoundingClientRect().top,
+   action:trigger.dataset.action==='list-quick-edit'?'list-quick-edit':'open'}:null;
+}
+// Find a nearby *still matching* result in the list order captured on opening
+// the inspector. Never reset filters or choose an unrelated record.
+function originAdjacentReturnIds(kind,id,currentIds){
+ if(detailSequence?.kind!==kind||detailSequence.view!==view)return [];
+ const ids=detailSequence.ids,index=ids.indexOf(id);
+ if(index<0)return [];
+ const allowed=new Set(currentIds);
+ return ids.slice(index+1).concat(ids.slice(0,index).reverse())
+   .filter(candidate=>allowed.has(candidate));
+}
+function revealOriginAdjacentReturnCard(kind,id){
+ const current=kind==='tasks'&&view==='tasks'?taskVisible().map(t=>t.id)
+  :kind==='memos'&&view==='notes'?originVisibleMemos().map(m=>m.id)
+  :kind==='events'&&view==='calendar'?scheduleWeekResultIds:[];
+ for(const candidate of originAdjacentReturnIds(kind,id,current)){
+   const row=revealOriginReturnCard(kind,candidate);
+   if(row)return row;
+ }
+ return null;
 }
 function revealOriginReturnCard(kind,id){
  let target=originReturnCard(kind,id);
@@ -1220,6 +1251,14 @@ function revealOriginReturnCard(kind,id){
    memoVisibleLimit=Math.ceil((index+1)/MEMO_RENDER_BATCH)*MEMO_RENDER_BATCH;
    render();
   }
+ }else if(view==='calendar'&&kind==='events'&&scheduleView==='week'
+   &&calendarRenderedMobile&&scheduleWeekResultIds.includes(id)){
+   // The next matching appointment may be beyond the four-card day preview.
+   const event=data.events.find(item=>item.id===id);
+   if(event&&!scheduleExpandedDays.has(event.date)){
+     scheduleExpandedDays.add(event.date);
+     render();
+   }
  }
  return originReturnCard(kind,id);
 }
@@ -1253,15 +1292,19 @@ function restorePanelReturnPosition(kind,id){
  let aligned=false;
  if(scheduleGlobalReturn&&view==='calendar'&&scheduleSearchScope==='all'){
    const saved=scheduleGlobalReturn;
-   const resultIndex=scheduleGlobalResultIds.indexOf(saved.id);
+   // After a deletion or filter change, continue with an adjacent matching
+   // result instead of unexpectedly jumping to the first search hit.
+   const available=scheduleGlobalResultIds;
+   const resultId=[saved.id,...originAdjacentReturnIds('events',saved.id,available)]
+     .find(candidate=>available.includes(candidate))||'';
+   const resultIndex=available.indexOf(resultId);
    if(resultIndex>=scheduleSearchLimit){
      scheduleSearchLimit=Math.ceil((resultIndex+1)/30)*30;
      render();
    }
    const row=Array.from($('#workspace').querySelectorAll('.origin-schedule-global-item'))
-     .find(element=>element.dataset.id===saved.id);
+     .find(element=>element.dataset.id===resultId);
    const target=row?.querySelector('[data-action="open"][data-kind="events"]')
-     ||$('#workspace .origin-schedule-global-item [data-action="open"][data-kind="events"]')
      ||(window.innerWidth<=770?$('#workspace [data-action="schedule-filter-toggle"]'):$('#originScheduleSearch'));
    target?.focus({preventScroll:true});
    const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
@@ -1278,16 +1321,29 @@ function restorePanelReturnPosition(kind,id){
    if(target)focusSearchResult(target);
    else search.focus({preventScroll:true});
  }else if(anchor&&anchor.view===view&&anchor.kind===kind){
-   const target=revealOriginReturnCard(kind,id);
+   const target=revealOriginReturnCard(kind,id)||revealOriginAdjacentReturnCard(kind,id);
    if(target){
-     target.focus({preventScroll:true});
-     const row=kind==='tasks'?target.closest('.item-row'):kind==='todos'?target.closest('.todo-entry'):target.closest('.origin-memo-shell');
+     const row=originReturnRow(kind,target);
+     const quick=anchor.action==='list-quick-edit'
+       ?row?.querySelector('[data-action="list-quick-edit"]'):null;
+     (quick||target).focus({preventScroll:true});
      const top=row?.getBoundingClientRect().top??target.getBoundingClientRect().top;
      const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
      const destination=Math.max(0,Math.min(maximum,window.scrollY+top-anchor.top));
      window.scrollTo({top:destination,behavior:'instant'});
      aligned=true;
-   }else restoreDetailFocus(kind,id);
+   }else{
+     // When the final matching record disappears, focus a useful filter/input.
+     const fallback=kind==='tasks'?$('#originTaskQuery')
+       :kind==='memos'?$('#originMemoQuery')
+       :kind==='events'?$('#workspace [data-action="schedule-filter-toggle"]')
+       :$('#workspace [data-form="quick-todo"] [name="title"]');
+     if(fallback?.getClientRects().length){
+       fallback.focus({preventScroll:true});
+       fallback.scrollIntoView({block:'nearest',behavior:'instant'});
+       aligned=true;
+     }else restoreDetailFocus(kind,id);
+   }
  }else restoreDetailFocus(kind,id);
  if(!aligned){
    const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
@@ -2176,7 +2232,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    const card=originReturnCard(kind,id);
    if(!card)return;
    detailTrail=[];panelReturnSearch=null;scheduleGlobalReturn=null;
-   panelReturnAnchor=captureOriginReturnAnchor(kind,id,card);
+   panelReturnAnchor=captureOriginReturnAnchor(kind,id,el);
    captureDetailSequence(kind,id,card);
    return panelShow(kind,id,true);
  }

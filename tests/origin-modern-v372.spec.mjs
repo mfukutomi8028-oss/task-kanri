@@ -3214,3 +3214,133 @@ test('Origin returns to quick-add or archive after deleting the last unfiltered 
  expect(remaining).toHaveLength(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
 });
+
+
+test('Origin task deletion from a filtered list keeps the next edit reachable',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-task-neighbor-return-v560',390);
+ await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   for(const title of ['復帰確認タスク A','復帰確認タスク B','対象外タスク']){
+     const result=await bridge.dispatch({
+       type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
+       assignee:s.currentUser,status:s.statuses.includes('未着手')?'未着手':s.statuses[0],
+       category:s.categories[0],title,description:'復帰の検査',
+       requester:'',tags:'',checklist:'',checklistDone:[],
+       priority:'中',dueDate:'',dueTime:'',pinned:false,revision:0
+     });
+     if(!result?.ok)throw Error('task.create: '+result?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="tasks"]').click();
+ const query=host.locator('#originTaskQuery');
+ await query.fill('復帰確認タスク');
+ const rows=host.locator('.origin-task-collection .item-row');
+ await expect(rows).toHaveCount(2);
+ const removedId=await rows.first().locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ const nextId=await rows.nth(1).locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ const nextTitle=await rows.nth(1).locator('.item-name').innerText();
+ const beforeTop=await rows.first().evaluate(el=>el.getBoundingClientRect().top);
+ await rows.first().locator('[data-action="list-quick-edit"]').click();
+ await expect(host.locator('#editForm[data-kind="tasks"]')).toBeVisible();
+ page.on('dialog',dialog=>{void dialog.accept()});
+ await host.locator('#sheet [data-action="delete"][data-kind="tasks"]').click();
+ await expect(rows).toHaveCount(1);
+ const next=host.locator('.origin-task-collection [data-action="list-quick-edit"][data-id="'+nextId+'"]');
+ await expect(next).toBeFocused();
+ const afterTop=await rows.first().evaluate(el=>el.getBoundingClientRect().top);
+ expect(Math.abs(afterTop-beforeTop)).toBeLessThanOrEqual(130);
+ await expect(query).toHaveValue('復帰確認タスク');
+ await next.click();
+ await expect(host.locator('#editForm [name="title"]')).toHaveValue(nextTitle.trim());
+ await host.locator('#sheet [data-action="delete"][data-kind="tasks"]').click();
+ await expect(rows).toHaveCount(0);
+ await expect(query).toBeFocused();
+ await expect(query).toHaveValue('復帰確認タスク');
+ const remaining=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks);
+ expect(remaining.some(task=>task.id===removedId||task.id===nextId)).toBe(false);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
+
+test('Origin memo filter preserves the nearest quick edit after a title change and deletion',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-memo-neighbor-return-v560',320);
+ await page.evaluate(async()=>{
+   const memo=window.WorkBoardPaletteMemoBridgeV369,s=window.WorkBoardPaletteBridge.readSnapshot();
+   for(const title of ['検索継続メモ A','検索継続メモ B']){
+     const result=await memo.dispatch({type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
+       title,body:'手順を確認',category:'手順',tags:[],pinned:false,paperColor:'mint'});
+     if(!result?.ok)throw Error('memo.create: '+result?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ const query=host.locator('#originMemoQuery');
+ await query.fill('検索継続メモ');
+ const cards=host.locator('.origin-memo-shell');
+ await expect(cards).toHaveCount(2);
+ const keptId=await cards.nth(1).locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ const keptTitle=await cards.nth(1).locator('.memo-card h3').innerText();
+ await cards.first().locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="memos"]');
+ await form.locator('[name="title"]').fill('検索対象外になったメモ');
+ await host.locator('button[form="editForm"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(cards).toHaveCount(1);
+ const next=host.locator('.origin-memo-shell [data-action="list-quick-edit"][data-id="'+keptId+'"]');
+ await expect(next).toBeFocused();
+ await expect(query).toHaveValue('検索継続メモ');
+ await next.click();
+ await expect(form.locator('[name="title"]')).toHaveValue(keptTitle.trim());
+ page.on('dialog',dialog=>{void dialog.accept()});
+ await host.locator('#sheet [data-action="delete"][data-kind="memos"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(cards).toHaveCount(0);
+ await expect(query).toBeFocused();
+ await expect(query).toHaveValue('検索継続メモ');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
+
+test('Origin mobile weekly schedule returns to the next event then the filter controls',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-calendar-neighbor-return-v560',390);
+ const date=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const morning=new Date();morning.setHours(9,0,0,0);
+   for(let i=0;i<2;i++){
+     const start=new Date(morning.getTime()+i*3600000);
+     const end=new Date(start.getTime()+1800000);
+     const created=await bridge.dispatch({
+       type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+       values:{title:'復帰確認予定 '+i,startAt:start.toISOString(),endAt:end.toISOString(),
+         assignee:s.currentUser,category:s.categories[0],
+         relatedTaskId:'',location:'会議室',memo:''}
+     });
+     if(!created?.ok)throw Error('schedule.create: '+created?.error);
+   }
+   return [morning.getFullYear(),String(morning.getMonth()+1).padStart(2,'0'),
+     String(morning.getDate()).padStart(2,'0')].join('-');
+ });
+ await host.locator('#mobileNav [data-route="calendar"]').click();
+ const day=host.locator('.mobile-agenda .agenda-day[data-date="'+date+'"]');
+ const entries=day.locator('.agenda-entry');
+ await expect(entries).toHaveCount(2);
+ const remainingId=await entries.nth(1).getAttribute('data-id');
+ const beforeTop=await entries.first().evaluate(el=>el.getBoundingClientRect().top);
+ await entries.first().click();
+ await host.locator('#sheet [data-action="edit"]').click();
+ const form=host.locator('#editForm[data-kind="events"]');
+ await expect(form).toBeVisible();
+ page.on('dialog',dialog=>{void dialog.accept()});
+ await host.locator('#sheet [data-action="delete"][data-kind="events"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(entries).toHaveCount(1);
+ await expect(day.locator('.agenda-entry[data-id="'+remainingId+'"]')).toBeFocused();
+ const afterTop=await entries.first().evaluate(el=>el.getBoundingClientRect().top);
+ expect(Math.abs(afterTop-beforeTop)).toBeLessThanOrEqual(130);
+ await entries.first().click();
+ await host.locator('#sheet [data-action="edit"]').click();
+ await host.locator('#sheet [data-action="delete"][data-kind="events"]').click();
+ await expect(entries).toHaveCount(0);
+ await expect(host.locator('[data-action="schedule-filter-toggle"]')).toBeFocused();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
