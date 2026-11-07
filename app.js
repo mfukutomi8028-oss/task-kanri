@@ -6811,18 +6811,24 @@ let journalTimelineReturnTaskV494='';
 let journalTimelineReturnDateV504='';
 let journalTimelineReturnUndatedV504=false;
 let journalTimelineReturnTopV505=null;
+// V536: a vanished timeline row returns to its original day, not the top.
+// The anchor is view-only and cleared along with the existing detail origin.
+let journalTimelineReturnDayV536=null;
 // JOURNAL V519: one transient origin for desk / index detail modals.
 // The existing close observer below handles all three JOURNAL task pages.
 let journalTaskNoteReturnV519=null;
 function journalOpenTaskNoteV519(id,layout,action,source,edit=false){
   if(!source||!id||!state.tasks.some(task=>task.id===id))return;
   const top=source.getBoundingClientRect().top;
-  journalTaskNoteReturnV519={id,layout,action,top,width:window.innerWidth};
+  const row=journalTaskNavigationTargetV534(journalTaskPageV509(layout),layout,id);
+  const rowTop=row?.getBoundingClientRect().top??null;
+  journalTaskNoteReturnV519={id,layout,action,top,rowTop,width:window.innerWidth};
   // Only one return owner may be pending for the shared task detail panel.
   journalTimelineReturnTaskV494='';
   journalTimelineReturnDateV504='';
   journalTimelineReturnUndatedV504=false;
   journalTimelineReturnTopV505=null;
+  journalTimelineReturnDayV536=null;
   if(edit)openTaskEditorById(id);
   else selectTask(id);
 }
@@ -6844,17 +6850,20 @@ function journalRestoreTaskNoteV519(){
     .find(el=>(board?el.dataset.j420TaskId:el.dataset.j425Row)===origin.id);
   // A changed filter or deleted record cannot leave focus in a hidden note.
   const target=(button?.getClientRects().length?button:null)||row||
+    view.querySelector(board?'[data-j420-task-id].is-selected':'[data-j425-row].is-selected')||
     view.querySelector(board?'[data-j420-search]':'[data-j425-query]')||
     view.querySelector(board?'[data-j420-new-task]':'[data-j425-new-task]');
   if(!target)return;
   if(!target.matches('button,select,input,a,[tabindex]'))target.tabIndex=-1;
   target.focus({preventScroll:true});
   const scrolling=document.scrollingElement;
-  if(target===button&&scrolling&&origin.width===window.innerWidth
-    &&origin.top>=0&&origin.top<=window.innerHeight){
-    // Closing the canonical folio restores the exact source action's
-    // previous viewport position, without scrolling an entire list to top.
-    scrolling.scrollTop+=target.getBoundingClientRect().top-origin.top;
+  // The action and its case row are different phone anchors. On direct
+  // double-click editing, use the row's original position rather than
+  // treating the editor as though it had been opened from a note button.
+  const sourceTop=target===button?origin.top:target===row?origin.rowTop:null;
+  if(scrolling&&origin.width===window.innerWidth
+    &&Number.isFinite(sourceTop)&&sourceTop>=0&&sourceTop<=window.innerHeight){
+    scrolling.scrollTop+=target.getBoundingClientRect().top-sourceTop;
   }else target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
 }
 // JOURNAL V507: transient source for the existing canonical date-change dialog.
@@ -6871,6 +6880,10 @@ function journalRememberTimelineSourceV505(id){
   journalTimelineReturnDateV504=source?.closest('[data-jv-date]')?.dataset.jvDate||'';
   journalTimelineReturnUndatedV504=Boolean(source?.closest('[data-jv-undated]'));
   journalTimelineReturnTopV505=source?source.getBoundingClientRect().top:null;
+  const day=source?.closest('.jv-chronicle-day,[data-jv-undated]');
+  journalTimelineReturnDayV536=day?{
+    top:day.getBoundingClientRect().top,width:window.innerWidth
+  }:null;
 }
 function journalOpenTimelineDetailV494(id){
   journalRememberTimelineSourceV505(id);
@@ -6885,28 +6898,32 @@ function journalOpenTimelineEditorV505(id){
   journalRememberTimelineSourceV505(id);
   openTaskEditorById(id);
 }
-if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
-  new MutationObserver(()=>{
-    if(elements.detailPanel.classList.contains('open'))return;
+// JOURNAL V536: one return resolver runs after either the detail panel closes
+// or a direct row double-click editor closes. No second modal/data owner.
+function journalRestoreTaskOriginV536(){
+    if(elements.detailPanel?.classList.contains('open')||elements.taskDialog?.open)return;
     if(journalTaskNoteReturnV519){journalRestoreTaskNoteV519();return;}
     if(!journalTimelineReturnTaskV494)return;
     const id=journalTimelineReturnTaskV494;
     const date=journalTimelineReturnDateV504;
     const undated=journalTimelineReturnUndatedV504;
     const sourceTop=journalTimelineReturnTopV505;
+    const dayAnchor=journalTimelineReturnDayV536;
     journalTimelineReturnTaskV494='';
     journalTimelineReturnDateV504='';
     journalTimelineReturnUndatedV504=false;
     journalTimelineReturnTopV505=null;
+    journalTimelineReturnDayV536=null;
     if(!journalTaskV411()||elements.timelineView.hidden)return;
     const original=[...elements.timelineView.querySelectorAll('.jv-day-item')]
       .find(row=>row.dataset.taskId===id);
     const originalDay=date?[...elements.timelineView.querySelectorAll('[data-jv-date]')]
       .find(day=>day.dataset.jvDate===date):null;
-    const fallback=originalDay?.querySelector('[data-jv-add-date]')
-      ||originalDay?.closest('.jv-chronicle-day')?.querySelector('.j504-day-add')
-      ||originalDay
-      ||(undated?elements.timelineView.querySelector('[data-jv-undated] h4'):null);
+    const sourceDay=originalDay?.closest('.jv-chronicle-day')
+      ||(undated?elements.timelineView.querySelector('[data-jv-undated]'):null);
+    const fallback=sourceDay?.querySelector('.jv-date')
+      ||sourceDay?.querySelector('h4')
+      ||elements.timelineView.querySelector('[data-j505-date-jump]');
     const target=original?.querySelector('[data-j494-open-task]')||original||fallback
       ||elements.timelineView.querySelector('[data-timeline-range]');
     // Fallback headings and date shelves are not normally focusable.
@@ -6915,14 +6932,24 @@ if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
     const scrolling=document.scrollingElement;
     if(original&&scrolling&&Number.isFinite(sourceTop)
       &&sourceTop>=0&&sourceTop<=window.innerHeight){
-      // Preserve the visual reading position after a save-triggered rerender.
-      // A moved or filtered-out item still uses the existing safe fallback.
       scrolling.scrollTop+=original.getBoundingClientRect().top-sourceTop;
+    }else if(!original&&sourceDay&&scrolling&&dayAnchor
+      &&dayAnchor.width===window.innerWidth
+      &&Number.isFinite(dayAnchor.top)&&dayAnchor.top>=0&&dayAnchor.top<=window.innerHeight){
+      // The task vanished. Preserve the original DAY rather than an unrelated row.
+      scrolling.scrollTop+=sourceDay.getBoundingClientRect().top-dayAnchor.top;
     }else target?.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
-  }).observe(elements.detailPanel,{attributes:true,attributeFilter:['class']});
 }
+if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
+  new MutationObserver(journalRestoreTaskOriginV536)
+    .observe(elements.detailPanel,{attributes:true,attributeFilter:['class']});
+}
+elements.taskDialog?.addEventListener('close',()=>{
+  if(!journalTaskNoteReturnV519&&!journalTimelineReturnTaskV494)return;
+  requestAnimationFrame(journalRestoreTaskOriginV536);
+});
 // Escape belongs to JOURNAL's existing folio keyboard handler (v411).
-// The return observer above restores focus after the canonical close action.
+// Detail and direct-editor close events share the same return resolver.
 
 // JOURNAL V500: share the jump into the selected paper note between the
 // actual desk cards and the recent-activity log. No editor state is duplicated.
