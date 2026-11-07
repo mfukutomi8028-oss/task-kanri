@@ -6820,9 +6820,15 @@ let journalTaskNoteReturnV519=null;
 function journalOpenTaskNoteV519(id,layout,action,source,edit=false){
   if(!source||!id||!state.tasks.some(task=>task.id===id))return;
   const top=source.getBoundingClientRect().top;
-  const row=journalTaskNavigationTargetV534(journalTaskPageV509(layout),layout,id);
+  const root=journalTaskPageV509(layout);
+  const rowAttr=layout==='board'?'data-j420-task-id':'data-j425-row';
+  const row=journalTaskNavigationTargetV534(root,layout,id);
   const rowTop=row?.getBoundingClientRect().top??null;
-  journalTaskNoteReturnV519={id,layout,action,top,rowTop,width:window.innerWidth};
+  // V538: keep the visible case order only while this folio is open. A
+  // completed edit can remove the case from its filter or delete it entirely.
+  const order=[...(root?.querySelectorAll('['+rowAttr+']')||[])]
+    .map(node=>node.getAttribute(rowAttr));
+  journalTaskNoteReturnV519={id,selected:id,order,layout,action,top,rowTop,width:window.innerWidth};
   // Only one return owner may be pending for the shared task detail panel.
   journalTimelineReturnTaskV494='';
   journalTimelineReturnDateV504='';
@@ -6849,8 +6855,8 @@ function journalRestoreTaskNoteV519(){
   const row=[...view.querySelectorAll(board?'[data-j420-task-id]':'[data-j425-row]')]
     .find(el=>(board?el.dataset.j420TaskId:el.dataset.j425Row)===origin.id);
   // A changed filter or deleted record cannot leave focus in a hidden note.
-  const target=(button?.getClientRects().length?button:null)||row||
-    view.querySelector(board?'[data-j420-task-id].is-selected':'[data-j425-row].is-selected')||
+  const nearRow=view.querySelector(board?'[data-j420-task-id].is-selected':'[data-j425-row].is-selected');
+  const target=(button?.getClientRects().length?button:null)||row||nearRow||
     view.querySelector(board?'[data-j420-search]':'[data-j425-query]')||
     view.querySelector(board?'[data-j420-new-task]':'[data-j425-new-task]');
   if(!target)return;
@@ -6860,7 +6866,10 @@ function journalRestoreTaskNoteV519(){
   // The action and its case row are different phone anchors. On direct
   // double-click editing, use the row's original position rather than
   // treating the editor as though it had been opened from a note button.
-  const sourceTop=target===button?origin.top:target===row?origin.rowTop:null;
+  // The selected replacement stands where the vanished case was. Keep the
+  // old row's viewport coordinate on phones instead of jumping to row one.
+  const sourceTop=target===button?origin.top:
+    target===row||(row===undefined&&target===nearRow)?origin.rowTop:null;
   if(scrolling&&origin.width===window.innerWidth
     &&Number.isFinite(sourceTop)&&sourceTop>=0&&sourceTop<=window.innerHeight){
     scrolling.scrollTop+=target.getBoundingClientRect().top-sourceTop;
@@ -7200,9 +7209,14 @@ function journalAtelierV420(tasks){
   const dueSoon=tasks.filter(t=>t.dueDate&&week(t)).length;
   const activities=[...tasks].filter(t=>Number(t.updatedAt)>0).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,6);
   if(!viewTasks.some(t=>t.id===journalAtelierSelectedV420)){
+    const returnAnchorV538=journalTaskNoteReturnV519?.layout==='board'
+      &&journalTaskNoteReturnV519.id===journalAtelierSelectedV420
+      ?journalTaskNoteReturnV519:null;
     journalAtelierSelectedV420=syncAnchorV530
       ?journalNearestSurvivingTaskV532(syncAnchorV530,viewTasks.map(t=>t.id))
-      :viewTasks[0]?.id||'';
+      :returnAnchorV538
+        ?journalNearestSurvivingTaskV532(returnAnchorV538,viewTasks.map(t=>t.id))
+        :viewTasks[0]?.id||'';
     journalAtelierInlineOpenV494=false;
     journalAtelierReturnAnchorV516=null;
   }
@@ -7456,9 +7470,14 @@ function journalIndexV425(tasks){
   if(filters.sort==='title')ordered.sort((a,b)=>a.title.localeCompare(b.title,'ja'));
   if(filters.sort==='priority'){const rank={緊急:0,高:1,中:2,低:3};ordered.sort((a,b)=>(rank[a.priority]??4)-(rank[b.priority]??4))}
   if(!ordered.some(t=>t.id===filters.selected)){
+    const returnAnchorV538=journalTaskNoteReturnV519?.layout==='list'
+      &&journalTaskNoteReturnV519.id===filters.selected
+      ?journalTaskNoteReturnV519:null;
     filters.selected=syncAnchorV530
       ?journalNearestSurvivingTaskV532(syncAnchorV530,ordered.map(t=>t.id))
-      :ordered[0]?.id||'';
+      :returnAnchorV538
+        ?journalNearestSurvivingTaskV532(returnAnchorV538,ordered.map(t=>t.id))
+        :ordered[0]?.id||'';
     // V491's inline note must not follow a deleted row or stale selection.
     journalTaskInlineSelectedV491='';
     journalIndexReturnAnchorV513=null;
