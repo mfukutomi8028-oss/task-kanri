@@ -2973,7 +2973,13 @@ function captureClassicTodoListAnchor(page) {
   };
 }
 function restoreClassicTodoListAnchor(page, anchor) {
-  if (!anchor) return;
+  if (!anchor) {
+    // Zero-result searches have no row anchor. Show the existing reset action
+    // instead of restoring an unrelated list position.
+    const reset = page.querySelector('.todo-search-empty-v145:not([hidden]) .todo-search-reset-v145');
+    if (reset?.getClientRects().length) reset.scrollIntoView({ block: 'nearest' });
+    return;
+  }
   const rows = [...page.querySelectorAll('.todo-list .todo-item[data-todo-id]')]
     .filter(row => !row.hidden && !row.closest('.todo-list')?.hidden && row.getClientRects().length);
   const byId = new Map(rows.map(row => [row.dataset.todoId, row]));
