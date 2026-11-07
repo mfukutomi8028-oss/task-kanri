@@ -3273,3 +3273,81 @@ test('JOURNAL V553 phone desk browses real shelf order and restores focus after 
   await page.setViewportSize({width:1366,height:900});
   await expect(pager).toBeHidden();
 });
+
+
+test('JOURNAL V554 latest focused control wins over card/pager frames and remote sync',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch(),source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      'window.__journalV554TriggerSync = () => scheduleSubscribedRender();\nfunction scheduleSubscribedRender() {'
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),editor=page.locator('#taskDialog');
+  for(const title of ['JOURNAL V554 Alpha','JOURNAL V554 Beta','JOURNAL V554 Gamma']){
+    await board.locator('[data-j420-new-task]').click();
+    await editor.locator('#taskTitle').fill(title);
+    await editor.locator('#taskForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+  }
+  const search=board.locator('[data-j420-search]');
+  await search.fill('JOURNAL V554');
+  const cards=board.locator('[data-j420-task-id]');
+  await expect(cards).toHaveCount(3);
+
+  // Click a card and immediately focus another control in the same event
+  // turn. The card's old requestAnimationFrame must not steal that focus.
+  await cards.first().evaluate(el=>{
+    el.focus();
+    el.click();
+    el.closest('#boardView').querySelector('[data-j420-search]').focus();
+  });
+  const note=board.locator('#j494AtelierNote.j494-inline-note');
+  await expect(note).toBeVisible();
+  await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+  await expect(search).toBeFocused();
+
+  // Directly focus the note's action after a page turn. A second focus jump
+  // from the selection handler must not override it.
+  await note.locator('[data-j553-case-step="1"]').evaluate(btn=>{
+    btn.focus();
+    btn.click();
+    document.querySelector('#boardView #j494AtelierNote [data-j420-note-edit]').focus();
+  });
+  await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+  await expect(note.locator('[data-j420-note-edit]')).toBeFocused();
+  await expect(note.locator('[data-j553-case-position]')).toHaveText('2 / 3 件');
+
+  // A subscribed repaint in the same interaction burst must preserve the
+  // newest search focus while keeping the selected note and search intact.
+  await page.evaluate(()=>{
+    const current=document.querySelector('#boardView #j494AtelierNote');
+    const previous=current.querySelector('[data-j553-case-step="-1"]');
+    previous.focus();
+    previous.click();
+    document.querySelector('#boardView [data-j420-search]').focus();
+    window.__journalV554TriggerSync();
+  });
+  await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>
+    requestAnimationFrame(()=>requestAnimationFrame(done)))));
+  await expect(search).toBeFocused();
+  await expect(search).toHaveValue('JOURNAL V554');
+  await expect(note).toBeVisible();
+  await expect(note.locator('[data-j553-case-position]')).toHaveText('1 / 3 件');
+
+  // Normal pager operation still restores its own focus when no newer
+  // interaction intervenes.
+  await note.locator('[data-j553-case-step="1"]').click();
+  await expect(note.locator('[data-j553-case-step="1"]')).toBeFocused();
+  await expect(note.locator('[data-j553-case-position]')).toHaveText('2 / 3 件');
+  await page.setViewportSize({width:320,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});
