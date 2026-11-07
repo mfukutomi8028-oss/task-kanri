@@ -5930,13 +5930,19 @@ journalAtelierInlineMediaV494.addEventListener('change',()=>
 let journalTimelineReturnTaskV494='';
 let journalTimelineReturnDateV504='';
 let journalTimelineReturnUndatedV504=false;
-function journalOpenTimelineDetailV494(id){
+let journalTimelineReturnTopV505=null;
+// The original row and its viewport offset are owned by the JOURNAL reader,
+// not by a separate editor or persistence path.
+function journalRememberTimelineSourceV505(id){
   journalTimelineReturnTaskV494=id;
-  // Keep the source day when a status or due-date update removes the row.
   const source=[...elements.timelineView.querySelectorAll('.jv-day-item')]
     .find(row=>row.dataset.taskId===id);
   journalTimelineReturnDateV504=source?.closest('[data-jv-date]')?.dataset.jvDate||'';
   journalTimelineReturnUndatedV504=Boolean(source?.closest('[data-jv-undated]'));
+  journalTimelineReturnTopV505=source?source.getBoundingClientRect().top:null;
+}
+function journalOpenTimelineDetailV494(id){
+  journalRememberTimelineSourceV505(id);
   selectTask(id);
   if(elements.detailPanel.classList.contains('open')){
     elements.detailPanel.scrollTop=0;
@@ -5944,15 +5950,21 @@ function journalOpenTimelineDetailV494(id){
     if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
   }
 }
+function journalOpenTimelineEditorV505(id){
+  journalRememberTimelineSourceV505(id);
+  openTaskEditorById(id);
+}
 if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
   new MutationObserver(()=>{
     if(!journalTimelineReturnTaskV494||elements.detailPanel.classList.contains('open'))return;
     const id=journalTimelineReturnTaskV494;
     const date=journalTimelineReturnDateV504;
     const undated=journalTimelineReturnUndatedV504;
+    const sourceTop=journalTimelineReturnTopV505;
     journalTimelineReturnTaskV494='';
     journalTimelineReturnDateV504='';
     journalTimelineReturnUndatedV504=false;
+    journalTimelineReturnTopV505=null;
     if(!journalTaskV411()||elements.timelineView.hidden)return;
     const original=[...elements.timelineView.querySelectorAll('.jv-day-item')]
       .find(row=>row.dataset.taskId===id);
@@ -5967,7 +5979,13 @@ if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
     // Fallback headings and date shelves are not normally focusable.
     if(target&&!target.matches('button,select,input,a,[tabindex]'))target.tabIndex=-1;
     target?.focus({preventScroll:true});
-    target?.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+    const scrolling=document.scrollingElement;
+    if(original&&scrolling&&Number.isFinite(sourceTop)
+      &&sourceTop>=0&&sourceTop<=window.innerHeight){
+      // Preserve the visual reading position after a save-triggered rerender.
+      // A moved or filtered-out item still uses the existing safe fallback.
+      scrolling.scrollTop+=original.getBoundingClientRect().top-sourceTop;
+    }else target?.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
   }).observe(elements.detailPanel,{attributes:true,attributeFilter:['class']});
 }
 // Escape belongs to JOURNAL's existing folio keyboard handler (v411).
@@ -6362,9 +6380,15 @@ function journalChronicleV411(tasks){
 const start=getTimelineStartDate(),dates=Array.from({length:getTimelineDays(start)},(_,i)=>addDays(start,i));
 const dateRows=dates.map(d=>{const date=toISODate(d),items=tasks.filter(t=>t.dueDate===date);return `<section class="jv-chronicle-day ${isTodayDate(d)?'is-today':''} ${items.length?'':'is-empty'}"><div class="jv-date"><strong>${d.getDate()}</strong><span>${['日','月','火','水','木','金','土'][d.getDay()]}曜</span><small>${d.getMonth()+1}月</small>${items.length?`<button type="button" class="j504-day-add" data-jv-add-date="${date}" aria-label="${date}にタスクを追加" title="この日にタスクを追加"><span aria-hidden="true">＋</span><span aria-hidden="true">追加</span></button>`:""}</div><div class="jv-day-records" data-jv-date="${date}">${items.map(journalDayItemV411).join('')||`<button type="button" class="j434-chronicle-add" data-jv-add-date="${date}">＋ この日にタスクを書く</button>`}</div></section>`}).join('');
 const undated=tasks.filter(t=>!t.dueDate);
-elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section>`;
+const dayJumpOptions=dates.map(d=>{
+  const date=toISODate(d);
+  const count=tasks.filter(t=>t.dueDate===date).length;
+  const weekday=['日','月','火','水','木','金','土'][d.getDay()];
+  return `<option value="${date}">${d.getMonth()+1}/${d.getDate()}（${weekday}） ${count}件</option>`;
+}).join('');
+elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section>`;
 bindTaskDragSources(elements.timelineView);
-elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineDetailV494(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('button,input,select'))openTaskEditorById(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();journalOpenTimelineDetailV494(row.dataset.taskId)}})});
+elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineDetailV494(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineEditorV505(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();journalOpenTimelineDetailV494(row.dataset.taskId)}})});
 elements.timelineView.querySelectorAll('[data-j494-open-task]').forEach(b=>b.addEventListener('click',e=>{
   e.stopPropagation();journalOpenTimelineDetailV494(b.dataset.j494OpenTask);
 }));
@@ -6373,6 +6397,16 @@ elements.timelineView.querySelectorAll('[data-jv-date]').forEach(row=>row.addEve
 // Touch and keyboard entry points share the canonical task dialog and date seed.
 elements.timelineView.querySelectorAll('[data-jv-add-date]').forEach(b=>b.addEventListener('click',()=>openTaskDialogFromTimeline(b.dataset.jvAddDate,getDefaultOpenStatus())));
 const root=elements.timelineView;
+root.querySelector('[data-j505-date-jump]')?.addEventListener('change',event=>{
+  const date=event.currentTarget.value;
+  const records=[...root.querySelectorAll('.jv-day-records[data-jv-date]')]
+    .find(day=>day.dataset.jvDate===date);
+  const dateHeading=records?.closest('.jv-chronicle-day')?.querySelector('.jv-date');
+  if(!dateHeading)return;
+  dateHeading.tabIndex=-1;
+  dateHeading.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
+  dateHeading.focus({preventScroll:true});
+});
 if(root.dataset.jvDropBound!=='true'){
 root.dataset.jvDropBound='true';
 root.addEventListener('dragover',e=>{if(!isTaskDragEvent(e))return;const zone=e.target.closest('[data-jv-date],[data-jv-undated]');if(zone){e.preventDefault();zone.classList.add('jv-dropping')}});

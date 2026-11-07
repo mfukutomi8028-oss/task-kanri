@@ -6509,3 +6509,37 @@ html[data-wb-display="journal"] #timelineView .j504-day-add:focus-visible {
     grid-template-columns:58px minmax(0,1fr)!important;
   }
 }
+
+/* JOURNAL V505 — day jumping is a compact paper index, not a second timeline
+   or data editor. Keep 320px/390px navigation visible without horizontal pan. */
+html[data-wb-display="journal"] #timelineView .j505-date-jump {
+  display:inline-flex;align-items:center;gap:7px;
+  min-width:0;flex:0 1 235px;
+  color:var(--j-muted);font:750 12px/1.4 var(--j-text);
+}
+html[data-wb-display="journal"] #timelineView .j505-date-jump>span {
+  flex:0 0 auto;white-space:nowrap;
+}
+html[data-wb-display="journal"] #timelineView .j505-date-jump select {
+  box-sizing:border-box;min-width:0;max-width:100%;flex:1 1 130px;
+  min-height:44px;padding:7px 6px;font:700 12px/1.4 var(--j-text);
+}
+html[data-wb-display="journal"] #timelineView .jv-date {
+  scroll-margin-top:86px;
+}
+html[data-wb-display="journal"] #timelineView .jv-date:focus {
+  outline:2px solid var(--j-accent)!important;outline-offset:-3px;
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #timelineView .j505-date-jump {
+    flex:1 1 100%;width:100%;
+  }
+}
+@media(max-width:480px) {
+  html[data-wb-display="journal"] #timelineView .jv-time-controls>.j505-date-jump {
+    grid-column:1/-1;grid-row:2;width:100%;
+  }
+  html[data-wb-display="journal"] #timelineView .j505-date-jump select {
+    flex:1 1 auto;width:100%;
+  }
+}
