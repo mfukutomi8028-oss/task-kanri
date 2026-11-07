@@ -130,3 +130,57 @@ for (const view of [
     await expect(page.locator('.mobile-v187-stage')).toHaveScreenshot(`mobile-v187-${view.label}-task.png`, { animations: 'disabled' });
   });
 }
+
+
+for (const width of [320, 390]) {
+  test('Classic schedule dialog keeps every action readable at ' + width + 'px', async ({ page }) => {
+    await boot(page, width, 812);
+    await page.evaluate(() => {
+      const dialog = document.querySelector('#scheduleDialog');
+      // Display the complete edit-action set; new schedules hide some of
+      // these controls. The test must also cover the most crowded edit state.
+      for (const button of dialog.querySelectorAll('.dialog-actions > button')) {
+        button.hidden = false;
+        button.style.removeProperty('display');
+      }
+      dialog.showModal();
+    });
+    await expect(page.locator('#scheduleDialog')).toBeVisible();
+    const geometry = await page.evaluate(() => {
+      const dialog = document.querySelector('#scheduleDialog');
+      const actions = dialog.querySelector('.dialog-actions');
+      const buttons = [...actions.querySelectorAll(':scope > button')];
+      const box = el => {
+        const r = el.getBoundingClientRect();
+        return { x:r.x, y:r.y, width:r.width, height:r.height, bottom:r.bottom, right:r.right };
+      };
+      return {
+        columnCount: getComputedStyle(actions).gridTemplateColumns.split(' ').length,
+        actionBox: box(actions),
+        dialogOverflow: dialog.scrollWidth - dialog.clientWidth,
+        actionOverflow: actions.scrollWidth - actions.clientWidth,
+        buttons: buttons.map(button => ({
+          id:button.id || 'submit', text:button.textContent.trim(), box:box(button),
+          minHeight:getComputedStyle(button).minHeight
+        }))
+      };
+    });
+    expect(geometry.columnCount, 'two equally usable secondary columns').toBe(2);
+    expect(geometry.buttons).toHaveLength(5);
+    expect(geometry.dialogOverflow, 'dialog must not scroll sideways').toBeLessThanOrEqual(1);
+    expect(geometry.actionOverflow, 'actions must fit the form').toBeLessThanOrEqual(1);
+    const [related, create, copy, remove, save] = geometry.buttons.map(button => button.box);
+    expect(Math.abs(related.y - create.y), 'first two operations share a row').toBeLessThan(2);
+    expect(Math.abs(copy.y - remove.y), 'second two operations share a row').toBeLessThan(2);
+    expect(save.y, 'Save follows all supporting actions').toBeGreaterThanOrEqual(Math.max(copy.bottom, remove.bottom) - 1);
+    expect(save.width, 'Save uses both columns').toBeGreaterThan(related.width * 1.8);
+    for (const { id, box: button } of geometry.buttons) {
+      expect(button.height, id + ' touch target').toBeGreaterThanOrEqual(44);
+      expect(button.x, id + ' left edge').toBeGreaterThanOrEqual(geometry.actionBox.x - 1);
+      expect(button.right, id + ' right edge').toBeLessThanOrEqual(geometry.actionBox.right + 1);
+    }
+    await page.locator('#scheduleDialog .dialog-actions > button[type="submit"]').focus();
+    await expect(page.locator('#scheduleDialog .dialog-actions > button[type="submit"]')).toBeFocused();
+    await page.evaluate(() => document.querySelector('#scheduleDialog').close());
+  });
+}
