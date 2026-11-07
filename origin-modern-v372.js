@@ -1165,19 +1165,50 @@ function originReturnCard(kind,id){
  const selector=kind==='tasks'
   ?'.origin-task-collection .item-name[data-action="open"][data-kind="tasks"]'
   :kind==='memos'?'.memo-grid .memo-card[data-action="open"][data-kind="memos"]'
-  :kind==='todos'?'.origin-todo-main .todo-text[data-action="open"][data-kind="todos"]':'';
+  :kind==='todos'?'.origin-todo-main .todo-text[data-action="open"][data-kind="todos"]'
+  :kind==='events'?
+    '.mobile-agenda .agenda-entry[data-action="open"][data-kind="events"],.week-board .schedule-event[data-action="open"][data-kind="events"],.origin-day-entry[data-action="open"][data-kind="events"],.origin-agenda-entry[data-action="open"][data-kind="events"]':'';
  if(!selector)return null;
  return Array.from($('#workspace').querySelectorAll(selector))
   .find(button=>button.dataset.id===id&&button.getClientRects().length)||null;
 }
+function originReturnRow(kind,card){
+ if(!card)return null;
+ return kind==='tasks'?card.closest('.item-row')
+  :kind==='todos'?card.closest('.todo-entry')
+  :kind==='memos'?card.closest('.origin-memo-shell')
+  :card;
+}
 function captureOriginReturnAnchor(kind,id,trigger){
- if(!((view==='tasks'&&kind==='tasks')||(view==='notes'&&kind==='memos')||(view==='todos'&&kind==='todos')))return null;
+ if(!((view==='tasks'&&kind==='tasks')||(view==='notes'&&kind==='memos')
+   ||(view==='todos'&&kind==='todos')||(view==='calendar'&&kind==='events')))return null;
  const card=originReturnCard(kind,id);
  if(!card||!trigger)return null;
- const sameTodoRow=kind==='todos'&&trigger.closest('.todo-entry')===card.closest('.todo-entry');
- if(!sameTodoRow&&!card.contains(trigger)&&card!==trigger)return null;
- const row=kind==='tasks'?card.closest('.item-row'):kind==='todos'?card.closest('.todo-entry'):card.closest('.origin-memo-shell');
- return row?{view,kind,id,top:row.getBoundingClientRect().top}:null;
+ const row=originReturnRow(kind,card);
+ const sameRow=Boolean(row&&row===originReturnRow(kind,trigger));
+ if(!sameRow&&!card.contains(trigger)&&card!==trigger)return null;
+ return row?{view,kind,id,top:row.getBoundingClientRect().top,
+   action:trigger.dataset.action==='list-quick-edit'?'list-quick-edit':'open'}:null;
+}
+// Find a nearby *still matching* result in the list order captured on opening
+// the inspector. Never reset filters or choose an unrelated record.
+function originAdjacentReturnIds(kind,id,currentIds){
+ if(detailSequence?.kind!==kind||detailSequence.view!==view)return [];
+ const ids=detailSequence.ids,index=ids.indexOf(id);
+ if(index<0)return [];
+ const allowed=new Set(currentIds);
+ return ids.slice(index+1).concat(ids.slice(0,index).reverse())
+   .filter(candidate=>allowed.has(candidate));
+}
+function revealOriginAdjacentReturnCard(kind,id){
+ const current=kind==='tasks'&&view==='tasks'?taskVisible().map(t=>t.id)
+  :kind==='memos'&&view==='notes'?originVisibleMemos().map(m=>m.id)
+  :kind==='events'&&view==='calendar'?scheduleWeekResultIds:[];
+ for(const candidate of originAdjacentReturnIds(kind,id,current)){
+   const row=revealOriginReturnCard(kind,candidate);
+   if(row)return row;
+ }
+ return null;
 }
 function revealOriginReturnCard(kind,id){
  let target=originReturnCard(kind,id);
