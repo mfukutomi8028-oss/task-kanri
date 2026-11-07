@@ -2477,6 +2477,7 @@ test('JOURNAL V530 remote snapshots preserve desk and list focus and IME text at
   await card.focus();
   const cardTop=await card.evaluate(el=>el.getBoundingClientRect().top);
   await page.evaluate(()=>window.__journalV530TriggerSync());
+  await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
   await expect(card).toBeFocused();
   expect(Math.abs((await card.evaluate(el=>el.getBoundingClientRect().top))-cardTop)).toBeLessThanOrEqual(38);
 
@@ -2484,8 +2485,11 @@ test('JOURNAL V530 remote snapshots preserve desk and list focus and IME text at
   const list=page.locator('#listView');
   const query=list.locator('[data-j425-query]');
   await query.fill(title);
+  await expect(query).toBeFocused();
+  await page.evaluate(()=>new Promise(done=>requestAnimationFrame(done)));
   await query.evaluate(el=>el.setSelectionRange(7,7));
   await page.evaluate(()=>window.__journalV530TriggerSync());
+  await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
   await expect(query).toBeFocused();
   await expect(query).toHaveValue(title);
   expect(await query.evaluate(el=>el.selectionStart)).toBe(7);
@@ -2494,6 +2498,7 @@ test('JOURNAL V530 remote snapshots preserve desk and list focus and IME text at
   await row.focus();
   const rowTop=await row.evaluate(el=>el.getBoundingClientRect().top);
   await page.evaluate(()=>window.__journalV530TriggerSync());
+  await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
   await expect(row).toBeFocused();
   expect(Math.abs((await row.evaluate(el=>el.getBoundingClientRect().top))-rowTop)).toBeLessThanOrEqual(38);
 
@@ -2504,6 +2509,7 @@ test('JOURNAL V530 remote snapshots preserve desk and list focus and IME text at
   await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
   expect(await composing.evaluate(el=>el.isConnected)).toBe(true);
   await query.dispatchEvent('compositionend',{data:'編集'});
+  await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
   await expect(query).toBeFocused();
   await expect(query).toHaveValue(title);
   await page.setViewportSize({width:320,height:800});
