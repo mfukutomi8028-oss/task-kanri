@@ -434,7 +434,10 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await expect(seriesPanel).toContainText('3件登録済み · 2件目');
   await backToSeries.click();
   await expect(compare).toHaveAttribute('open','');
-  await expect(compare.locator('[data-pn-series-index-next-unchecked]')).toBeFocused();
+  // The just-reviewed occurrence was the final unchecked one. Its quick
+  // navigation button no longer exists, so return focus to the visible query.
+  await expect(compare.locator('[data-pn-series-index-next-unchecked]')).toHaveCount(0);
+  await expect(compare.locator('[data-pn-series-index-search]')).toBeFocused();
   await expect(backToSeries).toHaveCount(0);
   // Opening a named row has the same reversible return without resetting search.
   const chosenViewRow=compare.locator('[data-pn-series-index-open="'+thirdInSeries+'"]');
