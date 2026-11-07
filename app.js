@@ -6883,6 +6883,75 @@ const journalAtelierInlineMediaV494=window.matchMedia('(max-width:760px)');
 let journalAtelierInlineOpenV494=false;
 // JOURNAL V516: temporary mobile reading anchor; never saved in task data.
 let journalAtelierReturnAnchorV516=null;
+// V556: remember only the visible part of an open phone note.
+// Never persist it to user records, filters, or the shared task store.
+let journalAtelierReaderAnchorV556=null;
+let journalAtelierReaderScrollFrameV556=null;
+let journalAtelierReaderResizeFrameV556=null;
+const journalAtelierReaderSectionsV556=[
+  '.j553-atelier-pager','.j420-note-lead','.j420-note-description',
+  '.j420-note-checks','.j420-next-step'
+];
+function journalCaptureAtelierReaderAnchorV556(){
+  if(!journalTaskV411()||state.layout!=='tasks'||state.taskLayout!=='board'
+    ||!journalAtelierInlineMediaV494.matches||!journalAtelierInlineOpenV494
+    ||elements.boardView.hidden){
+    journalAtelierReaderAnchorV556=null;
+    return;
+  }
+  const note=elements.boardView.querySelector('#j494AtelierNote.j494-inline-note');
+  if(!note){journalAtelierReaderAnchorV556=null;return;}
+  // The heading can be far above the viewport in a long memo. Pick the
+  // first visible notebook section, and retain its viewport coordinate.
+  const section=journalAtelierReaderSectionsV556.find(selector=>{
+    const node=note.querySelector(selector);
+    if(!node)return false;
+    const rect=node.getBoundingClientRect();
+    return rect.bottom>72&&rect.top<window.innerHeight-20;
+  });
+  if(!section){journalAtelierReaderAnchorV556=null;return;}
+  const top=note.querySelector(section).getBoundingClientRect().top;
+  journalAtelierReaderAnchorV556={
+    id:journalAtelierSelectedV420,selector:section,top,width:window.innerWidth
+  };
+}
+window.addEventListener('scroll',()=>{
+  if(!journalTaskV411()||state.layout!=='tasks'||state.taskLayout!=='board'
+    ||!journalAtelierInlineOpenV494||!journalAtelierInlineMediaV494.matches
+    ||journalAtelierReaderScrollFrameV556!==null)return;
+  journalAtelierReaderScrollFrameV556=requestAnimationFrame(()=>{
+    journalAtelierReaderScrollFrameV556=null;
+    // A scroll event caused by width reflow must not replace the old-width
+    // anchor before the resize handler can restore it.
+    if(journalAtelierReaderAnchorV556
+      &&journalAtelierReaderAnchorV556.width!==window.innerWidth)return;
+    journalCaptureAtelierReaderAnchorV556();
+  });
+},{passive:true});
+window.addEventListener('resize',()=>{
+  const anchor=journalAtelierReaderAnchorV556;
+  if(!anchor||anchor.width===window.innerWidth)return;
+  if(journalAtelierReaderResizeFrameV556!==null)
+    cancelAnimationFrame(journalAtelierReaderResizeFrameV556);
+  journalAtelierReaderResizeFrameV556=requestAnimationFrame(()=>{
+    journalAtelierReaderResizeFrameV556=null;
+    if(anchor!==journalAtelierReaderAnchorV556||!journalTaskV411()
+      ||state.layout!=='tasks'||state.taskLayout!=='board'
+      ||!journalAtelierInlineMediaV494.matches||!journalAtelierInlineOpenV494
+      ||elements.boardView.hidden||anchor.id!==journalAtelierSelectedV420)return;
+    const note=elements.boardView.querySelector('#j494AtelierNote.j494-inline-note');
+    const target=note?.querySelector(anchor.selector);
+    const current=document.activeElement;
+    // Do not move the page when the user is operating outside the note.
+    if(!target||(current&&current!==document.body
+      &&current!==document.documentElement&&current.isConnected
+      &&!note.contains(current)))return;
+    const delta=target.getBoundingClientRect().top-anchor.top;
+    if(Number.isFinite(delta)&&document.scrollingElement)
+      document.scrollingElement.scrollTop+=delta;
+    journalCaptureAtelierReaderAnchorV556();
+  });
+});
 // V553: invalidate queued mobile note navigation when the user selects again.
 let journalAtelierPageTokenV553=0;
 // V554: the pager delegates selection to the existing card click, but owns
@@ -6901,6 +6970,7 @@ function journalPositionAtelierNoteV494(root){
     if(note.previousElementSibling!==card||note.parentElement!==card.parentElement)card.after(note);
   }else if(note.parentElement!==root)root.append(note);
   note.classList.toggle('j494-inline-note',inline);
+  if(!inline)journalAtelierReaderAnchorV556=null;
   root.querySelectorAll('[data-j420-task-id]').forEach(el=>
     el.setAttribute('aria-expanded',String(inline&&el===card)));
   // V553: the real rendered card order, not the filtered task array, owns
@@ -7109,6 +7179,7 @@ function journalFocusAtelierNoteV500(root,includeDesktop=false){
     note.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
     heading.tabIndex=-1;
     heading.focus({preventScroll:true});
+    journalCaptureAtelierReaderAnchorV556();
   });
 }
 
@@ -7353,6 +7424,8 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
     const rect=target.getBoundingClientRect();
     if(rect.top<0||rect.bottom>window.innerHeight)
       target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+    if(snapshot.layout==='board'&&journalAtelierInlineOpenV494)
+      journalCaptureAtelierReaderAnchorV556();
   });
 }
 function journalAtelierV420(tasks){
@@ -7485,6 +7558,7 @@ function journalAtelierV420(tasks){
   root.querySelectorAll('[data-j420-task-id]').forEach(card=>{
     const select=()=>{
       ++journalAtelierPageTokenV553;
+      journalAtelierReaderAnchorV556=null;
       journalAtelierSelectedV420=card.dataset.j420TaskId;
       journalRememberTaskNavigationV534('board',journalAtelierSelectedV420);
       journalAtelierReturnAnchorV516=journalAtelierInlineMediaV494.matches
@@ -7615,6 +7689,7 @@ function journalAtelierV420(tasks){
       const rect=target.getBoundingClientRect();
       if(rect.top<0||rect.bottom>window.innerHeight)
         target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+      journalCaptureAtelierReaderAnchorV556();
     });
   }));
   root.querySelector('[data-j494-atelier-back]')?.addEventListener('click',()=>{
