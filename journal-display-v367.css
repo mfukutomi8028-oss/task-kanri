@@ -6832,3 +6832,27 @@ html[data-wb-display="journal"] #timelineView .j511-date-picker .j523-selected-d
 html[data-wb-display="journal"] #timelineView .j511-date-picker .j523-selected-date:empty {
   display:none;
 }
+
+/* JOURNAL V540: consecutive case reading within the existing phone notebook.
+   Two short controls replace repeated back/scroll/open gestures; no new pane. */
+html[data-wb-display="journal"] #listView .j540-case-pager {
+  display:none;
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #listView .j540-case-pager {
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;margin:9px 0 12px;
+  }
+  html[data-wb-display="journal"] #listView .j540-case-pager button {
+    box-sizing:border-box;min-width:0;min-height:44px;padding:8px 9px;
+    border:1px solid #b8cbb5;border-radius:5px;
+    background:#edf3e8;color:#43694d;
+    font:750 12px/1.45 var(--j-text);cursor:pointer;
+  }
+  html[data-wb-display="journal"] #listView .j540-case-pager button:disabled {
+    opacity:.48;cursor:default;
+  }
+  html[data-wb-display="journal"] #listView .j540-case-pager button:focus-visible {
+    outline:2px solid #779b7b;outline-offset:2px;
+  }
+}
