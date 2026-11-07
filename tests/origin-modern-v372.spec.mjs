@@ -2499,7 +2499,8 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await taskForm.locator('[name="title"]').fill('直接編集するタスク・更新');
  await sheet.locator('button[form="editForm"]').click();
  const changedTask=host.locator('.origin-task-collection .item-row',{hasText:'直接編集するタスク・更新'});
- await expect(changedTask.locator('.item-name')).toBeFocused();
+ // Direct list edits return to their edit action, not the detail title.
+ await expect(changedTask.locator('[data-action="list-quick-edit"]')).toBeFocused();
  await changedTask.locator('.item-name').click();
  await expect(sheet.locator('#panelHeading')).toHaveText('直接編集するタスク・更新');
  await sheet.locator('.sheet-close').click();
@@ -3325,8 +3326,19 @@ test('Origin mobile weekly schedule returns to the next event then the filter co
  const entries=day.locator('.agenda-entry');
  await expect(entries).toHaveCount(2);
  const remainingId=await entries.nth(1).getAttribute('data-id');
- const beforeTop=await entries.first().evaluate(el=>el.getBoundingClientRect().top);
+ // Playwright may scroll the target during click. Measure its actual
+ // on-click position, which is the anchor Origin stores for restoration.
+ await entries.first().evaluate(el=>el.addEventListener('click',()=>{
+   document.documentElement.dataset.originCalendarClickTop=String(el.getBoundingClientRect().top);
+ },{capture:true,once:true}));
  await entries.first().click();
+ const beforeTop=await page.evaluate(()=>{
+   const value=document.documentElement.dataset.originCalendarClickTop;
+   delete document.documentElement.dataset.originCalendarClickTop;
+   return value==null?null:Number(value);
+ });
+ expect(beforeTop).not.toBeNull();
+ expect(Number.isFinite(beforeTop)).toBe(true);
  await host.locator('#sheet [data-action="edit"]').click();
  const form=host.locator('#editForm[data-kind="events"]');
  await expect(form).toBeVisible();
