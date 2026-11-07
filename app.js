@@ -6005,12 +6005,59 @@ let journalTimelineReturnTaskV494='';
 let journalTimelineReturnDateV504='';
 let journalTimelineReturnUndatedV504=false;
 let journalTimelineReturnTopV505=null;
+// JOURNAL V519: one transient origin for desk / index detail modals.
+// The existing close observer below handles all three JOURNAL task pages.
+let journalTaskNoteReturnV519=null;
+function journalOpenTaskNoteV519(id,layout,action,source,edit=false){
+  if(!source||!id||!state.tasks.some(task=>task.id===id))return;
+  const top=source.getBoundingClientRect().top;
+  journalTaskNoteReturnV519={id,layout,action,top,width:window.innerWidth};
+  // Only one return owner may be pending for the shared task detail panel.
+  journalTimelineReturnTaskV494='';
+  journalTimelineReturnDateV504='';
+  journalTimelineReturnUndatedV504=false;
+  journalTimelineReturnTopV505=null;
+  if(edit)openTaskEditorById(id);
+  else selectTask(id);
+}
+function journalRestoreTaskNoteV519(){
+  const origin=journalTaskNoteReturnV519;
+  journalTaskNoteReturnV519=null;
+  if(!origin||!journalTaskV411()||state.taskLayout!==origin.layout)return;
+  const board=origin.layout==='board';
+  if(!board&&origin.layout!=='list')return;
+  const view=board?elements.boardView:elements.listView;
+  if(!view||view.hidden)return;
+  const selected=board?journalAtelierSelectedV420:journalIndexStateV425.selected;
+  const action=board
+    ?(origin.action==='edit'?'[data-j420-note-edit]':'[data-j420-note-detail]')
+    :(origin.action==='edit'?'[data-j425-preview-edit]':'[data-j425-preview-detail]');
+  const preview=view.querySelector(board?'#j494AtelierNote':'.j425-task-preview');
+  const button=selected===origin.id?preview?.querySelector(action):null;
+  const row=[...view.querySelectorAll(board?'[data-j420-task-id]':'[data-j425-row]')]
+    .find(el=>(board?el.dataset.j420TaskId:el.dataset.j425Row)===origin.id);
+  // A changed filter or deleted record cannot leave focus in a hidden note.
+  const target=(button?.getClientRects().length?button:null)||row||
+    view.querySelector(board?'[data-j420-search]':'[data-j425-query]')||
+    view.querySelector(board?'[data-j420-new-task]':'[data-j425-new-task]');
+  if(!target)return;
+  if(!target.matches('button,select,input,a,[tabindex]'))target.tabIndex=-1;
+  target.focus({preventScroll:true});
+  const scrolling=document.scrollingElement;
+  if(target===button&&scrolling&&origin.width===window.innerWidth
+    &&origin.top>=0&&origin.top<=window.innerHeight){
+    // Closing the canonical folio restores the exact source action's
+    // previous viewport position, without scrolling an entire list to top.
+    scrolling.scrollTop+=target.getBoundingClientRect().top-origin.top;
+  }else target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+}
 // JOURNAL V507: transient source for the existing canonical date-change dialog.
 let journalTimelineMoveSourceV507=null;
 let journalTimelineMoveCommittedV507=false;
 // The original row and its viewport offset are owned by the JOURNAL reader,
 // not by a separate editor or persistence path.
 function journalRememberTimelineSourceV505(id){
+  journalTaskNoteReturnV519=null;
   journalTimelineReturnTaskV494=id;
   const source=[...elements.timelineView.querySelectorAll('.jv-day-item')]
     .find(row=>row.dataset.taskId===id);
@@ -6033,7 +6080,9 @@ function journalOpenTimelineEditorV505(id){
 }
 if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
   new MutationObserver(()=>{
-    if(!journalTimelineReturnTaskV494||elements.detailPanel.classList.contains('open'))return;
+    if(elements.detailPanel.classList.contains('open'))return;
+    if(journalTaskNoteReturnV519){journalRestoreTaskNoteV519();return;}
+    if(!journalTimelineReturnTaskV494)return;
     const id=journalTimelineReturnTaskV494;
     const date=journalTimelineReturnDateV504;
     const undated=journalTimelineReturnUndatedV504;
@@ -6110,8 +6159,12 @@ function journalAtelierNoteV420(t){
 }
 
 function bindJournalAtelierNoteActionsV420(root){
-  root.querySelector('[data-j420-note-detail]')?.addEventListener('click',()=>{if(journalAtelierSelectedV420)selectTask(journalAtelierSelectedV420)});
-  root.querySelector('[data-j420-note-edit]')?.addEventListener('click',()=>{if(journalAtelierSelectedV420)openTaskEditorById(journalAtelierSelectedV420)});
+  root.querySelector('[data-j420-note-detail]')?.addEventListener('click',event=>{
+    journalOpenTaskNoteV519(journalAtelierSelectedV420,'board','detail',event.currentTarget);
+  });
+  root.querySelector('[data-j420-note-edit]')?.addEventListener('click',event=>{
+    journalOpenTaskNoteV519(journalAtelierSelectedV420,'board','edit',event.currentTarget,true);
+  });
 }
 
 // JOURNAL V516: keep the tapped index control at its original reading
@@ -6475,8 +6528,12 @@ function journalIndexV425(tasks){
         }else target.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
       });
     }));
-    root.querySelector('[data-j425-preview-detail]')?.addEventListener('click',()=>{if(filters.selected)selectTask(filters.selected)});
-    root.querySelector('[data-j425-preview-edit]')?.addEventListener('click',()=>{if(filters.selected)openTaskEditorById(filters.selected)});
+    root.querySelector('[data-j425-preview-detail]')?.addEventListener('click',event=>{
+      journalOpenTaskNoteV519(filters.selected,'list','detail',event.currentTarget);
+    });
+    root.querySelector('[data-j425-preview-edit]')?.addEventListener('click',event=>{
+      journalOpenTaskNoteV519(filters.selected,'list','edit',event.currentTarget,true);
+    });
   };
   bindPreview();
   bindFavoriteButtons(root);
