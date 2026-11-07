@@ -3101,3 +3101,82 @@ test('JOURNAL V549 latest focus wins across filtering, Firebase repaint and IME 
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V552 phone desk note survives remote removals and offers empty recovery',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  // Test-only subscription notification; no live Firebase or persisted tasks.
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch(),source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      'window.__journalV552RemoteDelete = id => { state.tasks=state.tasks.filter(t=>t.id!==id); scheduleSubscribedRender(); };\nfunction scheduleSubscribedRender() {'
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),editor=page.locator('#taskDialog');
+  for(const title of ['JOURNAL V552 A','JOURNAL V552 B','JOURNAL V552 C','条件外の案件']){
+    await board.locator('[data-j420-new-task]').click();
+    await editor.locator('#taskTitle').fill(title);
+    await editor.locator('#taskForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+  }
+  const query=board.locator('[data-j420-search]');
+  await query.fill('JOURNAL V552');
+  const cards=board.locator('[data-j420-task-id]');
+  await expect(cards).toHaveCount(3);
+  // Use the actual visible order, not creation/title order, to check the
+  // existing V532 next-then-previous fallback regardless of default sort.
+  const chosen=cards.nth(1),next=cards.nth(2),last=cards.nth(0);
+  const chosenId=await chosen.getAttribute('data-j420-task-id');
+  const nextId=await next.getAttribute('data-j420-task-id');
+  const lastId=await last.getAttribute('data-j420-task-id');
+  const chosenTitle=await chosen.locator('.j420-card-content strong').innerText();
+  const nextTitle=await next.locator('.j420-card-content strong').innerText();
+  const lastTitle=await last.locator('.j420-card-content strong').innerText();
+
+  await chosen.click();
+  const note=board.locator('#j494AtelierNote.j494-inline-note');
+  const heading=note.locator('.j420-note-lead h4');
+  await expect(heading).toHaveText(chosenTitle);
+  await expect(heading).toBeFocused();
+
+  // The selected remote case disappears. Continue on the neighboring C
+  // without folding the phone's open notebook or moving off the reading area.
+  await page.evaluate(id=>window.__journalV552RemoteDelete(id),chosenId);
+  await expect(cards).toHaveCount(2);
+  await expect(note).toBeVisible();
+  await expect(heading).toHaveText(nextTitle);
+  await expect(heading).toBeFocused();
+  await expect(note).toBeInViewport();
+  await expect(board.locator('[data-j420-task-id="'+nextId+'"]')).toHaveAttribute('aria-expanded','true');
+
+  await page.setViewportSize({width:320,height:800});
+  await page.evaluate(id=>window.__journalV552RemoteDelete(id),nextId);
+  await expect(cards).toHaveCount(1);
+  await expect(note).toBeVisible();
+  await expect(heading).toHaveText(lastTitle);
+  await expect(heading).toBeFocused();
+
+  // The last matching case goes away but an unrelated case still exists:
+  // expose the already-existing reset instead of focusing a hidden note.
+  await page.evaluate(id=>window.__journalV552RemoteDelete(id),lastId);
+  await expect(cards).toHaveCount(0);
+  const empty=board.locator('.j520-atelier-empty'),reset=empty.locator('[data-j520-empty-reset]');
+  await expect(empty).toContainText('閲覧中の案件が同期更新で表示対象から外れました');
+  await expect(note).toBeHidden();
+  await expect(reset).toBeFocused();
+  await expect(reset).toBeInViewport();
+  await expect(query).toHaveValue('JOURNAL V552');
+  await reset.click();
+  await expect(cards).toHaveCount(1);
+  await expect(query).toHaveValue('');
+  await expect(query).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});

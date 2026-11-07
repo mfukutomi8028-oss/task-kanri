@@ -7232,10 +7232,16 @@ function journalCaptureTaskPageSyncAnchorV530(layout){
   const inlineReader=layout==='list'&&journalInlineDetailMediaV491.matches
     &&journalTaskInlineSelectedV491===selected
     &&Boolean(root.querySelector('.j425-task-preview.j491-inline-detail'));
+  // V552: preserve an explicitly opened phone desk note only for remote
+  // snapshots. Local view/search changes still close it as before.
+  const atelierInlineReaderV552=layout==='board'&&journalAtelierInlineMediaV494.matches
+    &&journalAtelierInlineOpenV494
+    &&Boolean(root.querySelector('#j494AtelierNote.j494-inline-note'));
   const selectedRow=inlineReader?rows.find(el=>el.getAttribute(rowAttr)===selected):null;
   return {token,layout,focus,anchor:journalTaskSyncDescriptorV530(root,layout,anchorNode),
     top:anchorNode?.getBoundingClientRect().top??null,width:window.innerWidth,search,
-    order,selected,inlineReader,rowTop:selectedRow?.getBoundingClientRect().top??null};
+    order,selected,inlineReader,rowTop:selectedRow?.getBoundingClientRect().top??null,
+    atelierInlineReaderV552};
 }
 function journalNearestSurvivingTaskV532(snapshot,available){
   const existing=new Set(available);
@@ -7267,16 +7273,24 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
     const emptyTargetV546=emptyReaderV546
       ?root.querySelector('[data-j518-empty-reset]')||root.querySelector('.j518-index-empty')
       :null;
+    // V552: when the last desk case disappears, the open phone note is
+    // hidden. Move to its existing reset/create action instead of a hidden h4.
+    const emptyAtelierV552=snapshot.layout==='board'&&snapshot.atelierInlineReaderV552
+      &&!root.querySelector('[data-j420-task-id]');
+    const emptyTargetV552=emptyAtelierV552
+      ?root.querySelector('[data-j520-empty-reset],[data-j520-empty-new]')
+        ||root.querySelector('.j520-atelier-empty')
+      :null;
     const selectedNode=[...root.querySelectorAll('['+rowAttr+']')]
       .find(el=>el.getAttribute(rowAttr)===snapshot.selected);
-    const anchor=emptyTargetV546||journalTaskSyncLocateV530(root,snapshot.anchor)
+    const anchor=emptyTargetV546||emptyTargetV552||journalTaskSyncLocateV530(root,snapshot.anchor)
       ||(snapshot.anchor?.name===rowAttr&&!selectedNode
         ?root.querySelector('['+rowAttr+'].is-selected'):null);
     if(anchor&&document.scrollingElement&&Number.isFinite(snapshot.top)
       &&snapshot.width===window.innerWidth)
       document.scrollingElement.scrollTop+=anchor.getBoundingClientRect().top-snapshot.top;
     else if(anchor)anchor.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
-    let target=emptyTargetV546||journalTaskSyncLocateV530(root,snapshot.focus);
+    let target=emptyTargetV546||emptyTargetV552||journalTaskSyncLocateV530(root,snapshot.focus);
     if(target?.matches('[data-j540-case-step]')&&target.disabled){
       // A subscription may leave the reader at the first/last visible case.
       // Never put keyboard focus on a now-disabled navigation button.
@@ -7363,7 +7377,8 @@ function journalAtelierV420(tasks){
       :returnAnchorV538
         ?journalNearestSurvivingTaskV532(returnAnchorV538,viewTasks.map(t=>t.id))
         :viewTasks[0]?.id||'';
-    journalAtelierInlineOpenV494=false;
+    journalAtelierInlineOpenV494=Boolean(syncAnchorV530?.atelierInlineReaderV552
+      &&journalAtelierSelectedV420);
     journalAtelierReturnAnchorV516=null;
   }
   const chosen=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
@@ -7404,7 +7419,9 @@ function journalAtelierV420(tasks){
           </div>
         </div>
         <div class="j420-island-grid">${displayGroups.map(renderGroup).join('')||`<div class="j420-atelier-empty j520-atelier-empty" role="status">
-          <strong>${activeFilterCountV520?'条件に合う案件がありません':'登録された案件はありません'}</strong>
+          <strong>${syncAnchorV530?.atelierInlineReaderV552
+            ?'閲覧中の案件が同期更新で表示対象から外れました'
+            :activeFilterCountV520?'条件に合う案件がありません':'登録された案件はありません'}</strong>
           <p>${activeFilterCountV520?'表示条件を解除すると、他の案件を確認できます。':'新しいタスクを作成すると、机上に表示されます。'}</p>
           ${activeFilterCountV520?'<button type="button" data-j520-empty-reset>条件を解除して案件を表示</button>':'<button type="button" data-j520-empty-new>＋ タスクを追加</button>'}
         </div>`}</div>
