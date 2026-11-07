@@ -398,8 +398,12 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await compareSearch.fill('NEXT 週次バッチテスト');
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(3);
   await expect(compare.locator('[data-pn-series-index-edit]')).toHaveCount(3);
-  // Editing from the comparison row skips opening that occurrence's inspector.
-  await compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]').click();
+  // Editing from the comparison row keeps its original screen position on return.
+  const sourceRow=compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]');
+  await sourceRow.scrollIntoViewIfNeeded();
+  const beforeOffset=await sourceRow.evaluate(el=>
+    el.getBoundingClientRect().top-el.closest('#pnDetail').getBoundingClientRect().top);
+  await sourceRow.click();
   const directSeriesEdit=detail.locator('[data-pn-form="schedule-editor"]');
   await expect(directSeriesEdit).toBeVisible();
   await expect(directSeriesEdit.locator('.pn-series-edit-scope'))
@@ -409,8 +413,11 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await directSeriesEdit.locator('[data-pn-cancel]').click();
   await expect(compare).toHaveAttribute('open','');
   await expect(compareSearch).toHaveValue('NEXT 週次バッチテスト');
-  await expect(compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]'))
-    .toBeFocused();
+  await expect(sourceRow).toBeFocused();
+  await expect(sourceRow).toBeInViewport();
+  const cancelledOffset=await sourceRow.evaluate(el=>
+    el.getBoundingClientRect().top-el.closest('#pnDetail').getBoundingClientRect().top);
+  expect(Math.abs(cancelledOffset-beforeOffset)).toBeLessThanOrEqual(40);
   await compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]').click();
   await directSeriesEdit.locator('[name="memo"]').fill('一覧から直接編集した予定');
   await directSeriesEdit.locator('[type="submit"]').click();
@@ -421,8 +428,11 @@ test('Palette NEXT recurring batch creation previews dates and writes one groupe
   await detail.locator('[data-pn-series-review-index]').click();
   await expect(compare).toHaveAttribute('open','');
   await expect(compareSearch).toHaveValue('NEXT 週次バッチテスト');
-  await expect(compare.locator('[data-pn-series-index-edit="'+thirdInSeries+'"]'))
-    .toBeFocused();
+  await expect(sourceRow).toBeFocused();
+  await expect(sourceRow).toBeInViewport();
+  const savedOffset=await sourceRow.evaluate(el=>
+    el.getBoundingClientRect().top-el.closest('#pnDetail').getBoundingClientRect().top);
+  expect(Math.abs(savedOffset-beforeOffset)).toBeLessThanOrEqual(40);
   await compare.locator('[data-pn-series-index-status]').selectOption('unedited');
   await expect(compare.locator('[data-pn-series-index-open]')).toHaveCount(2);
   await compare.locator('[data-pn-series-index-status]').selectOption('all');

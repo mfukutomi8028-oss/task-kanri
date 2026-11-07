@@ -1628,6 +1628,49 @@
     if(Math.abs(adjust)>1)pane.scrollTop+=adjust;
   }
 
+  // Preserve the user's position within the recurrence index, not the editor.
+  // The token is ephemeral and is never written to Firebase or browser storage.
+  function captureSeriesIndexReturn(trigger) {
+    const source=trigger?.hasAttribute?.('data-pn-series-index-edit')?'row':
+      trigger?.hasAttribute?.('data-pn-series-index-next-edit')?'quick':null;
+    if(!source||!trigger.closest?.('[data-pn-series-index]'))return null;
+    const position=trigger.getBoundingClientRect().top-drawer.getBoundingClientRect().top;
+    return {source,scrollTop:Math.max(0,drawer.scrollTop),
+      offset:Number.isFinite(position)?position:null};
+  }
+  function seriesIndexReturnPage(item,view) {
+    if(view?.source!=='row'||!seriesIndexState?.open)return;
+    const position=filteredSeriesIndex(item).findIndex(row=>row.id===item.id);
+    if(position>=0)seriesIndexState.page=Math.floor(position/8);
+  }
+  function restoreSeriesIndexReturn(item,view) {
+    const panel=drawer.querySelector('[data-pn-series-index]');
+    if(!panel?.open)return false;
+    const row=[...panel.querySelectorAll('[data-pn-series-index-edit]')]
+      .find(button=>button.dataset.pnSeriesIndexEdit===item.id);
+    const quick=panel.querySelector('[data-pn-series-index-next-edit]');
+    const source=view?.source==='quick'?quick:row;
+    const target=source||panel.querySelector('[data-pn-series-index-reveal]')||
+      panel.querySelector('[data-pn-series-index-search]')||
+      panel.querySelector('[data-pn-series-index-summary]');
+    if(!target)return false;
+    if(Number.isFinite(view?.scrollTop)){
+      drawer.scrollTop=Math.max(0,view.scrollTop);
+      if(source&&Number.isFinite(view?.offset)){
+        const pane=drawer.getBoundingClientRect();
+        const current=source.getBoundingClientRect().top-pane.top;
+        // Prevent a focused control being restored behind the sticky header.
+        const sticky=drawer.querySelector('.pn-detail-nav');
+        const minimum=sticky?sticky.getBoundingClientRect().bottom-pane.top+8:12;
+        const wanted=Math.min(Math.max(view.offset,minimum),
+          Math.max(minimum,drawer.clientHeight-64));
+        if(Number.isFinite(current))drawer.scrollTop=Math.max(0,drawer.scrollTop+current-wanted);
+      }else target.scrollIntoView({block:'nearest',behavior:'instant'});
+    }else target.scrollIntoView({block:'nearest',behavior:'instant'});
+    target.focus({preventScroll:true});
+    return true;
+  }
+
   function openEditor(kind,id='',trigger=null,override=null) {
     if(state.busy || !['task','memo','schedule'].includes(kind))return;
     if(state.editor&&!confirmLeaveEditor())return;
@@ -1635,6 +1678,7 @@
       kind==='schedule'?state.snapshot.schedules:state.memos;
     const entry=id?items.find(item=>item.id===id):null;
     if(id&&!entry){notify('対象が見つかりません。更新してから開き直してください。');return}
+    const previousSeriesReview=scheduleSavedReview;
     scheduleSavedReview=null;
     if(!state.editor && !state.detail && trigger) {
       lastFocused=trigger;
@@ -1646,7 +1690,10 @@
         id,route:state.route,user:state.snapshot.currentUser,room:state.snapshot.roomId,
         viaSeriesIndex:Boolean(trigger?.hasAttribute?.('data-pn-series-index-edit')||
           trigger?.hasAttribute?.('data-pn-series-index-next-edit')||
-          trigger?.hasAttribute?.('data-pn-series-save-edit-next'))
+          trigger?.hasAttribute?.('data-pn-series-save-edit-next')),
+        returnView:captureSeriesIndexReturn(trigger)||
+          (trigger?.hasAttribute?.('data-pn-series-save-edit-next')?
+            previousSeriesReview?.returnView:null)
       }:null;
     state.editor={
       kind,id,revision:Number(entry?.revision||0),
@@ -2298,13 +2345,17 @@
                   state.scheduleView==='series')?{
                   id:saved.id,seriesId:saved.recurrenceSeriesId,
                   route:state.route,user:resume.user,room:resume.room,
-                  viaSeriesIndex:Boolean(resume.viaSeriesIndex)
+                  viaSeriesIndex:Boolean(resume.viaSeriesIndex),
+                  returnView:resume.returnView||null
                 }:null;
               updateDetail();
-              (drawer.querySelector('[data-pn-series-save-edit-next]')||
+              const reviewControl=drawer.querySelector('[data-pn-series-save-edit-next]')||
                 drawer.querySelector('[data-pn-series-review-index]')||
                 drawer.querySelector('[data-pn-series-save-next]')||
-                drawer.querySelector('[data-pn-close]'))?.focus({preventScroll:true});
+                drawer.querySelector('[data-pn-close]');
+              if(scheduleSavedReview)drawer.querySelector('.pn-series-save-review')
+                ?.scrollIntoView({block:'nearest',behavior:'instant'});
+              reviewControl?.focus({preventScroll:true});
             }
           }
         }
@@ -2578,7 +2629,7 @@
         notify('対象の予定が更新されました。現在の系列をご確認ください。');
         return;
       }
-      scheduleSavedReview=null;
+      // Let openEditor capture the previous save review's return token first.
       state.detail={kind:'schedule',id:candidate.id};
       openEditor('schedule',candidate.id,target); // Existing revision-aware single-record editor.
       return;
@@ -2717,16 +2768,9 @@
         review.route!==state.route)return;
       const index=currentSeriesIndex(current);
       index.open=true;
-      const position=filteredSeriesIndex(current).findIndex(row=>row.id===current.id);
-      if(position>=0)index.page=Math.floor(position/8);
+      seriesIndexReturnPage(current,review.returnView);
       updateDetail();
-      const control=[...drawer.querySelectorAll('[data-pn-series-index-edit]')]
-        .find(button=>button.dataset.pnSeriesIndexEdit===current.id)||
-        drawer.querySelector('[data-pn-series-index-reveal]')||
-        drawer.querySelector('[data-pn-series-index-search]')||
-        drawer.querySelector('[data-pn-series-index-summary]');
-      control?.scrollIntoView({block:'nearest',behavior:'instant'});
-      control?.focus({preventScroll:true});
+      restoreSeriesIndexReturn(current,review.returnView);
       return;
     }
     if(target.dataset.pnSeriesIndexNextUnchecked){
@@ -2944,28 +2988,15 @@
         state.snapshot.schedules.some(item=>item.id===resume.id)){
         state.editor=null;scheduleEditReturn=null;
         state.detail={kind:'schedule',id:resume.id};
-        // Restore the matching page when canceling an off-page series edit.
-        if(resume.viaSeriesIndex&&seriesIndexState?.open){
-          const current=state.snapshot.schedules.find(row=>row.id===resume.id);
-          if(current&&seriesIndexState.seriesId===current.recurrenceSeriesId){
-            const position=filteredSeriesIndex(current)
-              .findIndex(row=>row.id===resume.id);
-            if(position>=0)seriesIndexState.page=Math.floor(position/8);
-          }
-        }
+        const current=state.snapshot.schedules.find(row=>row.id===resume.id);
+        if(resume.viaSeriesIndex&&current&&
+          seriesIndexState?.seriesId===current.recurrenceSeriesId)
+          seriesIndexReturnPage(current,resume.returnView);
         drawer.dataset.viewId='';drawer.scrollTop=0;
         syncEditorViewport();updateDetail();
-        const origin=resume.viaSeriesIndex
-          ?[...drawer.querySelectorAll('[data-pn-series-index-edit]')]
-            .find(button=>button.dataset.pnSeriesIndexEdit===resume.id)
-          :null;
-        const returnToList=resume.viaSeriesIndex&&seriesIndexState?.open;
-        const control=origin||(returnToList
-          ?drawer.querySelector('[data-pn-series-index-search],'+
-            '[data-pn-series-index-summary]'):null)||
-          drawer.querySelector('[data-pn-close]');
-        if(returnToList)control?.scrollIntoView({block:'nearest',behavior:'instant'});
-        control?.focus({preventScroll:true});
+        if(!resume.viaSeriesIndex||!current||
+          !restoreSeriesIndexReturn(current,resume.returnView))
+          drawer.querySelector('[data-pn-close]')?.focus({preventScroll:true});
       }else closeDetail();
       return;
     }
