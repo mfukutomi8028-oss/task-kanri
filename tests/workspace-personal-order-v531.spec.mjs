@@ -593,3 +593,66 @@ for (const width of [320, 390]) {
     await expect(search).toHaveValue('');
   });
 }
+
+
+for (const width of [320, 390]) {
+  test('Classic keeps search selection and list position per account at ' + width + 'px', async ({ page }) => {
+    const now = Date.now();
+    const historical = ['福冨', '森井'].flatMap((owner, accountIndex) =>
+      Array.from({ length: 30 }, (_, index) => ({
+        id: 'v540-account-' + accountIndex + '-' + index,
+        text: (accountIndex ? 'アカウントB' : 'アカウントA') + ' のToDo ' + index,
+        memo: '編集内容 ' + index, owner, completed: false, completedAt: 0,
+        order: index * 1024, revision: 1, createdAt: now - index * 1000, updatedAt: now - index * 1000
+      }))
+    );
+    await page.setViewportSize({ width, height: 812 });
+    await boot(page, 'test-v540-account-viewport-' + width, { historical });
+    await page.evaluate(() => document.querySelector('.nav-item[data-layout="todos"]').click());
+
+    const search = page.locator('#todoView .todo-search-input-v145');
+    await search.fill('アカウントA');
+    const aRow = page.locator('#todoView [data-todo-id="v540-account-0-16"]');
+    await aRow.locator('.todo-summary-button').scrollIntoViewIfNeeded();
+    const aTop = await aRow.evaluate(node => node.getBoundingClientRect().top);
+    await search.evaluate(node => {
+      node.focus({ preventScroll: true });
+      node.setSelectionRange(1, 4);
+    });
+
+    await page.locator('#currentUserSelect').selectOption('森井');
+    await expect(search).toHaveValue('');
+    // No prior state for this account: a newly selected user starts at the top,
+    // not at the previous user's scroll position or search focus.
+    await page.waitForFunction(() =>
+      (document.getElementById('mainContent')?.scrollTop || 0) === 0
+      && (document.scrollingElement?.scrollTop || 0) === 0);
+    await expect(search).not.toBeFocused();
+    await expect(page.locator('#todoView [data-todo-id="v540-account-1-16"]')).toBeVisible();
+
+    await search.fill('アカウントB');
+    const bRow = page.locator('#todoView [data-todo-id="v540-account-1-19"]');
+    await bRow.locator('.todo-summary-button').scrollIntoViewIfNeeded();
+    const bTop = await bRow.evaluate(node => node.getBoundingClientRect().top);
+    await search.evaluate(node => {
+      node.focus({ preventScroll: true });
+      node.setSelectionRange(2, 6);
+    });
+
+    await page.locator('#currentUserSelect').selectOption('福冨');
+    await expect(search).toHaveValue('アカウントA');
+    await expect(search).toBeFocused();
+    expect(await search.evaluate(node => [node.selectionStart, node.selectionEnd])).toEqual([1, 4]);
+    await expect(aRow).toBeVisible();
+    const aReturnTop = await aRow.evaluate(node => node.getBoundingClientRect().top);
+    expect(Math.abs(aReturnTop - aTop), 'first account scroll anchor').toBeLessThan(42);
+
+    await page.locator('#currentUserSelect').selectOption('森井');
+    await expect(search).toHaveValue('アカウントB');
+    await expect(search).toBeFocused();
+    expect(await search.evaluate(node => [node.selectionStart, node.selectionEnd])).toEqual([2, 6]);
+    await expect(bRow).toBeVisible();
+    const bReturnTop = await bRow.evaluate(node => node.getBoundingClientRect().top);
+    expect(Math.abs(bReturnTop - bTop), 'second account scroll anchor').toBeLessThan(42);
+  });
+}
