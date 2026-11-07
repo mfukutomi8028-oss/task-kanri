@@ -3138,3 +3138,39 @@ test('Origin stale ToDo deletion rejects without a confirmation or data loss',as
  expect(state).toMatchObject({text:'遠隔側の最新変更',memo:'遠隔側の内容'});
  expect(state.revision).toBe(created.revision+1);
 });
+
+
+test('Origin last pending search result can be completed and reopened without losing the query',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-last-result-complete-reopen-v558',320);
+ const id=await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(const text of ['最後の完了復帰候補','別の未完了']){
+     const result=await b.dispatch({type:'todo.create',text});
+     if(!result?.ok)throw Error('create: '+result?.error);
+   }
+   return b.readSnapshot().todos.find(item=>item.text==='最後の完了復帰候補').id;
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ const query=host.locator('#originTodoQuery');
+ await query.fill('最後の完了復帰候補');
+ const pending=host.locator('.origin-todo-list .todo-entry');
+ await expect(pending).toHaveCount(1);
+ await pending.locator('[data-action="todo-check"]').click();
+ await expect(pending).toHaveCount(0);
+ await expect(query).toBeFocused();
+ await expect(query).toHaveValue('最後の完了復帰候補');
+ await expect(host.locator('.origin-todo-search-result')).toContainText('表示 0件');
+ await host.locator('.origin-todo-archive-toggle').click();
+ const history=host.locator('#originCompletedTodos');
+ await expect(history.locator('.todo-entry')).toHaveCount(1);
+ await history.locator('[data-action="todo-check"][data-id="'+id+'"]').click();
+ await expect(pending).toHaveCount(1);
+ await expect(query).toBeFocused();
+ await expect(query).toHaveValue('最後の完了復帰候補');
+ await expect(host.locator('.origin-todo-search-result')).toContainText('表示 1件');
+ const todo=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(item=>item.id===id),id);
+ expect(todo.completed).toBe(false);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
