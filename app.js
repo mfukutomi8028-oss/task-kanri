@@ -7576,11 +7576,27 @@ function journalIndexPreviewV425(t,index){
 // JOURNAL V515: all index controls return to their replacement after the
 // canonical paper-list rerender. No extra filter state or saved record is used.
 let journalIndexRefreshTokenV515=0;
+// V548: a one-render, view-only reading anchor for *explicit* search/filter/
+// sort operations. Subscription updates keep their separate V530 owner.
+let journalIndexExplicitReaderV548=null;
 function journalRefreshIndexV515(tasks,previousControl,findNextControl,onRestore){
   const previousTop=previousControl.getBoundingClientRect().top;
   const wasVisible=previousTop>=0&&previousTop<=window.innerHeight;
   const token=++journalIndexRefreshTokenV515;
-  journalIndexV425(tasks);
+  const root=elements.listView;
+  const selectedId=journalIndexStateV425.selected;
+  const oldRows=[...root.querySelectorAll('[data-j425-row]')];
+  const selectedRow=oldRows.find(row=>row.dataset.j425Row===selectedId);
+  const readerOpen=Boolean(journalInlineDetailMediaV491.matches&&selectedId
+    &&journalTaskInlineSelectedV491===selectedId
+    &&root.querySelector('.j425-task-preview.j491-inline-detail'));
+  journalIndexExplicitReaderV548=readerOpen?{
+    selected:selectedId,order:oldRows.map(row=>row.dataset.j425Row),
+    inlineReader:true,rowTop:selectedRow?.getBoundingClientRect().top??null,
+    width:window.innerWidth
+  }:null;
+  try{journalIndexV425(tasks);}
+  finally{journalIndexExplicitReaderV548=null;}
   requestAnimationFrame(()=>{
     if(token!==journalIndexRefreshTokenV515||!journalTaskV411()
       ||elements.listView.hidden)return;
@@ -7591,10 +7607,21 @@ function journalRefreshIndexV515(tasks,previousControl,findNextControl,onRestore
     if(wasVisible&&document.scrollingElement){
       document.scrollingElement.scrollTop+=target.getBoundingClientRect().top-previousTop;
     }else target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+    // The search/sort control's final scroll correction can move the case
+    // row too. Record its FINAL position for the existing "back to list".
+    if(readerOpen&&journalTaskInlineSelectedV491===journalIndexStateV425.selected){
+      const id=journalIndexStateV425.selected;
+      const row=[...root.querySelectorAll('[data-j425-row]')]
+        .find(el=>el.dataset.j425Row===id);
+      if(row)journalIndexReturnAnchorV513={
+        id,top:row.getBoundingClientRect().top,width:window.innerWidth
+      };
+    }
   });
 }
 function journalIndexV425(tasks){
   const syncAnchorV530=journalCaptureTaskPageSyncAnchorV530('list');
+  const explicitReaderV548=journalIndexExplicitReaderV548;
   const filters=journalIndexStateV425;
   const appliedFilters=[filters.status,filters.category,filters.assignee].filter(Boolean).length+(filters.due!=='all'?1:0);
   const overdue=t=>isOverdue(t),soon=t=>t.dueDate&&!isOverdue(t)&&new Date(t.dueDate+'T00:00:00')<=addDays(startOfToday(),7);
@@ -7615,13 +7642,17 @@ function journalIndexV425(tasks){
       ?journalNearestSurvivingTaskV532(syncAnchorV530,ordered.map(t=>t.id))
       :returnAnchorV538
         ?journalNearestSurvivingTaskV532(returnAnchorV538,ordered.map(t=>t.id))
-        :ordered[0]?.id||'';
+        :explicitReaderV548?.inlineReader
+          ?journalNearestSurvivingTaskV532(explicitReaderV548,ordered.map(t=>t.id))
+          :ordered[0]?.id||'';
     // Reuse the V544 edit return and the V532 nearby choice for a remote
     // deletion. Explicit search/filter actions still close the old reader.
     const continueReaderV544=Boolean(filters.selected&&(
       returnAnchorV538?.inlineReader
-      ||(syncAnchorV530?.inlineReader&&syncAnchorV530.selected===previousSelectedV546)));
-    const readerAnchorV546=returnAnchorV538?.inlineReader?returnAnchorV538:syncAnchorV530;
+      ||(syncAnchorV530?.inlineReader&&syncAnchorV530.selected===previousSelectedV546)
+      ||(explicitReaderV548?.inlineReader&&explicitReaderV548.selected===previousSelectedV546)));
+    const readerAnchorV546=returnAnchorV538?.inlineReader?returnAnchorV538:
+      syncAnchorV530?.inlineReader?syncAnchorV530:explicitReaderV548;
     journalTaskInlineSelectedV491=continueReaderV544?filters.selected:'';
     journalIndexReturnAnchorV513=continueReaderV544
       ?{id:filters.selected,top:readerAnchorV546?.rowTop,width:readerAnchorV546?.width}
