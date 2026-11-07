@@ -109,10 +109,12 @@ test('origin task state overview remains one compact row on desktop and accessib
 });
 
 test('origin displays canonical schedule save errors inside its own drawer without losing edits',()=>{
- assert.match(source,/function showEditorSaveError\(message\)/);
+ assert.match(source,/function showEditorSaveError\(message,reason='retry'\)/);
  assert.match(source,/panelKind==='events' \? \$\('#originScheduleError'\)/);
  assert.match(source,/scheduleInvalid=command\.type\.startsWith\('schedule\.'\)/);
- assert.match(source,/showEditorSaveError\(msg\)/);
+ assert.match(source,/showEditorSaveError\(msg,!editableWrite\|\|validation\?'validation':conflict\?'conflict':'retry'\)/);
+ assert.match(source,/if\(reason!=='validation'\)showOriginSaveRecovery\(reason\)/);
+ assert.match(source,/const canRetry=reason==='retry'&&Boolean\(form\.dataset\.id\)/);
  assert.match(source,/showEditorSaveError\(message\);notify\(message\)/);
 });
 
