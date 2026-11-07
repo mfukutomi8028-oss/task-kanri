@@ -1595,3 +1595,36 @@ test('JOURNAL V552 preserves mobile desk note across remote removal without new 
   assert.doesNotMatch(sync+restore+atelier,
     /(?:runTransaction|persistTask|commitTaskDraft|setDoc|onValue)\s*\(/i);
 });
+
+
+test('JOURNAL V553 pages through displayed desk cases without business writes',()=>{
+  const app=read('app.js');
+  const css=read('journal-display-v367.css');
+  const position=app.slice(app.indexOf('function journalPositionAtelierNoteV494('),
+    app.indexOf('journalAtelierInlineMediaV494.addEventListener('));
+  const sync=app.slice(app.indexOf('const journalTaskSyncAttrsV530 ='),
+    app.indexOf('function journalAtelierV420(tasks){'));
+  const atelier=app.slice(app.indexOf('function journalAtelierV420(tasks){'),
+    app.indexOf('// State is view-only, scoped to JOURNAL;'));
+  assert.ok(position.length>300&&sync.length>300&&atelier.length>300);
+  assert.match(position,/pager\.hidden=!inline/);
+  assert.match(position,/cards\.indexOf\(card\)/);
+  assert.match(position,/button\.disabled=!inline\|\|index<0/);
+  assert.match(atelier,/class="j553-atelier-pager"/);
+  assert.match(atelier,/data-j553-case-step="-1"/);
+  assert.match(atelier,/data-j553-case-step="1"/);
+  assert.match(atelier,/const cards=\[\.\.\.root\.querySelectorAll\('\[data-j420-task-id\]'\)\]/);
+  assert.match(atelier,/next\.click\(\)/);
+  assert.match(atelier,/token!==journalAtelierPageTokenV553/);
+  assert.match(atelier,/note\.contains\(current\)/);
+  assert.match(atelier,/journalAtelierSelectedV420!==id/);
+  assert.match(atelier,/data-j494-atelier-back/);
+  assert.match(sync,/'data-j553-case-step'/);
+  assert.match(sync,/target\?\.matches\('\[data-j553-case-step\]'\)&&target\.disabled/);
+  assert.match(sync,/const opposite=String\(-Number\(target\.dataset\.j553CaseStep\)\)/);
+  assert.match(css,/\.j553-atelier-pager:not\(\[hidden\]\)/);
+  assert.match(css,/grid-template-columns:minmax\(0,1fr\) auto minmax\(0,1fr\)/);
+  assert.match(css,/min-height:44px/);
+  assert.doesNotMatch(position+sync+atelier,
+    /(?:persistTask|runTransaction|commitTaskDraft|setDoc|onValue)\s*\(/i);
+});
