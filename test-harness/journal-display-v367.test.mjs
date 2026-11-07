@@ -1584,7 +1584,7 @@ test('JOURNAL V552 preserves mobile desk note across remote removal without new 
   assert.ok(sync.length>300&&restore.length>300&&atelier.length>300);
   assert.match(sync,/const atelierInlineReaderV552=layout==='board'&&journalAtelierInlineMediaV494\.matches/);
   assert.match(sync,/journalAtelierInlineOpenV494/);
-  assert.match(sync,/atelierInlineReaderV552\};/);
+  assert.match(sync,/atelierInlineReaderV552[,}]/);
   assert.match(atelier,/journalAtelierInlineOpenV494=Boolean\(syncAnchorV530\?\.atelierInlineReaderV552/);
   assert.match(atelier,/閲覧中の案件が同期更新で表示対象から外れました/);
   assert.match(restore,/const emptyAtelierV552=snapshot\.layout==='board'&&snapshot\.atelierInlineReaderV552/);
