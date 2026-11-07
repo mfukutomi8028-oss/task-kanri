@@ -128,3 +128,21 @@ test('origin ToDo forms follow canonical limits and reject validation without sa
   assert.doesNotMatch(source,/maxlength="(?:130|220)"/);
   assert.match(source,/todoInvalid=command\.type\.startsWith\('todo\.'\)/);
 });
+
+test('origin ToDo editor saves content and completion in one revision-checked operation',()=>{
+ assert.match(source,/kind==='memos'\?memoItems\.find\(x=>x\.id===id\):snapshot\.todos\.find\(x=>x\.id===id\)/);
+ assert.match(source,/type:'todo\.update',id,text:title,memo:String\(fd\.get\('memo'\)\|\|''\)/);
+ assert.match(source,/completed,revision,ownerRoom:f\.dataset\.ownerRoom,ownerUser:f\.dataset\.ownerUser/);
+ assert.doesNotMatch(source,/if\(ok&&String\(fd\.get\('done'\)\)/);
+ assert.match(app,/async function updateTodoDetails\(id, textInput, memoInput, options = \{\}\)/);
+ assert.match(app,/commitTodoRecord\('todo-update', id, expectedRevision, current =>/);
+ assert.match(app,/Object\.prototype\.hasOwnProperty\.call\(options, 'completed'\)/);
+ assert.match(app,/next\.completedAt = options\.completed \? now : 0/);
+ assert.match(app,/result = await updateTodoDetails\(id, command\.text, command\.memo \|\| '', command\)/);
+});
+test('origin ToDo create saves requested initial status without a second write',()=>{
+ assert.match(source,/type:'todo\.create',text:title,memo:String\(fd\.get\('memo'\)\|\|''\),completed/);
+ assert.match(app,/async function createTodo\(input, memoInput = '', options = \{\}\)/);
+ assert.match(app,/record = \{ id, text, memo, completed, completedAt: completed \? now : 0, order:/);
+ assert.match(app,/result = await createTodo\(command\.text, command\.memo \|\| '', command\)/);
+});

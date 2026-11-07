@@ -342,9 +342,9 @@ function showOriginSaveRecovery(reason){
  if(!panel)return;
  panel.hidden=false;panel.dataset.reason=reason;
  const retry=panel.querySelector('[data-action="origin-save-again"]');
- // A repeated create may duplicate a record after an ambiguous write.
+ // Only updates with edit-start revision checks can be retried; creates may duplicate.
  const canRetry=reason==='retry'&&Boolean(form.dataset.id)
-   &&['tasks','events','memos'].includes(form.dataset.kind);
+   &&['tasks','events','memos','todos'].includes(form.dataset.kind);
  if(retry)retry.hidden=!canRetry;
  const hint=panel.querySelector('#originSaveRecoveryText');
  if(hint)hint.textContent=reason==='conflict'
@@ -1343,9 +1343,10 @@ function panelShow(kind,id,edit=false,seed={}){
  const footer=originPanelFooter(kind,id,true,v);
  $('#sheet').innerHTML=sheetFrame('EDIT · '+singular[kind],id?singular[kind]+'を編集':singular[kind]+'を新規作成',f,footer);
  originEditorInitialHeight=window.visualViewport?.height||window.innerHeight;
- if(kind==='events'||kind==='tasks'||kind==='memos'){
+ if(kind==='events'||kind==='tasks'||kind==='memos'||kind==='todos'){
    const original=id?(kind==='events'?snapshot.schedules.find(x=>x.id===id):
-     kind==='tasks'?snapshot.tasks.find(x=>x.id===id):memoItems.find(x=>x.id===id)):null;
+     kind==='tasks'?snapshot.tasks.find(x=>x.id===id):
+     kind==='memos'?memoItems.find(x=>x.id===id):snapshot.todos.find(x=>x.id===id)):null;
    const f=$('#editForm');
    f.dataset.revision=String(original?.revision??0);
    f.dataset.ownerRoom=String(snapshot.roomId);
@@ -1774,11 +1775,23 @@ async function saveForm(f){
   return send(command,id?'タスクを更新しました':'タスクを登録しました',{close:true});
  }
  if(kind==='todos'){
-  if(id){ const ok=await send({type:'todo.update',id,text:title,memo:String(fd.get('memo')||'')},'ToDoを更新しました',{close:true});
-    if(ok&&String(fd.get('done'))!==String(existing?.completed))await send({type:'todo.toggle',id},'ToDoの状態を更新しました');
-    return ok;
+  const completed=String(fd.get('done'))==='true';
+  if(id){
+    // Never overwrite a newer ToDo when its revision changed after editing began.
+    const revision=Number(f.dataset.revision);
+    if(f.dataset.ownerRoom!==snapshot.roomId||f.dataset.ownerUser!==snapshot.currentUser
+      ||!Number.isSafeInteger(revision)||revision<0
+      ||!existing||Number(existing.revision)!==revision){
+      showEditorSaveError('ToDoが他端末で変更されました。編集中の入力は残しています。','conflict');
+      return false;
+    }
+    // Commit details and completion in one canonical CAS transaction.
+    return send({type:'todo.update',id,text:title,memo:String(fd.get('memo')||''),
+      completed,revision,ownerRoom:f.dataset.ownerRoom,ownerUser:f.dataset.ownerUser},
+      'ToDoを更新しました',{close:true});
   }
-  return send({type:'todo.create',text:title,memo:String(fd.get('memo')||'')},'ToDoを追加しました',{close:true});
+  return send({type:'todo.create',text:title,memo:String(fd.get('memo')||''),completed},
+    'ToDoを追加しました',{close:true});
  }
  if(kind==='memos'){
   const revision=Number(f.dataset.revision);
@@ -1821,7 +1834,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  if(a==='origin-save-again'){
    const form=$('#editForm'),panel=form?.querySelector('#originSaveRecovery');
    if(!busy&&form?.dataset.id&&panel?.dataset.reason==='retry'
-     &&['tasks','events','memos'].includes(form.dataset.kind))form.requestSubmit();
+     &&['tasks','events','memos','todos'].includes(form.dataset.kind))form.requestSubmit();
    return;
  }
  if(a==='related-event-menu'){

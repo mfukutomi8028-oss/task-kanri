@@ -2701,3 +2701,96 @@ test('Origin offers a guarded explicit retry after a failed existing memo update
    .find(item=>item.title==='通信失敗の確認')?.body);
  expect(saved).toBe('通信回復後に保存する本文');
 });
+
+
+test('Origin ToDo edit commits title, memo and completion as a single revision',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-todo-atomic-20261107',320);
+ const before=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge;
+   const result=await bridge.dispatch({type:'todo.create',text:'原子更新するToDo',memo:'古い補足'});
+   if(!result?.ok)throw Error('create: '+result?.error);
+   const item=bridge.readSnapshot().todos.find(todo=>todo.text==='原子更新するToDo');
+   return {id:item.id,revision:item.revision};
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('.origin-todo-list .todo-entry',{hasText:'原子更新するToDo'})
+   .locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await expect(form).toBeVisible();
+ await expect(form).toHaveAttribute('data-revision',String(before.revision));
+ await form.locator('[name="title"]').fill('原子更新ToDo・完了');
+ await form.locator('[name="memo"]').fill('補足も同時に更新');
+ await form.locator('[name="done"]').selectOption('true');
+ await host.locator('button[form="editForm"]').click();
+ await expect(form).toHaveCount(0);
+ const after=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot()
+   .todos.find(todo=>todo.id===id),before.id);
+ expect(after).toMatchObject({text:'原子更新ToDo・完了',memo:'補足も同時に更新',completed:true});
+ expect(after.completedAt).toBeGreaterThan(0);
+ expect(after.revision).toBe(before.revision+1);
+ // An existing Classic/Palette call without 'completed' must preserve the status.
+ const unchanged=await page.evaluate(async id=>{
+   const bridge=window.WorkBoardPaletteBridge;
+   const r=await bridge.dispatch({type:'todo.update',id,text:'既存画面から追記',memo:'状態は維持'});
+   if(!r?.ok)throw Error('update: '+r?.error);
+   return bridge.readSnapshot().todos.find(todo=>todo.id===id);
+ },before.id);
+ expect(unchanged.completed).toBe(true);
+ expect(unchanged.completedAt).toBe(after.completedAt);
+ expect(unchanged.revision).toBe(after.revision+1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
+
+test('Origin ToDo edit detects a newer revision without losing changes or toggling status',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-todo-conflict-20261107',320);
+ await page.evaluate(async()=>{
+   const result=await window.WorkBoardPaletteBridge.dispatch({
+     type:'todo.create',text:'他端末更新を検出するToDo',memo:'最初の補足'});
+   if(!result?.ok)throw Error('create: '+result?.error);
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('.origin-todo-list .todo-entry',{hasText:'他端末更新を検出するToDo'})
+   .locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await form.locator('[name="title"]').fill('編集中の件名は残す');
+ await form.locator('[name="memo"]').fill('編集中の補足は残す');
+ await form.locator('[name="done"]').selectOption('true');
+ await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge;
+   const todo=bridge.readSnapshot().todos.find(t=>t.text==='他端末更新を検出するToDo');
+   const result=await bridge.dispatch({type:'todo.update',id:todo.id,
+     text:'他端末による更新',memo:'他端末の補足'});
+   if(!result?.ok)throw Error('remote: '+result?.error);
+ });
+ await host.locator('button[form="editForm"]').click();
+ await expect(form).toBeVisible();
+ await expect(form.locator('#originSaveRecovery')).toBeVisible();
+ await expect(form.locator('#originSaveRecoveryText')).toContainText('自動で上書きしません');
+ await expect(form.locator('[data-action="origin-save-again"]')).toBeHidden();
+ await expect(form.locator('[name="title"]')).toHaveValue('編集中の件名は残す');
+ await expect(form.locator('[name="memo"]')).toHaveValue('編集中の補足は残す');
+ await expect(form.locator('[name="done"]')).toHaveValue('true');
+ const canonical=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+   .find(t=>t.text==='他端末による更新'));
+ expect(canonical).toMatchObject({text:'他端末による更新',memo:'他端末の補足',completed:false});
+});
+
+test('Origin new ToDo honors its initial completed status in one create',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-todo-create-completed-20261107',320);
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('#workspace [data-action="new"][data-kind="todos"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await expect(form).toBeVisible();
+ await form.locator('[name="title"]').fill('作成時から完了のToDo');
+ await form.locator('[name="memo"]').fill('登録時に状態を指定');
+ await form.locator('[name="done"]').selectOption('true');
+ await host.locator('button[form="editForm"]').click();
+ await expect(form).toHaveCount(0);
+ const created=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+   .find(todo=>todo.text==='作成時から完了のToDo'));
+ expect(created).toMatchObject({memo:'登録時に状態を指定',completed:true,revision:1});
+ expect(created.completedAt).toBeGreaterThan(0);
+});

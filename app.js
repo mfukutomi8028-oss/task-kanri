@@ -1107,7 +1107,7 @@ function rejectTodoInput(message, field, reason, maxLength) {
   return { ok: false, error: 'invalid-input', field, reason, maxLength, affectedPaths: [] };
 }
 
-async function createTodo(input, memoInput = '') {
+async function createTodo(input, memoInput = '', options = {}) {
   const text = String(input || '').trim();
   const memo = String(memoInput || '').trim();
   if (!text) return rejectTodoInput('やることを入力してください。', 'text', 'required', TODO_MAX_LENGTH);
@@ -1115,19 +1115,23 @@ async function createTodo(input, memoInput = '') {
     return rejectTodoInput(`やることは${TODO_MAX_LENGTH}文字以内で入力してください。`, 'text', 'too-long', TODO_MAX_LENGTH);
   if (memo.length > TODO_MEMO_MAX_LENGTH)
     return rejectTodoInput(`メモは${TODO_MEMO_MAX_LENGTH}文字以内で入力してください。`, 'memo', 'too-long', TODO_MEMO_MAX_LENGTH);
+  const setCompleted = Object.prototype.hasOwnProperty.call(options, 'completed');
+  if (setCompleted && typeof options.completed !== 'boolean')
+    return { ok: false, error: 'invalid-input', field: 'completed', reason: 'invalid-value' };
+  const completed = options.completed === true;
   const owner = normalizeUser(getCurrentUser()); const id = newTodoId(); const now = Date.now();
   if (!isCanonicalTodoId(id)) return { ok: false, error: 'invalid-todo-id', affectedPaths: [] };
   const result = await executeWrite('todo-create', 'form', async () => {
     let record;
     if (state.connectionMode === 'local-only') {
       const orders = sortTodos(state.todoRaw, owner).map(todo => todo.order);
-      record = { id, text, memo, completed: false, completedAt: 0, order: (orders.length ? Math.min(...orders) - 1024 : 0), owner, createdAt: now, updatedAt: now, revision: 1 };
+      record = { id, text, memo, completed, completedAt: completed ? now : 0, order: (orders.length ? Math.min(...orders) - 1024 : 0), owner, createdAt: now, updatedAt: now, revision: 1 };
     } else {
       const tx = await runTransaction(state.todosRef, current => {
         const records = current && typeof current === 'object' ? current : {};
         if (records[id]) return;
         const orders = sortTodos(records, owner).map(todo => todo.order);
-        record = { id, text, memo, completed: false, completedAt: 0, order: (orders.length ? Math.min(...orders) - 1024 : 0), owner, createdAt: now, updatedAt: now, revision: 1 };
+        record = { id, text, memo, completed, completedAt: completed ? now : 0, order: (orders.length ? Math.min(...orders) - 1024 : 0), owner, createdAt: now, updatedAt: now, revision: 1 };
         return { ...records, [id]: record };
       });
       if (!tx.committed) throw new Error('transaction-aborted-or-invariant-failure');
@@ -1140,7 +1144,7 @@ async function createTodo(input, memoInput = '') {
   return result;
 }
 
-async function updateTodoDetails(id, textInput, memoInput) {
+async function updateTodoDetails(id, textInput, memoInput, options = {}) {
   const text = String(textInput || '').trim();
   const memo = String(memoInput || '').trim();
   if (!text) return rejectTodoInput('やることを入力してください。', 'text', 'required', TODO_MAX_LENGTH);
@@ -1148,11 +1152,32 @@ async function updateTodoDetails(id, textInput, memoInput) {
     return rejectTodoInput(`やることは${TODO_MAX_LENGTH}文字以内で入力してください。`, 'text', 'too-long', TODO_MAX_LENGTH);
   if (memo.length > TODO_MEMO_MAX_LENGTH)
     return rejectTodoInput(`メモは${TODO_MEMO_MAX_LENGTH}文字以内で入力してください。`, 'memo', 'too-long', TODO_MEMO_MAX_LENGTH);
+  const setCompleted = Object.prototype.hasOwnProperty.call(options, 'completed');
+  if (setCompleted && typeof options.completed !== 'boolean')
+    return { ok: false, error: 'invalid-input', field: 'completed', reason: 'invalid-value' };
+  // Origin passes the revision/owner captured when editing began; other views
+  // can continue using this function without optional arguments.
+  if ((options.ownerRoom !== undefined && String(options.ownerRoom) !== ROOM_ID)
+    || (options.ownerUser !== undefined
+      && normalizeUser(options.ownerUser) !== normalizeUser(getCurrentUser())))
+    return { ok: false, error: 'owner-mismatch' };
   const todo = state.todos.find(item => item.id === id && item.owner === normalizeUser(getCurrentUser()));
   if (!todo) return toast('このやることは見つかりません。', true);
-  const result = await commitTodoRecord('todo-update', id, todo.revision, current => {
+  const expectedRevision = Object.prototype.hasOwnProperty.call(options, 'revision')
+    ? Number(options.revision) : todo.revision;
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0
+    || normalizeRevision(todo.revision) !== expectedRevision)
+    return { ok: false, error: 'revision-or-relation-mismatch' };
+  // One CAS-checked write updates title, memo and completed state together.
+  const result = await commitTodoRecord('todo-update', id, expectedRevision, current => {
     if (!current || current.owner !== todo.owner) throw new Error('revision-or-relation-mismatch');
-    return { ...current, text, memo, updatedAt: Date.now() };
+    const now = Date.now();
+    const next = { ...current, text, memo, updatedAt: now };
+    if (setCompleted && options.completed !== Boolean(current.completed)) {
+      next.completed = options.completed;
+      next.completedAt = options.completed ? now : 0;
+    }
+    return next;
   });
   if (!result.ok) {
     showWriteFailure(result, 'やることの内容を保存できませんでした。');
@@ -1161,7 +1186,6 @@ async function updateTodoDetails(id, textInput, memoInput) {
   toast('やることを更新しました');
   return result;
 }
-
 async function toggleTodo(id) {
   const todo = state.todos.find(item => item.id === id && item.owner === normalizeUser(getCurrentUser()));
   if (!todo) return toast('このやることは見つかりません。', true);
@@ -10614,13 +10638,13 @@ window.WorkBoardPaletteBridge = Object.freeze({
     let result;
     switch (command.type) {
       case 'todo.create':
-        result = await createTodo(command.text, command.memo || '');
+        result = await createTodo(command.text, command.memo || '', command);
         break;
       case 'todo.toggle':
         result = await toggleTodo(id);
         break;
       case 'todo.update':
-        result = await updateTodoDetails(id, command.text, command.memo || '');
+        result = await updateTodoDetails(id, command.text, command.memo || '', command);
         break;
       case 'todo.delete':
         result = await deleteTodo(id);
