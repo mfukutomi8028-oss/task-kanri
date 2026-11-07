@@ -2499,7 +2499,9 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await taskForm.locator('[name="title"]').fill('直接編集するタスク・更新');
  await sheet.locator('button[form="editForm"]').click();
  const changedTask=host.locator('.origin-task-collection .item-row',{hasText:'直接編集するタスク・更新'});
- await expect(changedTask.locator('.item-name')).toBeFocused();
+ // A direct list quick-edit now restores the invoking edit action; opening
+ // the canonical detail remains a separate explicit action.
+ await expect(changedTask.locator('[data-action="list-quick-edit"]')).toBeFocused();
  await changedTask.locator('.item-name').click();
  await expect(sheet.locator('#panelHeading')).toHaveText('直接編集するタスク・更新');
  await sheet.locator('.sheet-close').click();
@@ -3325,6 +3327,10 @@ test('Origin mobile weekly schedule returns to the next event then the filter co
  const entries=day.locator('.agenda-entry');
  await expect(entries).toHaveCount(2);
  const remainingId=await entries.nth(1).getAttribute('data-id');
+ // Measure only after the source row has entered the viewport. Otherwise
+ // Playwright's click auto-scroll is mistaken for a return-position drift.
+ await entries.first().scrollIntoViewIfNeeded();
+ await expect(entries.first()).toBeInViewport();
  const beforeTop=await entries.first().evaluate(el=>el.getBoundingClientRect().top);
  await entries.first().click();
  await host.locator('#sheet [data-action="edit"]').click();
