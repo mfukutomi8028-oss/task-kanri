@@ -5931,6 +5931,9 @@ let journalTimelineReturnTaskV494='';
 let journalTimelineReturnDateV504='';
 let journalTimelineReturnUndatedV504=false;
 let journalTimelineReturnTopV505=null;
+// JOURNAL V507: transient source for the existing canonical date-change dialog.
+let journalTimelineMoveSourceV507=null;
+let journalTimelineMoveCommittedV507=false;
 // The original row and its viewport offset are owned by the JOURNAL reader,
 // not by a separate editor or persistence path.
 function journalRememberTimelineSourceV505(id){
@@ -6376,9 +6379,101 @@ function journalNavigateChronicleV504(selector,changePeriod){
   });
 }
 
+// The date-change dialog still uses the canonical task transaction. Only its
+// source position, post-save navigation and cancel focus belong to JOURNAL.
+function journalOpenTimelineMoveV507(id){
+  const row=[...elements.timelineView.querySelectorAll('.jv-day-item')]
+    .find(item=>item.dataset.taskId===id);
+  journalTimelineMoveSourceV507=row?{
+    id,fromDate:row.closest('[data-jv-date]')?.dataset.jvDate||'',
+    fromStart:toISODate(getTimelineStartDate()),fromRange:state.timelineRange
+  }:null;
+  journalTimelineMoveCommittedV507=false;
+  openTimelineMoveDialog(id);
+}
+elements.timelineMoveDialog?.addEventListener('close',()=>{
+  const source=journalTimelineMoveSourceV507;
+  const committed=journalTimelineMoveCommittedV507;
+  journalTimelineMoveSourceV507=null;
+  journalTimelineMoveCommittedV507=false;
+  if(!source||committed||!journalTaskV411()||elements.timelineView.hidden)return;
+  requestAnimationFrame(()=>{
+    if(!journalTaskV411()||elements.timelineView.hidden)return;
+    const row=[...elements.timelineView.querySelectorAll('.jv-day-item')]
+      .find(item=>item.dataset.taskId===source.id);
+    const target=row?.querySelector('[data-move-to-timeline]');
+    target?.focus({preventScroll:true});
+    target?.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+  });
+});
+function journalReturnTimelinePeriodV507(source){
+  if(!source||!journalTaskV411()||state.layout!=='tasks'||state.taskLayout!=='timeline')return;
+  state.timelineRange=source.fromRange;
+  state.timelineStart=source.fromStart;
+  localStorage.setItem(timelineRangeKey(),state.timelineRange);
+  localStorage.setItem(timelineStartKey(),state.timelineStart);
+  render();
+  requestAnimationFrame(()=>{
+    if(!journalTaskV411()||elements.timelineView.hidden)return;
+    const records=[...elements.timelineView.querySelectorAll('[data-jv-date]')]
+      .find(day=>day.dataset.jvDate===source.fromDate);
+    const target=records?.closest('.jv-chronicle-day')?.querySelector('.jv-date')
+      ||(source.fromDate?'':elements.timelineView.querySelector('[data-jv-undated] h4'))
+      ||elements.timelineView.querySelector('[data-j505-date-jump]');
+    if(!target)return;
+    if(!target.matches('button,select,input,a,[tabindex]'))target.tabIndex=-1;
+    target.focus({preventScroll:true});
+    target.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
+  });
+}
+function journalRevealTimelineMoveV507(source,id,dueDate,dueChanged){
+  if(!source||!journalTaskV411()||state.layout!=='tasks'||state.taskLayout!=='timeline')return;
+  const start=getTimelineStartDate();
+  const first=toISODate(start);
+  const last=toISODate(addDays(start,getTimelineDays(start)-1));
+  // A moved task outside the current period needs the real destination,
+  // not a stale source date or a silently missing row.
+  if(dueDate<first||dueDate>last)setTimelineStart(dueDate);
+  requestAnimationFrame(()=>{
+    if(!journalTaskV411()||elements.timelineView.hidden)return;
+    const root=elements.timelineView;
+    const row=[...root.querySelectorAll('.jv-day-item')].find(item=>item.dataset.taskId===id);
+    const records=[...root.querySelectorAll('[data-jv-date]')].find(day=>day.dataset.jvDate===dueDate);
+    const dateHeading=records?.closest('.jv-chronicle-day')?.querySelector('.jv-date');
+    if(dueChanged){
+      const notice=document.createElement('div');
+      notice.className='j507-move-result';
+      notice.setAttribute('role','status');
+      const label=document.createElement('span');
+      label.textContent=row?'期限を'+dueDate+'へ変更しました。':
+        '期限を'+dueDate+'へ変更しました。現在の表示条件では対象タスクを表示できません。';
+      const back=document.createElement('button');
+      back.type='button';
+      back.textContent='元の日誌へ戻る';
+      back.addEventListener('click',()=>journalReturnTimelinePeriodV507(source));
+      const dismiss=document.createElement('button');
+      dismiss.type='button';
+      dismiss.className='j507-move-dismiss';
+      dismiss.textContent='閉じる';
+      dismiss.addEventListener('click',()=>notice.remove());
+      notice.append(label,back,dismiss);
+      if(row)row.after(notice);
+      else if(records)records.prepend(notice);
+      else root.querySelector('.jv-time-controls')?.after(notice);
+    }
+    const target=row?.querySelector('[data-j494-open-task]')
+      ||dateHeading||root.querySelector('[data-timeline-range]');
+    if(target){
+      if(!target.matches('button,select,input,a,[tabindex]'))target.tabIndex=-1;
+      target.focus({preventScroll:true});
+      target.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
+    }
+  });
+}
+
 function journalChronicleV411(tasks){
 const start=getTimelineStartDate(),dates=Array.from({length:getTimelineDays(start)},(_,i)=>addDays(start,i));
-const dateRows=dates.map(d=>{const date=toISODate(d),items=tasks.filter(t=>t.dueDate===date);return `<section class="jv-chronicle-day ${isTodayDate(d)?'is-today':''} ${items.length?'':'is-empty'}"><div class="jv-date"><strong>${d.getDate()}</strong><span>${['日','月','火','水','木','金','土'][d.getDay()]}曜</span><small>${d.getMonth()+1}月</small>${items.length?`<button type="button" class="j504-day-add" data-jv-add-date="${date}" aria-label="${date}にタスクを追加" title="この日にタスクを追加"><span aria-hidden="true">＋</span><span aria-hidden="true">追加</span></button>`:""}</div><div class="jv-day-records" data-jv-date="${date}">${items.map(journalDayItemV411).join('')||`<button type="button" class="j434-chronicle-add" data-jv-add-date="${date}">＋ この日にタスクを書く</button>`}</div></section>`}).join('');
+const dateRows=dates.map((d,index)=>{const date=toISODate(d),items=tasks.filter(t=>t.dueDate===date);return `${index>0&&index%7===0?'<div class="j507-week-up"><button type="button" data-j507-up>↑ 期間・日付の選択へ</button></div>':''}<section class="jv-chronicle-day ${isTodayDate(d)?'is-today':''} ${items.length?'':'is-empty'}"><div class="jv-date"><strong>${d.getDate()}</strong><span>${['日','月','火','水','木','金','土'][d.getDay()]}曜</span><small>${d.getMonth()+1}月</small>${items.length?`<button type="button" class="j504-day-add" data-jv-add-date="${date}" aria-label="${date}にタスクを追加" title="この日にタスクを追加"><span aria-hidden="true">＋</span><span aria-hidden="true">追加</span></button>`:""}</div><div class="jv-day-records" data-jv-date="${date}">${items.map(journalDayItemV411).join('')||`<button type="button" class="j434-chronicle-add" data-jv-add-date="${date}">＋ この日にタスクを書く</button>`}</div></section>`}).join('');
 const undated=tasks.filter(t=>!t.dueDate);
 const dayJumpOptions=dates.map(d=>{
   const date=toISODate(d);
@@ -6386,17 +6481,22 @@ const dayJumpOptions=dates.map(d=>{
   const weekday=['日','月','火','水','木','金','土'][d.getDay()];
   return `<option value="${date}">${d.getMonth()+1}/${d.getDate()}（${weekday}） ${count}件</option>`;
 }).join('');
-elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section>`;
+elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section><div class="j507-week-up j507-week-end"><button type="button" data-j507-up>↑ 期間・日付の選択へ</button></div>`;
 bindTaskDragSources(elements.timelineView);
 elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineDetailV494(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineEditorV505(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();journalOpenTimelineDetailV494(row.dataset.taskId)}})});
 elements.timelineView.querySelectorAll('[data-j494-open-task]').forEach(b=>b.addEventListener('click',e=>{
   e.stopPropagation();journalOpenTimelineDetailV494(b.dataset.j494OpenTask);
 }));
-elements.timelineView.querySelectorAll('[data-move-to-timeline]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openTimelineMoveDialog(b.dataset.moveToTimeline)}));
+elements.timelineView.querySelectorAll('[data-move-to-timeline]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();journalOpenTimelineMoveV507(b.dataset.moveToTimeline)}));
 elements.timelineView.querySelectorAll('[data-jv-date]').forEach(row=>row.addEventListener('dblclick',e=>{if(!e.target.closest('[data-task-id],[data-jv-add-date]'))openTaskDialogFromTimeline(row.dataset.jvDate,getDefaultOpenStatus())}));
 // Touch and keyboard entry points share the canonical task dialog and date seed.
 elements.timelineView.querySelectorAll('[data-jv-add-date]').forEach(b=>b.addEventListener('click',()=>openTaskDialogFromTimeline(b.dataset.jvAddDate,getDefaultOpenStatus())));
 const root=elements.timelineView;
+root.querySelectorAll('[data-j507-up]').forEach(button=>button.addEventListener('click',()=>{
+  const selector=root.querySelector('[data-j505-date-jump]');
+  selector?.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
+  selector?.focus({preventScroll:true});
+}));
 root.querySelector('[data-j505-date-jump]')?.addEventListener('change',event=>{
   const date=event.currentTarget.value;
   const records=[...root.querySelectorAll('.jv-day-records[data-jv-date]')]
@@ -7489,9 +7589,13 @@ async function confirmTimelineMove() {
   const result = await commitTaskDraft('timeline-move', task, draft);
   if (!result.ok) return showWriteFailure(result, 'タイムラインへ移動できませんでした。入力内容はそのままです。');
 
+  const journalSource=journalTaskV411()&&state.layout==='tasks'&&state.taskLayout==='timeline'
+    &&journalTimelineMoveSourceV507?.id===task.id?{...journalTimelineMoveSourceV507}:null;
+  if(journalSource)journalTimelineMoveCommittedV507=true;
   elements.timelineMoveDialog.close();
   state.pendingTimelineMoveTaskId = "";
   render();
+  if(journalSource)journalRevealTimelineMoveV507(journalSource,task.id,dueDate,dueChanged);
   toast("タイムラインへ移動しました");
 }
 
