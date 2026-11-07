@@ -908,6 +908,10 @@ test('JOURNAL V494 task desk note moves one node and timeline detail restores fo
   assert.match(app,/journalOpenTimelineDetailV494/);
   assert.match(app,/MutationObserver\(\(\)=>\{/);
   assert.match(app,/target\?\.focus\(\{preventScroll:true\}\)/);
+  // JOURNAL's folio handler already owns Escape; the return observer only
+  // restores focus after a canonical close. Never install two close listeners.
+  assert.doesNotMatch(app,/event\.key!=='Escape'\|\|!journalTaskV411\(\)/);
+  assert.match(js,/if\(event\.key==='Escape'\)\{event\.preventDefault\(\);event\.stopPropagation\(\);close\.click\(\);return\}/);
   assert.match(css,/JOURNAL V494/);
   assert.match(css,/\.j420-project-note:not\(\.j494-inline-note\)/);
   assert.match(css,/\.jv-time-controls>button/);

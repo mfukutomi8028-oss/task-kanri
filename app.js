@@ -5940,13 +5940,8 @@ if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
     target?.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
   }).observe(elements.detailPanel,{attributes:true,attributeFilter:['class']});
 }
-// Escape dismisses only an open task detail launched from JOURNAL's day list.
-// Native editing dialogs and every other display keep their existing handlers.
-document.addEventListener('keydown',event=>{
-  if(event.key!=='Escape'||!journalTaskV411()||!journalTimelineReturnTaskV494)return;
-  if(!elements.detailPanel.classList.contains('open')||document.querySelector('dialog[open]'))return;
-  closeDetail();
-});
+// Escape belongs to JOURNAL's existing folio keyboard handler (v411).
+// The return observer above restores focus after the canonical close action.
 
 function journalAtelierCardV420(t) {
   const due=t.dueDate?escapeHtml(t.dueDate.slice(5).replace('-','/')):'期限なし';

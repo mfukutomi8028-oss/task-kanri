@@ -91,7 +91,8 @@ test('JOURNAL Today diary and Task Atelier are independent paper workspaces',asy
   expect(cardImage.within).toBeTruthy();
   await expect(atelier.locator('.j420-atelier-stationery .j425-svg-clip')).toHaveCount(0);
   await expect(atelier.locator('.j420-atelier-log')).toBeVisible();
-  await expect(atelier.locator('.j420-project-note')).toBeVisible();
+  // The same note is moved between desktop desk and mobile shelves.
+  await expect(page.locator('#boardView #j494AtelierNote')).toBeVisible();
   await atelier.locator('[data-j420-new-task]').click();
   await expect(page.locator('#taskDialog')).toBeVisible();
   await page.locator('#closeTaskDialog').evaluate(el=>el.click());
@@ -181,14 +182,19 @@ test('JOURNAL ToDo and Memo use independent layouts and canonical editing',async
 test('JOURNAL ToDo paper rows remain readable with long text on desktop and mobile',async({page})=>{
   test.setTimeout(90000);await boot(page,1366);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
+  // Empty personal rooms do not render an empty focus tray.
+  await page.locator('#todayTodoInput').fill('備品管理システムのテストモジュール確認と完了履歴の表示確認');
+  await page.locator('#todoView [data-j425-todo-create] button[type="submit"]').click();
   const tray=page.locator('#todoView .j425-todo-focus .j425-todo-items');
+  await expect(tray).toBeVisible();
+  const initial=await tray.locator('.j425-todo-record').count();
   await tray.evaluate(root=>{
     for(let i=0;i<30;i++){
       const el=document.createElement('article');el.className='j425-todo-record';el.innerHTML='<label class="j425-todo-check"><input type="checkbox"></label><button class="j425-todo-record-title"><strong>備品管理システムのテストモジュール確認と完了履歴の表示確認</strong></button><span></span><div></div>';
       root.append(el);
     }
   });
-  const rows=tray.locator('.j425-todo-record');await expect(rows).toHaveCount(30);
+  const rows=tray.locator('.j425-todo-record');await expect(rows).toHaveCount(initial+30);
   const desktop=await rows.first().evaluate(el=>({width:el.getBoundingClientRect().width,text:el.querySelector('strong').getBoundingClientRect().width}));
   expect(desktop.text).toBeGreaterThan(180);
   await page.setViewportSize({width:390,height:840});
@@ -280,6 +286,8 @@ test('JOURNAL Ver.430 ToDo tray folds, and schedule categories are local filters
   test.setTimeout(90000);await boot(page,1300);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
   const todo=page.locator('#todoView');
+  await todo.locator('#todayTodoInput').fill('JOURNAL作業トレイ折りたたみ');
+  await todo.locator('[data-j425-todo-create] button[type="submit"]').click();
   const fold=todo.locator('[data-j430-todo-fold="focus"]');
   await expect(fold).toBeVisible();
   await fold.click();
@@ -476,7 +484,8 @@ test('JOURNAL paper date fields and memo cancel are large enough without rounded
   expect(layout.width).toBeGreaterThan(250);
   expect(layout.yearWidth).toBeGreaterThan(52);
   expect(layout.radius).toBeLessThanOrEqual(3);
-  expect(layout.position).toBe('sticky');
+  // The outline is position:relative, scroll-compensated by the editor.
+  expect(layout.position).toBe('relative');
   await editor.locator('#closeTaskDialog').click();
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
   await page.locator('#workMemoViewV167 [data-memo-new]').first().click();
@@ -748,7 +757,7 @@ test('JOURNAL Task Atelier renders indexed shelves and a bottom notebook instead
 test('JOURNAL timeline is a vertically dated chronicle rather than Classic grid',async ({page})=>{
   test.setTimeout(90000);await boot(page,1440);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  await page.locator('[data-task-layout="timeline"]').click();
+  await page.locator('#boardView .j420-atelier-switch [data-j420-layout="timeline"]').click();
   const timeline=page.locator('#timelineView');
   await expect(timeline.locator('.jv-chronicle-day').first()).toBeVisible();
   await expect(timeline.locator('.timeline-grid')).toHaveCount(0);
@@ -1142,7 +1151,7 @@ test('JOURNAL V470 chooses a non-longest window without changing canonical save'
 test('JOURNAL V473 desktop free-time strip opens the canonical draft at its tapped time',async({page})=>{
   test.setTimeout(90000);
   await boot(page,1366);await choose(page,'journal');
-  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
   const date=await page.locator('#scheduleView [data-j443-add-schedule-date]').first()
     .getAttribute('data-j443-add-schedule-date');
   await page.locator('#scheduleView [data-j443-add-schedule-date="'+date+'"]').click();
@@ -1579,14 +1588,16 @@ test('JOURNAL V494 desk keeps one selected task note beside its mobile card',asy
   await expect(row).toHaveAttribute('aria-expanded','false');
   await page.setViewportSize({width:1366,height:900});
   await expect(note).toBeVisible();
-  expect(await note.evaluate(el=>el.parentElement?.classList.contains('j420-atelier'))).toBeTruthy();
+  // Await asynchronous matchMedia change and DOM re-parenting.
+  await expect.poll(()=>note.evaluate(el=>el.parentElement?.classList.contains('j420-atelier'))).toBe(true);
 });
 
 test('JOURNAL V494 phone chronicle exposes date actions and restores focus from detail',async({page})=>{
   test.setTimeout(90000);
   await boot(page,320);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
-  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  // The activity log also offers a timeline shortcut; target the view switch.
+  await page.locator('#boardView .j420-atelier-switch [data-j420-layout="timeline"]').click();
   const day=page.locator('#timelineView [data-jv-add-date]').first();
   await expect(day).toBeVisible();
   const targetDate=await day.getAttribute('data-jv-add-date');
@@ -1626,7 +1637,8 @@ test('JOURNAL V495 mobile task folio keeps primary actions short and returns fro
   test.setTimeout(90000);
   await boot(page,390);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
-  await page.locator('#boardView [data-j420-layout="timeline"]').click();
+  // The activity log also offers a timeline shortcut; target the view switch.
+  await page.locator('#boardView .j420-atelier-switch [data-j420-layout="timeline"]').click();
   const newDay=page.locator('#timelineView [data-jv-add-date]').first();
   await expect(newDay).toBeVisible();
   await newDay.click();
