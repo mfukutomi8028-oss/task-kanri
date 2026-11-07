@@ -1881,9 +1881,20 @@
       seriesIndexState.room!==state.snapshot.roomId)
       seriesIndexState={seriesId,user:state.snapshot.currentUser,
         room:state.snapshot.roomId,open:false,query:'',page:0,
-        status:'all',viewed:new Set(),edited:new Map(),
+        status:'all',viewed:new Set(),viewedRevisions:new Map(),edited:new Map(),
         browseReturn:null,reviewedReturnId:null};
     return seriesIndexState;
+  }
+  // A viewed ID is not enough: an updated canonical revision requires review.
+  // The version map lives only in this inspector, never in Firebase/storage.
+  function needsSeriesRereview(index,row) {
+    return Boolean(row&&index?.viewed.has(row.id)&&
+      index.viewedRevisions?.has(row.id)&&
+      index.viewedRevisions.get(row.id)!==Number(row.revision||0));
+  }
+  function isSeriesOccurrenceReviewed(index,row) {
+    return Boolean(row&&index?.viewed.has(row.id)&&
+      !needsSeriesRereview(index,row));
   }
   // Only canonical occurrences in the current inspector session are eligible.
   // Revision changes from other devices make a previous edit eligible again.
@@ -1908,7 +1919,8 @@
     const start=rows.findIndex(row=>row.id===afterId);
     for(let offset=1;offset<=rows.length;offset++){
       const row=rows[(start+offset)%rows.length];
-      if(row&&row.id!==afterId&&eligible.has(row.id)&&!index.viewed.has(row.id))
+      if(row&&row.id!==afterId&&eligible.has(row.id)&&
+        !isSeriesOccurrenceReviewed(index,row))
         return row;
     }
     return null;
@@ -1926,9 +1938,23 @@
     const index=currentSeriesIndex(item);
     return seriesOccurrences(item).filter(row=>
       (index.status==='all'||
-        index.status==='unchecked'&&!index.viewed.has(row.id)||
+        index.status==='unchecked'&&!isSeriesOccurrenceReviewed(index,row)||
         index.status==='unedited'&&index.edited.get(row.id)!==Number(row.revision||0))&&
       seriesIndexMatchesQuery(row,index.query));
+  }
+  // An empty filtered list means completion only when matching records
+  // actually exist. A typo/no-match search must not be called "done".
+  function seriesIndexCompletion(item) {
+    const index=currentSeriesIndex(item);
+    if(index.status!=='unchecked'&&index.status!=='unedited')return null;
+    const matching=seriesOccurrences(item).filter(row=>
+      seriesIndexMatchesQuery(row,index.query));
+    if(!matching.length)return null;
+    const complete=matching.every(row=>index.status==='unchecked'
+      ?isSeriesOccurrenceReviewed(index,row)
+      :index.edited.get(row.id)===Number(row.revision||0));
+    if(!complete)return null;
+    return {kind:index.status,count:matching.length};
   }
   // The last confirmed change belongs to this inspector session only.
   // Never update canonical schedules or clear a filter without a user action.
@@ -2009,7 +2035,8 @@
     const index=currentSeriesIndex(item),id=index.reviewedReturnId;
     if(!id||index.status!=='unchecked')return '';
     const row=seriesOccurrences(item).find(entry=>entry.id===id);
-    if(!row||!index.viewed.has(id)||!seriesIndexMatchesQuery(row,index.query))
+    if(!row||!isSeriesOccurrenceReviewed(index,row)||
+      !seriesIndexMatchesQuery(row,index.query)||seriesIndexCompletion(item))
       return '';
     return '<div class="pn-series-index-reviewed" role="status">'+
       '<div><strong>確認した回は「未確認のみ」から外れました</strong>'+
@@ -2021,14 +2048,17 @@
   function seriesIndexResults(item) {
     const index=currentSeriesIndex(item),rows=filteredSeriesIndex(item);
     const all=seriesOccurrences(item);
-    const viewed=all.filter(row=>index.viewed.has(row.id)).length;
+    const viewed=all.filter(row=>isSeriesOccurrenceReviewed(index,row)).length;
     const edited=all.filter(row=>index.edited.get(row.id)===Number(row.revision||0)).length;
     const unchecked=all.length-viewed;
+    const rereview=all.filter(row=>needsSeriesRereview(index,row)).length;
     // These marks describe only the current inspector session; they are not audit records.
     const progress='<div class="pn-series-index-progress" aria-label="この画面での確認状況">'+
       '<span>確認済み <strong>'+viewed+'</strong></span>'+
       '<span>編集済み <strong>'+edited+'</strong></span>'+
-      '<span>未確認 <strong>'+unchecked+'</strong></span></div>';
+      '<span>未確認 <strong>'+unchecked+'</strong></span>'+
+      (rereview?'<span class="pn-series-index-rereview">更新後の再確認 <strong>'+
+        rereview+'</strong></span>':'')+'</div>';
     const limit=8,totalPages=Math.max(1,Math.ceil(rows.length/limit));
     index.page=Math.min(Math.max(0,index.page),totalPages-1);
     const slice=rows.slice(index.page*limit,(index.page+1)*limit);
@@ -2052,7 +2082,8 @@
         const selected=row.id===item.id;
         const edited=Boolean((markSaved&&latest.id===row.id)||
           index.edited.get(row.id)===Number(row.revision||0));
-        const checked=index.viewed.has(row.id);
+        const checked=isSeriesOccurrenceReviewed(index,row);
+        const stale=needsSeriesRereview(index,row);
         return '<li class="pn-series-index-entry'+(edited?' was-saved':'')+'">'+
           '<button type="button" class="pn-series-index-item'+
           (selected?' is-current':'')+(edited?' was-saved':'')+'" data-pn-series-index-open="'+escape(row.id)+'"'+
@@ -2065,7 +2096,8 @@
           '<span class="pn-series-index-main"><strong>'+escape(row.title||'無題の予定')+'</strong>'+
           '<small>'+escape([row.assignee||'担当未設定',row.category||'分類なし']
             .join(' · '))+'</small>'+
-          (edited?'<em class="pn-series-index-saved-tag">編集済み</em>':
+          (stale?'<em class="pn-series-index-update-tag">更新あり・要確認</em>':
+            edited?'<em class="pn-series-index-saved-tag">編集済み</em>':
             checked?'<em class="pn-series-index-checked-tag">確認済み</em>':'')+'</span>'+
           (selected?'<span class="pn-series-index-current">表示中</span>':'<span aria-hidden="true">›</span>')+
           '</button>'+
@@ -2075,7 +2107,16 @@
             escape(scheduleSeriesDateLabel(localDate(row.startAt))+' '+localTime(row.startAt))+
             'の回を編集">編集</button></li>';
       }).join('')+'</ol>'
-      :'<p class="pn-series-index-empty">一致する予定はありません。</p>';
+      :(()=>{
+        const complete=seriesIndexCompletion(item);
+        if(!complete)return '<p class="pn-series-index-empty">一致する予定はありません。</p>';
+        const label=complete.kind==='unchecked'?'確認':'編集';
+        return '<div class="pn-series-index-empty is-complete" role="status">'+
+          '<strong>この条件の予定はすべて'+label+'済みです</strong>'+
+          '<small>'+complete.count+'件の'+label+'が完了しました。検索条件は維持されます。</small>'+
+          '<button type="button" data-pn-series-index-complete-show-all>'+
+          label+'済みも表示する</button></div>';
+      })();
     const nav=totalPages>1
       ?'<div class="pn-series-index-pages">'+
         '<button type="button" data-pn-series-index-page="-1"'+
@@ -2144,9 +2185,15 @@
   }
   function inspectorSeriesContext(item) {
     const rows=seriesOccurrences(item);
-    // Opening an occurrence is a review in Day, Week, Series and Today.
+    // A remote revision must not be silently marked as reviewed by a
+    // Firebase-triggered redraw. Require an explicit acknowledgement.
     if(!rows.length)return '';
-    currentSeriesIndex(item).viewed.add(item.id);
+    const review=currentSeriesIndex(item);
+    const needsReview=needsSeriesRereview(review,item);
+    if(!needsReview){
+      review.viewed.add(item.id);
+      review.viewedRevisions.set(item.id,Number(item.revision||0));
+    }
     const index=rows.findIndex(row=>row.id===item.id);
     const previous=rows[index-1],next=rows[index+1];
     const nearby=(row,label)=>row
@@ -2159,6 +2206,11 @@
     return '<section class="pn-series-panel" aria-label="同じ繰り返し系列の予定">'+
       '<div class="pn-series-heading"><span>この繰り返し系列</span>'+
       '<strong>'+rows.length+'件登録済み · '+(index+1)+'件目</strong></div>'+
+      (needsReview?'<div class="pn-series-reconfirm" role="status">'+
+        '<strong>この回の内容が更新されました</strong>'+
+        '<span>更新後の内容を確認してから、確認済みにしてください。</span>'+
+        '<button type="button" data-pn-series-review-updated="'+escape(item.id)+'">'+
+          '更新後の内容を確認済みにする</button></div>':'')+
       '<div class="pn-series-neighbors">'+nearby(previous,'前の回')+
       '<span class="pn-series-current"><small>表示中</small><strong>'+
         escape(dateParts(localDate(item.startAt)))+' '+escape(localTime(item.startAt))+
@@ -2396,6 +2448,7 @@
                 };
                 seriesIndexState.diffOpen=false;
                 seriesIndexState.viewed.add(saved.id);
+                seriesIndexState.viewedRevisions.set(saved.id,Number(saved.revision||0));
                 seriesIndexState.edited.set(saved.id,Number(saved.revision||0));
               }
               state.detail={kind:'schedule',id:resume.id};
@@ -2769,10 +2822,10 @@
         index?.seriesId!==current.recurrenceSeriesId||
         index.user!==state.snapshot.currentUser||
         index.room!==state.snapshot.roomId||
-        index.status!=='unchecked'||index.reviewedReturnId!==id||
-        !index.viewed.has(id))return;
+        index.status!=='unchecked'||index.reviewedReturnId!==id)return;
       const viewed=seriesOccurrences(current).find(row=>row.id===id);
-      if(!viewed||!seriesIndexMatchesQuery(viewed,index.query))return;
+      if(!isSeriesOccurrenceReviewed(index,viewed)||
+        !seriesIndexMatchesQuery(viewed,index.query))return;
       // Explicitly reveal this item, without losing the search or review marks.
       index.status='all';index.reviewedReturnId=null;
       const select=drawer.querySelector('[data-pn-series-index-status]');
@@ -2874,7 +2927,7 @@
         back.room!==state.snapshot.roomId)return;
       index.browseReturn=null;index.open=true;
       index.reviewedReturnId=index.status==='unchecked'&&
-        index.viewed.has(current.id)&&
+        isSeriesOccurrenceReviewed(index,current)&&
         seriesIndexMatchesQuery(current,index.query)?current.id:null;
       seriesIndexReturnPage(current,back.view);
       updateDetail();
