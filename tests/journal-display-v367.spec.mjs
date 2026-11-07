@@ -2108,7 +2108,12 @@ test('JOURNAL V516 phone desk returns to its source card and filter keeps focus'
   await view.click();
   await expect(view).toBeFocused();
   await board.locator('[data-j502-toggle-index]').click();
-  const card=board.locator('[data-j420-task-id]').first();
+  await board.locator('[data-j420-new-task]').click();
+  const dialog=page.locator('#taskDialog');
+  await dialog.locator('#taskTitle').fill('JOURNAL V516 机上の復帰位置');
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  const card=board.locator('[data-j420-task-id]').filter({hasText:'JOURNAL V516 机上の復帰位置'});
   await expect(card).toBeVisible();
   await card.scrollIntoViewIfNeeded();
   const top=await card.evaluate(el=>el.getBoundingClientRect().top);
