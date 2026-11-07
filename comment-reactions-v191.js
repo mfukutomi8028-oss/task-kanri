@@ -44,6 +44,14 @@
     }
   }
 
+  function readCurrentCommentTask(taskId) {
+    // This bridge reads the actual onValue-backed Classic state. The browser
+    // cache may be empty or stale even while the task itself is already visible.
+    const canonical = window.WorkBoardPaletteBridge?.readCommentTask;
+    if (typeof canonical === "function") return canonical(taskId);
+    return readCachedTasks().find(item => String(item?.id || "") === taskId) || null;
+  }
+
   function writeCachedTask(taskId, record) {
     if (!record) return;
     try {
@@ -455,7 +463,7 @@
     if (!detail || detail.classList.contains("empty")) return;
     const taskId = detailTaskId();
     if (!taskId) return;
-    const task = readCachedTasks().find(item => String(item?.id || "") === taskId);
+    const task = readCurrentCommentTask(taskId);
     if (!task) return;
     patchThreads(detail, task);
     patchComposer(detail, task);
@@ -595,7 +603,7 @@
 
   function openReply(commentIdValue) {
     const taskId = detailTaskId();
-    const task = readCachedTasks().find(item => String(item?.id || '') === taskId);
+    const task = readCurrentCommentTask(taskId);
     const target = task ? commentMap(task).get(String(commentIdValue || '')) : null;
     if (!taskId || !target) return;
     replyTarget = { taskId, commentId: commentId(target) };
