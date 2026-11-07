@@ -6713,3 +6713,67 @@ html[data-wb-display="journal"] #timelineView .j511-chronicle-travel {
     min-height:44px;
   }
 }
+
+
+/* JOURNAL V518 — empty diary dates are compact on phones. The 44px
+   canonical add action stays directly reachable; populated days are unchanged. */
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #timelineView .jv-chronicle-day.is-empty {
+    min-height:48px;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-chronicle-day.is-empty>.jv-date {
+    display:grid!important;
+    grid-template-columns:25px minmax(0,1fr);
+    grid-template-rows:auto auto;
+    align-content:center;
+    align-items:center;
+    gap:0 2px!important;
+    padding:3px 2px!important;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-chronicle-day.is-empty>.jv-date strong {
+    grid-column:1;grid-row:1/3;
+    font-size:20px;line-height:1.1;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-chronicle-day.is-empty>.jv-date>span {
+    grid-column:2;grid-row:1;
+    font-size:10px;line-height:1.2;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-chronicle-day.is-empty>.jv-date>small {
+    grid-column:2;grid-row:2;
+    min-width:0;font-size:10px;line-height:1.2;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-chronicle-day.is-empty>.jv-day-records {
+    padding:2px 4px!important;
+  }
+  html[data-wb-display="journal"] #timelineView .jv-chronicle-day.is-empty .j434-chronicle-add {
+    box-sizing:border-box;width:100%;max-width:100%;min-height:44px;
+    padding:6px 8px!important;text-align:left;
+    overflow-wrap:anywhere;
+  }
+  html[data-wb-display="journal"] #listView .j447-task-filter-heading>button {
+    min-height:44px;
+  }
+}
+html[data-wb-display="journal"] #listView .j518-index-empty {
+  box-sizing:border-box;max-width:100%;min-width:0;
+  margin:8px 0 12px;padding:15px 14px;
+  border:1px dashed var(--j-border);
+  border-radius:5px;background:var(--j-paper-alt);
+}
+html[data-wb-display="journal"] #listView .j518-index-empty strong {
+  display:block;margin:0 0 5px;
+  color:var(--j-ink);font:800 14px/1.5 var(--j-text);
+}
+html[data-wb-display="journal"] #listView .j518-index-empty p {
+  margin:0 0 10px;overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #listView .j518-index-empty button {
+  box-sizing:border-box;min-height:44px;max-width:100%;
+  border:1px solid var(--j-border)!important;border-radius:4px!important;
+  background:var(--j-soft)!important;color:var(--j-accent)!important;
+  padding:9px 13px;font:750 12px/1.4 var(--j-text);
+  cursor:pointer;white-space:normal;overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #listView .j518-index-empty button:focus-visible {
+  outline:2px solid var(--j-accent)!important;outline-offset:2px;
+}
