@@ -6317,6 +6317,26 @@ function journalIndexPreviewV425(t,index){
    <div class="j425-preview-actions"><button type="button" data-j425-preview-detail>詳細を見る</button><button type="button" data-j425-preview-edit>編集する</button></div>
    <button type="button" class="j491-task-return j511-task-return-end" data-j491-task-return>← 一覧へ戻る</button></div>`;
 }
+// JOURNAL V515: all index controls return to their replacement after the
+// canonical paper-list rerender. No extra filter state or saved record is used.
+let journalIndexRefreshTokenV515=0;
+function journalRefreshIndexV515(tasks,previousControl,findNextControl,onRestore){
+  const previousTop=previousControl.getBoundingClientRect().top;
+  const wasVisible=previousTop>=0&&previousTop<=window.innerHeight;
+  const token=++journalIndexRefreshTokenV515;
+  journalIndexV425(tasks);
+  requestAnimationFrame(()=>{
+    if(token!==journalIndexRefreshTokenV515||!journalTaskV411()
+      ||elements.listView.hidden)return;
+    const target=findNextControl();
+    if(!target)return;
+    target.focus({preventScroll:true});
+    onRestore?.(target);
+    if(wasVisible&&document.scrollingElement){
+      document.scrollingElement.scrollTop+=target.getBoundingClientRect().top-previousTop;
+    }else target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+  });
+}
 function journalIndexV425(tasks){
   const filters=journalIndexStateV425;
   const appliedFilters=[filters.status,filters.category,filters.assignee].filter(Boolean).length+(filters.due!=='all'?1:0);
@@ -6438,24 +6458,44 @@ function journalIndexV425(tasks){
     row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('input,button,label,select')){e.preventDefault();select()}});
   });
   root.querySelectorAll('[data-j430-facet]').forEach(button=>button.addEventListener('click',()=>{
-    filters[button.dataset.j430Facet]=button.dataset.j430Value;
-    journalIndexV425(tasks);
+    const key=button.dataset.j430Facet,value=button.dataset.j430Value;
+    filters[key]=value;
+    journalRefreshIndexV515(tasks,button,()=>[...root.querySelectorAll('[data-j430-facet]')]
+      .find(node=>node.dataset.j430Facet===key&&node.dataset.j430Value===value));
   }));
-  root.querySelectorAll('[data-j425-due]').forEach(b=>b.addEventListener('click',()=>{filters.due=b.dataset.j425Due;journalIndexV425(tasks)}));
-  root.querySelector('[data-j425-sort]')?.addEventListener('change',e=>{filters.sort=e.target.value;journalIndexV425(tasks)});
+  root.querySelectorAll('[data-j425-due]').forEach(b=>b.addEventListener('click',()=>{
+    const due=b.dataset.j425Due;filters.due=due;
+    journalRefreshIndexV515(tasks,b,()=>[...root.querySelectorAll('[data-j425-due]')]
+      .find(node=>node.dataset.j425Due===due));
+  }));
+  root.querySelector('[data-j425-sort]')?.addEventListener('change',e=>{
+    filters.sort=e.target.value;
+    journalRefreshIndexV515(tasks,e.target,()=>root.querySelector('[data-j425-sort]'));
+  });
   root.querySelectorAll('[data-j425-task-layout]').forEach(b=>b.addEventListener('click',()=>journalSwitchTaskPageV509(b.dataset.j425TaskLayout)));
   root.querySelector('[data-j425-new-task]')?.addEventListener('click',()=>openTaskDialog());
   root.querySelectorAll('[data-j425-preset]').forEach(b=>b.addEventListener('click',()=>{
-    if(b.dataset.j425Preset==='mine'){filters.assignee=getCurrentUser();filters.sort='default';}else{filters.sort='priority';}
-    journalIndexV425(tasks);
+    const preset=b.dataset.j425Preset;
+    if(preset==='mine'){filters.assignee=getCurrentUser();filters.sort='default';}else{filters.sort='priority';}
+    journalRefreshIndexV515(tasks,b,()=>[...root.querySelectorAll('[data-j425-preset]')]
+      .find(node=>node.dataset.j425Preset===preset));
   }));
-  root.querySelector('[data-j425-reset]')?.addEventListener('click',()=>{Object.assign(filters,{status:'',category:'',assignee:'',due:'all',query:'',sort:'default'});journalIndexV425(tasks)});
+  root.querySelector('[data-j425-reset]')?.addEventListener('click',event=>{
+    Object.assign(filters,{status:'',category:'',assignee:'',due:'all',query:'',sort:'default'});
+    journalRefreshIndexV515(tasks,event.currentTarget,()=>root.querySelector('[data-j425-reset]'));
+  });
   root.querySelector('[data-bulk-all]')?.addEventListener('change',e=>{root.querySelectorAll('[data-bulk-id]').forEach(input=>input.checked=e.target.checked);updateBulkBar()});
   root.querySelectorAll('[data-bulk-id]').forEach(x=>x.addEventListener('change',updateBulkBar));
   root.querySelector('[data-bulk-action]')?.addEventListener('change',updateBulkTarget);
   root.querySelector('[data-bulk-apply]')?.addEventListener('click',applyBulkAction);
   const input=root.querySelector('[data-j425-query]');
-  if(input){let composing=false;const apply=()=>{filters.query=input.value;const cursor=input.selectionStart??input.value.length;journalIndexV425(tasks);requestAnimationFrame(()=>{const el=elements.listView.querySelector('[data-j425-query]');if(el){el.focus({preventScroll:true});try{el.setSelectionRange(cursor,cursor)}catch{}}})};input.addEventListener('compositionstart',()=>composing=true);input.addEventListener('compositionend',()=>{composing=false;apply()});input.addEventListener('input',e=>{if(!composing&&!e.isComposing)apply()})}
+  if(input){let composing=false;const apply=()=>{
+    filters.query=input.value;
+    const cursor=input.selectionStart??input.value.length;
+    journalRefreshIndexV515(tasks,input,()=>root.querySelector('[data-j425-query]'),el=>{
+      try{el.setSelectionRange(cursor,cursor)}catch{}
+    });
+  };input.addEventListener('compositionstart',()=>composing=true);input.addEventListener('compositionend',()=>{composing=false;apply()});input.addEventListener('input',e=>{if(!composing&&!e.isComposing)apply()})}
 }
 
 // JOURNAL V504: paging rerenders the toolbar. Re-focus its replacement and
