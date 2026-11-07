@@ -133,3 +133,50 @@ test('Ver.322 keeps the comment composer visible in the right column without an 
   expect(textareaBox?.height || 0).toBeGreaterThanOrEqual(110);
   expect(textareaBox?.height || 999).toBeLessThanOrEqual(240);
 });
+
+
+for (const width of [320, 390]) {
+  test('Classic phone task detail keeps all tabs and close buttons usable at ' + width + 'px', async ({ page }) => {
+    await boot(page);
+    await page.setViewportSize({ width, height: 812 });
+    await installFixture(page);
+    const geometry = await page.evaluate(() => {
+      const tabList = document.querySelector('#taskDialogDetailPanelV319 .task-detail-tabs-v149');
+      const tabs = [...tabList.querySelectorAll('.task-detail-tab-v149')];
+      const close = id => {
+        const button = document.getElementById(id);
+        const rect = button.getBoundingClientRect();
+        const style = getComputedStyle(button);
+        return { width: rect.width, height: rect.height, minWidth:parseFloat(style.minWidth), minHeight:parseFloat(style.minHeight) };
+      };
+      return {
+        columns: getComputedStyle(tabList).gridTemplateColumns.split(/\s+/).filter(Boolean).length,
+        tabs: tabs.map(tab => {
+          const box = tab.getBoundingClientRect();
+          const style = getComputedStyle(tab);
+          return {
+            height:box.height, whiteSpace:style.whiteSpace,
+            clipped:style.textOverflow === 'ellipsis',
+            overflow:tab.scrollWidth - tab.clientWidth
+          };
+        }),
+        editorClose:close('closeTaskDialog'),
+        detailClose:close('closeDetail')
+      };
+    });
+    expect(geometry.columns, 'four mobile tabs should use two readable columns').toBe(2);
+    expect(geometry.tabs).toHaveLength(4);
+    for (const tab of geometry.tabs) {
+      expect(tab.height).toBeGreaterThanOrEqual(44);
+      expect(tab.whiteSpace).toBe('normal');
+      expect(tab.clipped).toBe(false);
+      expect(tab.overflow, 'the tab label must not be clipped').toBeLessThanOrEqual(1);
+    }
+    for (const button of [geometry.editorClose, geometry.detailClose]) {
+      expect(button.minWidth).toBeGreaterThanOrEqual(44);
+      expect(button.minHeight).toBeGreaterThanOrEqual(44);
+    }
+    await page.locator('#closeTaskDialog').click();
+    await expect(page.locator('#taskDialog')).not.toBeVisible();
+  });
+}
