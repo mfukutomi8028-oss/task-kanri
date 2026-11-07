@@ -2122,7 +2122,7 @@ test('Palette counts a read in Day view and filters unedited recurrences without
   assert.equal(index.viewed.has('A3'),true);
   const feedback=shell.slice(shell.indexOf('    if(target.hasAttribute('+
     "'data-pn-series-review-index'"),shell.indexOf('    if(target.dataset.pnSeriesIndexOpen){'));
-  assert.match(feedback,/index\.page=Math\.floor\(position\/8\)/);
+  assert.match(feedback,/seriesIndexReturnPage\(current,review\.returnView\)/);
   assert.match(feedback,/data-pn-series-index-reveal/);
   assert.match(shell,/resume\.viaSeriesIndex\|\|state\.route==='schedule'/);
   assert.match(shell,/data-pn-series-index-reset/);
