@@ -6810,3 +6810,11 @@ html[data-wb-display="journal"] #boardView .j520-index-filter-count {
   display:block;margin-top:3px;color:var(--j-accent);
   font:750 11px/1.35 var(--j-text);
 }
+
+/* Hide unoccupied decorative shelves only on small screens. Using a class
+   keeps the layout correct even if the viewport changes without a rerender. */
+@media(max-width:760px){
+  html[data-wb-display="journal"] #boardView .j420-island.j520-empty-island {
+    display:none!important;
+  }
+}
