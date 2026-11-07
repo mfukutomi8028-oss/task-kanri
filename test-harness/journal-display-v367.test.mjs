@@ -1341,3 +1341,30 @@ test('JOURNAL V530 desk and index keep snapshot focus without duplicate data own
   assert.match(schedule,/journalSearchComposingV530\?\.isConnected/);
   assert.match(schedule,/scheduleSubscribedRender\(\)/);
 });
+
+test('JOURNAL V532 reconciles deleted desk/list selections without new record owners',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalNearestSurvivingTaskV532(');
+  const end=app.indexOf('function journalRestoreTaskPageSyncAnchorV530(',start);
+  assert.ok(start>0&&end>start);
+  const helper=app.slice(start,end);
+  assert.match(helper,/const existing=new Set\(available\)/);
+  assert.match(helper,/snapshot\.order\.indexOf\(snapshot\.selected\)/);
+  assert.match(helper,/for\(let i=index\+1/);
+  assert.match(helper,/for\(let i=index-1/);
+  assert.doesNotMatch(helper,/(?:firebase|persistTask|runTransaction)\s*\(/i);
+  const board=app.slice(app.indexOf('function journalAtelierV420(tasks){'),
+    app.indexOf('// State is view-only, scoped to JOURNAL;',start));
+  const list=app.slice(app.indexOf('function journalIndexV425(tasks){'),
+    app.indexOf('// JOURNAL V504: paging rerenders the toolbar.'));
+  assert.match(board,/journalNearestSurvivingTaskV532\(syncAnchorV530,viewTasks\.map\(t=>t\.id\)\)/);
+  assert.match(list,/journalNearestSurvivingTaskV532\(syncAnchorV530,ordered\.map\(t=>t\.id\)\)/);
+  assert.match(list,/journalTaskInlineSelectedV491=''/);
+  const restore=app.slice(end,app.indexOf('function journalAtelierV420(tasks){',end));
+  assert.match(restore,/snapshot\.focus\.name===rowAttr/);
+  assert.match(restore,/\.is-selected/);
+  const diary=app.slice(app.indexOf('function journalRestoreChronicleSyncAnchorV528('),
+    app.indexOf('function journalChronicleV411(tasks){'));
+  assert.match(diary,/ownerDate!==anchor\.date/);
+  assert.match(diary,/day\?\.querySelector\('\.jv-date'\)/);
+});
