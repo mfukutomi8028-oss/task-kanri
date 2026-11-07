@@ -1292,15 +1292,19 @@ function restorePanelReturnPosition(kind,id){
  let aligned=false;
  if(scheduleGlobalReturn&&view==='calendar'&&scheduleSearchScope==='all'){
    const saved=scheduleGlobalReturn;
-   const resultIndex=scheduleGlobalResultIds.indexOf(saved.id);
+   // After a deletion or filter change, continue with an adjacent matching
+   // result instead of unexpectedly jumping to the first search hit.
+   const available=scheduleGlobalResultIds;
+   const resultId=[saved.id,...originAdjacentReturnIds('events',saved.id,available)]
+     .find(candidate=>available.includes(candidate))||'';
+   const resultIndex=available.indexOf(resultId);
    if(resultIndex>=scheduleSearchLimit){
      scheduleSearchLimit=Math.ceil((resultIndex+1)/30)*30;
      render();
    }
    const row=Array.from($('#workspace').querySelectorAll('.origin-schedule-global-item'))
-     .find(element=>element.dataset.id===saved.id);
+     .find(element=>element.dataset.id===resultId);
    const target=row?.querySelector('[data-action="open"][data-kind="events"]')
-     ||$('#workspace .origin-schedule-global-item [data-action="open"][data-kind="events"]')
      ||(window.innerWidth<=770?$('#workspace [data-action="schedule-filter-toggle"]'):$('#originScheduleSearch'));
    target?.focus({preventScroll:true});
    const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
@@ -1317,16 +1321,29 @@ function restorePanelReturnPosition(kind,id){
    if(target)focusSearchResult(target);
    else search.focus({preventScroll:true});
  }else if(anchor&&anchor.view===view&&anchor.kind===kind){
-   const target=revealOriginReturnCard(kind,id);
+   const target=revealOriginReturnCard(kind,id)||revealOriginAdjacentReturnCard(kind,id);
    if(target){
-     target.focus({preventScroll:true});
-     const row=kind==='tasks'?target.closest('.item-row'):kind==='todos'?target.closest('.todo-entry'):target.closest('.origin-memo-shell');
+     const row=originReturnRow(kind,target);
+     const quick=anchor.action==='list-quick-edit'
+       ?row?.querySelector('[data-action="list-quick-edit"]'):null;
+     (quick||target).focus({preventScroll:true});
      const top=row?.getBoundingClientRect().top??target.getBoundingClientRect().top;
      const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
      const destination=Math.max(0,Math.min(maximum,window.scrollY+top-anchor.top));
      window.scrollTo({top:destination,behavior:'instant'});
      aligned=true;
-   }else restoreDetailFocus(kind,id);
+   }else{
+     // When the final matching record disappears, focus a useful filter/input.
+     const fallback=kind==='tasks'?$('#originTaskQuery')
+       :kind==='memos'?$('#originMemoQuery')
+       :kind==='events'?$('#workspace [data-action="schedule-filter-toggle"]')
+       :$('#workspace [data-form="quick-todo"] [name="title"]');
+     if(fallback?.getClientRects().length){
+       fallback.focus({preventScroll:true});
+       fallback.scrollIntoView({block:'nearest',behavior:'instant'});
+       aligned=true;
+     }else restoreDetailFocus(kind,id);
+   }
  }else restoreDetailFocus(kind,id);
  if(!aligned){
    const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
@@ -2215,7 +2232,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    const card=originReturnCard(kind,id);
    if(!card)return;
    detailTrail=[];panelReturnSearch=null;scheduleGlobalReturn=null;
-   panelReturnAnchor=captureOriginReturnAnchor(kind,id,card);
+   panelReturnAnchor=captureOriginReturnAnchor(kind,id,el);
    captureDetailSequence(kind,id,card);
    return panelShow(kind,id,true);
  }
