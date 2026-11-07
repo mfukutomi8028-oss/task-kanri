@@ -2059,6 +2059,7 @@ test('JOURNAL V515 phone index keeps sorting and filter focus after list redraws
   const list=page.locator('#listView');
   const sort=list.locator('[data-j425-sort]');
   await expect(sort).toBeVisible();
+  await sort.scrollIntoViewIfNeeded();
   const before=await sort.evaluate(el=>el.getBoundingClientRect().top);
   await sort.selectOption('updated');
   await expect(sort).toBeFocused();
