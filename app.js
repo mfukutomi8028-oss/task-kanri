@@ -1206,12 +1206,24 @@ async function toggleTodo(id) {
   return result;
 }
 
-async function deleteTodo(id) {
-  const todo = state.todos.find(item => item.id === id && item.owner === normalizeUser(getCurrentUser()));
+async function deleteTodo(id, options = {}) {
+  const owner = normalizeUser(getCurrentUser());
+  const todo = state.todos.find(item => item.id === id && item.owner === owner);
   if (!todo) return { ok: false, error: 'not-found' };
+  // Origin supplies the edit-start revision. Legacy Classic calls without
+  // options still use the visible current revision and the same confirmation.
+  if ((options.ownerRoom !== undefined && String(options.ownerRoom) !== ROOM_ID)
+    || (options.ownerUser !== undefined && normalizeUser(options.ownerUser) !== owner))
+    return { ok: false, error: 'owner-mismatch' };
+  const guarded = Object.prototype.hasOwnProperty.call(options, 'revision');
+  const expectedRevision = guarded ? Number(options.revision) : normalizeRevision(todo.revision);
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0
+    || (guarded && normalizeRevision(todo.revision) !== expectedRevision))
+    return { ok: false, error: 'revision-or-relation-mismatch' };
   if (!confirm(`「${todo.text}」を削除しますか？`)) return { ok: false, error: 'cancelled' };
-  const result = await commitTodoRecord('todo-delete', id, todo.revision, current => {
-    if (!current || current.owner !== todo.owner) throw new Error('revision-or-relation-mismatch'); return null;
+  const result = await commitTodoRecord('todo-delete', id, expectedRevision, current => {
+    if (!current || current.owner !== todo.owner) throw new Error('revision-or-relation-mismatch');
+    return null;
   });
   if (!result.ok) showWriteFailure(result, 'やることを削除できませんでした。');
   return result;
@@ -12490,7 +12502,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
         result = await updateTodoDetails(id, command.text, command.memo || '', command);
         break;
       case 'todo.delete':
-        result = await deleteTodo(id);
+        result = await deleteTodo(id, command);
         break;
       case 'todo.move':
         result = await reorderTodo(id, command.direction === 'up' ? -1 : 1,
