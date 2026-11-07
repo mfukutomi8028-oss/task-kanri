@@ -986,7 +986,7 @@ test('JOURNAL V504 chronicle keeps keyboard context and lets populated days crea
   const end=app.indexOf('function journalDayItemV411(',start);
   assert.ok(start>0&&end>start,'find the existing JOURNAL-only chronicle implementation');
   const chronicle=app.slice(start,end);
-  assert.match(chronicle,/const dateRows=dates\.map\(d=>/);
+  assert.match(chronicle,/const dateRows=dates\.map\(\(d,index\)=>/);
   assert.match(chronicle,/items\.length\?\x60<button type="button" class="j504-day-add"/);
   assert.match(chronicle,/data-jv-add-date="\$\{date\}"/);
   assert.match(chronicle,/journalNavigateChronicleV504\('\[data-timeline-prev\]'/);
@@ -1021,4 +1021,32 @@ test('JOURNAL V505 date jump and edit return reuse the canonical timeline withou
   assert.match(css,/JOURNAL V505/);
   assert.match(css,/\.jv-time-controls>\.j505-date-jump/);
   assert.doesNotMatch(returnFlow+chronicle,/(?:runTransaction|persistTask|commitTaskDraft|initializeApp|onValue|updateDatabase)\s*\(/);
+});
+
+test('JOURNAL V507 chronology move resumes at actual destination and offers an origin return',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalOpenTimelineMoveV507(');
+  const end=app.indexOf('function journalChronicleV411(',start);
+  const presentation=app.slice(start,end);
+  assert.ok(start>0&&end>start);
+  assert.match(presentation,/journalTimelineMoveSourceV507=row\?/);
+  assert.match(presentation,/function journalReturnTimelinePeriodV507\(source\)/);
+  assert.match(presentation,/state\.timelineRange=source\.fromRange/);
+  assert.match(presentation,/state\.timelineStart=source\.fromStart/);
+  assert.match(presentation,/function journalRevealTimelineMoveV507\(source,id,dueDate,dueChanged\)/);
+  assert.match(presentation,/if\(dueDate<first\|\|dueDate>last\)setTimelineStart\(dueDate\)/);
+  assert.match(presentation,/notice\.append\(label,back,dismiss\)/);
+  assert.match(presentation,/if\(row\)row\.after\(notice\)/);
+  assert.doesNotMatch(presentation,/(?:runTransaction|commitTaskDraft|persistTask|updateDatabase|onValue)\s*\(/);
+  const chronicle=app.slice(end,app.indexOf('function journalDayItemV411(',end));
+  assert.match(chronicle,/data-j507-up/);
+  assert.match(chronicle,/journalOpenTimelineMoveV507\(b\.dataset\.moveToTimeline\)/);
+  assert.match(chronicle,/selector\?\.focus\(\{preventScroll:true\}\)/);
+  const save=app.slice(app.indexOf('async function confirmTimelineMove('),app.indexOf('function openTaskDialog(',app.indexOf('async function confirmTimelineMove(')));
+  assert.match(save,/if\s*\(!result\.ok\) return showWriteFailure/);
+  assert.match(save,/if\(journalSource\)journalTimelineMoveCommittedV507=true/);
+  assert.match(save,/if\(journalSource\)journalRevealTimelineMoveV507\(journalSource,task\.id,dueDate,dueChanged\)/);
+  assert.match(css,/JOURNAL V507/);
+  assert.match(css,/\.j507-move-result/);
+  assert.match(css,/\.j507-week-up/);
 });
