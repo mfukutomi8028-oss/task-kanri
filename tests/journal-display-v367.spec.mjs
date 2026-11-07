@@ -2624,3 +2624,51 @@ test('JOURNAL V534 carries explicitly selected cases across diary, list and desk
   await page.setViewportSize({width:320,height:800});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V536 direct desk and index editing returns to the exact row after cancel',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  await board.locator('[data-j420-new-task]').click();
+  const editor=page.locator('#taskDialog');
+  const title='JOURNAL V536 ダブルクリックで編集';
+  await editor.locator('#taskTitle').fill(title);
+  await editor.locator('#taskForm button[type="submit"]').click();
+  await expect(editor).toBeHidden();
+
+  const card=board.locator('[data-j420-task-id]').filter({hasText:title});
+  await card.scrollIntoViewIfNeeded();
+  const cardTop=await card.evaluate(el=>el.getBoundingClientRect().top);
+  await card.dblclick({position:{x:80,y:24}});
+  await expect(editor).toBeVisible();
+  await editor.locator('#closeTaskDialog').click();
+  await expect(editor).toBeHidden();
+  await expect(card).toBeFocused();
+  expect(Math.abs((await card.evaluate(el=>el.getBoundingClientRect().top))-cardTop))
+    .toBeLessThanOrEqual(38);
+
+  await board.locator('[data-j420-layout="list"]').click();
+  const list=page.locator('#listView');
+  const row=list.locator('[data-j425-row]').filter({hasText:title});
+  await row.scrollIntoViewIfNeeded();
+  const rowTop=await row.evaluate(el=>el.getBoundingClientRect().top);
+  await row.dblclick({position:{x:120,y:32}});
+  await expect(editor).toBeVisible();
+  await editor.locator('#closeTaskDialog').click();
+  await expect(editor).toBeHidden();
+  await expect(row).toBeFocused();
+  expect(Math.abs((await row.evaluate(el=>el.getBoundingClientRect().top))-rowTop))
+    .toBeLessThanOrEqual(38);
+
+  await page.setViewportSize({width:320,height:800});
+  await row.scrollIntoViewIfNeeded();
+  await row.dblclick({position:{x:120,y:32}});
+  await expect(editor).toBeVisible();
+  await editor.locator('#closeTaskDialog').click();
+  await expect(editor).toBeHidden();
+  await expect(row).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});
