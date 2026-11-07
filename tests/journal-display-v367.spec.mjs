@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
 
+// JOURNAL is deployed for Japan-based workflows. Keep day boundaries
+// consistent with production even when GitHub Actions runners use UTC.
+test.use({ timezoneId: 'Asia/Tokyo' });
+
 const ROOM = 'test-journal-display-v372';
 
 async function boot(page, width = 1366) {
