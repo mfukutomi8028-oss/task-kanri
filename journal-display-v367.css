@@ -6366,3 +6366,68 @@ html[data-wb-display="journal"] #timelineView .j494-day-actions button:focus-vis
     min-width:0;overflow-wrap:anywhere;word-break:break-word;
   }
 }
+
+/* JOURNAL V502: the phone's case index is a compact bookmark until needed.
+   Desktop keeps its always-visible index. One canonical filter list is reused. */
+html[data-wb-display="journal"] #boardView .j502-index-toggle {display:none}
+html[data-wb-display="journal"] #boardView .j502-index-contents {min-width:0}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #boardView .j420-atelier-index {
+    padding:9px 10px!important;
+    border-radius:9px!important;
+  }
+  html[data-wb-display="journal"] #boardView .j502-index-toggle {
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    width:100%;min-height:44px;box-sizing:border-box;
+    border:1px solid #cfdbcb;border-radius:5px;padding:9px 12px;
+    background:#f6f5ea;color:#496950;font:800 13px/1.45 var(--j-text);
+    text-align:left;cursor:pointer;
+  }
+  html[data-wb-display="journal"] #boardView .j502-index-state {
+    flex:0 0 auto;font-size:12px;color:#536f56;
+  }
+  html[data-wb-display="journal"] #boardView .j420-atelier-index[data-j502-index-open="false"] .j502-index-contents {
+    display:none!important;
+  }
+  html[data-wb-display="journal"] #boardView .j502-index-contents {
+    padding:4px 3px 8px;
+  }
+  html[data-wb-display="journal"] #boardView .j420-atelier-index nav button {
+    min-width:0;min-height:44px;overflow-wrap:anywhere;white-space:normal;
+  }
+  html[data-wb-display="journal"] #boardView .j420-atelier-tools {
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;margin-bottom:9px;padding-bottom:9px;
+  }
+  html[data-wb-display="journal"] #boardView .j420-atelier-tools .j420-desk-flourish {
+    display:none;
+  }
+  html[data-wb-display="journal"] #boardView .j420-atelier-tools .j420-create-task,
+  html[data-wb-display="journal"] #boardView .j420-atelier-search,
+  html[data-wb-display="journal"] #boardView .j420-atelier-switch {
+    min-width:0;width:100%;box-sizing:border-box;
+  }
+  html[data-wb-display="journal"] #boardView .j420-atelier-search {
+    grid-column:1/-1;grid-row:2;flex:initial;
+  }
+  html[data-wb-display="journal"] #boardView .j420-atelier-switch {
+    grid-column:1/-1;grid-row:3;display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+  html[data-wb-display="journal"] #boardView .j420-atelier-switch button,
+  html[data-wb-display="journal"] #boardView .j420-atelier-tools>button {
+    min-width:0;min-height:44px;white-space:normal;
+  }
+  html[data-wb-display="journal"] #boardView .j420-project-note.j494-inline-note {
+    overflow-wrap:anywhere;
+  }
+  html[data-wb-display="journal"] #boardView .j420-project-note.j494-inline-note .j420-note-actions {
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  html[data-wb-display="journal"] #boardView .j420-project-note.j494-inline-note .j420-note-actions button {
+    min-width:0;min-height:44px;padding:8px 5px;
+  }
+  html[data-wb-display="journal"] #boardView .j420-project-note.j494-inline-note :is(.j420-note-description p,.j420-next-step p,.j420-note-checks li) {
+    min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word;
+  }
+}

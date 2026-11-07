@@ -5906,6 +5906,8 @@ function journalTaskV411(){return document.documentElement.dataset.wbDisplay==='
 // JOURNAL V494: one existing paper note follows its selected case on a phone.
 const journalAtelierInlineMediaV494=window.matchMedia('(max-width:760px)');
 let journalAtelierInlineOpenV494=false;
+// JOURNAL V502: view-only mobile index state; task data and filters stay canonical.
+let journalIndexExpandedV502=false;
 function journalPositionAtelierNoteV494(root){
   if(!root||!journalTaskV411())return;
   const note=root.querySelector('#j494AtelierNote');
@@ -6052,8 +6054,10 @@ function journalAtelierV420(tasks){
       <div class="j420-atelier-stats"><span><small>表示中</small><strong>${tasks.length}<em>件</em></strong></span><span><small>今日動かす</small><strong>${counts[1].count}<em>件</em></strong></span><span><small>確認待ち</small><strong>${counts[2].count}<em>件</em></strong></span><span class="j420-late"><small>今週の期限</small><strong>${dueSoon}<em>件</em></strong></span></div>
     </header>
     <div class="j420-atelier-workbench">
-      <aside class="j420-atelier-index" aria-label="案件索引">
+      <aside class="j420-atelier-index" aria-label="案件索引" data-j502-index-open="${journalIndexExpandedV502}">
         <span class="j420-ribbon" aria-hidden="true"></span>
+        <button type="button" class="j502-index-toggle" data-j502-toggle-index aria-expanded="${journalIndexExpandedV502}" aria-controls="j502IndexContents"><span>案件索引・絞り込み</span><span class="j502-index-state">${journalIndexExpandedV502?'閉じる':'開く'}</span></button>
+        <div class="j502-index-contents" id="j502IndexContents">
         <h3>案件索引</h3><small>VIEW & CATEGORY</small>
         <h4>作業のしおり</h4>
         <nav aria-label="作業のしおり">${counts.map((v,i)=>`<button type="button" data-j420-view="${v.id}" aria-pressed="${journalAtelierViewV420===v.id}"><span class="j420-index-num">${String(i+1).padStart(2,'0')}</span>${v.label}<strong>${v.count}</strong></button>`).join('')}</nav>
@@ -6063,6 +6067,7 @@ function journalAtelierV420(tasks){
           ${categories.map((c,i)=>`<button type="button" data-j420-category="${escapeHtml(c)}" aria-pressed="${journalAtelierCategoryV420===c}"><span class="j420-index-num">${String(i+1).padStart(2,'0')}</span>${escapeHtml(c)}<strong>${tasks.filter(t=>t.category===c).length}</strong></button>`).join('')}
         </nav>
         <button type="button" class="j420-index-reset" data-j420-reset-view>索引をリセット</button>
+        </div>
       </aside>
       <section class="j420-atelier-desk" aria-label="案件の作業机">
         <div class="j420-atelier-tools"><span class="j420-desk-flourish" aria-hidden="true">✦</span>
@@ -6122,6 +6127,13 @@ function journalAtelierV420(tasks){
     journalAtelierV420(tasks);
     journalFocusAtelierNoteV500(elements.boardView,true);
   }));
+  root.querySelector('[data-j502-toggle-index]')?.addEventListener('click',event=>{
+    journalIndexExpandedV502=!journalIndexExpandedV502;
+    const toggle=event.currentTarget;
+    toggle.setAttribute('aria-expanded',String(journalIndexExpandedV502));
+    toggle.closest('.j420-atelier-index').dataset.j502IndexOpen=String(journalIndexExpandedV502);
+    toggle.querySelector('.j502-index-state').textContent=journalIndexExpandedV502?'閉じる':'開く';
+  });
   root.querySelector('[data-j420-new-task]')?.addEventListener('click',()=>openTaskDialog());
   root.querySelectorAll('[data-j420-view]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierViewV420=btn.dataset.j420View;journalAtelierV420(tasks)}));
   root.querySelectorAll('[data-j420-category]').forEach(btn=>btn.addEventListener('click',()=>{journalAtelierCategoryV420=btn.dataset.j420Category;journalAtelierV420(tasks)}));
