@@ -2009,11 +2009,16 @@ function normalizeTaskLayout(layout) {
 // Merge concurrent Firebase collection snapshots into one animation frame.
 // Direct user navigation and committed writes still render immediately.
 let subscriptionRenderFrame = null;
+// JOURNAL V528: transient indication that a render originated in a remote
+// subscription. Direct navigation and task saves must keep their own anchors.
+let journalSubscribedRenderV528 = false;
 function scheduleSubscribedRender() {
   if (subscriptionRenderFrame !== null) return;
   subscriptionRenderFrame = requestAnimationFrame(() => {
     subscriptionRenderFrame = null;
-    render();
+    journalSubscribedRenderV528 = true;
+    try { render(); }
+    finally { journalSubscribedRenderV528 = false; }
   });
 }
 
@@ -7202,7 +7207,80 @@ elements.taskDialog?.addEventListener('close',journalRestoreChronicleCreateV522)
 // JOURNAL V523: transient date-index choice survives task-list rerenders, but
 // never enters canonical tasks, Firebase or persistent settings.
 let journalChronicleSelectedDateV523='';
+// JOURNAL V528: preserve the visible day and keyboard control across remote
+// snapshots. Unlike explicit page navigation this re-render has no new target.
+let journalChronicleSyncRestoreTokenV528=0;
+function journalCaptureChronicleSyncAnchorV528(root){
+  if(!journalSubscribedRenderV528||!journalTaskV411()||root.hidden
+    ||!root.querySelector('.jv-chronicle-day'))return null;
+  // Modal and detail actions have their own V522/V519 return owners.
+  if(elements.taskDialog?.open||elements.timelineMoveDialog?.open
+    ||elements.detailPanel?.classList.contains('open'))return null;
+  const active=root.contains(document.activeElement)?document.activeElement:null;
+  const attrs=['data-j505-date-jump','data-j511-date-picker',
+    'data-timeline-range','data-timeline-prev','data-timeline-today',
+    'data-timeline-next','data-jv-add-date','data-j494-open-task',
+    'data-move-to-timeline','data-task-id'];
+  const focusAttr=attrs.find(attr=>active?.hasAttribute(attr))||'';
+  const sticky=root.querySelector('.j511-chronicle-travel')?.getBoundingClientRect();
+  const visibleTop=sticky&&sticky.bottom>0&&sticky.top<window.innerHeight
+    ?Math.max(0,sticky.bottom):0;
+  const day=[...root.querySelectorAll('.jv-chronicle-day')].find(element=>{
+    const rect=element.getBoundingClientRect();
+    return rect.bottom>visibleTop+12&&rect.top<window.innerHeight-12;
+  });
+  return {
+    date:day?.querySelector('[data-jv-date]')?.dataset.jvDate||'',
+    top:day?.getBoundingClientRect().top??null,
+    width:window.innerWidth,
+    period:toISODate(getTimelineStartDate()),range:state.timelineRange,
+    focusAttr,focusValue:focusAttr?active.getAttribute(focusAttr):'',
+    focusDate:active?.classList.contains('jv-date')
+      ?active.closest('.jv-chronicle-day')?.querySelector('[data-jv-date]')?.dataset.jvDate||'':''
+  };
+}
+function journalRestoreChronicleSyncAnchorV528(anchor,root){
+  const token=++journalChronicleSyncRestoreTokenV528;
+  if(!anchor)return;
+  requestAnimationFrame(()=>{
+    if(token!==journalChronicleSyncRestoreTokenV528||!journalTaskV411()
+      ||state.layout!=='tasks'||state.taskLayout!=='timeline'||root.hidden
+      ||anchor.period!==toISODate(getTimelineStartDate())
+      ||anchor.range!==state.timelineRange)return;
+    // Do not steal the user's focus if another control has been activated.
+    const current=document.activeElement;
+    if(current&&current!==document.body&&current!==document.documentElement
+      &&current.isConnected)return;
+    const day=anchor.date?[...root.querySelectorAll('.jv-chronicle-day')]
+      .find(element=>element.querySelector('[data-jv-date]')?.dataset.jvDate===anchor.date):null;
+    const scrolling=document.scrollingElement;
+    if(day&&scrolling&&anchor.width===window.innerWidth
+      &&Number.isFinite(anchor.top)){
+      scrolling.scrollTop+=day.getBoundingClientRect().top-anchor.top;
+    }else if(day&&anchor.width!==window.innerWidth){
+      day.querySelector('.jv-date')?.scrollIntoView({
+        behavior:'auto',block:'nearest',inline:'nearest'
+      });
+    }
+    let focus=null;
+    if(anchor.focusAttr){
+      focus=[...root.querySelectorAll('['+anchor.focusAttr+']')]
+        .find(el=>el.getAttribute(anchor.focusAttr)===anchor.focusValue);
+    }else if(anchor.focusDate){
+      focus=[...root.querySelectorAll('.jv-chronicle-day')]
+        .find(el=>el.querySelector('[data-jv-date]')?.dataset.jvDate===anchor.focusDate)
+        ?.querySelector('.jv-date');
+    }
+    if(!focus&&(anchor.focusAttr||anchor.focusDate))
+      focus=day?.querySelector('.jv-date')||root.querySelector('[data-j505-date-jump]');
+    if(focus){
+      if(!focus.matches('button,select,input,a,[tabindex]'))focus.tabIndex=-1;
+      focus.focus({preventScroll:true});
+    }
+  });
+}
 function journalChronicleV411(tasks){
+const syncAnchorV528=journalCaptureChronicleSyncAnchorV528(elements.timelineView);
 const start=getTimelineStartDate(),dates=Array.from({length:getTimelineDays(start)},(_,i)=>addDays(start,i));
 if(journalChronicleSelectedDateV523&&!dates.some(d=>toISODate(d)===journalChronicleSelectedDateV523))
   journalChronicleSelectedDateV523='';
@@ -7266,6 +7344,7 @@ root.querySelector('[data-timeline-prev]')?.addEventListener('click',()=>journal
 root.querySelector('[data-timeline-next]')?.addEventListener('click',()=>journalNavigateChronicleV504('[data-timeline-next]',()=>shiftTimeline(1)));
 root.querySelector('[data-timeline-today]')?.addEventListener('click',()=>journalNavigateChronicleV504('[data-timeline-today]',()=>setTimelineStart(state.timelineRange==='month'?toISODate(startOfMonth(startOfToday())):todayISO())));
 root.querySelector('[data-timeline-range]')?.addEventListener('change',e=>journalNavigateChronicleV504('[data-timeline-range]',()=>setTimelineRange(e.target.value)));
+journalRestoreChronicleSyncAnchorV528(syncAnchorV528,root);
 }
 
 function journalDayItemV411(t){return `<article class="jv-day-item ${taskStateClasses(t)}" role="button" tabindex="0" draggable="true" data-task-drag-id="${escapeHtml(t.id)}" data-task-id="${escapeHtml(t.id)}"><strong>${escapeHtml(t.title)}</strong><span>${escapeHtml(t.status)}</span><small>${escapeHtml(t.assignee||'未割当')}</small><div class="j494-day-actions"><button type="button" data-j494-open-task="${escapeHtml(t.id)}" aria-label="${escapeHtml(t.title)}の詳細を見る">詳細を見る</button><button type="button" data-move-to-timeline="${escapeHtml(t.id)}">日付変更</button></div></article>`}
