@@ -76,3 +76,21 @@ test('Ver.341 dark semantics cover real category/priority badges and task detail
   assert.match(css, /--wb-dark-state-overdue:color-mix/);
   assert.doesNotMatch(css, /background:\s*#fff6cf\s*!important/);
 });
+
+test('shared feedback uses theme surfaces and announces save errors without hardcoded fills', () => {
+  const app = read('app.js');
+  const style = read('style.css');
+  const html = read('index.html');
+  const toastBody = app.match(/function toast\(message, error = false\) \{([\s\S]*?)\n\}/)?.[1];
+  assert.ok(toastBody, 'shared toast handler must remain available');
+  assert.match(toastBody, /style\.removeProperty\('background'\)/);
+  assert.match(toastBody, /classList\.toggle\('is-error', Boolean\(error\)\)/);
+  assert.match(toastBody, /setAttribute\('role', error \? 'alert' : 'status'\)/);
+  assert.match(toastBody, /setAttribute\('aria-live', error \? 'assertive' : 'polite'\)/);
+  assert.doesNotMatch(toastBody, /style\.background\s*=/);
+  assert.match(style, /\.toast\{[^}]*background:var\(--wb-ui-gradient/);
+  assert.match(style, /\.toast\{[^}]*color:var\(--wb-ui-ink/);
+  assert.match(style, /\.toast\.is-error\{border-left-color:#b91c2b\}/);
+  assert.match(style, /@media \(max-width: 600px\) \{[\s\S]*?\.toast:not\(\.in-dialog\)/);
+  assert.match(html, /id="toast"[^>]*role="status"[^>]*aria-live="polite"[^>]*aria-atomic="true"/);
+});

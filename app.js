@@ -11883,8 +11883,14 @@ function toast(message, error = false) {
     document.body.appendChild(elements.toast);
     elements.toast.classList.remove("in-dialog");
   }
+  // The single shared notification belongs to the current display theme.
+  // Clear any older inline background so light, pastel, pure and dark modes
+  // all use the same semantic theme surface without a hardcoded blue fill.
+  elements.toast.style.removeProperty('background');
+  elements.toast.classList.toggle('is-error', Boolean(error));
+  elements.toast.setAttribute('role', error ? 'alert' : 'status');
+  elements.toast.setAttribute('aria-live', error ? 'assertive' : 'polite');
   elements.toast.textContent = message;
-  elements.toast.style.background = error ? "#b91c2b" : "#132b40";
   elements.toast.hidden = false;
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => elements.toast.hidden = true, 3200);
