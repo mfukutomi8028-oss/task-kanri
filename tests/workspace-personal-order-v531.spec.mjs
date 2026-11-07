@@ -585,7 +585,10 @@ for (const width of [320, 390]) {
 
     // Search terms are ephemeral, not written to persistent browser storage.
     const persisted = await page.evaluate(() => Object.entries(localStorage)
-      .some(([key, value]) => key.includes('search') && (value.includes('福冨だけ') || value.includes('森井だけ'))));
+      // The fixture seeds canonical ToDo data under a room name that itself
+      // contains 'search'. Data records are not saved filter preferences.
+      .some(([key, value]) => !key.startsWith('system-task-todos:')
+        && (value.includes('福冨だけ') || value.includes('森井だけ'))));
     expect(persisted).toBe(false);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, { timeout: 30_000 });
