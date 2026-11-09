@@ -616,9 +616,11 @@
         });
       }
       schedulePatch(0);
+      return {ok:true};
     } catch (error) {
       console.warn("Comment reaction save failed", error);
       showMessage("リアクションを保存できませんでした。もう一度お試しください。", true);
+      return {ok:false,error:String(error)};
     } finally {
       busy.delete(operation);
       document.querySelectorAll(`[data-comment-reaction-id="${CSS.escape(commentIdValue)}"]`).forEach(button => { button.disabled = false; });
@@ -890,6 +892,28 @@
     });
     schedulePatch(0);
   }
+
+  window.WorkBoardOriginCommentBridge = Object.freeze({
+    readTask:readCurrentCommentTask,
+    reactions:REACTIONS.map(item=>({...item})),
+    async dispatch(command={}) {
+      if(command.ownerRoom!==roomId()||command.ownerUser!==currentUser())
+        return {ok:false,error:'owner-mismatch'};
+      const task=readCurrentCommentTask(command.id);
+      if(!task||!commentRecords(task.comments).some(c=>String(c.id)===command.commentId))
+        return {ok:false,error:'not-found'};
+      if(command.type==='comment.reaction')
+        return await toggleReaction(command.id,command.commentId,command.emoji,command.expectedPressed)||{ok:false,error:'unavailable'};
+      if(command.type!=='comment.reply'||!String(command.text||'').trim()||String(command.text).length>6000
+        ||!['作業メモ','業者回答','確認依頼','申し送り'].includes(command.commentType))return {ok:false,error:'invalid-input'};
+      if(!window.firebaseConfig)return window.WorkBoardPaletteBridge.dispatch({type:'task.comment',id:command.id,
+        revision:task.revision,text:command.text,commentType:command.commentType,replyTo:command.commentId,
+        ownerRoom:command.ownerRoom,ownerUser:command.ownerUser});
+      if(!isRemoteOnline())return {ok:false,error:'unavailable'};
+      try{return {ok:true,id:await saveRemoteReply(command.id,command.commentId,command.text,command.commentType)}}
+      catch(error){return {ok:false,error:String(error)}}
+    }
+  });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
   else start();

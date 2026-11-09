@@ -906,7 +906,8 @@ test('JOURNAL V494 task desk note moves one node and timeline detail restores fo
   assert.ok(start>0&&end>start);
   const move=app.slice(start,end);
   assert.match(move,/card\.after\(note\)/);
-  assert.match(move,/root\.append\(note\)/);
+  assert.match(move,/desktop\.append\(note\)/);
+  assert.match(move,/root\.querySelector\('\.j420-atelier'\)/);
   assert.match(move,/note\.classList\.toggle\('j494-inline-note',inline\)/);
   assert.doesNotMatch(move,/(?:runTransaction|persist|firebase|database\.ref)\s*\(/i);
   assert.match(app,/data-j494-atelier-back/);
@@ -1287,7 +1288,7 @@ test('JOURNAL V525 diary view switch restores semantic date with pixel fallback'
   assert.match(nav,/function journalCaptureChronicleReadAnchorV525\(view\)/);
   assert.match(nav,/j511-chronicle-travel/);
   assert.match(nav,/visibleHeight>=Math\.min\(32,Math\.max\(12,rect\.height\*\.2\)\)/);
-  assert.match(nav,/date,top:day\.getBoundingClientRect\(\)\.top,width:window\.innerWidth/);
+  assert.match(nav,/date,top:day\.getBoundingClientRect\(\)\.top/);
   assert.match(nav,/if\(previous==='timeline'\)journalCaptureChronicleReadAnchorV525\(oldView\)/);
   assert.match(nav,/anchor\.start===toISODate\(getTimelineStartDate\(\)\)&&anchor\.range===state\.timelineRange/);
   assert.match(nav,/window\.scrollY\+day\.getBoundingClientRect\(\)\.top-anchor\.top/);

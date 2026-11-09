@@ -226,7 +226,7 @@ test('Palette schedule details and list offer canonical linked-task navigation',
 
 test('Palette account switch delegates only to the canonical existing user selector',()=>{
  const start=app.indexOf('window.WorkBoardPaletteBridge = Object.freeze({');
- const end=app.indexOf('// Modern origin. reuses',start);
+ const end=app.indexOf("window.dispatchEvent(new Event('workboard:canonical-bridge-ready'));",start);
  const boundary=app.slice(start,end);
  assert.ok(start>0&&end>start);
  assert.match(boundary,/selectUser\(value\)/);

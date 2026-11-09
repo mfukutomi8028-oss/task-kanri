@@ -5,6 +5,7 @@
 .wb-journal-line-icon-v367 {display:none !important}
 
 html[data-wb-display="journal"] {
+  overflow-x:clip!important;overflow-y:visible!important;
   --j-desk:#e8e4dc;--j-paper:#fffcf5;--j-paper-alt:#fbf7ec;
   --j-ink:#263844;--j-muted:#586872;--j-accent:#355a6c;
   --j-border:#d7d0c3;--j-line:rgba(101,122,130,.16);
@@ -28,6 +29,7 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] {
   --j-rose:#bc7266;--j-sage:#9caf93;--j-index:#e9eedf;
 }
 html[data-wb-display="journal"] body {
+  overflow-x:clip!important;overflow-y:visible!important;
   margin:0 !important;padding:0 !important;background:var(--j-desk) !important;
   color:var(--j-ink) !important;font:15px/1.6 var(--j-text) !important;
 }

@@ -18,8 +18,9 @@ test('origin independent Modern reads the canonical data owner', () => {
   assert.match(css,/data-wb-palette-next-preview/);
 });
 test('origin delegates schedule editing and safe task deletion', () => {
-  assert.match(app,/WorkBoardOriginScheduleBridge = Object\.freeze/);
-  assert.match(app,/openScheduleDialog\(record\)/);
+  assert.match(app,/writePaletteScheduleV372\(command\)/);
+  assert.match(source,/type:'series.preview-delete'/);
+  assert.doesNotMatch(source,/WorkBoardOriginScheduleBridge|schedule-classic/);
   assert.match(app,/requestDeleteWithSeries\('task', id/);
   assert.match(app,/workboard:canonical-bridge-ready/);
   assert.doesNotMatch(source,/firebase\/database|runTransaction/);
@@ -78,7 +79,7 @@ test('origin schedule UI is native and preserves canonical CAS ownership',()=>{
   assert.match(source,/type:id\?'schedule.update':'schedule.create'/);
   assert.match(source,/f.dataset.revision=String\(original\?\.revision\?\?0\)/);
   assert.match(source,/type:'schedule.delete'/);
-  assert.match(source,/schedule-classic/);
+  assert.doesNotMatch(source,/schedule-classic/);
   for(const name of ['schedule.create','schedule.update','schedule.delete'])
     assert.match(app,new RegExp("case '"+name.replaceAll('.','\\.')+"':"));
   assert.doesNotMatch(source,/if\(kind==='events' && edit\)\{window.WorkBoardOriginScheduleBridge/);

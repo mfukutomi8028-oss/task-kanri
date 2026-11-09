@@ -692,7 +692,7 @@ test('Origin keyboard inspector keeps focus inside the drawer and protects unsav
  await expect(sheet.locator('#panelHeading')).toHaveText(titles[1]);
  await page.keyboard.press('ArrowLeft');
  await expect(sheet.locator('#panelHeading')).toHaveText(titles[0]);
- const last=sheet.locator('.origin-sheet-secondary [data-action="todo-toggle"]');
+ const last=sheet.locator('.origin-sheet-secondary button:enabled').last();
  await last.focus();
  await page.keyboard.press('Tab');
  await expect(sheet.locator('.sheet-close')).toBeFocused();
@@ -2487,10 +2487,10 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await task.locator('[data-action="list-quick-edit"]').click();
  const taskForm=sheet.locator('#editForm[data-kind="tasks"]');
  await expect(taskForm).toBeVisible();
- const taskOptional=taskForm.locator('.origin-task-optional');
+ const taskOptional=taskForm.locator('.origin-task-optional:not(.origin-recurrence)');
  await expect(taskOptional).toHaveJSProperty('open',false);
  await expect(taskForm.locator('[name="desc"]')).toBeVisible();
- const taskColumns=await taskForm.locator('.form-grid').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);
+ const taskColumns=await taskForm.locator('.form-grid:not(#originRecurrenceFields)').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);
  expect(taskColumns).toBe(2);
  await taskOptional.locator('summary').click();
  await expect(taskOptional).toHaveJSProperty('open',true);

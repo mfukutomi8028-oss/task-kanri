@@ -157,6 +157,7 @@
         featureState.taskStarts = loadLocalStarts();
         featureState.tasksLoaded = true;
         featureState.startsLoaded = true;
+      window.dispatchEvent(new Event('workboard:task-starts-changed'));
         renderMemoView();
         applyFutureTaskUi();
         return false;
@@ -179,6 +180,7 @@
     onValue(ref(featureState.db, `rooms/${featureState.roomId}/taskStarts`), snapshot => {
       featureState.taskStarts = snapshot.val() || {};
       featureState.startsLoaded = true;
+      window.dispatchEvent(new Event('workboard:task-starts-changed'));
       localStorage.setItem(startStorageKey(), JSON.stringify(featureState.taskStarts));
       applyFutureTaskUi();
       populateStartDateFromCurrentTask();
@@ -882,6 +884,7 @@
       if (result.localOnly) {
         applyFutureTaskUi();
         renderReservedTaskDialogIfOpen();
+        window.dispatchEvent(new Event('workboard:task-starts-changed'));
       }
       showFeatureMessage(nextDate && nextDate > todayIso() ? `開始日 ${formatDate(nextDate)} の予約タスクとして保存しました。` : '開始日を保存しました。');
       return true;
@@ -893,6 +896,25 @@
       featureState.startDateWriteBusy.delete(id);
     }
   }
+
+  // Presentations share this sidecar's existing subscription and repository.
+  window.WorkBoardOriginStartBridge = Object.freeze({
+    readSnapshot:()=>JSON.parse(JSON.stringify(featureState.taskStarts||{})),
+    async save(command={}) {
+      if(command.ownerRoom!==featureState.roomId||command.ownerUser!==currentUser())
+        return {ok:false,error:'owner-mismatch'};
+      const task=window.WorkBoardPaletteBridge?.readSnapshot().tasks.find(x=>x.id===command.id);
+      const date=String(command.date||'');
+      const parsed=new Date(date+'T12:00:00');
+      if(!task||!Number.isSafeInteger(command.revision)||command.revision<0
+        ||(date&&(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(parsed.getTime())
+          ||`${parsed.getFullYear()}-${String(parsed.getMonth()+1).padStart(2,'0')}-${String(parsed.getDate()).padStart(2,'0')}`!==date
+          ||(task.dueDate&&date>task.dueDate))))
+        return {ok:false,error:'invalid-input'};
+      const ok=await persistStartDate(command.id,date,command.revision);
+      return ok?{ok:true}:{ok:false,error:'revision-or-state-mismatch'};
+    }
+  });
 
   async function cleanupOrphanStarts() {
     return startDateRepository.cleanupOrphans();

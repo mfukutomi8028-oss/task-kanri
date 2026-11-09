@@ -1604,6 +1604,7 @@ async function transactionRecord(collection, id, expectedRevision, nextRecord) {
 
 async function persistMetaFields(fields) {
   const names = Object.keys(fields);
+  const expectedRevisions = {...state.metaRevisions};
   if (!names.length) return { ok: true, mode: state.connectionMode, operationId: 'meta:none', affectedPaths: [] };
   const key = names.sort().join(',');
   return executeWrite('meta', key, async () => {
@@ -1620,7 +1621,7 @@ async function persistMetaFields(fields) {
       const meta = current && typeof current === 'object' ? current : {};
       const revisions = meta._revisions && typeof meta._revisions === 'object' ? meta._revisions : {};
       for (const name of names) {
-        if (normalizeRevision(revisions[name]) !== normalizeRevision(state.metaRevisions[name])) {
+        if (normalizeRevision(revisions[name]) !== normalizeRevision(expectedRevisions[name])) {
           conflict = true;
           return;
         }
@@ -1668,10 +1669,10 @@ async function persistKnowledge(item) {
   return executeWrite('knowledge', item.id, () => transactionRecord('knowledge', item.id, expectedRevision, () => item));
 }
 
-async function createKnowledgeFromTask(id) {
+async function createKnowledgeFromTask(id, values = null) {
   const task = state.tasks.find(t => t.id === id);
   if (!task) return;
-  const action = prompt("ナレッジとして残す対応内容を入力してください。", task.completedMemo || task.description || "");
+  const action = values ? String(values.action||'') : prompt("ナレッジとして残す対応内容を入力してください。", task.completedMemo || task.description || "");
   if (action === null) return;
   const item = normalizeKnowledge({
     id: task.knowledgeId || generateKnowledgeId(),
@@ -1682,7 +1683,8 @@ async function createKnowledgeFromTask(id) {
     action: action.trim(),
     checkpoint: (task.checklist || []).map(i => i.text).join(" / "),
     author: getCurrentUser(),
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    ...(values?{title:values.title,summary:values.summary,symptom:values.symptom,checkpoint:values.checkpoint}:{})
   });
   const expectedKnowledge = task.knowledgeId ? state.knowledge.find(item => item.id === task.knowledgeId) : null;
   const result = await executeWrite('knowledge-link', task.id, () => transactionRoom(root => {
@@ -1702,6 +1704,7 @@ async function createKnowledgeFromTask(id) {
   }, [`rooms/${ROOM_ID}/knowledge/${item.id}`, `rooms/${ROOM_ID}/tasks/${task.id}`]));
   if (!result.ok) return showWriteFailure(result, 'ナレッジを作成できませんでした。');
   toast("ナレッジを作成しました");
+  return {ok:true,id:item.id};
 }
 
 async function unlinkKnowledgeFromTask(id) {
@@ -1723,6 +1726,7 @@ async function unlinkKnowledgeFromTask(id) {
   }, [`rooms/${ROOM_ID}/knowledge/${knowledgeId}`, `rooms/${ROOM_ID}/tasks/${task.id}`]));
   if (!result.ok) return showWriteFailure(result, 'ナレッジ化を解除できませんでした。');
   toast("ナレッジ化を解除しました");
+  return {ok:true};
 }
 
 function getSchedulesForTask(taskId) {
@@ -1790,6 +1794,7 @@ async function duplicateTask(id) {
   state.layout = "tasks";
   render();
   toast("タスクを複製しました");
+  return {ok:true,id:copy.id};
 }
 
 function openTaskDialogWithSeed(seed = {}) {
@@ -6344,6 +6349,7 @@ async function deleteSchedule(id, expectedRevision = null) {
 // before confirmation, then checked again inside the Firebase transaction.
 let pendingRecurringDelete = null;
 let recurringDeleteBusy = false;
+const originRecurringDeleteSelections = new Map();
 
 function rawRecurringDeleteRoot() {
   const records = name => {
@@ -6762,7 +6768,12 @@ function journalCaptureChronicleReadAnchorV525(view){
   const bookmark=view.querySelector('.j511-chronicle-travel')?.getBoundingClientRect();
   const visibleTop=bookmark&&bookmark.bottom>0&&bookmark.top<window.innerHeight
     ?Math.max(0,bookmark.bottom+8):0;
-  const day=[...view.querySelectorAll('.jv-chronicle-day')].find(element=>{
+  const days=[...view.querySelectorAll('.jv-chronicle-day')];
+  // An explicitly selected date remains the reading anchor while visible,
+  // including near the document end where it cannot reach the top shelf.
+  const picked=days.find(element=>element.querySelector('[data-jv-date]')?.dataset.jvDate===journalChronicleSelectedDateV523);
+  const pickedRect=picked?.getBoundingClientRect();
+  const day=pickedRect&&pickedRect.bottom>visibleTop&&pickedRect.top<window.innerHeight?picked:days.find(element=>{
     const rect=element.getBoundingClientRect();
     const visibleHeight=Math.min(rect.bottom,window.innerHeight)
       -Math.max(rect.top,visibleTop);
@@ -6770,7 +6781,9 @@ function journalCaptureChronicleReadAnchorV525(view){
   });
   const date=day?.querySelector('.jv-day-records[data-jv-date]')?.dataset.jvDate;
   journalChronicleReadAnchorV525=date?{
-    date,top:day.getBoundingClientRect().top,width:window.innerWidth,
+    date,top:day.getBoundingClientRect().top,
+    width:journalChronicleReadAnchorV525?.date===date
+      ?journalChronicleReadAnchorV525.width:window.innerWidth,
     start:toISODate(getTimelineStartDate()),range:state.timelineRange
   }:null;
 }
@@ -6984,7 +6997,10 @@ function journalPositionAtelierNoteV494(root){
   const inline=Boolean(journalAtelierInlineMediaV494.matches&&journalAtelierInlineOpenV494&&card);
   if(inline){
     if(note.previousElementSibling!==card||note.parentElement!==card.parentElement)card.after(note);
-  }else if(note.parentElement!==root)root.append(note);
+  }else{
+    const desktop=root.querySelector('.j420-atelier')||root;
+    if(note.parentElement!==desktop)desktop.append(note);
+  }
   note.classList.toggle('j494-inline-note',inline);
   if(!inline)journalAtelierReaderAnchorV556=null;
   root.querySelectorAll('[data-j420-task-id]').forEach(el=>
@@ -7045,8 +7061,13 @@ function journalOpenTaskNoteV519(id,layout,action,source,edit=false){
   journalTimelineReturnUndatedV504=false;
   journalTimelineReturnTopV505=null;
   journalTimelineReturnDayV536=null;
-  if(edit)openTaskEditorById(id);
-  else selectTask(id);
+  if(edit){
+    // A double click bypasses the delayed read click. Keep the edited row
+    // selected so a concurrent removal resolves its nearest surviving row.
+    if(layout==='list')journalIndexStateV425.selected=id;
+    else if(layout==='board')journalAtelierSelectedV420=id;
+    openTaskEditorById(id);
+  }else selectTask(id);
 }
 function journalRestoreTaskNoteV519(){
   const origin=journalTaskNoteReturnV519;
@@ -7202,6 +7223,10 @@ if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
 }
 elements.taskDialog?.addEventListener('close',()=>{
   if(!journalTaskNoteReturnV519&&!journalTimelineReturnTaskV494)return;
+  // Direct notebook editing returns to its inline note or row. The shared
+  // editor's detail preview must not cover that original reading surface.
+  if(journalTaskV411()&&journalTaskNoteReturnV519
+    &&['edit','row'].includes(journalTaskNoteReturnV519.action))closeDetail();
   requestAnimationFrame(journalRestoreTaskOriginV536);
 });
 // Escape belongs to JOURNAL's existing folio keyboard handler (v411).
@@ -7688,7 +7713,16 @@ function journalAtelierV420(tasks){
     journalAtelierReturnAnchorV516=null;
     journalAtelierViewV420='all';
     journalAtelierCategoryV420='';
-    if(elements.searchInput.value){
+    // Capture the explicit reset, not the previous input value, in the
+    // subscribed-render focus snapshot.
+    const visibleSearch=root.querySelector('[data-j420-search]');
+    if(visibleSearch){
+      const hadQuery=Boolean(elements.searchInput.value);
+      visibleSearch.value='';
+      // Bubble through JOURNAL's existing shared-query owner before repaint.
+      visibleSearch.dispatchEvent(new Event('input',{bubbles:true}));
+      if(!hadQuery)journalAtelierV420(tasks);
+    }else if(elements.searchInput.value){
       elements.searchInput.value='';
       elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}));
     }else journalAtelierV420(tasks);
@@ -8104,8 +8138,7 @@ function journalIndexV425(tasks){
         });
       }
     };
-    row.addEventListener('click',e=>{if(!e.target.closest('input,button,label,select'))select()});
-    row.addEventListener('dblclick',e=>{if(!e.target.closest('input,button,label,select'))journalOpenTaskNoteV519(row.dataset.j425Row,'list','row',row,true)});
+    journalBindReadAndEditPointer(row,select,()=>journalOpenTaskNoteV519(row.dataset.j425Row,'list','row',row,true));
     row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('input,button,label,select')){e.preventDefault();select()}});
   });
   root.querySelectorAll('[data-j430-facet]').forEach(button=>button.addEventListener('click',()=>{
@@ -8422,7 +8455,7 @@ const dayJumpOptions=dates.map(d=>{
 }).join('');
 elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付" id="j523ChronicleDateSelect"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div><nav class="j511-chronicle-travel" aria-label="日誌内の画面切替"><div class="j509-chronicle-switch" role="group" aria-label="タスク表示形式"><button type="button" data-j509-layout="board">机上</button><button type="button" data-j509-layout="list">一覧</button><button type="button" aria-pressed="true">日誌</button></div><button type="button" class="j511-date-picker" data-j511-date-picker aria-controls="j523ChronicleDateSelect">日付を選ぶ<small class="j523-selected-date">${selectedDayV523}</small></button></nav>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section>`;
 bindTaskDragSources(elements.timelineView);
-elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineDetailV494(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineEditorV505(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();journalOpenTimelineDetailV494(row.dataset.taskId)}})});
+elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{journalBindReadAndEditPointer(row,()=>journalOpenTimelineDetailV494(row.dataset.taskId),()=>journalOpenTimelineEditorV505(row.dataset.taskId));row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();journalOpenTimelineDetailV494(row.dataset.taskId)}})});
 elements.timelineView.querySelectorAll('[data-j494-open-task]').forEach(b=>b.addEventListener('click',e=>{
   e.stopPropagation();journalOpenTimelineDetailV494(b.dataset.j494OpenTask);
 }));
@@ -8473,6 +8506,23 @@ root.querySelector('[data-timeline-range]')?.addEventListener('change',e=>journa
 journalRestoreChronicleSyncAnchorV528(syncAnchorV528,root);
 }
 
+// Keep the source node alive until a mouse double-click can be distinguished
+// from a read click. Touch and keyboard activation remain immediate.
+function journalBindReadAndEditPointer(row,read,edit){
+  let timer=0;
+  const ignored=event=>event.target.closest('button,input,select,label');
+  row.addEventListener('click',event=>{
+    if(ignored(event))return;
+    clearTimeout(timer);
+    if(event.detail>1)return;
+    if(event.detail===0||event.pointerType==='touch')read();
+    else timer=setTimeout(()=>{if(row.isConnected)read()},240);
+  });
+  row.addEventListener('dblclick',event=>{
+    if(ignored(event))return;
+    clearTimeout(timer);event.preventDefault();edit();
+  });
+}
 function journalDayItemV411(t){return `<article class="jv-day-item ${taskStateClasses(t)}" role="button" tabindex="0" draggable="true" data-task-drag-id="${escapeHtml(t.id)}" data-task-id="${escapeHtml(t.id)}"><strong>${escapeHtml(t.title)}</strong><span>${escapeHtml(t.status)}</span><small>${escapeHtml(t.assignee||'未割当')}</small><div class="j494-day-actions"><button type="button" data-j494-open-task="${escapeHtml(t.id)}" aria-label="${escapeHtml(t.title)}の詳細を見る">詳細を見る</button><button type="button" data-move-to-timeline="${escapeHtml(t.id)}">日付変更</button></div></article>`}
 
 function renderBoard(tasks) {
@@ -10491,6 +10541,7 @@ async function reorderUsers(source, target) {
   renderUserManager();
   render();
   toast("ユーザーの順番を変更しました");
+  return result;
 }
 
 async function reorderStatuses(source, target) {
@@ -10506,6 +10557,7 @@ async function reorderStatuses(source, target) {
   renderStatusManager();
   render();
   toast("状態の順番を変更しました");
+  return result;
 }
 
 async function reorderCategories(source, target) {
@@ -10522,6 +10574,7 @@ async function reorderCategories(source, target) {
   renderCategoryManager();
   render();
   toast("分類の順番を変更しました");
+  return result;
 }
 
 
@@ -10563,18 +10616,19 @@ function renderUserManager() {
 }
 
 
-async function addUserFromForm() {
-  const name = sanitizeUser(elements.newUserName.value);
+async function addUserFromForm(rawName = elements.newUserName.value, color = elements.newUserColor.value) {
+  const name = sanitizeUser(rawName);
   if (!name) return toast("ユーザー名を入力してください", true);
   if (state.users.some(u => normalizeText(u) === normalizeText(name))) return toast("同じユーザーが既にあります", true);
   const previousUsers = [...state.users]; const previousColors = { ...state.userColors };
   state.users = [...state.users, name];
-  state.userColors = { ...state.userColors, [name]: elements.newUserColor.value || "#7c5cff" };
+  state.userColors = { ...state.userColors, [name]: color || "#7c5cff" };
   elements.newUserName.value = "";
-  setUsers(state.users);
+  setUsers(state.users,{persist:false});
   const result = await saveUserSettings(true);
   if (!result?.ok) { state.users = previousUsers; state.userColors = previousColors; localStorage.setItem(usersKey(), JSON.stringify(previousUsers)); localStorage.setItem(colorsKey(), JSON.stringify(previousColors)); return showWriteFailure(result, 'ユーザーを追加できませんでした。'); }
   renderUserManager();
+  return result;
 }
 
 async function deleteUser(name) {
@@ -10594,6 +10648,7 @@ async function deleteUser(name) {
   syncUserUi();
   renderUserManager();
   render();
+  return result;
 }
 
 function setUsers(users, options = {}) {
@@ -10796,8 +10851,8 @@ function renderStatusManager() {
     onReorder: reorderStatuses
   });
 }
-async function addStatusFromForm() {
-  const name = sanitizeStatus(elements.newStatusName.value);
+async function addStatusFromForm(rawName = elements.newStatusName.value) {
+  const name = sanitizeStatus(rawName);
   if (!name) return toast("状態名を入力してください", true);
   if (getStatusList({ includeTaskOnly: false }).some(status => normalizeText(status) === normalizeText(name))) return toast("同じ状態が既にあります", true);
   const previous = [...state.statuses];
@@ -10812,6 +10867,7 @@ async function addStatusFromForm() {
   renderStatusManager();
   render();
   toast("状態を追加しました");
+  return result;
 }
 async function renameStatus(oldName, newValue) {
   const next = sanitizeStatus(newValue);
@@ -10833,6 +10889,7 @@ async function renameStatus(oldName, newValue) {
   renderStatusManager();
   render();
   toast("状態を更新しました");
+  return result;
 }
 async function deleteStatus(name) {
   if (isProtectedDeleteStatus(name)) {
@@ -10864,6 +10921,7 @@ async function deleteStatus(name) {
   renderStatusManager();
   render();
   toast("状態を削除しました");
+  return result;
 }
 function setStatuses(statuses, options = {}) {
   state.statuses = uniqueStatuses(statuses);
@@ -10959,8 +11017,8 @@ function renderCategoryManager() {
 }
 
 
-async function addCategoryFromForm() {
-  const name = sanitizeCategory(elements.newCategoryName.value);
+async function addCategoryFromForm(rawName = elements.newCategoryName.value) {
+  const name = sanitizeCategory(rawName);
   if (!name) return toast("分類名を入力してください", true);
   if (state.categories.some(c => normalizeText(c) === normalizeText(name))) return toast("同じ分類が既にあります", true);
   const previous = [...state.categories];
@@ -10975,6 +11033,7 @@ async function addCategoryFromForm() {
   syncStatusOptions(elements.statusFilter, true);
   renderCategoryManager();
   render();
+  return result;
 }
 async function renameCategory(oldName, newValue) {
   const next = sanitizeCategory(newValue);
@@ -10991,6 +11050,7 @@ async function renameCategory(oldName, newValue) {
   renderCategoryManager();
   render();
   toast("分類を更新しました");
+  return result;
 }
 async function deleteCategory(name) {
   if (state.categories.length <= 1) return;
@@ -11011,6 +11071,7 @@ async function deleteCategory(name) {
   renderCategoryManager();
   render();
   toast("分類を削除しました");
+  return result;
 }
 function setCategories(categories, options = {}) {
   state.categories = uniqueCategories(categories);
@@ -11554,22 +11615,29 @@ function addTaskRecurrenceDate() {
 }
 
 function taskRecurrenceValidationMessage(recurrence, rule) {
+  return validateTaskRecurrenceValues(recurrence, {
+    ...rule, count: $("taskRecurrenceCount")?.value,
+    endDate: $("taskRecurrenceEndDate")?.value || rule.endDate
+  }, !$("taskId")?.value);
+}
+
+function validateTaskRecurrenceValues(recurrence, rule, isNew) {
   if (recurrence === "none") return "";
   if (recurrence === "dates") {
     if (!rule.selectedDates.length) return "作成する日付を1件以上追加してください。";
-    if (!$("taskId")?.value && !rule.selectedDates.some(date => date > todayISO())) {
+    if (isNew && !rule.selectedDates.some(date => date > todayISO())) {
       return "明日以降の作成日を指定してください。";
     }
     return "";
   }
   if (rule.endMode === "count") {
-    const value = Number($("taskRecurrenceCount")?.value);
+    const value = Number(rule.count);
     if (!Number.isInteger(value) || value < 1 || value > SCHEDULE_COPY_MAX) {
       return "自動作成する件数は1〜200の範囲で指定してください。";
     }
   }
   if (rule.endMode === "date") {
-    const endDate = $("taskRecurrenceEndDate")?.value || "";
+    const endDate = rule.endDate || "";
     if (!validRecurrenceDate(endDate)) return "繰り返しの終了日を指定してください。";
     if (endDate < rule.anchorDate) return "終了日は繰り返し開始日以降にしてください。";
   }
@@ -11750,6 +11818,14 @@ function getRecurrenceRuleFromForm() {
   if (recurrence === "weekly" && !rule.weekdays.length) rule.weekdays = [base.getDay()];
   const existingId = $("taskId")?.value || "";
   const existing = readTaskDialogBase(existingId)?.task;
+  return taskRecurrenceRuleFromValues(recurrence, rule, existing, existingId);
+}
+
+// Shared calendar-edit semantics for Classic and Origin. Display code never
+// resets a series counter merely because its termination condition changed.
+function taskRecurrenceRuleFromValues(recurrence, rule, existing, existingId) {
+  const anchorDate = rule.anchorDate;
+  const selectedDates = rule.selectedDates || [];
   const previous = normalizeRecurrenceRule(recurrence, existing?.recurrenceRule || {},
     existing?.recurrenceRule?.anchorDate || anchorDate);
   // End-mode/count edits do not reset the cycle or previously generated count.
@@ -12212,6 +12288,10 @@ function paletteNextSnapshot() {
     assignees: getAssigneeOptions().map(value => String(value)),
     statuses: getStatusList().map(status => String(status)),
     categories: [...state.categories],
+    templates: state.taskTemplates.map(item=>({...item})),
+    templateRevision: normalizeRevision(state.metaRevisions.taskTemplates),
+    management:{users:[...state.users],categories:[...state.categories],statuses:getStatusList({includeTaskOnly:false}),protectedStatuses:getStatusList({includeTaskOnly:false}).filter(isProtectedDeleteStatus),colors:{...state.userColors}},
+    knowledge: state.knowledge.map(item=>({...item})),
     tasks: state.tasks.map(task => ({
       id: task.id, title: task.title, status: task.status, priority: task.priority,
       category: task.category, assignee: task.assignee, requester: task.requester || '',
@@ -12219,7 +12299,7 @@ function paletteNextSnapshot() {
       description: task.description || '', requester: task.requester || '',
       tags: [...(task.tags || [])], checklist: (task.checklist || []).map(item => ({ text: item.text, done: Boolean(item.done) })),
       history: (task.history || []).slice(-5).map(h => ({ text: String(h.text || ''), author: String(h.author || ''), createdAt: Number(h.createdAt) || 0 })),
-      recurrence: task.recurrence || 'none', pinned: Boolean(task.pinned),
+      recurrence: task.recurrence || 'none', recurrenceRule: {...task.recurrenceRule}, hasSeries:isRecurringDeleteCandidate('task',task),knowledgeId:task.knowledgeId||'', pinned: Boolean(task.pinned),
       favorite: isTaskStarred(task.id), completed: isCompletedStatus(task.status),
       revision: task.revision, updatedAt: task.updatedAt || 0
     })),
@@ -12263,6 +12343,24 @@ function notifyPaletteNextSubscribers() {
 function paletteScheduleOwnerV372(command) {
   return String(command.ownerRoom || "") === ROOM_ID
     && String(command.ownerUser || "") === getCurrentUser();
+}
+
+function originTaskRecurrence(command, existing = null) {
+  const recurrence = String(command.recurrence ?? existing?.recurrence ?? 'none');
+  if (normalizeRecurrence(recurrence) !== recurrence) return {error:'invalid-input'};
+  const raw = command.recurrenceRule || existing?.recurrenceRule || {};
+  const rule = normalizeRecurrenceRule(recurrence, raw, todayISO());
+  if (recurrence !== 'none' && (!validRecurrenceDate(raw.anchorDate)
+    || !Number.isInteger(Number(raw.interval)) || raw.interval < 1 || raw.interval > 36
+    || !['count','date','unlimited','dates'].includes(raw.endMode)
+    || (recurrence === 'weekly' && (!Array.isArray(raw.weekdays) || !raw.weekdays.length
+      || raw.weekdays.some(x=>!Number.isInteger(x)||x<0||x>6)))
+    || (recurrence === 'dates' && (!Array.isArray(raw.selectedDates)
+      || raw.selectedDates.length > SCHEDULE_COPY_MAX || raw.selectedDates.some(x=>!validRecurrenceDate(x))))))
+    return {error:'invalid-input'};
+  const message = validateTaskRecurrenceValues(recurrence, {...rule,count:raw.count}, !existing);
+  if (message) return {error:'invalid-input',detail:message};
+  return {recurrence,rule:taskRecurrenceRuleFromValues(recurrence,rule,existing,existing?.id||'')};
 }
 
 function paletteScheduleCopyConfigV372(raw = {}) {
@@ -12467,14 +12565,18 @@ async function savePaletteNextTaskV370(command) {
       return { ok: false, error: 'invalid-input' };
     parsedChecklist.forEach((item,index) => { item.done = command.checklistDone[index]; });
   }
+  const recurrenceConfig = command.recurrence === undefined
+    ? {recurrence:existing?.recurrence||'none',rule:existing?.recurrenceRule||{}}
+    : originTaskRecurrence(command,existing);
+  if (recurrenceConfig.error) return {ok:false,...recurrenceConfig};
   const now = Date.now();
   const draft = normalizeTask({
     ...existing, id, title, description, assignee, status, priority, category,
     dueDate, dueTime, requester, tags: splitTags(tagsRaw),
     checklist: parsedChecklist,
     pinned: Boolean(command.pinned),
-    recurrence: existing?.recurrence || 'none',
-    recurrenceRule: existing?.recurrenceRule || {},
+    recurrence: recurrenceConfig.recurrence,
+    recurrenceRule: recurrenceConfig.rule,
     comments: existing?.comments || [], history: existing?.history || [],
     nextRecurringTaskId: existing?.nextRecurringTaskId || '',
     revision: existing?.revision || 0,
@@ -12548,6 +12650,100 @@ window.WorkBoardPaletteBridge = Object.freeze({
       case 'task.update':
         result = await savePaletteNextTaskV370(command);
         break;
+      case 'task.preview-recurrence': {
+        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        const existing = id ? state.tasks.find(item=>item.id===id) : null;
+        if (id && (!existing || normalizeRevision(existing.revision)!==command.revision))
+          return {ok:false,error:'revision-or-relation-mismatch'};
+        const config=originTaskRecurrence(command,existing);
+        if (config.error) return {ok:false,...config};
+        const after=config.rule.occurrenceDate>todayISO()?config.rule.occurrenceDate:todayISO();
+        return {ok:true,dates:getRecurringDates(config.recurrence,config.rule,after,12),
+          description:describeRecurrence({recurrence:config.recurrence,recurrenceRule:config.rule})};
+      }
+      case 'series.preview-delete': {
+        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        const kind=command.kind==='events'?'schedule':'task';
+        const selection=captureRecurringDelete(kind,rawRecurringDeleteRoot(),id);
+        if(!selection||selection.fingerprints[id]?.revision!==command.revision)
+          return {ok:false,error:'revision-or-relation-mismatch'};
+        const token=generateId();
+        originRecurringDeleteSelections.set(token,{selection,user:getCurrentUser(),room:ROOM_ID});
+        if(originRecurringDeleteSelections.size>10)originRecurringDeleteSelections.delete(originRecurringDeleteSelections.keys().next().value);
+        return {ok:true,token,counts:Object.fromEntries(['one','following','all'].map(scope=>[scope,recurringDeleteTargets(selection,scope).length]))};
+      }
+      case 'series.delete': {
+        const pending=originRecurringDeleteSelections.get(command.token);
+        if(!paletteScheduleOwnerV372(command)||!pending||pending.user!==getCurrentUser()||pending.room!==ROOM_ID)
+          return {ok:false,error:'owner-mismatch'};
+        if(!['one','following','all'].includes(command.scope))return {ok:false,error:'invalid-input'};
+        result=await commitRecurringDelete(pending.selection,command.scope);
+        if(result?.ok)originRecurringDeleteSelections.delete(command.token);
+        break;
+      }
+      case 'template.save':
+      case 'template.delete': {
+        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        if (!Number.isSafeInteger(command.revision)
+          || command.revision!==normalizeRevision(state.metaRevisions.taskTemplates))
+          return {ok:false,error:'revision-or-relation-mismatch'};
+        const existing=state.taskTemplates.find(item=>item.id===id);
+        if (id&&!existing) return {ok:false,error:'not-found'};
+        const values=command.values||{};
+        if (command.type==='template.save' && (!String(values.name||'').trim()
+          || !String(values.title||'').trim() || String(values.name).length>30
+          || String(values.title).length>80 || String(values.description||'').length>6000
+          || String(values.checklist||'').length>6000)) return {ok:false,error:'invalid-input'};
+        const template=normalizeTemplate({...values,id:id||generateTemplateId()});
+        let templates=command.type==='template.delete'?state.taskTemplates.filter(x=>x.id!==id)
+          :existing?state.taskTemplates.map(x=>x.id===id?template:x):[...state.taskTemplates,template];
+        if (!templates.length) templates=DEFAULT_TASK_TEMPLATES.map(normalizeTemplate);
+        result=await persistMetaFields({taskTemplates:templates,taskTemplatesUpdatedAt:Date.now()});
+        if (result?.ok){setTaskTemplates(templates,{persist:false,silent:true});result={ok:true,id:template.id};}
+        break;
+      }
+      case 'knowledge.save': {
+        if(!paletteScheduleOwnerV372(command))return {ok:false,error:'owner-mismatch'};
+        const raw=command.values||{},v=Object.fromEntries(['title','summary','symptom','action','checkpoint'].map(k=>[k,String(raw[k]||'')])),existing=state.knowledge.find(x=>x.id===id);
+        if(!String(v.title||'').trim()||!String(v.action||'').trim()
+          ||String(v.title).length>80||['summary','symptom','action','checkpoint'].some(k=>String(v[k]||'').length>6000))return {ok:false,error:'invalid-input'};
+        if(id){
+          if(!existing||existing.revision!==command.revision)return {ok:false,error:'revision-or-relation-mismatch'};
+          result=await persistKnowledge(normalizeKnowledge({...existing,...v,id,taskId:existing.taskId,revision:existing.revision}));
+        }else{
+          const task=state.tasks.find(x=>x.id===command.taskId);
+          if(!task||task.revision!==command.taskRevision||task.knowledgeId)return {ok:false,error:'revision-or-relation-mismatch'};
+          result=await createKnowledgeFromTask(task.id,v);
+        }
+        break;
+      }
+      case 'knowledge.delete': {
+        if(!paletteScheduleOwnerV372(command))return {ok:false,error:'owner-mismatch'};
+        const record=state.knowledge.find(x=>x.id===id),task=state.tasks.find(x=>x.knowledgeId===id);
+        if(!record||record.revision!==command.revision)return {ok:false,error:'revision-or-relation-mismatch'};
+        if(task)result=await unlinkKnowledgeFromTask(task.id);
+        else {if(!confirm('このナレッジを削除しますか？'))return {ok:false,error:'cancelled'};result=await executeWrite('knowledge-delete',id,()=>transactionRecord('knowledge',id,command.revision,()=>null));}
+        break;
+      }
+      case 'management.write': {
+        if(!paletteScheduleOwnerV372(command))return {ok:false,error:'owner-mismatch'};
+        const group=command.group,action=command.action;
+        const values=group==='users'?state.users:group==='categories'?state.categories:group==='statuses'?getStatusList({includeTaskOnly:false}):null;
+        if(!values||JSON.stringify(values)!==command.base)return {ok:false,error:'revision-or-relation-mismatch'};
+        const sanitize=group==='users'?sanitizeUser:group==='categories'?sanitizeCategory:sanitizeStatus;
+        const name=sanitize(command.name),next=sanitize(command.next);
+        if(action==='add'&&(!name||values.some(x=>normalizeText(x)===normalizeText(name))))return {ok:false,error:'invalid-input'};
+        if(action!=='add'&&!values.includes(name))return {ok:false,error:'not-found'};
+        if(action==='rename'&&(!next||values.some(x=>x!==name&&normalizeText(x)===normalizeText(next))))return {ok:false,error:'invalid-input'};
+        if(group==='statuses'&&((action==='delete'&&isProtectedDeleteStatus(name))||(action==='rename'&&isCompletedStatus(name))))return {ok:false,error:'protected-status'};
+        if(action==='delete'&&values.length<=1)return {ok:false,error:'invalid-input'};
+        if(action==='add')result=group==='users'?await addUserFromForm(name,'#7c5cff'):group==='categories'?await addCategoryFromForm(name):await addStatusFromForm(name);
+        else if(action==='delete')result=group==='users'?await deleteUser(name):group==='categories'?await deleteCategory(name):await deleteStatus(name);
+        else if(action==='rename'&&group!=='users')result=group==='categories'?await renameCategory(name,next):await renameStatus(name,next);
+        else if(action==='move'&&values.includes(next))result=group==='users'?await reorderUsers(name,next):group==='categories'?await reorderCategories(name,next):await reorderStatuses(name,next);
+        else return {ok:false,error:'unsupported-action'};
+        break;
+      }
       case 'schedule.create':
       case 'schedule.update':
         result = await writePaletteScheduleV372(command);
@@ -12581,6 +12777,29 @@ window.WorkBoardPaletteBridge = Object.freeze({
         toggleTaskFavorite(id);
         result = { ok: true };
         break;
+      case 'task.duplicate': {
+        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        const task = state.tasks.find(item => item.id === id);
+        if (!task || !Number.isSafeInteger(command.revision)
+          || normalizeRevision(task.revision) !== command.revision)
+          return {ok:false,error:'revision-or-relation-mismatch'};
+        result = await duplicateTask(id);
+        break;
+      }
+      case 'task.comment': {
+        // Origin owns presentation; the existing comment writer owns persistence.
+        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        const task = state.tasks.find(item => item.id === id);
+        if (!task || !Number.isSafeInteger(command.revision)
+          || normalizeRevision(task.revision) !== command.revision)
+          return {ok:false,error:'revision-or-relation-mismatch'};
+        const text = String(command.text || '').trim();
+        if (!text || text.length > 6000
+          || !['作業メモ','業者回答','確認依頼','申し送り'].includes(command.commentType))
+          return {ok:false,error:'invalid-input'};
+        result = await addComment(id, text, command.commentType, {replyTo:command.replyTo||''});
+        break;
+      }
       case 'task.bulk.update':
       case 'task.bulk.complete': {
         // Validate the caller's ownership and every original revision before
@@ -12633,21 +12852,6 @@ window.WorkBoardPaletteBridge = Object.freeze({
   }
 });
 
-// Modern origin. reuses the single canonical schedule editor and its writer.
-// Recurrence, copied dates, room/owner checks and conflicts stay in app.js.
-window.WorkBoardOriginScheduleBridge = Object.freeze({
-  open(id = '', seedDay = '') {
-    const recordId = String(id || '');
-    const record = recordId ? state.schedules.find(item => item.id === recordId) : null;
-    if (recordId && !record) return { ok: false, error: 'not-found' };
-    if (record) openScheduleDialog(record);
-    else if (/^\d{4}-\d{2}-\d{2}$/.test(String(seedDay))
-      && toISODate(parseISODate(seedDay)) === String(seedDay)) {
-      openScheduleDialog(newScheduleSeedForDate(seedDay));
-    } else openScheduleDialog();
-    return { ok: true };
-  }
-});
 window.dispatchEvent(new Event('workboard:canonical-bridge-ready'));
 
 // v31: すべての定義が完了してから初期化する
