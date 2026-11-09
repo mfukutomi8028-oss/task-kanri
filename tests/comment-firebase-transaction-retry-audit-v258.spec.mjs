@@ -128,6 +128,7 @@ test('reaction and reply recover from transient transaction rejection without re
 
   await choice.evaluate(node => node.click());
   await expect.poll(async () => Number((await cachedTask(page, taskId))?.revision || 0), { timeout: 8_000 }).toBe(11);
+  // A confirmed transaction must repaint immediately, even before onValue catches up.
   await expect(page.locator('.comment-reaction-chip-v165[data-comment-reaction-emoji="👍"]')).toHaveCount(1);
   runtime = await page.evaluate(() => ({ init: window.__WB_V258_INIT_CALLS__, getDb: window.__WB_V258_GET_DB_CALLS__, tx: window.__WB_V258_TX_CALLS__, remote: structuredClone(window.__WB_V258_REMOTE_TASK__) }));
   expect(requests).toEqual({ app: 1, database: 1 });
