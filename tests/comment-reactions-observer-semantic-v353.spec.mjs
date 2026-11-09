@@ -78,6 +78,22 @@ test('Ver.354 product adopts a canonical activity-comment addition', async ({ pa
     const task = tasks.find(item => item.id === taskId);
     task.comments.unshift({ id: secondId, author: '福冨', type: '作業メモ', text: '追加コメント', createdAt: Date.now() });
     localStorage.setItem(key, JSON.stringify(tasks));
+    // The real product reads the subscribed canonical task rather than localStorage.
+    // Model the incoming canonical revision as well as the new comment node.
+    const bridge = window.WorkBoardPaletteBridge;
+    const readCanonical = bridge.readCommentTask.bind(bridge);
+    window.WorkBoardPaletteBridge = Object.freeze({
+      ...bridge,
+      readCommentTask(id) {
+        const snapshot = readCanonical(id);
+        if (!snapshot || id !== taskId) return snapshot;
+        return {
+          ...snapshot,
+          revision: Number(snapshot.revision || 0) + 1,
+          comments: [task.comments[0], ...(snapshot.comments || [])]
+        };
+      }
+    });
     const article = document.createElement('article');
     article.className = 'activity-comment';
     article.dataset.commentId = secondId;

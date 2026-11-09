@@ -164,8 +164,10 @@ test('Origin inspector action hierarchy and details remain canonical',()=>{
  assert.match(origin,/data-action="task-done"/);
  assert.match(origin,/data-action="todo-toggle"/);
  assert.match(origin,/data-action="memo-task"/);
- assert.match(origin,/data-action="schedule-classic"/);
- assert.match(origin,/editing&&id&&!\(kind==='events'&&item\.recurrenceSeriesId\)/);
+ assert.doesNotMatch(origin,/schedule-classic/);
+ assert.match(origin,/const dangerous=editing&&id/);
+ assert.match(origin,/type:'series.preview-delete'/);
+ assert.match(origin,/type:'series.delete'/);
  assert.match(origin,/class="origin-sheet-danger"/);
  assert.match(origin,/class="origin-sheet-primary"/);
  assert.match(origin,/class="origin-sheet-secondary"/);

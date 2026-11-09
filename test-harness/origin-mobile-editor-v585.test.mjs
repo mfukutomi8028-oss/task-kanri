@@ -32,5 +32,5 @@ test('Origin protects edits during asynchronous saving and reports invalid title
  assert.match(source,/件名・タイトルを入力してください。/);
  assert.match(source,/id="originEditorError"/);
  assert.match(source,/originEditorInitialHeight-height>110/);
- assert.match(source,/updateOriginDraftState\(\);\s*return;\s*\}\s*if\(a==='schedule-classic'\)/);
+ assert.match(source,/updateOriginDraftState\(\);\s*return;\s*\}\s*if\(a==='new'\)/);
 });

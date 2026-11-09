@@ -92,6 +92,7 @@ test('icon system visual baseline: expanded desktop navigation', async ({ page }
 test('icon system visual baseline: mobile navigation and summaries', async ({ page }) => {
   await boot(page, 390, 844);
   await freezeMotion(page);
+  await normalizeNavCopyForIconSnapshot(page);
   await expect(page.locator('.sidebar .nav')).toHaveScreenshot('icon-nav-mobile-390.png', {
     animations: 'disabled',
     caret: 'hide',

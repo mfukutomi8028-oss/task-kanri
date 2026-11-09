@@ -1110,7 +1110,7 @@ test('JOURNAL duration selector navigates only after confirmed save',async({page
   await expect(dialog.locator('#scheduleId')).toHaveValue('');
   const start=await dialog.locator('#scheduleStart').inputValue();
   const end=await dialog.locator('#scheduleEnd').inputValue();
-  expect(new Date(end).getTime()-new Date(start).getTime()).toBe(30*60000);
+  expect(new Date(end+'+09:00').getTime()-new Date(start+'+09:00').getTime()).toBe(30*60000);
   await dialog.locator('#scheduleTitle').fill('JOURNAL 30分予定の保存確認');
   await dialog.locator('#scheduleForm button[type="submit"]').click();
   await expect(dialog).toBeHidden();
@@ -1147,8 +1147,8 @@ test('JOURNAL V469 start-time picker prefills the chosen start without saving',a
   await expect(dialog).toBeVisible();
   const start=await dialog.locator('#scheduleStart').inputValue();
   const end=await dialog.locator('#scheduleEnd').inputValue();
-  expect(new Date(start).getTime()).toBe(Number(chosen));
-  expect(new Date(end).getTime()-new Date(start).getTime()).toBe(60*60000);
+  expect(new Date(start+'+09:00').getTime()).toBe(Number(chosen));
+  expect(new Date(end+'+09:00').getTime()-new Date(start+'+09:00').getTime()).toBe(60*60000);
   await dialog.locator('#closeScheduleDialog').click();
   await overview.locator('[data-j466-duration="30"]').click();
   await expect(overview.locator('[data-j469-gap-start="'+day+'"]')).toHaveValue(chosen);
@@ -1187,8 +1187,8 @@ test('JOURNAL V470 chooses a non-longest window without changing canonical save'
   await expect(gap).toBeVisible();
   const options=await gap.locator('option').evaluateAll(nodes=>nodes.map(n=>n.value));
   expect(options).toHaveLength(2);
-  expect(new Date(Number(options[0])).getHours()).toBe(8);
-  expect(new Date(Number(options[1])).getHours()).toBe(13);
+  expect(Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',hour:'numeric',hourCycle:'h23'}).format(Number(options[0])))).toBe(8);
+  expect(Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',hour:'numeric',hourCycle:'h23'}).format(Number(options[1])))).toBe(13);
   await gap.selectOption(options[0]);
   await expect(gap).toHaveValue(options[0]);
   await expect(gap).toBeFocused();
@@ -1204,7 +1204,7 @@ test('JOURNAL V470 chooses a non-longest window without changing canonical save'
   await overview.locator('[data-j466-duration="30"]').click();
   await expect(overview.locator('[data-j470-gap="'+date+'"]')).toHaveValue(options[0]);
   await expect(overview.locator('[data-j469-gap-start="'+date+'"]')).toHaveValue(
-    String(new Date(date+'T10:30').getTime()));
+    String(new Date(date+'T10:30+09:00').getTime()));
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
     .toBeLessThanOrEqual(2);
 });
@@ -1239,7 +1239,7 @@ test('JOURNAL V473 desktop free-time strip opens the canonical draft at its tapp
   await expect(dialog.locator('#scheduleEnd')).toHaveValue(date+'T11:30');
   await dialog.locator('#closeScheduleDialog').click();
   await expect(page.locator('#scheduleView [data-j469-gap-start="'+date+'"]'))
-    .toHaveValue(String(new Date(date+'T10:30').getTime()));
+    .toHaveValue(String(new Date(date+'T10:30+09:00').getTime()));
 });
 test('JOURNAL V473 phone day slip discloses free times without replacing scheduled items',async({page})=>{
   test.setTimeout(90000);
@@ -1956,7 +1956,7 @@ test('JOURNAL V505 jumps to a day and returns to the same record after editing',
   await expect(row.locator('[data-j494-open-task]')).toBeFocused();
   await page.setViewportSize({width:390,height:900});
   await timeline.locator('[data-timeline-range]').selectOption('month');
-  await expect(timeline.locator('[data-j505-date-jump] option').first()).toHaveValue('');
+  await expect(timeline.locator('[data-j505-date-jump] option').first()).toHaveAttribute('value','');
   const monthOptions=await timeline.locator('[data-j505-date-jump] option').count();
   expect(monthOptions).toBeGreaterThan(28);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(2);
@@ -2444,19 +2444,21 @@ test('JOURNAL V525 returns to the same diary day after earlier entries change he
     'html[data-wb-display="journal"] #timelineView .jv-chronicle-day:first-of-type {min-height:950px!important;}'});
   await page.locator('#listView [data-j425-task-layout="timeline"]').click();
   await expect(jump).toHaveValue(chosen);
-  const restoredTop=await day.evaluate(el=>el.getBoundingClientRect().top);
-  expect(Math.abs(restoredTop-sourceTop)).toBeLessThanOrEqual(38);
+  await expect.poll(async()=>Math.abs(await day.evaluate(el=>el.getBoundingClientRect().top)-sourceTop)).toBeLessThanOrEqual(38);
 
   await page.setViewportSize({width:320,height:800});
   await diary.locator('[data-j509-layout="list"]').click();
   await page.locator('#listView [data-j425-task-layout="timeline"]').click();
   const heading=day.locator('.jv-date');
-  const geometry=await heading.evaluate(el=>({
-    top:el.getBoundingClientRect().top,
-    overflow:document.documentElement.scrollWidth-innerWidth
-  }));
-  expect(geometry.top).toBeGreaterThanOrEqual(-2);
-  expect(geometry.top).toBeLessThan(220);
+  await expect.poll(async()=>await heading.evaluate(el=>el.getBoundingClientRect().top)).toBeGreaterThanOrEqual(-2);
+  // Short date rows can reach the document bottom before the selected
+  // heading reaches the top shelf; require the real scroll limit then.
+  await expect.poll(async()=>await heading.evaluate(el=>{
+    const top=el.getBoundingClientRect().top;
+    const remaining=document.scrollingElement.scrollHeight-innerHeight-scrollY;
+    return top<220||(top<innerHeight&&remaining<=2);
+  })).toBe(true);
+  const geometry=await heading.evaluate(()=>({overflow:document.documentElement.scrollWidth-innerWidth}));
   expect(geometry.overflow).toBeLessThanOrEqual(2);
 });
 
@@ -2652,6 +2654,7 @@ test('JOURNAL V534 carries explicitly selected cases across diary, list and desk
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   const diaryB=diary.locator('.jv-day-item').filter({hasText:'JOURNAL V534 B'});
   const idB=await diaryB.getAttribute('data-task-id');
@@ -3282,6 +3285,7 @@ test('JOURNAL V553 phone desk browses real shelf order and restores focus after 
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   const query=board.locator('[data-j420-search]');
   await query.fill('JOURNAL V553');
@@ -3375,6 +3379,7 @@ test('JOURNAL V554 latest focused control wins over card/pager frames and remote
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   const search=board.locator('[data-j420-search]');
   await search.fill('JOURNAL V554');
