@@ -6762,12 +6762,22 @@ function journalCaptureChronicleReadAnchorV525(view){
   const bookmark=view.querySelector('.j511-chronicle-travel')?.getBoundingClientRect();
   const visibleTop=bookmark&&bookmark.bottom>0&&bookmark.top<window.innerHeight
     ?Math.max(0,bookmark.bottom+8):0;
-  const day=[...view.querySelectorAll('.jv-chronicle-day')].find(element=>{
+  const days=[...view.querySelectorAll('.jv-chronicle-day')];
+  const visible=element=>{
     const rect=element.getBoundingClientRect();
     const visibleHeight=Math.min(rect.bottom,window.innerHeight)
       -Math.max(rect.top,visibleTop);
     return visibleHeight>=Math.min(32,Math.max(12,rect.height*.2));
-  });
+  };
+  // A deliberately chosen date is the reading anchor when it is still on
+  // screen. The preceding day may remain partly visible after a date jump,
+  // and must not displace the user's explicit selection on a later repaint.
+  const picked=journalChronicleSelectedDateV523
+    ?days.find(element=>
+      element.querySelector('.jv-day-records[data-jv-date]')?.dataset.jvDate
+        ===journalChronicleSelectedDateV523&&visible(element))
+    :null;
+  const day=picked||days.find(visible);
   const date=day?.querySelector('.jv-day-records[data-jv-date]')?.dataset.jvDate;
   journalChronicleReadAnchorV525=date?{
     date,top:day.getBoundingClientRect().top,width:window.innerWidth,
@@ -7711,7 +7721,10 @@ function journalAtelierV420(tasks){
     journalAtelierCategoryV420='';
     if(elements.searchInput.value){
       elements.searchInput.value='';
-      elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}));
+      // A deliberate reset must repaint even when a main-search IME guard
+      // suppresses synthetic input events. Supersede pending search focus.
+      ++journalAtelierSearchFocusTokenV551;
+      render();
     }else journalAtelierV420(tasks);
     requestAnimationFrame(()=>{
       if(token!==journalAtelierRefreshTokenV516||!journalTaskV411()||elements.boardView.hidden)return;
