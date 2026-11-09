@@ -111,7 +111,8 @@ export function classifyPaths(changedFiles, eventName = 'pull_request') {
   // JOURNAL's ~90 independent Playwright scenarios live in one spec file.
   // With fullyParallel:false, regular file-level sharding cannot split them.
   // Isolated JOURNAL PRs use two test-level shards; full suites use four
-  // disjoint file-level shards so retry-heavy runs finish within the job limit.
+  // disjoint test-level shards so a large JOURNAL spec cannot monopolize a
+  // single runner. Playwright CI keeps workers=1 and unchanged retries.
   // Every test still runs with unchanged retries and failure thresholds.
   const journalParallel = !fullBrowser && sortedTargets.length === 1
     && sortedTargets[0] === JOURNAL[0];

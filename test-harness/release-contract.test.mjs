@@ -391,7 +391,8 @@ test('CI keeps Protocol mandatory, selects impacted suites, and protects nightly
   assert.match(browser, /if: \$\{\{ needs\.scope\.outputs\.browser == 'true' \}\}/);
   assert.match(browser, /fail-fast: false/);
   assert.match(browser, /shard: \$\{\{ fromJSON\(needs\.scope\.outputs\.shards\) \}\}/);
-  assert.ok(browser.includes('npm run test:ui -- --shard=${{ matrix.shard }}/${{ needs.scope.outputs.shard_count }}'));
+  assert.ok(browser.includes('npm run test:ui -- --fully-parallel --shard=${{ matrix.shard }}/${{ needs.scope.outputs.shard_count }}'));
+  assert.match(read('playwright.config.mjs'), /workers:\s*process\.env\.CI \? 1/);
   assert.ok(browser.includes('Browser shard ${{ matrix.shard }}/${{ needs.scope.outputs.shard_count }}'));
   assert.match(browser, /npx playwright test "\$\{selected\[@\]\}"/);
   assert.match(browser, /Targeted checks must not be empty/);
