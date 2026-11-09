@@ -540,7 +540,7 @@ test('Origin detail reader places type-specific summary before long text across 
  assert.match(origin,/function sheetFrame\(kicker,title,content,footer\)/);
  assert.match(origin,/const reading=panelMode==='detail'/);
  assert.match(origin,/class="origin-detail-reading" data-kind=/);
- assert.match(origin,/class="origin-task-overview" aria-label="タスクの要点"/);
+ assert.match(origin,/class="origin-task-overview" id="originTaskOverview" aria-label="タスクの要点"/);
  assert.match(origin,/class="origin-detail-main-fact \$\{t\.due/);
  assert.match(origin,/is-overdue/);
  assert.match(origin,/class="origin-detail-summary origin-todo-overview"/);
