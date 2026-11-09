@@ -92,6 +92,11 @@ test('icon system visual baseline: expanded desktop navigation', async ({ page }
 test('icon system visual baseline: mobile navigation and summaries', async ({ page }) => {
   await boot(page, 390, 844);
   await freezeMotion(page);
+  // Capture the visible drawer itself. A closed off-canvas nav produced
+  // an unrelated screenshot of the Today page underneath it.
+  await page.locator('.work-mobile-menu-button').click();
+  await expect(page.locator('.work-mobile-menu-button')).toHaveAttribute('aria-expanded','true');
+  await expect(page.locator('.sidebar .nav')).toBeInViewport();
   await normalizeNavCopyForIconSnapshot(page);
   await expect(page.locator('.sidebar .nav')).toHaveScreenshot('icon-nav-mobile-390.png', {
     animations: 'disabled',

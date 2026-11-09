@@ -7061,8 +7061,13 @@ function journalOpenTaskNoteV519(id,layout,action,source,edit=false){
   journalTimelineReturnUndatedV504=false;
   journalTimelineReturnTopV505=null;
   journalTimelineReturnDayV536=null;
-  if(edit)openTaskEditorById(id);
-  else selectTask(id);
+  if(edit){
+    // A double click bypasses the delayed read click. Keep the edited row
+    // selected so a concurrent removal resolves its nearest surviving row.
+    if(layout==='list')journalIndexStateV425.selected=id;
+    else if(layout==='board')journalAtelierSelectedV420=id;
+    openTaskEditorById(id);
+  }else selectTask(id);
 }
 function journalRestoreTaskNoteV519(){
   const origin=journalTaskNoteReturnV519;

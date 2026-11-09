@@ -3461,6 +3461,7 @@ test('JOURNAL V556 long phone note stays at its reading section after sync and w
     await dialog.locator('#taskDescription').fill(longMemo);
     await dialog.locator('#taskForm button[type="submit"]').click();
     await expect(dialog).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   const search=board.locator('[data-j420-search]');
   await search.fill('JOURNAL V556');
@@ -3532,6 +3533,7 @@ test('JOURNAL V558 detail and editor return to the phone note after width change
     await dialog.locator('#taskDescription').fill(longMemo);
     await dialog.locator('#taskForm button[type="submit"]').click();
     await expect(dialog).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
   }
   const search=board.locator('[data-j420-search]');
   await search.fill('JOURNAL V558');

@@ -1682,7 +1682,16 @@
       }else if(!now&&visible){
         panel.removeAttribute('role');panel.removeAttribute('aria-modal');panel.removeAttribute('aria-label');
         moreExpanded=false;
-        if(previousFocus?.isConnected)requestAnimationFrame(()=>previousFocus.focus({preventScroll:true}));
+        const returnFocus=previousFocus;
+        if(returnFocus?.isConnected)requestAnimationFrame(()=>{
+          const current=document.activeElement;
+          // Another control may win focus after the close in the same tick.
+          // Do not let this presentation-level fallback override that action.
+          if(current&&current!==returnFocus&&current.isConnected
+            &&current!==document.body&&current!==document.documentElement
+            &&!panel.contains(current))return;
+          returnFocus.focus({preventScroll:true});
+        });
       }
       visible=now;
       enhance();

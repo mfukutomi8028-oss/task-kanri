@@ -20,7 +20,7 @@ test('Origin mobile task checklist supports create, remove, toggle and date time
  await root.locator('[data-action="new"][data-kind="tasks"]').first().click();
  const form=root.locator('#editForm[data-kind="tasks"]');
  await form.locator('[name="title"]').fill('モバイル操作検証タスク');
- await form.locator('.origin-task-optional summary').click();
+ await form.locator('.origin-task-optional:not(.origin-recurrence) summary').click();
  await root.locator('[data-action="task-check-add"]').click();
  await root.locator('.origin-checkrow [name="checkText"]').fill('チェックの確認');
  await root.locator('[data-action="task-check-add"]').click();
