@@ -1147,7 +1147,7 @@ test('JOURNAL V469 start-time picker prefills the chosen start without saving',a
   await expect(dialog).toBeVisible();
   const start=await dialog.locator('#scheduleStart').inputValue();
   const end=await dialog.locator('#scheduleEnd').inputValue();
-  expect(new Date(start).getTime()).toBe(Number(chosen));
+  expect(await page.evaluate(value=>new Date(value).getTime(),start)).toBe(Number(chosen));
   expect(new Date(end).getTime()-new Date(start).getTime()).toBe(60*60000);
   await dialog.locator('#closeScheduleDialog').click();
   await overview.locator('[data-j466-duration="30"]').click();
@@ -1187,8 +1187,8 @@ test('JOURNAL V470 chooses a non-longest window without changing canonical save'
   await expect(gap).toBeVisible();
   const options=await gap.locator('option').evaluateAll(nodes=>nodes.map(n=>n.value));
   expect(options).toHaveLength(2);
-  expect(new Date(Number(options[0])).getHours()).toBe(8);
-  expect(new Date(Number(options[1])).getHours()).toBe(13);
+  expect(await page.evaluate(value=>new Date(Number(value)).getHours(),options[0])).toBe(8);
+  expect(await page.evaluate(value=>new Date(Number(value)).getHours(),options[1])).toBe(13);
   await gap.selectOption(options[0]);
   await expect(gap).toHaveValue(options[0]);
   await expect(gap).toBeFocused();
@@ -1204,7 +1204,7 @@ test('JOURNAL V470 chooses a non-longest window without changing canonical save'
   await overview.locator('[data-j466-duration="30"]').click();
   await expect(overview.locator('[data-j470-gap="'+date+'"]')).toHaveValue(options[0]);
   await expect(overview.locator('[data-j469-gap-start="'+date+'"]')).toHaveValue(
-    String(new Date(date+'T10:30').getTime()));
+    String(await page.evaluate(day=>new Date(day+'T10:30').getTime(),date)));
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
     .toBeLessThanOrEqual(2);
 });
@@ -1239,7 +1239,7 @@ test('JOURNAL V473 desktop free-time strip opens the canonical draft at its tapp
   await expect(dialog.locator('#scheduleEnd')).toHaveValue(date+'T11:30');
   await dialog.locator('#closeScheduleDialog').click();
   await expect(page.locator('#scheduleView [data-j469-gap-start="'+date+'"]'))
-    .toHaveValue(String(new Date(date+'T10:30').getTime()));
+    .toHaveValue(String(await page.evaluate(day=>new Date(day+'T10:30').getTime(),date)));
 });
 test('JOURNAL V473 phone day slip discloses free times without replacing scheduled items',async({page})=>{
   test.setTimeout(90000);
@@ -1650,8 +1650,10 @@ test('JOURNAL V494 desk keeps one selected task note beside its mobile card',asy
   await expect(row).toHaveAttribute('aria-expanded','false');
   await page.setViewportSize({width:1366,height:900});
   await expect(note).toBeVisible();
-  // Await asynchronous matchMedia change and DOM re-parenting.
-  await expect.poll(()=>note.evaluate(el=>el.parentElement?.classList.contains('j420-atelier'))).toBe(true);
+  // Await asynchronous matchMedia change and DOM re-parenting. Desktop
+  // attaches the note directly to #boardView; the atelier is its child.
+  await expect(note).not.toHaveClass(/j494-inline-note/);
+  await expect.poll(()=>note.evaluate(el=>el.parentElement?.id==='boardView')).toBe(true);
 });
 
 test('JOURNAL V494 phone chronicle exposes date actions and restores focus from detail',async({page})=>{
@@ -1948,11 +1950,13 @@ test('JOURNAL V505 jumps to a day and returns to the same record after editing',
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(2);
   // A direct double click must also remember the source before opening the
   // canonical editor; cancel does not create or change any task.
-  await row.dblclick({position:{x:11,y:11}});
+  // Double-click the record text, not its explicit detail/move buttons.
+  await row.locator('strong').dblclick();
   await expect(editor).toBeVisible();
   await editor.locator('#closeTaskDialog').click();
   await expect(editor).toBeHidden();
-  await page.locator('#closeDetail').click();
+  // Direct editing never leaves the canonical detail folio over the diary.
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
   await expect(row.locator('[data-j494-open-task]')).toBeFocused();
   await page.setViewportSize({width:390,height:900});
   await timeline.locator('[data-timeline-range]').selectOption('month');
@@ -2652,6 +2656,8 @@ test('JOURNAL V534 carries explicitly selected cases across diary, list and desk
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    // Task save also opens the canonical detail folio; dismiss it before using the desk.
+    await dismissSavedTaskDetailForTest(page);
   }
   const diaryB=diary.locator('.jv-day-item').filter({hasText:'JOURNAL V534 B'});
   const idB=await diaryB.getAttribute('data-task-id');
@@ -2717,6 +2723,7 @@ test('JOURNAL V536 direct desk and index editing returns to the exact row after 
   await expect(editor).toBeVisible();
   await editor.locator('#closeTaskDialog').click();
   await expect(editor).toBeHidden();
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
   await expect(card).toBeFocused();
   expect(Math.abs((await card.evaluate(el=>el.getBoundingClientRect().top))-cardTop))
     .toBeLessThanOrEqual(38);
@@ -2730,6 +2737,7 @@ test('JOURNAL V536 direct desk and index editing returns to the exact row after 
   await expect(editor).toBeVisible();
   await editor.locator('#closeTaskDialog').click();
   await expect(editor).toBeHidden();
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
   await expect(row).toBeFocused();
   expect(Math.abs((await row.evaluate(el=>el.getBoundingClientRect().top))-rowTop))
     .toBeLessThanOrEqual(38);
@@ -2740,6 +2748,7 @@ test('JOURNAL V536 direct desk and index editing returns to the exact row after 
   await expect(editor).toBeVisible();
   await editor.locator('#closeTaskDialog').click();
   await expect(editor).toBeHidden();
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
   await expect(row).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
@@ -3282,6 +3291,8 @@ test('JOURNAL V553 phone desk browses real shelf order and restores focus after 
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    // Task save also opens the canonical detail folio; dismiss it before using the desk.
+    await dismissSavedTaskDetailForTest(page);
   }
   const query=board.locator('[data-j420-search]');
   await query.fill('JOURNAL V553');
@@ -3375,6 +3386,8 @@ test('JOURNAL V554 latest focused control wins over card/pager frames and remote
     await editor.locator('#taskTitle').fill(title);
     await editor.locator('#taskForm button[type="submit"]').click();
     await expect(editor).toBeHidden();
+    // Task save also opens the canonical detail folio; dismiss it before using the desk.
+    await dismissSavedTaskDetailForTest(page);
   }
   const search=board.locator('[data-j420-search]');
   await search.fill('JOURNAL V554');
@@ -3456,6 +3469,8 @@ test('JOURNAL V556 long phone note stays at its reading section after sync and w
     await dialog.locator('#taskDescription').fill(longMemo);
     await dialog.locator('#taskForm button[type="submit"]').click();
     await expect(dialog).toBeHidden();
+    // Task save also opens the canonical detail folio; dismiss it before using the desk.
+    await dismissSavedTaskDetailForTest(page);
   }
   const search=board.locator('[data-j420-search]');
   await search.fill('JOURNAL V556');
@@ -3527,6 +3542,8 @@ test('JOURNAL V558 detail and editor return to the phone note after width change
     await dialog.locator('#taskDescription').fill(longMemo);
     await dialog.locator('#taskForm button[type="submit"]').click();
     await expect(dialog).toBeHidden();
+    // Task save also opens the canonical detail folio; dismiss it before using the desk.
+    await dismissSavedTaskDetailForTest(page);
   }
   const search=board.locator('[data-j420-search]');
   await search.fill('JOURNAL V558');

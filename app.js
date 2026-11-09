@@ -6762,12 +6762,22 @@ function journalCaptureChronicleReadAnchorV525(view){
   const bookmark=view.querySelector('.j511-chronicle-travel')?.getBoundingClientRect();
   const visibleTop=bookmark&&bookmark.bottom>0&&bookmark.top<window.innerHeight
     ?Math.max(0,bookmark.bottom+8):0;
-  const day=[...view.querySelectorAll('.jv-chronicle-day')].find(element=>{
+  const days=[...view.querySelectorAll('.jv-chronicle-day')];
+  const visible=element=>{
     const rect=element.getBoundingClientRect();
     const visibleHeight=Math.min(rect.bottom,window.innerHeight)
       -Math.max(rect.top,visibleTop);
     return visibleHeight>=Math.min(32,Math.max(12,rect.height*.2));
-  });
+  };
+  // A deliberately chosen date is the reading anchor when it is still on
+  // screen. The preceding day may remain partly visible after a date jump,
+  // and must not displace the user's explicit selection on a later repaint.
+  const picked=journalChronicleSelectedDateV523
+    ?days.find(element=>
+      element.querySelector('.jv-day-records[data-jv-date]')?.dataset.jvDate
+        ===journalChronicleSelectedDateV523&&visible(element))
+    :null;
+  const day=picked||days.find(visible);
   const date=day?.querySelector('.jv-day-records[data-jv-date]')?.dataset.jvDate;
   journalChronicleReadAnchorV525=date?{
     date,top:day.getBoundingClientRect().top,width:window.innerWidth,
@@ -7019,6 +7029,19 @@ let journalTimelineReturnDayV536=null;
 // JOURNAL V519: one transient origin for desk / index detail modals.
 // The existing close observer below handles all three JOURNAL task pages.
 let journalTaskNoteReturnV519=null;
+// Direct JOURNAL editing belongs to the paper page, not the canonical detail
+// folio. Keep one transient modal owner so cancellation and saving both return
+// to the original task row without leaving an invisible blocking panel.
+let journalDirectTaskEditorV536='';
+function journalOpenDirectTaskEditorV536(id){
+  const task=state.tasks.find(item=>item.id===id);
+  if(!task)return;
+  journalDirectTaskEditorV536=id;
+  // Timeline double-click also emits ordinary click events that open detail.
+  // Close that folio before displaying the editor, without changing task data.
+  closeDetail();
+  openTaskDialog(task);
+}
 function journalOpenTaskNoteV519(id,layout,action,source,edit=false){
   if(!source||!id||!state.tasks.some(task=>task.id===id))return;
   const top=source.getBoundingClientRect().top;
@@ -7045,7 +7068,7 @@ function journalOpenTaskNoteV519(id,layout,action,source,edit=false){
   journalTimelineReturnUndatedV504=false;
   journalTimelineReturnTopV505=null;
   journalTimelineReturnDayV536=null;
-  if(edit)openTaskEditorById(id);
+  if(edit)journalOpenDirectTaskEditorV536(id);
   else selectTask(id);
 }
 function journalRestoreTaskNoteV519(){
@@ -7152,7 +7175,7 @@ function journalOpenTimelineDetailV494(id){
 }
 function journalOpenTimelineEditorV505(id){
   journalRememberTimelineSourceV505(id);
-  openTaskEditorById(id);
+  journalOpenDirectTaskEditorV536(id);
 }
 // JOURNAL V536: one return resolver runs after either the detail panel closes
 // or a direct row double-click editor closes. No second modal/data owner.
@@ -7201,6 +7224,14 @@ if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
     .observe(elements.detailPanel,{attributes:true,attributeFilter:['class']});
 }
 elements.taskDialog?.addEventListener('close',()=>{
+  const directId=journalDirectTaskEditorV536;
+  journalDirectTaskEditorV536='';
+  if(directId){
+    // saveTaskFromForm selects the saved task, but a direct paper edit should
+    // return to its row, not reopen the detail folio on the next redraw.
+    if(elements.detailPanel?.classList.contains('open'))closeDetail();
+    else if(state.selectedId===directId)state.selectedId='';
+  }
   if(!journalTaskNoteReturnV519&&!journalTimelineReturnTaskV494)return;
   requestAnimationFrame(journalRestoreTaskOriginV536);
 });
@@ -7690,7 +7721,10 @@ function journalAtelierV420(tasks){
     journalAtelierCategoryV420='';
     if(elements.searchInput.value){
       elements.searchInput.value='';
-      elements.searchInput.dispatchEvent(new Event('input',{bubbles:true}));
+      // A deliberate reset must repaint even when a main-search IME guard
+      // suppresses synthetic input events. Supersede pending search focus.
+      ++journalAtelierSearchFocusTokenV551;
+      render();
     }else journalAtelierV420(tasks);
     requestAnimationFrame(()=>{
       if(token!==journalAtelierRefreshTokenV516||!journalTaskV411()||elements.boardView.hidden)return;
@@ -8422,7 +8456,36 @@ const dayJumpOptions=dates.map(d=>{
 }).join('');
 elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付" id="j523ChronicleDateSelect"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div><nav class="j511-chronicle-travel" aria-label="日誌内の画面切替"><div class="j509-chronicle-switch" role="group" aria-label="タスク表示形式"><button type="button" data-j509-layout="board">机上</button><button type="button" data-j509-layout="list">一覧</button><button type="button" aria-pressed="true">日誌</button></div><button type="button" class="j511-date-picker" data-j511-date-picker aria-controls="j523ChronicleDateSelect">日付を選ぶ<small class="j523-selected-date">${selectedDayV523}</small></button></nav>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section>`;
 bindTaskDragSources(elements.timelineView);
-elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{row.addEventListener('click',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineDetailV494(row.dataset.taskId)});row.addEventListener('dblclick',e=>{if(!e.target.closest('button,input,select'))journalOpenTimelineEditorV505(row.dataset.taskId)});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();journalOpenTimelineDetailV494(row.dataset.taskId)}})});
+// A row double-click must not be intercepted by the detail panel opened by
+// its first click. Explicit detail buttons and keyboard entry remain immediate.
+let journalRowClickTimerV505=null;
+elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{
+  const interactive=event=>Boolean(event.target.closest('button,input,select'));
+  row.addEventListener('click',event=>{
+    if(interactive(event))return;
+    if(journalRowClickTimerV505!==null)clearTimeout(journalRowClickTimerV505);
+    journalRowClickTimerV505=null;
+    if(event.detail>=2)return;
+    const id=row.dataset.taskId;
+    journalRowClickTimerV505=setTimeout(()=>{
+      journalRowClickTimerV505=null;
+      if(row.isConnected&&!elements.timelineView.hidden&&journalTaskV411())
+        journalOpenTimelineDetailV494(id);
+    },300);
+  });
+  row.addEventListener('dblclick',event=>{
+    if(interactive(event))return;
+    if(journalRowClickTimerV505!==null)clearTimeout(journalRowClickTimerV505);
+    journalRowClickTimerV505=null;
+    journalOpenTimelineEditorV505(row.dataset.taskId);
+  });
+  row.addEventListener('keydown',event=>{
+    if((event.key==='Enter'||event.key===' ')&&!interactive(event)){
+      event.preventDefault();
+      journalOpenTimelineDetailV494(row.dataset.taskId);
+    }
+  });
+});
 elements.timelineView.querySelectorAll('[data-j494-open-task]').forEach(b=>b.addEventListener('click',e=>{
   e.stopPropagation();journalOpenTimelineDetailV494(b.dataset.j494OpenTask);
 }));
