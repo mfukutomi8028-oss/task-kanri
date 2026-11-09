@@ -1650,8 +1650,10 @@ test('JOURNAL V494 desk keeps one selected task note beside its mobile card',asy
   await expect(row).toHaveAttribute('aria-expanded','false');
   await page.setViewportSize({width:1366,height:900});
   await expect(note).toBeVisible();
-  // Await asynchronous matchMedia change and DOM re-parenting.
-  await expect.poll(()=>note.evaluate(el=>el.parentElement?.classList.contains('j420-atelier'))).toBe(true);
+  // Await asynchronous matchMedia change and DOM re-parenting. Desktop
+  // attaches the note directly to #boardView; the atelier is its child.
+  await expect(note).not.toHaveClass(/j494-inline-note/);
+  await expect.poll(()=>note.evaluate(el=>el.parentElement?.id==='boardView')).toBe(true);
 });
 
 test('JOURNAL V494 phone chronicle exposes date actions and restores focus from detail',async({page})=>{
