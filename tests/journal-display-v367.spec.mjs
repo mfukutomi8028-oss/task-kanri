@@ -1948,11 +1948,13 @@ test('JOURNAL V505 jumps to a day and returns to the same record after editing',
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(2);
   // A direct double click must also remember the source before opening the
   // canonical editor; cancel does not create or change any task.
-  await row.dblclick({position:{x:11,y:11}});
+  // Double-click the record text, not its explicit detail/move buttons.
+  await row.locator('strong').dblclick();
   await expect(editor).toBeVisible();
   await editor.locator('#closeTaskDialog').click();
   await expect(editor).toBeHidden();
-  await page.locator('#closeDetail').click();
+  // Direct editing never leaves the canonical detail folio over the diary.
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
   await expect(row.locator('[data-j494-open-task]')).toBeFocused();
   await page.setViewportSize({width:390,height:900});
   await timeline.locator('[data-timeline-range]').selectOption('month');
@@ -2717,6 +2719,7 @@ test('JOURNAL V536 direct desk and index editing returns to the exact row after 
   await expect(editor).toBeVisible();
   await editor.locator('#closeTaskDialog').click();
   await expect(editor).toBeHidden();
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
   await expect(card).toBeFocused();
   expect(Math.abs((await card.evaluate(el=>el.getBoundingClientRect().top))-cardTop))
     .toBeLessThanOrEqual(38);
@@ -2730,6 +2733,7 @@ test('JOURNAL V536 direct desk and index editing returns to the exact row after 
   await expect(editor).toBeVisible();
   await editor.locator('#closeTaskDialog').click();
   await expect(editor).toBeHidden();
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
   await expect(row).toBeFocused();
   expect(Math.abs((await row.evaluate(el=>el.getBoundingClientRect().top))-rowTop))
     .toBeLessThanOrEqual(38);
@@ -2740,6 +2744,7 @@ test('JOURNAL V536 direct desk and index editing returns to the exact row after 
   await expect(editor).toBeVisible();
   await editor.locator('#closeTaskDialog').click();
   await expect(editor).toBeHidden();
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
   await expect(row).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
