@@ -2414,3 +2414,103 @@ test('Palette memo empty state explains search/color filters and resets only the
  assert.match(css,/\.pn-memo-empty-state \.pn-button/);
  assert.doesNotMatch(memo,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+
+test('Palette Firebase series reordering keeps the same visible row and focused control',()=>{
+  const begin=shell.indexOf('  function captureSeriesLiveSync() {');
+  const end=shell.indexOf('  function openEditor(',begin);
+  assert.ok(begin>0&&end>begin);
+  const source=shell.slice(begin,end);
+  const rows=Array.from({length:10},(_,i)=>({
+    id:'A'+(i+1),recurrenceSeriesId:'A',revision:1,
+    title:'会議 A'+(i+1),
+    startAt:'2027-07-'+String(i+1).padStart(2,'0')+'T09:00'
+  }));
+  const state={route:'schedule',detail:{kind:'schedule',id:'A1'},editor:null,
+    busy:false,snapshot:{schedules:rows,currentUser:'職員A',roomId:'room1'}};
+  const index={seriesId:'A',user:'職員A',room:'room1',open:true,
+    page:0,query:'',status:'all'};
+  const doc={activeElement:null};
+  let viewRows=[],focused=null,visibleCalls=0,scrolled=false;
+  const drawer={scrollTop:120,clientHeight:700,
+    getBoundingClientRect:()=>({top:50,bottom:750}),
+    querySelector:s=>s==='[data-pn-series-index]'?panel:
+      s==='.pn-detail-nav'?{getBoundingClientRect:()=>({bottom:96})}:null};
+  const mkRow=(id,absoluteY)=>({
+    dataset:{pnSeriesIndexOpen:id},inPanel:true,
+    hasAttribute:s=>s==='data-pn-series-index-open',
+    getBoundingClientRect:()=>({
+      top:absoluteY-drawer.scrollTop,bottom:absoluteY-drawer.scrollTop+42
+    }),
+    closest:s=>s==='.pn-series-index-entry'
+      ?{querySelector:()=>({dataset:{pnSeriesIndexOpen:id},
+        getBoundingClientRect:()=>({top:absoluteY-drawer.scrollTop,
+          bottom:absoluteY-drawer.scrollTop+42})})}:null,
+    focus(){doc.activeElement=this;focused=id;}
+  });
+  const search={inPanel:true,dataset:{},
+    selectionStart:2,selectionEnd:4,
+    hasAttribute:s=>s==='data-pn-series-index-search',
+    closest:()=>null,
+    scrollIntoView(){scrolled=true;},
+    focus(){doc.activeElement=this;focused='search';},
+    setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b;}};
+  const panel={open:true,contains:el=>Boolean(el?.inPanel),
+    querySelectorAll:selector=>selector==='[data-pn-series-index-open]'?viewRows:[],
+    querySelector:selector=>selector==='[data-pn-series-index-search]'?search:null};
+  const filtered=item=>state.snapshot.schedules.filter(row=>
+    row.recurrenceSeriesId===item.recurrenceSeriesId&&
+    (!index.query||row.title.includes(index.query)))
+    .sort((a,b)=>a.startAt.localeCompare(b.startAt));
+  const fns=new Function('state','seriesIndexState','drawer','document','active',
+    'filteredSeriesIndex',source+
+    'return {captureSeriesLiveSync,matchSeriesLiveSync,'+
+      'prepareSeriesLiveSync,restoreSeriesLiveSync};'
+  )(state,index,drawer,doc,()=>true,filtered);
+  const oldRow=mkRow('A7',350);
+  viewRows=[oldRow];doc.activeElement=oldRow;
+  const token=fns.captureSeriesLiveSync();
+  assert.equal(token.anchorId,'A7');
+  assert.equal(token.focusType,'open');
+  assert.equal(token.offset,180);
+  state.snapshot={...state.snapshot,schedules:rows.map(row=>row.id==='A7'
+    ?{...row,startAt:'2027-07-11T09:00',revision:2}:row)};
+  fns.prepareSeriesLiveSync(token);
+  assert.equal(index.page,1);
+  // New page creates new DOM buttons after synchronous re-render.
+  viewRows=[mkRow('A7',570),mkRow('A9',620)];
+  doc.activeElement=null;drawer.scrollTop=120;
+  fns.restoreSeriesLiveSync(token);
+  assert.equal(focused,'A7');
+  assert.equal(drawer.scrollTop,340);
+  assert.equal(doc.activeElement.dataset.pnSeriesIndexOpen,'A7');
+  // The active search and caret take priority over scrolling to another row.
+  index.page=1;index.query='会議 A7';
+  drawer.scrollTop=120;search.selectionStart=2;search.selectionEnd=4;
+  doc.activeElement=search;viewRows=[mkRow('A7',350)];
+  const searching=fns.captureSeriesLiveSync();
+  assert.equal(searching.focusType,'search');
+  state.snapshot.schedules=state.snapshot.schedules.map(row=>row.id==='A7'
+    ?{...row,title:'別の件名',revision:3}:row);
+  const pageBefore=index.page;
+  fns.prepareSeriesLiveSync(searching);
+  assert.equal(index.page,pageBefore);
+  viewRows=[];scrolled=false;doc.activeElement=null;focused=null;
+  fns.restoreSeriesLiveSync(searching);
+  assert.equal(focused,'search');
+  assert.equal(scrolled,true);
+  assert.deepEqual([search.selectionStart,search.selectionEnd],[2,4]);
+  assert.equal(index.query,'会議 A7');
+  // A stale focus token cannot leak to another user or room.
+  doc.activeElement=null;focused=null;state.snapshot.roomId='room2';
+  fns.prepareSeriesLiveSync(searching);
+  fns.restoreSeriesLiveSync(searching);
+  assert.equal(focused,null);
+  assert.equal(index.page,pageBefore);
+  state.snapshot.roomId='room1';state.snapshot.currentUser='職員B';
+  fns.restoreSeriesLiveSync(searching);
+  assert.equal(focused,null);
+  assert.match(shell,/const seriesPosition=state\.snapshot\.currentUser===snapshot\.currentUser/);
+  assert.match(shell,/prepareSeriesLiveSync\(seriesPosition\);\s*render\(\);\s*restoreSeriesLiveSync\(seriesPosition\)/);
+  assert.doesNotMatch(source,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
+});

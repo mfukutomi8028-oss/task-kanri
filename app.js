@@ -1206,12 +1206,24 @@ async function toggleTodo(id) {
   return result;
 }
 
-async function deleteTodo(id) {
-  const todo = state.todos.find(item => item.id === id && item.owner === normalizeUser(getCurrentUser()));
+async function deleteTodo(id, options = {}) {
+  const owner = normalizeUser(getCurrentUser());
+  const todo = state.todos.find(item => item.id === id && item.owner === owner);
   if (!todo) return { ok: false, error: 'not-found' };
+  // Origin supplies the edit-start revision. Legacy Classic calls without
+  // options still use the visible current revision and the same confirmation.
+  if ((options.ownerRoom !== undefined && String(options.ownerRoom) !== ROOM_ID)
+    || (options.ownerUser !== undefined && normalizeUser(options.ownerUser) !== owner))
+    return { ok: false, error: 'owner-mismatch' };
+  const guarded = Object.prototype.hasOwnProperty.call(options, 'revision');
+  const expectedRevision = guarded ? Number(options.revision) : normalizeRevision(todo.revision);
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0
+    || (guarded && normalizeRevision(todo.revision) !== expectedRevision))
+    return { ok: false, error: 'revision-or-relation-mismatch' };
   if (!confirm(`「${todo.text}」を削除しますか？`)) return { ok: false, error: 'cancelled' };
-  const result = await commitTodoRecord('todo-delete', id, todo.revision, current => {
-    if (!current || current.owner !== todo.owner) throw new Error('revision-or-relation-mismatch'); return null;
+  const result = await commitTodoRecord('todo-delete', id, expectedRevision, current => {
+    if (!current || current.owner !== todo.owner) throw new Error('revision-or-relation-mismatch');
+    return null;
   });
   if (!result.ok) showWriteFailure(result, 'やることを削除できませんでした。');
   return result;
@@ -6899,6 +6911,9 @@ function journalCaptureAtelierReaderAnchorV556(){
     journalAtelierReaderAnchorV556=null;
     return;
   }
+  // Preserve the underlying reading anchor while a detail panel/editor is
+  // open; modal scroll/resize activity must not rewrite the source position.
+  if(elements.detailPanel?.classList.contains('open')||elements.taskDialog?.open)return;
   const note=elements.boardView.querySelector('#j494AtelierNote.j494-inline-note');
   if(!note){journalAtelierReaderAnchorV556=null;return;}
   // The heading can be far above the viewport in a long memo. Pick the
@@ -6938,6 +6953,7 @@ window.addEventListener('resize',()=>{
     if(anchor!==journalAtelierReaderAnchorV556||!journalTaskV411()
       ||state.layout!=='tasks'||state.taskLayout!=='board'
       ||!journalAtelierInlineMediaV494.matches||!journalAtelierInlineOpenV494
+      ||elements.detailPanel?.classList.contains('open')||elements.taskDialog?.open
       ||elements.boardView.hidden||anchor.id!==journalAtelierSelectedV420)return;
     const note=elements.boardView.querySelector('#j494AtelierNote.j494-inline-note');
     const target=note?.querySelector(anchor.selector);
@@ -7019,8 +7035,10 @@ function journalOpenTaskNoteV519(id,layout,action,source,edit=false){
   const inlineReader=layout==='list'
     &&journalTaskInlineSelectedV491===id
     &&Boolean(source.closest('.j425-task-preview.j491-inline-detail'));
+  // V558: keep the opening button's relative viewport position when the
+  // mobile width or height changes while the canonical panel is open.
   journalTaskNoteReturnV519={id,selected:id,order,layout,action,top,rowTop,
-    width:window.innerWidth,inlineReader};
+    width:window.innerWidth,viewportHeight:window.innerHeight,inlineReader};
   // Only one return owner may be pending for the shared task detail panel.
   journalTimelineReturnTaskV494='';
   journalTimelineReturnDateV504='';
@@ -7059,6 +7077,17 @@ function journalRestoreTaskNoteV519(){
     view.querySelector(board?'[data-j420-search]':'[data-j425-query]')||
     view.querySelector(board?'[data-j420-new-task]':'[data-j425-new-task]');
   if(!target)return;
+  // V558: closing a panel may defer this restoration by a frame. If the
+  // person has already focused another visible control in the task page,
+  // that newer action wins instead of restoring the old detail action.
+  const current=document.activeElement;
+  if(current&&current!==target&&view.contains(current)&&current.isConnected
+    &&current.getClientRects().length
+    &&current.matches('button,input,select,textarea,a,[tabindex]')){
+    if(board&&journalAtelierInlineOpenV494)
+      journalCaptureAtelierReaderAnchorV556();
+    return;
+  }
   if(!target.matches('button,select,input,a,[tabindex]'))target.tabIndex=-1;
   target.focus({preventScroll:true});
   const scrolling=document.scrollingElement;
@@ -7070,9 +7099,28 @@ function journalRestoreTaskNoteV519(){
   const sourceTop=target===button?origin.top:
     target===row||(!row&&target===nearRow)?origin.rowTop:null;
   if(scrolling&&origin.width===window.innerWidth
+    &&origin.viewportHeight===window.innerHeight
     &&Number.isFinite(sourceTop)&&sourceTop>=0&&sourceTop<=window.innerHeight){
     scrolling.scrollTop+=target.getBoundingClientRect().top-sourceTop;
+  }else if(scrolling&&board&&target===button
+    &&Number.isFinite(origin.top)&&origin.top>=0
+    &&Number.isFinite(origin.viewportHeight)&&origin.viewportHeight>0){
+    // V558: the same note action remains available after a phone rotation
+    // or a 390px <-> 320px resize. Restore its *relative* on-screen height
+    // rather than sending the reader to an arbitrary edge of the notebook.
+    const rect=target.getBoundingClientRect();
+    const maxY=Math.max(12,window.innerHeight-rect.height-12);
+    const wanted=origin.top/origin.viewportHeight*window.innerHeight;
+    const desired=Math.min(maxY,Math.max(12,wanted));
+    scrolling.scrollTop+=rect.top-desired;
+    const after=target.getBoundingClientRect();
+    if(after.bottom<=0||after.top>=window.innerHeight)
+      target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
   }else target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+  // Rebase the V556 reading anchor at the final restored location; an old
+  // 390px anchor must not override a later 320px scroll or Firebase repaint.
+  if(board&&journalAtelierInlineOpenV494)
+    journalCaptureAtelierReaderAnchorV556();
 }
 // JOURNAL V507: transient source for the existing canonical date-change dialog.
 let journalTimelineMoveSourceV507=null;
@@ -12490,7 +12538,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
         result = await updateTodoDetails(id, command.text, command.memo || '', command);
         break;
       case 'todo.delete':
-        result = await deleteTodo(id);
+        result = await deleteTodo(id, command);
         break;
       case 'todo.move':
         result = await reorderTodo(id, command.direction === 'up' ? -1 : 1,

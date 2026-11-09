@@ -360,6 +360,12 @@ test('JOURNAL Ver.450 uses the canonical ToDo editor and a searchable memo index
   assert.match(js,/dataset\.journalMemoId/);
   assert.match(css,/\.j450-todo-back/);
   assert.match(css,/\.j450-memo-index-find/);
+  // Index-only filtering must provide a no-match explanation and a visible
+  // reset without introducing another memo store or canonical card filter.
+  assert.match(js,/dataset\.j558MemoIndexReset/);
+  assert.match(js,/emptyMessage\.textContent/);
+  assert.match(js,/count\.textContent = query \? matched/);
+  assert.match(css,/\.j558-memo-index-empty\[hidden\]/);
   assert.doesNotMatch(js,/\b(?:initializeApp|runTransaction|setDatabase)\s*\(/);
 });
 
@@ -1139,6 +1145,8 @@ test('JOURNAL V515 list rerenders restore the exact filter, sorting or search co
   assert.match(css,/JOURNAL V515/);
   assert.match(css,/\.j425-workbench-toolbar label:first-child/);
   assert.match(css,/\.j425-workbench-toolbar \.j425-index-counter/);
+  // V430 desktop columns must not overrule V515's one-column mobile index.
+  assert.match(css,/#listView \.j425-task-index-layout\s*\{\s*grid-template-columns:minmax\(0,1fr\)!important;/);
 });
 
 test('JOURNAL V516 desk restores the originating case and index control without new writers',()=>{
@@ -1481,7 +1489,10 @@ test('JOURNAL V544 keeps the mobile reader after a filtered edit and restores pa
   assert.ok(start>0&&end>start);
   assert.match(origin,/const inlineReader=layout==='list'/);
   assert.match(origin,/journalTaskInlineSelectedV491===id/);
-  assert.match(origin,/width:window\.innerWidth,inlineReader/);
+  // Keep V544's invariants without freezing the transient return record's
+  // member ordering; V558 also stores viewportHeight for responsive return.
+  assert.match(origin,/width:window\.innerWidth/);
+  assert.match(origin,/inlineReader/);
   assert.match(origin,/const continuedReader=!board&&origin\.inlineReader/);
   assert.match(origin,/const changedHeading=continuedReader&&selected!==origin\.id/);
   assert.match(origin,/\|\|changedHeading\|\|row\|\|nearRow/);
@@ -1681,5 +1692,27 @@ test('JOURNAL V556 keeps the visible note section across sync and phone width ch
   assert.match(restore,/!snapshot\.focusWasVisibleV556/);
   assert.match(restore,/&&\!readingOffscreenV556/);
   assert.doesNotMatch(anchor+capture+restore,
+    /(?:persistTask|runTransaction|commitTaskDraft|setDoc|onValue)\s*\(/i);
+});
+
+
+test('JOURNAL V558 note return keeps modal source and newer focus across phone resize',()=>{
+  const app=read('app.js');
+  const modal=app.slice(app.indexOf('function journalOpenTaskNoteV519('),
+    app.indexOf('// JOURNAL V507: transient source'));
+  const reader=app.slice(app.indexOf('function journalCaptureAtelierReaderAnchorV556('),
+    app.indexOf('// V553: invalidate queued mobile note navigation'));
+  assert.ok(modal.length>1400&&reader.length>1200);
+  assert.match(modal,/viewportHeight:window\.innerHeight/);
+  assert.match(modal,/current\.getClientRects\(\)\.length/);
+  assert.match(modal,/current\.matches\('button,input,select,textarea,a,\[tabindex\]'\)/);
+  assert.match(modal,/target===button/);
+  assert.match(modal,/origin\.top\/origin\.viewportHeight\*window\.innerHeight/);
+  assert.match(modal,/scrolling\.scrollTop\+=rect\.top-desired/);
+  assert.match(modal,/if\(board&&journalAtelierInlineOpenV494\)/);
+  assert.match(modal,/journalCaptureAtelierReaderAnchorV556\(\)/);
+  assert.match(reader,/if\(elements\.detailPanel\?\.classList\.contains\('open'\)\|\|elements\.taskDialog\?\.open\)return/);
+  assert.match(reader,/anchor\.id!==journalAtelierSelectedV420/);
+  assert.doesNotMatch(modal+reader,
     /(?:persistTask|runTransaction|commitTaskDraft|setDoc|onValue)\s*\(/i);
 });

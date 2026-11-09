@@ -2499,7 +2499,8 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await taskForm.locator('[name="title"]').fill('直接編集するタスク・更新');
  await sheet.locator('button[form="editForm"]').click();
  const changedTask=host.locator('.origin-task-collection .item-row',{hasText:'直接編集するタスク・更新'});
- await expect(changedTask.locator('.item-name')).toBeFocused();
+ // Direct editing returns to the edit action, not the detail-opening title.
+ await expect(changedTask.locator('[data-action="list-quick-edit"]')).toBeFocused();
  await changedTask.locator('.item-name').click();
  await expect(sheet.locator('#panelHeading')).toHaveText('直接編集するタスク・更新');
  await sheet.locator('.sheet-close').click();
@@ -2557,7 +2558,7 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await expect(memoFields.locator('input[name="paperColor"]')).toHaveCount(6);
  await memoForm.locator('[name="body"]').fill('一覧から本文を更新');
  await sheet.locator('button[form="editForm"]').click();
- await expect(note.locator('.memo-card')).toBeFocused();
+ await expect(note.locator('[data-action="list-quick-edit"]')).toBeFocused();
  await expect(note.locator('[data-action="memo-color"]')).not.toHaveCount(0);
  await note.locator('.memo-card').click();
  await expect(sheet).toContainText('一覧から本文を更新');
@@ -3022,3 +3023,375 @@ test('Origin preserves completed history filters and edit position after saving'
  await expect(host.locator('#originCompletedTodos [data-action="list-quick-edit"][data-id="'+nextId+'"]')).toBeFocused();
  await expect(host.locator('.origin-todo-metrics')).toContainText('完了 3件');
 });
+
+
+test('Origin deletion keeps the filtered ToDo list and confirms only once',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-todo-delete-search-v558',320);
+ const initial=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,ids=[];
+   for(const text of ['削除検索候補A','削除検索候補B','削除検索外C']){
+     const result=await bridge.dispatch({type:'todo.create',text,memo:'編集対象'});
+     if(!result?.ok)throw Error('create: '+result?.error);
+     ids.push(bridge.readSnapshot().todos.find(t=>t.text===text).id);
+   }
+   return ids;
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ const query=host.locator('#originTodoQuery');
+ await query.fill('削除検索候補');
+ const rows=host.locator('.origin-todo-list .todo-entry');
+ await expect(rows).toHaveCount(2);
+ const deletedId=await rows.first().locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ const nextId=await rows.nth(1).locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ const nextTitle=await rows.nth(1).locator('.todo-text').innerText();
+ await rows.first().locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await expect(form).toBeVisible();
+ let dialogs=0,allow=false;
+ page.on('dialog',dialog=>{dialogs++;void (allow?dialog.accept():dialog.dismiss());});
+ // Dismissing the canonical confirmation must leave the draft and the row intact.
+ await host.locator('#sheet [data-action="delete"][data-kind="todos"]').click();
+ await expect(form).toBeVisible();
+ await expect(rows).toHaveCount(2);
+ expect(dialogs).toBe(1);
+ allow=true;
+ await host.locator('#sheet [data-action="delete"][data-kind="todos"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(rows).toHaveCount(1);
+ expect(dialogs).toBe(2);
+ await expect(query).toHaveValue('削除検索候補');
+ await expect(host.locator('[data-action="todo-search-toggle"]')).toHaveAttribute('aria-expanded','true');
+ await expect(rows.first().locator('[data-action="list-quick-edit"][data-id="'+nextId+'"]')).toBeFocused();
+ await rows.first().locator('[data-action="list-quick-edit"]').click();
+ await expect(host.locator('#editForm [name="title"]')).toHaveValue(nextTitle);
+ const state=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ expect(initial).toContain(deletedId);
+ expect(state.some(x=>x.id===deletedId)).toBe(false);
+ expect(state).toHaveLength(2);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
+
+test('Origin completed-history deletion of last search match returns to the search field',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-todo-last-history-delete-v558',390);
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(const [text,completed] of [['最後の履歴検索対象',true],['別の履歴',true],['未完了の別件',false]]){
+     const result=await b.dispatch({type:'todo.create',text,completed});
+     if(!result?.ok)throw Error('create: '+result?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ await host.locator('[data-action="todo-search-history"]').click();
+ const query=host.locator('#originTodoQuery');
+ await query.fill('最後の履歴検索対象');
+ const history=host.locator('#originCompletedTodos');
+ await expect(history.locator('.todo-entry')).toHaveCount(1);
+ await history.locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await expect(form).toBeVisible();
+ page.on('dialog',dialog=>{void dialog.accept();});
+ await host.locator('#sheet [data-action="delete"][data-kind="todos"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(history.locator('.todo-entry')).toHaveCount(0);
+ await expect(query).toHaveValue('最後の履歴検索対象');
+ await expect(query).toBeFocused();
+ await expect(host.locator('[data-action="todo-search-history"]')).toHaveAttribute('aria-pressed','true');
+ await expect(host.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','true');
+ await expect(history).toContainText('一致する完了ToDoはありません');
+ await expect(host.locator('.origin-todo-metrics')).toContainText('完了 1件');
+ const stillExists=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ expect(stillExists).toHaveLength(2);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
+
+test('Origin stale ToDo deletion rejects without a confirmation or data loss',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-stale-todo-delete-v558',320);
+ const created=await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   const r=await b.dispatch({type:'todo.create',text:'競合削除の対象',memo:'元のメモ'});
+   if(!r?.ok)throw Error('create: '+r?.error);
+   const t=b.readSnapshot().todos.find(item=>item.text==='競合削除の対象');
+   return {id:t.id,revision:t.revision};
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('.origin-todo-list .todo-entry',{hasText:'競合削除の対象'})
+   .locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ await expect(form).toHaveAttribute('data-revision',String(created.revision));
+ await form.locator('[name="memo"]').fill('削除前に編集中の下書き');
+ await page.evaluate(async id=>{
+   const b=window.WorkBoardPaletteBridge;
+   const result=await b.dispatch({type:'todo.update',id,text:'遠隔側の最新変更',memo:'遠隔側の内容'});
+   if(!result?.ok)throw Error('remote change: '+result?.error);
+ },created.id);
+ let dialogs=0;
+ page.on('dialog',dialog=>{dialogs++;void dialog.dismiss();});
+ await host.locator('#sheet [data-action="delete"][data-kind="todos"]').click();
+ await expect(form).toBeVisible();
+ await expect(form.locator('#originSaveRecovery')).toBeVisible();
+ await expect(form.locator('#originSaveRecoveryText')).toContainText('自動で上書きしません');
+ await expect(form.locator('[name="memo"]')).toHaveValue('削除前に編集中の下書き');
+ expect(dialogs).toBe(0);
+ const state=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot()
+   .todos.find(item=>item.id===id),created.id);
+ expect(state).toMatchObject({text:'遠隔側の最新変更',memo:'遠隔側の内容'});
+ expect(state.revision).toBe(created.revision+1);
+});
+
+
+test('Origin last pending search result can be completed and reopened without losing the query',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-last-result-complete-reopen-v558',320);
+ const id=await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(const text of ['最後の完了復帰候補','別の未完了']){
+     const result=await b.dispatch({type:'todo.create',text});
+     if(!result?.ok)throw Error('create: '+result?.error);
+   }
+   return b.readSnapshot().todos.find(item=>item.text==='最後の完了復帰候補').id;
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ await host.locator('[data-action="todo-search-toggle"]').click();
+ const query=host.locator('#originTodoQuery');
+ await query.fill('最後の完了復帰候補');
+ const pending=host.locator('.origin-todo-list .todo-entry');
+ await expect(pending).toHaveCount(1);
+ await pending.locator('[data-action="todo-check"]').click();
+ await expect(pending).toHaveCount(0);
+ await expect(query).toBeFocused();
+ await expect(query).toHaveValue('最後の完了復帰候補');
+ await expect(host.locator('.origin-todo-search-result')).toContainText('表示 0件');
+ await host.locator('.origin-todo-archive-toggle').click();
+ const history=host.locator('#originCompletedTodos');
+ await expect(history.locator('.todo-entry')).toHaveCount(1);
+ await history.locator('[data-action="todo-check"][data-id="'+id+'"]').click();
+ await expect(pending).toHaveCount(1);
+ await expect(query).toBeFocused();
+ await expect(query).toHaveValue('最後の完了復帰候補');
+ await expect(host.locator('.origin-todo-search-result')).toContainText('表示 1件');
+ const todo=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(item=>item.id===id),id);
+ expect(todo.completed).toBe(false);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
+
+
+test('Origin returns to quick-add or archive after deleting the last unfiltered ToDo',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-todo-empty-list-focus-v559',320);
+ await page.evaluate(async()=>{
+   const b=window.WorkBoardPaletteBridge;
+   for(const [text,completed] of [['未完了最後の一件',false],['完了履歴最後の一件',true]]){
+     const r=await b.dispatch({type:'todo.create',text,completed});
+     if(!r?.ok)throw Error('create: '+r?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="todos"]').click();
+ const queryToggle=host.locator('[data-action="todo-search-toggle"]');
+ await expect(queryToggle).toHaveAttribute('aria-expanded','false');
+ const pending=host.locator('.origin-todo-list .todo-entry');
+ await expect(pending).toHaveCount(1);
+ await pending.locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="todos"]');
+ page.on('dialog',dialog=>{void dialog.accept()});
+ await host.locator('#sheet [data-action="delete"][data-kind="todos"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(pending).toHaveCount(0);
+ await expect(host.locator('.origin-todo-add [name="title"]')).toBeFocused();
+ await expect(queryToggle).toHaveAttribute('aria-expanded','false');
+ await host.locator('.origin-todo-archive-toggle').click();
+ const history=host.locator('#originCompletedTodos .todo-entry');
+ await expect(history).toHaveCount(1);
+ await history.locator('[data-action="list-quick-edit"]').click();
+ await host.locator('#sheet [data-action="delete"][data-kind="todos"]').click();
+ await expect(history).toHaveCount(0);
+ await expect(host.locator('.origin-todo-archive-toggle')).toBeFocused();
+ await expect(host.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','true');
+ const remaining=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ expect(remaining).toHaveLength(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
+
+
+test('Origin task deletion from a filtered list keeps the next edit reachable',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-task-neighbor-return-v560',390);
+ await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   for(const title of ['復帰確認タスク A','復帰確認タスク B','対象外タスク']){
+     const result=await bridge.dispatch({
+       type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
+       assignee:s.currentUser,status:s.statuses.includes('未着手')?'未着手':s.statuses[0],
+       category:s.categories[0],title,description:'復帰の検査',
+       requester:'',tags:'',checklist:'',checklistDone:[],
+       priority:'中',dueDate:'',dueTime:'',pinned:false,revision:0
+     });
+     if(!result?.ok)throw Error('task.create: '+result?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="tasks"]').click();
+ const query=host.locator('#originTaskQuery');
+ await query.fill('復帰確認タスク');
+ const rows=host.locator('.origin-task-collection .item-row');
+ await expect(rows).toHaveCount(2);
+ const removedId=await rows.first().locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ const nextId=await rows.nth(1).locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ const nextTitle=await rows.nth(1).locator('.item-name').innerText();
+ const beforeTop=await rows.first().evaluate(el=>el.getBoundingClientRect().top);
+ await rows.first().locator('[data-action="list-quick-edit"]').click();
+ await expect(host.locator('#editForm[data-kind="tasks"]')).toBeVisible();
+ page.on('dialog',dialog=>{void dialog.accept()});
+ await host.locator('#sheet [data-action="delete"][data-kind="tasks"]').click();
+ await expect(rows).toHaveCount(1);
+ const next=host.locator('.origin-task-collection [data-action="list-quick-edit"][data-id="'+nextId+'"]');
+ await expect(next).toBeFocused();
+ const afterTop=await rows.first().evaluate(el=>el.getBoundingClientRect().top);
+ expect(Math.abs(afterTop-beforeTop)).toBeLessThanOrEqual(130);
+ await expect(query).toHaveValue('復帰確認タスク');
+ await next.click();
+ await expect(host.locator('#editForm [name="title"]')).toHaveValue(nextTitle.trim());
+ await host.locator('#sheet [data-action="delete"][data-kind="tasks"]').click();
+ await expect(rows).toHaveCount(0);
+ await expect(query).toBeFocused();
+ await expect(query).toHaveValue('復帰確認タスク');
+ const remaining=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks);
+ expect(remaining.some(task=>task.id===removedId||task.id===nextId)).toBe(false);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
+
+test('Origin memo filter preserves the nearest quick edit after a title change and deletion',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-memo-neighbor-return-v560',320);
+ await page.evaluate(async()=>{
+   const memo=window.WorkBoardPaletteMemoBridgeV369,s=window.WorkBoardPaletteBridge.readSnapshot();
+   for(const title of ['検索継続メモ A','検索継続メモ B']){
+     const result=await memo.dispatch({type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
+       title,body:'手順を確認',category:'手順',tags:[],pinned:false,paperColor:'mint'});
+     if(!result?.ok)throw Error('memo.create: '+result?.error);
+   }
+ });
+ await host.locator('#mobileNav [data-route="notes"]').click();
+ const query=host.locator('#originMemoQuery');
+ await query.fill('検索継続メモ');
+ const cards=host.locator('.origin-memo-shell');
+ await expect(cards).toHaveCount(2);
+ const keptId=await cards.nth(1).locator('[data-action="list-quick-edit"]').getAttribute('data-id');
+ const keptTitle=await cards.nth(1).locator('.memo-card h3').innerText();
+ await cards.first().locator('[data-action="list-quick-edit"]').click();
+ const form=host.locator('#editForm[data-kind="memos"]');
+ await form.locator('[name="title"]').fill('検索対象外になったメモ');
+ await host.locator('button[form="editForm"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(cards).toHaveCount(1);
+ const next=host.locator('.origin-memo-shell [data-action="list-quick-edit"][data-id="'+keptId+'"]');
+ await expect(next).toBeFocused();
+ await expect(query).toHaveValue('検索継続メモ');
+ await next.click();
+ await expect(form.locator('[name="title"]')).toHaveValue(keptTitle.trim());
+ page.on('dialog',dialog=>{void dialog.accept()});
+ await host.locator('#sheet [data-action="delete"][data-kind="memos"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(cards).toHaveCount(0);
+ await expect(query).toBeFocused();
+ await expect(query).toHaveValue('検索継続メモ');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
+});
+
+test('Origin mobile weekly schedule returns to the next event then the filter controls',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-calendar-neighbor-return-v560',390);
+ const date=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const morning=new Date();morning.setHours(9,0,0,0);
+   for(let i=0;i<2;i++){
+     const start=new Date(morning.getTime()+i*3600000);
+     const end=new Date(start.getTime()+1800000);
+     const created=await bridge.dispatch({
+       type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+       values:{title:'復帰確認予定 '+i,startAt:start.toISOString(),endAt:end.toISOString(),
+         assignee:s.currentUser,category:s.categories[0],
+         relatedTaskId:'',location:'会議室',memo:''}
+     });
+     if(!created?.ok)throw Error('schedule.create: '+created?.error);
+   }
+   return [morning.getFullYear(),String(morning.getMonth()+1).padStart(2,'0'),
+     String(morning.getDate()).padStart(2,'0')].join('-');
+ });
+ await host.locator('#mobileNav [data-route="calendar"]').click();
+ const day=host.locator('.mobile-agenda .agenda-day[data-date="'+date+'"]');
+ const entries=day.locator('.agenda-entry');
+ await expect(entries).toHaveCount(2);
+ const remainingId=await entries.nth(1).getAttribute('data-id');
+ await entries.first().click();
+ // Playwright scrolls the clicked row into view before opening the inspector.
+ // Compare against that actual opening position, not its pre-click position.
+ const beforeTop=await entries.first().evaluate(el=>el.getBoundingClientRect().top);
+ await host.locator('#sheet [data-action="edit"]').click();
+ const form=host.locator('#editForm[data-kind="events"]');
+ await expect(form).toBeVisible();
+ page.on('dialog',dialog=>{void dialog.accept()});
+ await host.locator('#sheet [data-action="delete"][data-kind="events"]').click();
+ await expect(form).toHaveCount(0);
+ await expect(entries).toHaveCount(1);
+ await expect(day.locator('.agenda-entry[data-id="'+remainingId+'"]')).toBeFocused();
+ const afterTop=await entries.first().evaluate(el=>el.getBoundingClientRect().top);
+ expect(Math.abs(afterTop-beforeTop)).toBeLessThanOrEqual(130);
+ await entries.first().click();
+ await host.locator('#sheet [data-action="edit"]').click();
+ await host.locator('#sheet [data-action="delete"][data-kind="events"]').click();
+ await expect(entries).toHaveCount(0);
+ await expect(host.locator('[data-action="schedule-filter-toggle"]')).toBeFocused();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
+});
+
+for(const width of [320,390]){
+ test('Origin global schedule final deletion keeps the search control visible at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  const label='全期間末尾復帰'+width;
+  const host=await launchOriginV415(page,'origin-global-final-focus-v562-'+width,width);
+  await page.evaluate(async title=>{
+   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const start=new Date();start.setDate(start.getDate()+21);start.setHours(10,0,0,0);
+   const end=new Date(start.getTime()+60*60000);
+   const created=await bridge.dispatch({
+    type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+    values:{title,startAt:start.toISOString(),endAt:end.toISOString(),
+     assignee:s.currentUser,category:s.categories[0],relatedTaskId:'',location:'確認室',memo:''}
+   });
+   if(!created?.ok)throw Error('schedule.create: '+created?.error);
+  },label);
+  await host.locator('#mobileNav [data-route="calendar"]').click();
+  const toggle=host.locator('[data-action="schedule-filter-toggle"]');
+  await toggle.click();
+  const query=host.locator('#originScheduleSearch');
+  await query.fill(label);
+  const scope=host.locator('.origin-schedule-scope');
+  await scope.locator('[data-value="all"]').click();
+  const hits=host.locator('.origin-schedule-global-item');
+  await expect(hits).toHaveCount(1);
+  await hits.first().locator('[data-action="open"][data-kind="events"]').click();
+  await host.locator('#sheet [data-action="edit"]').click();
+  await expect(host.locator('#editForm[data-kind="events"]')).toBeVisible();
+  // Schedule deletion uses the canonical confirmation dialog.
+  page.once('dialog',dialog=>{void dialog.accept()});
+  await host.locator('#sheet [data-action="delete"][data-kind="events"]').click();
+  await expect(host.locator('#overlay')).toBeHidden();
+  await expect(hits).toHaveCount(0);
+  await expect(scope.locator('[data-value="all"]')).toHaveAttribute('aria-pressed','true');
+  await expect(query).toHaveValue(label);
+  await expect(toggle).toBeFocused();
+  // Focus alone is insufficient: after deleting the last result, the filter
+  // must also be within the phone viewport so the operator can continue.
+  const bounds=await toggle.evaluate(el=>{
+   const rect=el.getBoundingClientRect();
+   return {top:rect.top,bottom:rect.bottom,height:window.innerHeight};
+  });
+  expect(bounds.top).toBeGreaterThanOrEqual(-2);
+  expect(bounds.bottom).toBeLessThanOrEqual(bounds.height+2);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width+3);
+ });
+}

@@ -107,7 +107,14 @@ test('remote comment UI consumes the canonical subscribed task instead of requir
   assert.match(app, /readCommentTask\(taskId\)/);
   assert.match(app, /comments: JSON\.parse\(JSON\.stringify\(task\.comments \|\| \[\]\)\)/);
   assert.match(comments, /const canonical = window\.WorkBoardPaletteBridge\?\.readCommentTask/);
-  assert.match(comments, /if \(typeof canonical === "function"\) return canonical\(taskId\)/);
+  // The subscribed canonical task is always read first. Only a confirmed
+  // transaction whose revision is newer may briefly fill the render gap.
+  assert.match(comments, /const task = canonical\(taskId\)/);
+  assert.match(comments, /if \(!confirmed\) return task/);
+  assert.match(comments, /Number\(task\.revision \|\| 0\) >= confirmed\.revision/);
+  assert.match(comments, /Date\.now\(\) - confirmed\.at > 30_000/);
+  assert.match(comments, /return Number\(cached\?\.revision\) === confirmed\.revision \? cached : task/);
+  assert.match(comments, /if \(typeof canonical !== "function"\)/);
   assert.match(comments, /function patch\(\)[\s\S]*const task = readCurrentCommentTask\(taskId\)/);
   assert.match(comments, /function openReply\([\s\S]*const task = readCurrentCommentTask\(taskId\)/);
 });
