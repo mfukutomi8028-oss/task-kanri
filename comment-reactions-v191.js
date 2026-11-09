@@ -44,12 +44,35 @@
     }
   }
 
+  // A successful transaction may be acknowledged before the onValue snapshot.
+  // Keep only its revision as a short-lived display hint, never a second task store.
+  let lastConfirmedCommentWrite = null;
+
+  function rememberConfirmedCommentWrite(taskId, saved) {
+    const revision = Number(saved?.revision);
+    if (!Number.isSafeInteger(revision) || revision < 0) return;
+    lastConfirmedCommentWrite = { room: roomId(), taskId, revision, at: Date.now() };
+  }
+
   function readCurrentCommentTask(taskId) {
-    // This bridge reads the actual onValue-backed Classic state. The browser
-    // cache may be empty or stale even while the task itself is already visible.
+    // The subscribed Classic task remains authoritative. A just-acknowledged
+    // write may briefly be newer than that subscription; paint only the exact
+    // confirmed revision already saved in the existing local cache.
     const canonical = window.WorkBoardPaletteBridge?.readCommentTask;
-    if (typeof canonical === "function") return canonical(taskId);
-    return readCachedTasks().find(item => String(item?.id || "") === taskId) || null;
+    if (typeof canonical !== "function") {
+      return readCachedTasks().find(item => String(item?.id || "") === taskId) || null;
+    }
+    const task = canonical(taskId);
+    const confirmed = lastConfirmedCommentWrite;
+    if (!confirmed) return task;
+    if (confirmed.room !== roomId() || confirmed.taskId !== taskId
+        || Date.now() - confirmed.at > 30_000 || !task
+        || Number(task.revision || 0) >= confirmed.revision) {
+      lastConfirmedCommentWrite = null;
+      return task;
+    }
+    const cached = readCachedTasks().find(item => String(item?.id || "") === taskId);
+    return Number(cached?.revision) === confirmed.revision ? cached : task;
   }
 
   function writeCachedTask(taskId, record) {
@@ -577,6 +600,7 @@
       }
       if (missing) throw new Error("reaction-missing");
       writeCachedTask(taskId, saved);
+      rememberConfirmedCommentWrite(taskId, saved);
       const savedComment = commentRecords(saved.comments).find(item => String(item?.id || "") === commentIdValue);
       const added = normalizeReactionUsers(savedComment?.reactions?.[emoji]).includes(user);
       if (intendedPressed && added) {
@@ -660,6 +684,7 @@
     if (!result.committed || missing) throw new Error('reply-conflict');
     const saved = result.snapshot?.val() || {};
     writeCachedTask(taskId, saved);
+    rememberConfirmedCommentWrite(taskId, saved);
     const parent = commentRecords(saved.comments).find(comment => String(comment?.id || '') === parentId);
     const recipient = String(parent?.author || '');
     await deliverPersonal(recipient, cleanEventId('reply', taskId, replyId, recipient), {
