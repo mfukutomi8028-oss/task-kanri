@@ -7019,6 +7019,19 @@ let journalTimelineReturnDayV536=null;
 // JOURNAL V519: one transient origin for desk / index detail modals.
 // The existing close observer below handles all three JOURNAL task pages.
 let journalTaskNoteReturnV519=null;
+// Direct JOURNAL editing belongs to the paper page, not the canonical detail
+// folio. Keep one transient modal owner so cancellation and saving both return
+// to the original task row without leaving an invisible blocking panel.
+let journalDirectTaskEditorV536='';
+function journalOpenDirectTaskEditorV536(id){
+  const task=state.tasks.find(item=>item.id===id);
+  if(!task)return;
+  journalDirectTaskEditorV536=id;
+  // Timeline double-click also emits ordinary click events that open detail.
+  // Close that folio before displaying the editor, without changing task data.
+  closeDetail();
+  openTaskDialog(task);
+}
 function journalOpenTaskNoteV519(id,layout,action,source,edit=false){
   if(!source||!id||!state.tasks.some(task=>task.id===id))return;
   const top=source.getBoundingClientRect().top;
@@ -7045,7 +7058,7 @@ function journalOpenTaskNoteV519(id,layout,action,source,edit=false){
   journalTimelineReturnUndatedV504=false;
   journalTimelineReturnTopV505=null;
   journalTimelineReturnDayV536=null;
-  if(edit)openTaskEditorById(id);
+  if(edit)journalOpenDirectTaskEditorV536(id);
   else selectTask(id);
 }
 function journalRestoreTaskNoteV519(){
@@ -7152,7 +7165,7 @@ function journalOpenTimelineDetailV494(id){
 }
 function journalOpenTimelineEditorV505(id){
   journalRememberTimelineSourceV505(id);
-  openTaskEditorById(id);
+  journalOpenDirectTaskEditorV536(id);
 }
 // JOURNAL V536: one return resolver runs after either the detail panel closes
 // or a direct row double-click editor closes. No second modal/data owner.
@@ -7201,6 +7214,14 @@ if(typeof MutationObserver!=='undefined'&&elements.detailPanel){
     .observe(elements.detailPanel,{attributes:true,attributeFilter:['class']});
 }
 elements.taskDialog?.addEventListener('close',()=>{
+  const directId=journalDirectTaskEditorV536;
+  journalDirectTaskEditorV536='';
+  if(directId){
+    // saveTaskFromForm selects the saved task, but a direct paper edit should
+    // return to its row, not reopen the detail folio on the next redraw.
+    if(elements.detailPanel?.classList.contains('open'))closeDetail();
+    else if(state.selectedId===directId)state.selectedId='';
+  }
   if(!journalTaskNoteReturnV519&&!journalTimelineReturnTaskV494)return;
   requestAnimationFrame(journalRestoreTaskOriginV536);
 });
