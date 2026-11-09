@@ -110,11 +110,12 @@ export function classifyPaths(changedFiles, eventName = 'pull_request') {
   const sortedTargets = [...targets].sort();
   // JOURNAL's ~90 independent Playwright scenarios live in one spec file.
   // With fullyParallel:false, regular file-level sharding cannot split them.
-  // Reserve two test-level shards only for an otherwise isolated JOURNAL PR.
-  // Full suites and every other targeted route retain their previous scope.
+  // Isolated JOURNAL PRs use two test-level shards; full suites use four
+  // disjoint file-level shards so retry-heavy runs finish within the job limit.
+  // Every test still runs with unchanged retries and failure thresholds.
   const journalParallel = !fullBrowser && sortedTargets.length === 1
     && sortedTargets[0] === JOURNAL[0];
-  const shards = fullBrowser || journalParallel ? [1, 2] : runBrowser ? [1] : [];
+  const shards = fullBrowser ? [1, 2, 3, 4] : journalParallel ? [1, 2] : runBrowser ? [1] : [];
   return Object.freeze({
     mode: fullBrowser ? 'full' : runBrowser ? 'targeted' : 'protocol-only',
     browser: runBrowser,

@@ -44,8 +44,8 @@ test('CI scope: only an isolated JOURNAL change uses test-level browser sharding
 
 test('CI scope: shared application data code is always full-risk', () => {
   const result = classifyPaths(['app.js']);
-  assert.deepEqual(result.shards, [1, 2]);
-  assert.equal(result.shardCount, 2);
+  assert.deepEqual(result.shards, [1, 2, 3, 4]);
+  assert.equal(result.shardCount, 4);
   assert.equal(result.journalParallel, false);
   assert.equal(result.mode, 'full');
   assert.equal(result.firebase, true);
@@ -91,7 +91,8 @@ test('CI scope: manual and scheduled checks always run all suites independently 
   for (const event of ['schedule', 'workflow_dispatch']) {
     const result = classifyPaths([], event);
     assert.equal(result.mode, 'full');
-    assert.deepEqual(result.shards, [1, 2]);
+    assert.deepEqual(result.shards, [1, 2, 3, 4]);
+    assert.equal(result.shardCount, 4);
     assert.equal(result.firebase, true);
     assert.equal(result.authorization, true);
   }

@@ -153,7 +153,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$FULL_BROWSER" == 'true' ]]; then
-            npm run test:ui -- --shard=${{ matrix.shard }}/2 2>&1 | tee browser-results.log
+            npm run test:ui -- --shard=${{ matrix.shard }}/${{ needs.scope.outputs.shard_count }} 2>&1 | tee browser-results.log
           else
             read -r -a selected <<< "$TARGETS"
             if [[ ${#selected[@]} -eq 0 ]]; then echo 'Targeted checks must not be empty' >&2; exit 1; fi
@@ -167,7 +167,7 @@ jobs:
           fi
       - name: Summarize browser test failures
         if: failure()
-        run: node test-harness/ci-failure-digest.mjs browser-results.log "Browser shard ${{ matrix.shard }}/2"
+        run: node test-harness/ci-failure-digest.mjs browser-results.log "Browser shard ${{ matrix.shard }}/${{ needs.scope.outputs.shard_count }}"
       - name: Upload browser report on failure
         if: failure()
         uses: actions/upload-artifact@v4
