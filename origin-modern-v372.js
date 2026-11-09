@@ -248,6 +248,33 @@
 #editForm .origin-save-recovery-actions button[hidden]{display:none}
 #editForm #originDraftCopyFallback{display:block;width:100%;min-height:104px;margin-top:8px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);resize:vertical;white-space:pre-wrap}
 `));
+    mount.querySelector('style').appendChild(document.createTextNode(`
+.origin-batch-options{margin-top:18px}
+#originBatchFields{grid-column:1/-1;min-width:0}
+#originBatchFields[hidden],#originBatchFields [hidden]{display:none!important}
+.origin-batch-weekdays{display:flex;flex-wrap:wrap;gap:8px}
+.origin-batch-weekdays label{display:flex;align-items:center;gap:5px;min-height:44px;padding:5px}
+.origin-batch-options input[type="checkbox"]{width:18px;min-height:18px}
+.origin-batch-dates{display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow:auto;margin-top:10px}
+.origin-batch-review{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--hover);overflow-wrap:anywhere}
+.origin-batch-review p{line-height:1.7;margin-bottom:0}
+.origin-comment-list{list-style:none;margin:0;padding:0}
+.origin-comment-list li{padding:14px 0;border-bottom:1px solid var(--line-soft)}
+.origin-comment-list time{font-size:11px;color:var(--muted)}
+.origin-workflow>summary{cursor:pointer;font-size:14px;font-weight:780;min-height:44px;padding:10px 0}
+.origin-workflow section{padding:14px 0;border-top:1px solid var(--line-soft)}
+.origin-workflow h4{margin:0 0 12px;font-size:13px}
+.origin-workflow-list{padding:0;list-style:none}
+.origin-workflow-list li,.origin-workflow-add{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.origin-workflow-list li>.text-button,.origin-workflow-add>select,.origin-workflow-add>label{flex:1;min-width:0;overflow-wrap:anywhere}
+.origin-workflow-add>select{width:100%;min-height:44px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:8px}
+.origin-workflow-list li>.text-button{text-align:left}
+@media(max-width:420px){.origin-workflow-add{flex-wrap:wrap}.origin-workflow-add>label{flex-basis:100%}}
+#originCommentForm{display:grid;gap:12px;margin-top:16px;padding:16px;background:var(--hover);border:1px solid var(--line);border-radius:12px}
+#originCommentForm textarea{min-height:108px;resize:vertical}
+#originCommentForm button{justify-self:start}
+@media(max-width:420px){#originCommentForm{padding:12px}.origin-batch-options .origin-task-extra-grid{padding:12px}}
+`));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -317,7 +344,7 @@ function syncSnapshot(){
  data.tasks=snapshot.tasks.map(t=>({id:t.id,title:t.title,status:t.status,priority:t.priority,
    due:t.dueDate||'',dueTime:t.dueTime||'',completed:Boolean(t.completed),assignee:t.assignee===user?'自分':t.assignee,
    category:t.category,desc:t.description||'',revision:t.revision,updatedAt:t.updatedAt||0,
-   pinned:t.pinned,requester:t.requester||'',tags:t.tags||[],checklist:t.checklist||[],history:t.history||[]}));
+   pinned:t.pinned,favorite:Boolean(t.favorite),requester:t.requester||'',tags:t.tags||[],checklist:t.checklist||[],history:t.history||[]}));
  data.todos=snapshot.todos.map(t=>({id:t.id,title:t.text,due:'',done:t.completed,
    memo:t.memo||'',revision:t.revision}));
  data.events=snapshot.schedules.map(t=>({id:t.id,title:t.title,date:key(new Date(t.startAt)),
@@ -398,6 +425,16 @@ async function copyOriginDraft(form){
 }
 async function send(command,label,{close=false,returnToTask=false}={}){
  if(busy)return false;
+ const completing=command.type==='task.complete'||command.type==='task.bulk.complete'
+   ||(command.type==='task.update'&&command.status==='完了')
+   ||(command.type==='task.bulk.update'&&command.action==='status'&&command.target==='完了');
+ if(completing){
+   const ids=command.items?.map(item=>item.id)||[command.id];
+   const guard=window.WorkBoardCompletionGuardV149;
+   if(!guard||ids.some(id=>guard.guardCompletion(id,{silent:true}))){
+     notify('未完了の前提タスク、または前提情報の通信状態を確認してください。');return false;
+   }
+ }
  busy=true;
  const savingPanel=Boolean((close||returnToTask)&&panelOpen&&panelMode==='edit');
  const todoReturn=close&&savingPanel&&['todo.update','todo.delete'].includes(command.type)&&!panelReturnSearch
@@ -560,6 +597,14 @@ function render(){
  // Content may change height; browser safely clamps when the old position is gone.
  if(window.scrollY!==previousScroll)window.scrollTo({top:previousScroll,behavior:'instant'});
 }
+function originTodayReminders(){
+ const workflow=window.WorkBoardWorkflowV152;
+ if(!workflow)return '';
+ const end=addDay(parseDay(selectedDay),1).getTime();
+ const rows=Object.entries(workflow.remindersFor()).map(([id,item])=>({task:findItem('tasks',id),item})).filter(x=>x.task&&!x.task.completed&&x.item.at<end).sort((a,b)=>a.item.at-b.item.at);
+ if(!rows.length)return '';
+ return `<section class="surface"><div class="surface-section"><div class="section-head"><h2>確認リマインダー <span class="count">${rows.length}</span></h2></div>${rows.map(({task,item})=>`<button type="button" class="agenda-entry" data-action="open" data-kind="tasks" data-id="${esc(task.id)}"><span class="agenda-time">${esc(clock(item.at))}</span><span><span class="agenda-name">${esc(task.title)}</span><span class="agenda-location">${esc(dateLabel(key(item.at)))}${item.note?' · '+esc(item.note):''}</span></span></button>`).join('')}</div></section>`;
+}
 function renderToday(){
  const d=parseDay(selectedDay), start=monday(d);const weekdays=[0,1,2,3,4,5,6].map(i=>{const x=addDay(start,i),k=key(x),evt=data.events.filter(e=>e.date===k).length;
  return `<button type="button" class="day-chip ${k===selectedDay?'active':''} ${(i===5||i===6)?'weekend':''}" data-action="pick-day" data-date="${k}" aria-pressed="${k===selectedDay}"><span class="dow">${days[x.getDay()]}曜日</span><span class="number">${x.getDate()}</span><span class="dots">${evt?'<i class="tiny-dot"></i>'.repeat(Math.min(evt,3)):''}</span></button>`}).join('');
@@ -583,7 +628,7 @@ function renderToday(){
  ${priority.length?priority.map((t,i)=>`<div class="focus-item"><div class="focus-order">${String(i+1).padStart(2,'0')}</div><div class="focus-main"><button type="button" class="focus-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}" title="${esc(t.title)}">${esc(t.title)}</button><div class="focus-meta">${taskTag(t)}<span>${esc(t.assignee||'担当未設定')}</span><span>${esc(t.category||'分類なし')}</span>${t.due?`<span class="origin-today-due ${t.due<base?'urgent':''}">${esc(humanDue(t.due))}${t.dueTime?' '+esc(t.dueTime):''}</span>`:''} </div></div><div class="focus-actions"><button type="button" class="row-action" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を完了にする">完了</button></div></div>`).join(''):empty('対応待ちのタスクはありません','優先確認が必要なタスクはありません。')}
  ${priorityPool.length>priority.length?`<button type="button" class="origin-today-more" data-route="tasks">残り${priorityPool.length-priority.length}件をタスク一覧で確認 ${icon('right',13)}</button>`:''}
  </div></section>
- <div class="right-stack"><section class="surface"><div class="surface-section"><div class="section-head"><h2>${chosenToday?'今日':'選択日'}の予定 <span class="count">${todayEvents.length}</span></h2><button type="button" class="text-button" data-action="today-calendar-day" aria-label="${esc(dateLabel(selectedDay))}の予定を日別で開く">この日の予定を開く ${icon('right',13)}</button></div>
+ <div class="right-stack">${originTodayReminders()}<section class="surface"><div class="surface-section"><div class="section-head"><h2>${chosenToday?'今日':'選択日'}の予定 <span class="count">${todayEvents.length}</span></h2><button type="button" class="text-button" data-action="today-calendar-day" aria-label="${esc(dateLabel(selectedDay))}の予定を日別で開く">この日の予定を開く ${icon('right',13)}</button></div>
  ${todayEvents.length?`<div class="agenda-line">${todayEvents.map(e=>`<button class="agenda-entry" data-action="open" data-kind="events" data-id="${esc(e.id)}" title="${esc(e.title)}"><span class="agenda-time">${esc(e.time)}</span><span><span class="agenda-name">${esc(e.title)}</span><span class="agenda-location">${e.end?esc(e.end)+'まで':''}${e.location?' · '+esc(e.location):e.assignee?' · '+esc(e.assignee):''}</span></span></button>`).join('')}</div>`:empty('予定はありません','追加から今日の予定を登録できます。')}
  <button class="text-button" data-action="new" data-kind="events" data-date="${selectedDay}">${icon('plus',14)} 予定を追加</button></div></section>
  <section class="surface"><div class="surface-section"><div class="section-head"><h2>個人ToDo <span class="count">${pendingTodos.length}</span></h2><button class="text-button" data-route="todos">一覧へ ${icon('right',13)}</button></div>
@@ -608,7 +653,7 @@ function taskVisible(){
    &&(taskFilter==='all'||(taskFilter==='active'&&!t.completed)
      ||(taskFilter==='mine'&&t.assignee==='自分')
      ||(taskFilter==='late'&&!t.completed&&t.due&&t.due<base)
-     ||(taskFilter==='done'&&t.completed))
+     ||(taskFilter==='done'&&t.completed)||(taskFilter==='starred'&&t.favorite))
    &&(!q||[t.title,t.status,t.priority,t.category,t.assignee,t.requester,t.desc,...(t.tags||[])]
       .join(' ').toLocaleLowerCase().includes(q))
  ).sort(taskDisplaySort);
@@ -626,7 +671,7 @@ function originTaskGroupName(task){
 // Keep page state in memory only; no storage or changes to the canonical task model.
 const TASK_RENDER_BATCH=24;
 function renderTasks(){
- const filterOptions=[['active','進行中'],['all','すべて'],['mine','自分の担当'],['late','期限超過'],['done','完了']];
+ const filterOptions=[['active','進行中'],['all','すべて'],['mine','自分の担当'],['late','期限超過'],['done','完了'],['starred','お気に入り']];
  const statusMarkers=snapshot.statuses.map(name=>`<button type="button" class="status-marker ${taskStatusChoice===name?'active':''}" data-action="filter-status" data-status="${esc(name)}" aria-pressed="${taskStatusChoice===name}"><span class="label">${esc(name)}</span><strong>${data.tasks.filter(t=>t.status===name).length}</strong></button>`).join('');
  const visible=taskVisible(),groups={};
  for(const task of visible){
@@ -966,6 +1011,62 @@ function renderNotes(){
 const singular={tasks:'タスク',todos:'ToDo',events:'予定',memos:'メモ'};
 function findItem(kind,id){return data[kind]?.find(x=>x.id===id)}
 // Native schedule editor over the canonical (single-owner) schedule writer.
+// Recurrence dates and overlaps are calculated by the canonical adapter.
+// The Origin editor keeps one draft and requires a fresh review after edits.
+function originScheduleBatchFields(v){
+ const date=v.date||selectedDay;
+ const methods=[['daily','毎日'],['weekdays','平日のみ'],['weekly','毎週・曜日指定'],['monthlyDay','毎月の指定日'],['monthlyNth','毎月の第N曜日'],['monthEnd','毎月末'],['lastWeekday','毎月の最終平日'],['yearly','毎年'],['dates','日付を個別指定']];
+ return `<details class="origin-task-optional origin-batch-options"><summary>繰り返し・複数日登録</summary><div class="origin-task-extra-grid">
+ <label class="form-field full"><span><input type="checkbox" name="batchEnabled"/>複数の予定をまとめて作成する</span></label>
+ <div id="originBatchFields" class="form-grid" hidden>
+ <label class="form-field">登録方法<select name="batchMethod">${methods.map(([value,label])=>`<option value="${value}">${label}</option>`).join('')}</select></label>
+ <label class="form-field" data-batch-field="interval">間隔（1〜36）<input name="batchInterval" type="number" min="1" max="36" value="1"/></label>
+ <fieldset class="form-field full" data-batch-field="weekdays"><legend>対象曜日</legend><div class="origin-batch-weekdays">${days.map((d,i)=>`<label><input name="batchWeekdays" type="checkbox" value="${i}" ${i===parseDay(date).getDay()?'checked':''}/>${d}</label>`).join('')}</div></fieldset>
+ <label class="form-field" data-batch-field="monthDay">毎月の何日<input name="batchMonthDay" type="number" min="1" max="31" value="${parseDay(date).getDate()}"/></label>
+ <label class="form-field" data-batch-field="nth">第何週<select name="batchNth">${[['1','第1'],['2','第2'],['3','第3'],['4','第4'],['5','第5'],['last','最終']].map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>
+ <label class="form-field" data-batch-field="nthWeekday">何曜日<select name="batchNthWeekday">${days.map((d,i)=>`<option value="${i}" ${i===parseDay(date).getDay()?'selected':''}>${d}曜日</option>`).join('')}</select></label>
+ <label class="form-field full" data-batch-field="dates">登録する日付<textarea name="batchDates" placeholder="YYYY-MM-DD（改行またはカンマ区切り）">${esc(date)}</textarea></label>
+ <label class="form-field" data-batch-field="endMode">終了条件<select name="batchEndMode"><option value="count">件数で指定</option><option value="date">終了日まで</option></select></label>
+ <label class="form-field" data-batch-field="count">作成件数（最大200）<input name="batchCount" type="number" min="1" max="200" value="4"/></label>
+ <label class="form-field" data-batch-field="endDate">終了日<input name="batchEndDate" type="date" value="${esc(date)}"/></label>
+ <button class="secondary-button" type="button" data-action="schedule-preview">作成日を確認</button>
+ <div id="originBatchReview" class="form-field full origin-batch-review" role="status" aria-live="polite">条件を指定し、作成日を確認してください。</div>
+ </div></div></details>`;
+}
+function syncOriginBatchFields(form){
+ const fields=form.querySelector('#originBatchFields');if(!fields)return;
+ const enabled=form.elements.batchEnabled.checked,method=form.elements.batchMethod.value;
+ fields.hidden=!enabled;
+ const visible={interval:!['dates','weekdays'].includes(method),weekdays:method==='weekly',monthDay:method==='monthlyDay',nth:method==='monthlyNth',nthWeekday:method==='monthlyNth',dates:method==='dates',endMode:method!=='dates',count:method!=='dates'&&form.elements.batchEndMode.value==='count',endDate:method!=='dates'&&form.elements.batchEndMode.value==='date'};
+ fields.querySelectorAll('[data-batch-field]').forEach(group=>{group.hidden=!visible[group.dataset.batchField]});
+ fields.querySelectorAll('input,select,textarea').forEach(control=>{control.disabled=!enabled||Boolean(control.closest('[data-batch-field]')?.hidden)});
+}
+function originBatchCommand(form){
+ const fd=new FormData(form);
+ return {type:'schedule.preview-batch',revision:0,ownerRoom:form.dataset.ownerRoom,ownerUser:form.dataset.ownerUser,
+ values:{title:String(fd.get('title')||'').trim(),startAt:String(fd.get('startAt')||''),endAt:String(fd.get('endAt')||''),assignee:String(fd.get('assignee')||''),category:String(fd.get('category')||''),relatedTaskId:String(fd.get('relatedTaskId')||''),location:String(fd.get('location')||''),memo:String(fd.get('memo')||'')},
+ copyConfig:{method:String(fd.get('batchMethod')||'daily'),startDate:String(fd.get('startAt')||'').slice(0,10),interval:Number(fd.get('batchInterval')||1),count:Number(fd.get('batchCount')||4),endMode:String(fd.get('batchEndMode')||'count'),endDate:String(fd.get('batchEndDate')||''),selectedDates:String(fd.get('batchDates')||''),weekdays:fd.getAll('batchWeekdays').map(Number),monthDay:Number(fd.get('batchMonthDay')||1),nth:String(fd.get('batchNth')||'1'),nthWeekday:Number(fd.get('batchNthWeekday')||0)}};
+}
+function invalidateOriginBatchReview(form){
+ if(!form?.querySelector('#originBatchReview'))return;
+ delete form.dataset.batchReviewed;
+ form.querySelector('#originBatchReview').textContent='条件を指定し、作成日を確認してください。';
+}
+async function previewOriginBatch(form){
+ if(busy||!form?.elements.batchEnabled?.checked||!form.reportValidity())return;
+ const command=originBatchCommand(form),signature=JSON.stringify(command);
+ busy=true;markOriginEditorSaving(true,command);
+ try{
+  const result=await bridge.dispatch(command);
+  if(!form.isConnected)return;
+  if(!result?.ok){invalidateOriginBatchReview(form);notify('作成日を計算できませんでした。日時と繰り返し条件を確認してください。');return}
+  if(JSON.stringify(originBatchCommand(form))!==signature)return;
+  form.dataset.batchReviewed=signature;
+  const clashes=new Set((result.conflicts||[]).map(x=>x.date));
+  form.querySelector('#originBatchReview').innerHTML=`<strong>${result.count}件の作成日</strong><div class="origin-batch-dates">${result.dates.map(date=>`<span class="tag ${clashes.has(date)?'overdue':''}">${esc(date)}${clashes.has(date)?' · 時間重複':''}</span>`).join('')}</div><p>${clashes.size?'既存予定との時間重複があります。登録時に再確認します。':'この日程で登録します。'}条件や予定内容を変更すると再確認が必要です。</p>`;
+ }catch(error){invalidateOriginBatchReview(form);notify('作成日の確認に失敗しました。入力内容は保持しています。');}
+ finally{busy=false;markOriginEditorSaving(false)}
+}
 function originScheduleEditor(v,id){
  const date=/^\d{4}-\d{2}-\d{2}$/.test(v.date||'')?v.date:selectedDay;
  const start=scheduleLocalInput(v.startAt)||date+'T09:00';
@@ -991,7 +1092,8 @@ function originScheduleEditor(v,id){
  <label class="form-field full">メモ<textarea name="memo" maxlength="1000" placeholder="議題や補足">${esc(v.desc||'')}</textarea></label>
  </div><p id="originScheduleError" class="origin-schedule-error" role="alert" hidden></p>
  ${v.recurrenceSeriesId?'<p class="origin-schedule-note">繰り返し予定のこの1件のみ編集し、系列の設定は維持します。</p>':''}
- <p class="origin-schedule-note">繰り返しや複数日登録は <button type="button" data-action="schedule-classic" data-id="${esc(id||'')}">詳細設定</button>を使用できます。</p>`;
+ ${!id?originScheduleBatchFields(v):''}
+ <p class="origin-schedule-note">既存の系列の設定変更・範囲指定削除は <button type="button" data-action="schedule-classic" data-id="${esc(id||'')}">詳細設定</button>から行えます。</p>`;
 }
 
 function filterOriginRelatedTasks(){
@@ -1009,6 +1111,84 @@ function filterOriginRelatedTasks(){
 }
 function taskCheckRow(x={}){return '<div class="origin-checkrow"><input type="checkbox" name="checkDone" aria-label="この項目を完了にする" '+(x.done?'checked':'')+'/><input type="text" name="checkText" maxlength="180" value="'+esc(x.text||'')+'" aria-label="チェック項目の内容" placeholder="作業項目を入力"/><button type="button" data-action="task-check-remove" aria-label="このチェック項目を削除" title="削除">'+icon('trash',14)+'</button></div>'}
 function taskCheckboxRows(v){return (v.checklist||[]).map(taskCheckRow).join('')}
+function originWorkflowPanel(t){
+ const workflow=window.WorkBoardWorkflowV152;
+ if(!workflow)return '';
+ const deps=workflow.depIds(t.id),relations=workflow.relationIds(t.id),reminder=workflow.reminderFor(t.id);
+ const group=(kind,label,ids)=>{
+   const candidates=data.tasks.filter(x=>x.id!==t.id&&!ids.includes(x.id)
+     &&(kind!=='dependencies'||(!x.completed&&!window.WorkBoardCompletionGuardV149?.wouldCycle(t.id,x.id))));
+   return `<section data-origin-workflow-kind="${kind}" data-expected="${esc(JSON.stringify(ids))}"><h4>${label}</h4>
+   <ul class="origin-workflow-list">${ids.map(id=>{const item=findItem('tasks',id);return `<li>${item?`<button type="button" class="text-button" data-action="related-open" data-kind="tasks" data-id="${esc(id)}">${esc(item.title)} · ${esc(item.status)}</button>`:'<span>削除済みのタスク</span>'}<button type="button" class="secondary-button" data-action="workflow-remove" data-value="${esc(id)}">解除</button></li>`}).join('')}</ul>
+   <div class="origin-workflow-add"><select aria-label="${label}の候補"><option value="">タスクを選択</option>${candidates.map(x=>`<option value="${esc(x.id)}">${esc(x.title)}</option>`).join('')}</select><button type="button" class="secondary-button" data-action="workflow-add">追加</button></div>
+   <p class="quiet-small">${kind==='dependencies'?'未完了の前提タスクがある間は、このタスクを完了できません。':'一緒に確認するタスクを関連付けます。'}</p></section>`;
+ };
+ return `<details class="origin-task-section origin-workflow" id="originWorkflow" data-id="${esc(t.id)}" data-owner-room="${esc(snapshot.roomId)}" data-owner-user="${esc(snapshot.currentUser)}"><summary>前提・関連タスク・確認リマインダー</summary>
+ ${group('dependencies','前提タスク',deps)}${group('relations','関連タスク',relations)}
+ <section data-origin-workflow-kind="reminder" data-expected="${esc(JSON.stringify(reminder))}"><h4>自分の確認リマインダー</h4>
+ ${t.completed?'<p class="quiet-small">完了済みタスクにはリマインダーを設定しません。</p>':`<div class="origin-workflow-add"><label class="form-field">再確認日時<input type="datetime-local" name="reminderAt" value="${reminder?scheduleLocalInput(reminder.at):''}"/></label><label class="form-field">メモ<input name="reminderNote" maxlength="120" value="${esc(reminder?.note||'')}"/></label></div><div class="origin-sheet-secondary"><button type="button" class="secondary-button" data-action="workflow-reminder">保存</button>${reminder?'<button type="button" class="secondary-button" data-action="workflow-reminder-clear">解除</button>':''}</div>`}</section>
+ <p class="origin-schedule-error" role="alert" hidden></p></details>`;
+}
+async function writeOriginWorkflow(button){
+ if(busy)return;
+ const root=button.closest('#originWorkflow'),group=button.closest('[data-origin-workflow-kind]'),workflow=window.WorkBoardWorkflowV152;
+ if(!root||!group||!workflow)return;
+ const id=root.dataset.id,kind=group.dataset.originWorkflowKind;
+ if(root.dataset.ownerRoom!==snapshot.roomId||root.dataset.ownerUser!==snapshot.currentUser||!findItem('tasks',id))return notify('利用者またはタスクが変わりました。詳細を開き直してください。');
+ if(!workflow.dependencyStateReady())return notify('前提・関連情報を確認中です。通信状態を確認して再試行してください。');
+ const expected=JSON.parse(group.dataset.expected),action=button.dataset.action;
+ let value;
+ if(kind==='reminder'){
+   value=action==='workflow-reminder-clear'?null:{at:new Date(group.querySelector('[name="reminderAt"]').value).getTime(),note:group.querySelector('[name="reminderNote"]').value.trim()};
+   if(value&&(!Number.isFinite(value.at)||value.at<=Date.now()+30000))return notify('現在より後の再確認日時を入力してください。');
+ }else{
+   const candidate=action==='workflow-remove'?button.dataset.value:group.querySelector('select').value;
+   if(!candidate)return notify('タスクを選択してください。');
+   if(action==='workflow-add'&&kind==='dependencies'&&window.WorkBoardCompletionGuardV149?.wouldCycle(id,candidate))return notify('前提タスクが循環するため追加できません。');
+   value=action==='workflow-remove'?expected.filter(x=>x!==candidate):[...expected,candidate];
+ }
+ busy=true;root.inert=true;
+ const error=root.querySelector('[role="alert"]');error.hidden=true;
+ try{
+   const result=kind==='reminder'?await workflow.writeReminder(id,value,undefined,expected)
+     :kind==='dependencies'?await workflow.writeDependencies(id,value,expected):await workflow.writeRelations(id,value,expected);
+   if(!root.isConnected)return;
+   if(!result?.ok){error.hidden=false;error.textContent='保存できませんでした。他端末の更新や通信状態を確認してください。入力内容は保持しています。';return}
+   const markup=document.createElement('div');markup.innerHTML=originWorkflowPanel(findItem('tasks',id));
+   const replacement=markup.querySelector('[data-origin-workflow-kind="'+kind+'"]');
+   group.replaceWith(replacement);replacement.querySelector('select,input,button')?.focus({preventScroll:true});
+   notify('設定を保存しました。');
+ }catch(errorObject){error.hidden=false;error.textContent='保存に失敗しました。入力内容は保持しています。';}
+ finally{busy=false;root.inert=false}
+}
+function originTaskComments(t){
+ const comments=(bridge.readCommentTask?.(t.id)?.comments||[]).slice().reverse();
+ const entries=rows=>rows.map(c=>`<li><div class="record-meta"><strong>${esc(c.author)}</strong><span class="tag">${esc(c.type||'作業メモ')}</span><time>${c.createdAt?esc(new Date(c.createdAt).toLocaleString('ja-JP')):''}</time></div><p class="record-description">${esc(c.text||'')}</p></li>`).join('');
+ return `<section class="origin-task-section origin-comments"><h3>対応履歴・コメント <small>${comments.length}件</small></h3>
+ ${comments.length?`<ol class="origin-comment-list">${entries(comments.slice(0,5))}</ol>${comments.length>5?`<details><summary>以前のコメント ${comments.length-5}件</summary><ol class="origin-comment-list">${entries(comments.slice(5))}</ol></details>`:''}`:'<p class="origin-detail-empty">コメントはまだありません。</p>'}
+ <form id="originCommentForm" data-id="${esc(t.id)}" data-revision="${t.revision}" data-owner-room="${esc(snapshot.roomId)}" data-owner-user="${esc(snapshot.currentUser)}">
+ <label class="form-field">種類<select name="commentType">${['作業メモ','業者回答','確認依頼','申し送り'].map(x=>`<option>${x}</option>`).join('')}</select></label>
+ <label class="form-field">コメント<textarea name="text" required maxlength="6000" placeholder="対応状況や申し送りを入力"></textarea></label>
+ <p class="origin-schedule-error" role="alert" hidden></p><button class="secondary-button" type="submit">コメントを追加</button></form></section>`;
+}
+async function submitOriginComment(form){
+ if(busy||!form.reportValidity())return;
+ const fd=new FormData(form),text=String(fd.get('text')||'').trim();if(!text)return;
+ form.inert=true;
+ const ok=await send({type:'task.comment',id:form.dataset.id,revision:Number(form.dataset.revision),ownerRoom:form.dataset.ownerRoom,ownerUser:form.dataset.ownerUser,text,commentType:String(fd.get('commentType'))},'コメントを追加しました');
+ if(!form.isConnected)return;
+ form.inert=false;
+ if(ok){
+   const scroll=$('#sheet .sheet-body')?.scrollTop||0;
+   const container=document.createElement('div');
+   container.innerHTML=originTaskComments(findItem('tasks',form.dataset.id));
+   form.closest('.origin-comments').replaceWith(container.firstElementChild);
+   $('#originCommentForm [name="text"]')?.focus({preventScroll:true});
+   const body=$('#sheet .sheet-body');if(body)body.scrollTop=scroll;
+ }else{
+   const error=form.querySelector('[role="alert"]');error.hidden=false;error.textContent='追加できませんでした。入力は保持しています。他端末で更新された場合は、入力をコピーして詳細を開き直してください。';
+ }
+}
 function taskPanel(t){
  const items=t.checklist||[];
  const done=items.filter(x=>x.done).length;
@@ -1057,6 +1237,8 @@ function taskPanel(t){
  `<details class="origin-related-past"><summary>過去の予定 ${past.length}件を表示</summary><div class="origin-task-related origin-related-history-group">${past.map(relatedEventLink).join('')}</div></details>`}`:''}
  </section>
  ${count?`<section class="origin-task-section origin-task-audit"><h3>最近の更新 <small>${count}件</small></h3><ol class="origin-task-history">${formatHistory(history.slice(0,3))}</ol>${count>3?`<details class="origin-task-history-more"><summary>以前の履歴 ${count-3}件を表示</summary><ol class="origin-task-history">${formatHistory(history.slice(3))}</ol></details>`:''}</section>`:''}
+ ${originWorkflowPanel(t)}
+ ${originTaskComments(t)}
  <p class="origin-task-last-updated">最終更新：${t.updatedAt?esc(new Date(t.updatedAt).toLocaleString('ja-JP')):'未記録'}</p>
  </div>`;
 }
@@ -1464,10 +1646,14 @@ function originPanelFooter(kind,id,editing,item){
    :`<button type="button" class="primary-button" data-action="edit" data-kind="${kind}" data-id="${safeId}">${icon('edit',16)} 編集する</button><button type="button" class="secondary-button" data-action="close">閉じる</button>`;
  let secondary='';
  if(!editing){
-   if(kind==='tasks')secondary=`<button type="button" class="secondary-button" data-action="task-done" data-id="${safeId}">${item.status==='完了'?'未完了に戻す':'完了にする'}</button>`;
-   if(kind==='todos')secondary=`<button type="button" class="secondary-button" data-action="todo-toggle" data-id="${safeId}">${item.done?'未完了に戻す':'完了にする'}</button>`;
+   if(kind==='tasks')secondary=`<button type="button" class="secondary-button" data-action="task-done" data-id="${safeId}">${item.status==='完了'?'未完了に戻す':'完了にする'}</button><button type="button" class="secondary-button" data-action="task-star" data-id="${safeId}" aria-pressed="${item.favorite}">${item.favorite?'★ お気に入り解除':'☆ お気に入り'}</button><button type="button" class="secondary-button" data-action="task-copy" data-id="${safeId}">複製して作成</button>`;
+   if(kind==='todos'){
+     const rows=data.todos.filter(t=>t.done===item.done),index=rows.findIndex(t=>t.id===id);
+     secondary=`<button type="button" class="secondary-button" data-action="todo-toggle" data-id="${safeId}">${item.done?'未完了に戻す':'完了にする'}</button><button type="button" class="secondary-button" data-action="todo-move" data-id="${safeId}" data-value="up" ${index<=0?'disabled':''}>上へ移動</button><button type="button" class="secondary-button" data-action="todo-move" data-id="${safeId}" data-value="down" ${index>=rows.length-1?'disabled':''}>下へ移動</button>`;
+   }
    if(kind==='memos')secondary=`<button type="button" class="secondary-button" data-action="memo-task" data-id="${safeId}">タスクにする</button>`;
    if(kind==='events'&&item.recurrenceSeriesId)secondary=`<button type="button" class="secondary-button" data-action="schedule-classic" data-id="${safeId}">系列の設定</button>`;
+   if(kind==='events')secondary+=`<button type="button" class="secondary-button" data-action="schedule-copy" data-id="${safeId}">複製して作成</button>`;
  }
  const dangerous=editing&&id&&!(kind==='events'&&item.recurrenceSeriesId)
    ?`<div class="origin-sheet-danger"><button type="button" class="danger-button" data-action="delete" data-kind="${kind}" data-id="${safeId}">${icon('trash',14)} 削除する</button></div>`:'';
@@ -1484,7 +1670,7 @@ function panelShow(kind,id,edit=false,seed={}){
  const fields=kind==='tasks'?`<div class="form-grid"><label class="form-field full">件名<input name="title" maxlength="80" required value="${esc(v.title||'')}"/></label><label class="form-field">状態<select name="status">${snapshot.statuses.map(s=>`<option value="${esc(s)}" ${s===(v.status||'未着手')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">優先度<select name="priority">${['緊急','高','中','低'].map(s=>`<option value="${s}" ${s===(v.priority||'中')?'selected':''}>${s}</option>`).join('')}</select></label><label class="form-field">期限日（任意）<input name="due" type="date" value="${esc(v.due||'')}"/></label><label class="form-field">期限時刻（任意）<input name="dueTime" type="time" value="${esc(v.dueTime||'')}"/></label><label class="form-field">担当者<select name="assignee">${[...new Set(['自分',...snapshot.assignees.filter(x=>x!==snapshot.currentUser),v.assignee])].filter(Boolean).map(s=>`<option value="${esc(s)}" ${s===(v.assignee||'自分')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">分類<select name="category">${snapshot.categories.map(s=>`<option value="${esc(s)}" ${s===(v.category||snapshot.categories[0])?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field full">説明<textarea name="desc" maxlength="6000" placeholder="対応内容や補足事項">${esc(v.desc||'')}</textarea></label><details class="origin-task-optional" ${v.requester||(v.tags||[]).length||(v.checklist||[]).length||v.pinned?'open':''}><summary>追加情報 <small>依頼者・タグ・チェックリスト・固定</small><span class="origin-task-expand-cue" aria-hidden="true">${icon('chevron',14)}</span></summary><div class="origin-task-extra-grid"><label class="form-field">依頼者<input name="requester" maxlength="40" value="${esc(v.requester||'')}"/></label><label class="form-field">タグ<input name="tags" maxlength="80" value="${esc((v.tags||[]).join(', '))}"/></label><div class="form-field full"><strong>チェックリスト</strong><div id="originTaskChecks">${taskCheckboxRows(v)}</div><button type="button" class="secondary-button" data-action="task-check-add">＋ 項目を追加</button></div><label class="form-field full"><span><input type="checkbox" name="pinned" ${v.pinned?'checked':''}/>固定する</span></label></div></details><p id="originTaskError" class="origin-task-error" role="alert" hidden></p></div>`:
  kind==='todos'?`<div class="origin-todo-edit-fields"><label class="form-field">やること <span class="help">必須</span><input name="title" value="${esc(v.title||'')}" maxlength="${snapshot.todoTitleMaxLength}" required placeholder="何をしますか？"/></label><label class="form-field origin-todo-status-field"><span>状態</span><select name="done"><option value="false" ${!v.done?'selected':''}>未完了</option><option value="true" ${v.done?'selected':''}>完了</option></select></label><label class="form-field">補足メモ<textarea name="memo" maxlength="${snapshot.todoMemoMaxLength}" placeholder="必要な情報を記録（任意）">${esc(v.memo||'')}</textarea></label></div>`:
  kind==='events'?originScheduleEditor(v,id):
-  `<div class="origin-memo-edit-fields"><label class="form-field">タイトル <span class="help">必須</span><input name="title" value="${esc(v.title||'')}" maxlength="150" required placeholder="メモのタイトル"/></label><fieldset class="form-field full"><legend>カードの色</legend><div class="origin-memo-palette">${memoColors.map(([k,label])=>`<label data-paper-color="${k}"><input type="radio" name="paperColor" value="${k}" ${memoColor(v.paperColor)===k?'checked':''}/><span class="origin-memo-swatch" aria-hidden="true"></span>${label}</label>`).join('')}</div></fieldset><label class="form-field">分類<select name="category">${Array.from(memoBridge?.categories||['その他']).map(s=>`<option value="${esc(s)}" ${s===(v.category||'その他')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">内容<textarea name="body" class="origin-memo-body-input" placeholder="ここに内容を記入">${esc(v.body||'')}</textarea></label><label class="form-field" style="flex-direction:row;align-items:center"><input style="width:auto;min-height:auto" type="checkbox" name="pinned" ${v.pinned?'checked':''}/>固定メモとして表示する</label></div>`;
+  `<div class="origin-memo-edit-fields"><label class="form-field">タイトル <span class="help">必須</span><input name="title" value="${esc(v.title||'')}" maxlength="80" required placeholder="メモのタイトル"/></label><fieldset class="form-field full"><legend>カードの色</legend><div class="origin-memo-palette">${memoColors.map(([k,label])=>`<label data-paper-color="${k}"><input type="radio" name="paperColor" value="${k}" ${memoColor(v.paperColor)===k?'checked':''}/><span class="origin-memo-swatch" aria-hidden="true"></span>${label}</label>`).join('')}</div></fieldset><label class="form-field">分類<select name="category">${Array.from(memoBridge?.categories||['その他']).map(s=>`<option value="${esc(s)}" ${s===(v.category||'その他')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">タグ<input name="tags" maxlength="80" value="${esc((v.tags||[]).join(', '))}" placeholder="カンマ区切りで入力"/></label><label class="form-field">内容<textarea name="body" maxlength="6000" required class="origin-memo-body-input" placeholder="ここに内容を記入">${esc(v.body||'')}</textarea></label><label class="form-field" style="flex-direction:row;align-items:center"><input style="width:auto;min-height:auto" type="checkbox" name="pinned" ${v.pinned?'checked':''}/>固定メモとして表示する</label></div>`;
  const f=`<form id="editForm" data-kind="${kind}" data-id="${esc(id||'')}"><p id="originEditorError" class="origin-editor-error" role="alert" hidden></p><div id="originSaveRecovery" class="origin-save-recovery" role="group" aria-label="保存失敗への対応" hidden><p id="originSaveRecoveryText"></p><div class="origin-save-recovery-actions"><button type="button" class="secondary-button" data-action="origin-copy-draft">入力内容をコピー</button><button type="button" class="secondary-button" data-action="origin-save-again" hidden>もう一度保存</button></div><textarea id="originDraftCopyFallback" readonly hidden aria-label="手動コピー用の入力内容"></textarea></div>${fields}</form>`;
  const footer=originPanelFooter(kind,id,true,v);
  $('#sheet').innerHTML=sheetFrame('EDIT · '+singular[kind],id?singular[kind]+'を編集':singular[kind]+'を新規作成',f,footer);
@@ -1498,6 +1684,7 @@ function panelShow(kind,id,edit=false,seed={}){
    f.dataset.ownerRoom=String(snapshot.roomId);
    f.dataset.ownerUser=String(snapshot.currentUser);
  }
+ syncOriginBatchFields($('#editForm'));
  initialFormSnapshot=formSnapshot($('#editForm'));updateOriginDraftState();
  }else{
  const t=obj;let body='';
@@ -1529,6 +1716,7 @@ function panelShow(kind,id,edit=false,seed={}){
  }
  if(kind==='memos'){
   body=`<section class="origin-detail-summary origin-memo-summary" aria-label="メモの分類と状態"><div class="record-meta"><span class="tag">${esc(t.category||'その他')}</span>${t.pinned?`<span class="tag med">${icon('pin',12)} 固定</span>`:''}</div></section>
+  ${t.tags?.length?`<div class="record-meta">${t.tags.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`:''}
   <section class="origin-detail-section origin-memo-document-section" aria-label="メモ本文"><article class="memo-document origin-memo-paper" data-paper-color="${memoColor(t.paperColor)}">${esc(t.body||'内容はありません。').replace(/\n/g,'<br>')}</article></section>
   <p class="quiet-small origin-memo-updated">内容更新：${t.updated?esc(new Date(t.updated).toLocaleString('ja-JP')):'未記録'}</p>`;
  }
@@ -1709,8 +1897,15 @@ function handleOriginModalKeys(e){
  }
  return false;
 }
+function originDetailHasDraft(){
+ return Boolean($('#originCommentForm [name="text"]')?.value.trim()
+   ||Array.from($('#originWorkflow')?.querySelectorAll('input')||[]).some(input=>input.value!==input.defaultValue));
+}
 function closePanel(force=false,restoreFocus=true){
  if(!panelOpen)return true;
+ if(!force&&panelMode==='detail'&&originDetailHasDraft()
+   &&!window.confirm('入力中のコメント・設定を破棄して閉じますか？'))return false;
+ if(!force&&busy){notify('保存処理中です。完了後に閉じてください。');return false;}
  if(!force&&restoreFocus&&originTaskScheduleSource&&panelMode==='edit'&&panelKind==='events'){
    if(busy){notify('保存処理中です。完了後に閉じてください。');return false;}
    if(formSnapshot($('#editForm'))!==initialFormSnapshot
@@ -1909,6 +2104,14 @@ async function saveForm(f){
      category:String(fd.get('category')||snapshot.categories[0]||'その他'),
      relatedTaskId:String(fd.get('relatedTaskId')||''),
      location:String(fd.get('location')||''),memo:String(fd.get('memo')||'')};
+   if(!id&&fd.has('batchEnabled')){
+     const command=originBatchCommand(f);
+     if(f.dataset.batchReviewed!==JSON.stringify(command)){
+       f.querySelector('#originBatchReview')?.scrollIntoView({block:'center'});
+       return invalid('作成日を確認してから登録してください。','title');
+     }
+     return send({...command,type:'schedule.batch'},'複数日の予定を登録しました',{close:true,returnToTask:Boolean(originTaskScheduleSource)});
+   }
    return send({type:id?'schedule.update':'schedule.create',id,revision,
      ownerRoom:f.dataset.ownerRoom,ownerUser:f.dataset.ownerUser,values},
      id?'予定を更新しました':'予定を登録しました',{close:true,returnToTask:Boolean(originTaskScheduleSource)});
@@ -1966,7 +2169,7 @@ async function saveForm(f){
   return send({type:'memo.'+(id?'update':'create'),id,revision,
     ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
     title,category:String(fd.get('category')||memoBridge?.categories?.[0]||'その他'),
-    body:String(fd.get('body')||''),tags:(existing?.tags||[]).join(','),
+    body:String(fd.get('body')||''),tags:String(fd.get('tags')||''),
     pinned:fd.has('pinned'),paperColor:memoColor(fd.get('paperColor'))},id?'メモを更新しました':'メモを登録しました',{close:true});
  }
 }
@@ -2006,6 +2209,27 @@ async function deleteItem(kind,id){
 }
 function setTheme(){theme=theme==='dark'?'light':'dark';initTheme()}
 function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dataset.kind,value=el.dataset.value;
+ if(['workflow-add','workflow-remove','workflow-reminder','workflow-reminder-clear'].includes(a))return writeOriginWorkflow(el);
+ if(a==='schedule-preview')return previewOriginBatch($('#editForm'));
+ if(a==='task-copy'){
+   if(busy)return;
+   const source=findItem('tasks',id);if(!source)return;
+   return send({type:'task.duplicate',id,revision:source.revision,ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser},'タスクを複製しました',{close:true});
+ }
+ if(a==='schedule-copy'){
+   if(busy)return;
+   const source=findItem('events',id);if(!source)return;
+   const seed={...source,recurrenceSeriesId:'',date:source.date};
+   return panelShow('events',null,true,seed);
+ }
+ if(a==='task-star'){
+   if(busy)return;
+   return send({type:'task.star',id},'お気に入りを更新しました').then(ok=>{if(ok&&panelOpen&&panelMode==='detail'&&panelId===id)panelShow('tasks',id)});
+ }
+ if(a==='todo-move'){
+   const item=findItem('todos',id);if(!item||busy)return;
+   return send({type:'todo.move',id,direction:value,segment:item.done?'completed':'open'},'ToDoの並び順を変更しました').then(ok=>{if(ok&&panelOpen&&panelId===id)panelShow('todos',id)});
+ }
  if(a==='origin-copy-draft'){
    const form=$('#editForm');if(form&&!busy)void copyOriginDraft(form);
    return;
@@ -2073,7 +2297,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  if(a==='related-task-clear'){
   const sel=$('#originRelatedTaskSelect'),search=$('#originRelatedTaskSearch');
   if(!sel)return;sel.value='';if(search){search.value='';filterOriginRelatedTasks();search.focus({preventScroll:true})}
-  updateOriginDraftState();return;
+  invalidateOriginBatchReview($('#editForm'));updateOriginDraftState();return;
  }
  if(a==='task-check-add'){const c=$('#originTaskChecks');if(c){if(c.children.length>=80)return notify('チェック項目は80件以内にしてください。');c.insertAdjacentHTML('beforeend',taskCheckRow());c.lastElementChild.querySelector('[name="checkText"]')?.focus();updateOriginDraftState();}return;}
  if(a==='task-check-remove'){const row=el.closest('.origin-checkrow');const next=row?.nextElementSibling||row?.previousElementSibling;row?.remove();(next?.querySelector('[name="checkText"]')||$('#editForm [name="title"]'))?.focus();reconcileOriginChecklistAfterRemoval();updateOriginDraftState();return;}
@@ -2215,6 +2439,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    const minutes=Number(el.dataset.minutes);
    if(!Number.isFinite(start.getTime())||![30,60,120].includes(minutes))return;
    f.elements.namedItem('endAt').value=scheduleLocalInput(new Date(start.getTime()+minutes*60000));
+   invalidateOriginBatchReview(f);
    const msg=f.querySelector('#originScheduleError');if(msg&&!f.querySelector('#originFieldError'))msg.hidden=true;
    updateOriginDraftState();
    return;
@@ -2376,6 +2601,12 @@ function refreshFromCanonical(){
 }
 bridge.subscribe(s=>{snapshot=s;refreshFromCanonical()});
 memoBridge?.subscribe?.(items=>{memoItems=items;refreshFromCanonical()});
+let originWorkflowRenderPending=false;
+for(const event of ['workflow-v150-update','workflow-v152-update'])window.addEventListener(event,()=>{
+ if(originWorkflowRenderPending)return;
+ originWorkflowRenderPending=true;
+ queueMicrotask(()=>{originWorkflowRenderPending=false;if(view==='today'&&document.documentElement.dataset.wbDisplay==='modern')render()});
+});
 mount.addEventListener('click',e=>{
  const target=e.target;
  const route=target.closest('[data-route]');if(route){handleRoute(route.dataset.route);return}
@@ -2386,17 +2617,20 @@ mount.addEventListener('click',e=>{
 });
 mount.addEventListener('change',e=>{
  if(e.target.closest?.('#editForm')){
+   const form=e.target.closest('#editForm');
+   if(form.dataset.kind==='events'){syncOriginBatchFields(form);invalidateOriginBatchReview(form);}
    reconcileOriginFieldError(e.target.closest('#editForm'),e.target);
    updateOriginDraftState();
  }
   const t=e.target;if(t.id==='originUserSelect'){
    const old=snapshot.currentUser,next=t.value;if(next===old)return;
-   if(panelOpen&&panelMode==='edit'&&busy){t.value=old;notify('保存処理中です。完了後に利用者を切り替えてください。');return;}
+   if(panelOpen&&busy){t.value=old;notify('保存処理中です。完了後に利用者を切り替えてください。');return;}
    if(!snapshot.users?.includes(next)){t.value=old;return notify('利用者を切り替えられませんでした。')}
    const quick=$('#workspace [data-form="quick-todo"] [name="title"]');
    const draft=quick?.value||quickTodoDraft;
    const modified=panelOpen&&panelMode==='edit'&&formSnapshot($('#editForm'))!==initialFormSnapshot;
-   if((modified||draft.trim())&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？')){t.value=old;return}
+   const commentDraft=originDetailHasDraft();
+   if((modified||draft.trim()||commentDraft)&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？')){t.value=old;return}
    if(panelOpen)closePanel(true,false);
    detailSequence=null;detailTrail=[];panelReturnSearch=null;panelReturnAnchor=null;
    // Clear the live input as well: bridge subscribers can render synchronously.
@@ -2520,10 +2754,12 @@ mount.addEventListener('input',e=>{
   updateOriginDraftState();
  }
   if(f?.id==='editForm'&&f.dataset.kind==='events'){
+   invalidateOriginBatchReview(f);
    const msg=f.querySelector('#originScheduleError');if(msg)msg.hidden=true;
  }
 });
 mount.addEventListener('submit',e=>{const form=e.target;
+ if(form.id==='originCommentForm'){e.preventDefault();submitOriginComment(form);return}
  if(form.matches('[data-form="quick-todo"]')){e.preventDefault();const inp=form.querySelector('[name="title"]');const title=inp.value;quickTodo(title);return}
  if(form.id==='editForm'){e.preventDefault();saveForm(form);return}
 });

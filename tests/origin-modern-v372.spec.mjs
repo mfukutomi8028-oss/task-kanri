@@ -692,7 +692,7 @@ test('Origin keyboard inspector keeps focus inside the drawer and protects unsav
  await expect(sheet.locator('#panelHeading')).toHaveText(titles[1]);
  await page.keyboard.press('ArrowLeft');
  await expect(sheet.locator('#panelHeading')).toHaveText(titles[0]);
- const last=sheet.locator('.origin-sheet-secondary [data-action="todo-toggle"]');
+ const last=sheet.locator('.origin-sheet-secondary button:enabled').last();
  await last.focus();
  await page.keyboard.press('Tab');
  await expect(sheet.locator('.sheet-close')).toBeFocused();

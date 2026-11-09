@@ -1790,6 +1790,7 @@ async function duplicateTask(id) {
   state.layout = "tasks";
   render();
   toast("タスクを複製しました");
+  return {ok:true,id:copy.id};
 }
 
 function openTaskDialogWithSeed(seed = {}) {
@@ -12581,6 +12582,29 @@ window.WorkBoardPaletteBridge = Object.freeze({
         toggleTaskFavorite(id);
         result = { ok: true };
         break;
+      case 'task.duplicate': {
+        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        const task = state.tasks.find(item => item.id === id);
+        if (!task || !Number.isSafeInteger(command.revision)
+          || normalizeRevision(task.revision) !== command.revision)
+          return {ok:false,error:'revision-or-relation-mismatch'};
+        result = await duplicateTask(id);
+        break;
+      }
+      case 'task.comment': {
+        // Origin owns presentation; the existing comment writer owns persistence.
+        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        const task = state.tasks.find(item => item.id === id);
+        if (!task || !Number.isSafeInteger(command.revision)
+          || normalizeRevision(task.revision) !== command.revision)
+          return {ok:false,error:'revision-or-relation-mismatch'};
+        const text = String(command.text || '').trim();
+        if (!text || text.length > 6000
+          || !['作業メモ','業者回答','確認依頼','申し送り'].includes(command.commentType))
+          return {ok:false,error:'invalid-input'};
+        result = await addComment(id, text, command.commentType);
+        break;
+      }
       case 'task.bulk.update':
       case 'task.bulk.complete': {
         // Validate the caller's ownership and every original revision before
