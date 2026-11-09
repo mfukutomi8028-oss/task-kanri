@@ -895,6 +895,11 @@
 
   window.WorkBoardOriginCommentBridge = Object.freeze({
     readTask:readCurrentCommentTask,
+    // Share the canonical reply decoder and reaction normalization with Origin.
+    readComments(taskId){
+      const task=readCurrentCommentTask(taskId);
+      return commentRecords(task?.comments).map(comment=>({...comment,...decodeReply(comment),reactions:reactionMap(comment)}));
+    },
     reactions:REACTIONS.map(item=>({...item})),
     async dispatch(command={}) {
       if(command.ownerRoom!==roomId()||command.ownerUser!==currentUser())
