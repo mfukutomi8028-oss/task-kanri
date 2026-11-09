@@ -338,6 +338,7 @@
 
 `));
     mount.querySelector('style').appendChild(document.createTextNode("\n/* Origin UI refinements: preserve canonical task data and existing actions. */\n.origin-schedule-toolbar{align-items:flex-start}\n.origin-schedule-advanced{flex:0 1 100%;padding:8px;gap:7px}\n.origin-schedule-advanced label{flex:1 1 130px}\n.origin-schedule-global-results{margin-bottom:12px}\n.origin-task-collection.origin-tasks-compact .item-row{min-height:42px;padding:6px 12px;gap:7px}\n.origin-task-collection.origin-tasks-compact .row-under{display:none}\n.origin-task-collection.origin-tasks-compact .item-name{font-size:12px}\n.origin-task-collection:not(.origin-tasks-compact) .item-row{min-height:94px;padding:17px 18px;gap:14px}\n.origin-task-collection:not(.origin-tasks-compact) .item-name{font-size:15px}\n.origin-task-layout-timeline{position:relative;padding:18px 20px;background:var(--bg)}\n.origin-task-layout-timeline>.origin-task-group{position:relative;margin:0 0 0 9px;padding:0 0 25px 27px;border-left:2px solid var(--line);background:transparent}\n.origin-task-layout-timeline>.origin-task-group:before{content:\"\";position:absolute;top:12px;left:-7px;width:12px;height:12px;border-radius:50%;background:var(--accent);border:3px solid var(--paper);box-shadow:0 0 0 2px var(--accent)}\n.origin-task-layout-timeline .group-title{background:transparent;border:0;padding:0 0 13px}\n.origin-task-layout-timeline .origin-task-group-rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}\n.origin-task-layout-timeline .item-row{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:0;border:1px solid var(--line);border-radius:12px;background:var(--paper);padding:14px!important;box-shadow:var(--shadow)}\n.origin-task-layout-timeline .task-select-check{position:absolute;top:13px;right:13px}\n.origin-task-layout-timeline .origin-task-main{padding-right:24px}\n.origin-task-layout-timeline .item-assignee,.origin-task-layout-timeline .item-date{display:inline-flex;font-size:11px}\n.origin-task-layout-timeline .row-last{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:6px}\n.origin-task-layout-timeline .origin-task-more{grid-column:1/-1}\n.origin-task-detail>.origin-reader-nav{top:0;padding-top:0;margin-top:0}\n.sheet[data-reader-kind=\"tasks\"] .sheet-body{padding-top:0}\n#editForm[data-kind=\"tasks\"] input[type=\"checkbox\"]{appearance:auto!important;width:18px!important;height:18px!important;min-width:18px!important;min-height:18px!important;max-width:18px!important;max-height:18px!important;flex:0 0 18px!important;padding:0!important}\n.origin-sheet-danger .danger-button{display:inline-flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:center!important;gap:7px!important;white-space:nowrap!important;width:auto!important}\n.origin-sheet-danger .danger-button svg{flex:0 0 15px}\n@media(max-width:770px){.origin-task-layout-timeline{padding:10px}.origin-task-layout-timeline .origin-task-group-rows{grid-template-columns:1fr}}\n"));
+    mount.querySelector('style').appendChild(document.createTextNode("\n.origin-schedule-advanced-trigger{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 12px;background:var(--paper);border:1px solid var(--line);border-radius:9px;color:var(--ink-soft);font-size:12px;font-weight:740}\n.origin-schedule-advanced-trigger[aria-expanded=\"true\"]{color:var(--accent-dark);background:var(--accent-bg)}\n.origin-schedule-advanced[hidden]{display:none!important}\n.origin-task-order-pair{display:flex;align-items:center;gap:9px;flex-wrap:wrap}\n.origin-task-order-pair label{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}\n.origin-task-order-pair select{height:40px;min-width:105px;border:1px solid var(--line);border-radius:9px;padding:6px;background:var(--paper);color:var(--ink)}\n.origin-task-inline-status{min-width:82px;max-width:112px;min-height:35px;border:1px solid var(--line);border-radius:8px;padding:5px 6px;background:var(--paper);color:var(--ink);font-size:11px;font-weight:740}\n@media(max-width:770px){.origin-task-order-pair{flex:1 1 100%}.origin-task-order-pair label{flex:1 1 130px}}\n"));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -583,7 +584,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  }
  finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
 }
-let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoSearchHistory=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
+let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleAdvancedOpen=false,scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoSearchHistory=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
 let theme='light',relatedTaskComposing=false;
 const viewDefs=[['today','今日','home'],['tasks','タスク','tasks'],['todos','ToDo','todo'],['calendar','予定','calendar'],['notes','メモ','notes'],['tools','その他','more']];
@@ -814,7 +815,8 @@ function renderTasks(){
  ].filter(Boolean).map(value=>esc(value)).join(' / ');
  return `${head('WORK · TASKS','チームのタスク','期限・担当・状態から仕事を整理し、一覧で処理できます。',`<span>登録 ${data.tasks.length}件</span>`)}
  <div class="origin-layout-controls"><div class="tab-pills" role="group" aria-label="タスクの表示方法">${[['list','一覧'],['board','ボード'],['timeline','タイムライン']].map(([id,label])=>`<button type="button" data-action="task-layout" data-value="${id}" class="${taskLayoutMode===id?'active':''}" aria-pressed="${taskLayoutMode===id}">${label}</button>`).join('')}</div><button type="button" class="secondary-button" data-action="task-view-save">表示方法と並び順を保存</button></div><div class="origin-task-tools" data-mobile-advanced="${taskAdvancedOpen}"><input id="originTaskQuery" type="search" placeholder="件名・担当・分類・説明を検索" aria-label="タスクを検索" autocomplete="off" value="${esc(taskQuery)}"/><button type="button" class="origin-jump-result" data-action="jump-result" data-kind="tasks" aria-label="表示中のタスクの先頭へ移動" ${visible.length?'':'disabled'}>${icon('arrow',16)} <span>結果へ</span></button>
- <label for="originTaskSort">並び順 <select id="originTaskSort"><option value="due" ${taskSortMode==='due'?'selected':''}>期限順</option><option value="priority" ${taskSortMode==='priority'?'selected':''}>優先度順</option><option value="updated" ${taskSortMode==='updated'?'selected':''}>更新順</option></select></label>
+ <div class="origin-task-order-pair"><label for="originTaskSort">並び順 <select id="originTaskSort"><option value="due" ${taskSortMode==='due'?'selected':''}>期限順</option><option value="priority" ${taskSortMode==='priority'?'selected':''}>優先度順</option><option value="updated" ${taskSortMode==='updated'?'selected':''}>更新順</option></select></label>
+<label class="origin-task-group-near" for="groupSelect">まとめ方 <select id="groupSelect" aria-label="タスクをまとめる方法"><option value="deadline" ${taskGrouping==='deadline'?'selected':''}>期限別</option><option value="status" ${taskGrouping==='status'?'selected':''}>状態別</option><option value="assignee" ${taskGrouping==='assignee'?'selected':''}>担当者別</option></select></label></div>
  <button type="button" class="origin-density-button" data-action="task-density" aria-pressed="${taskDensity==='compact'}" title="一覧の行間隔を切り替える">${taskDensity==='compact'?'ゆったり表示':'コンパクト表示'}</button>
  </div>
  <div class="origin-mobile-advanced-switch"><button type="button" data-action="task-advanced-toggle"
@@ -823,7 +825,7 @@ function renderTasks(){
   </button></div>
  <div class="status-rail" id="originTaskStatusRail" data-mobile-advanced="${taskAdvancedOpen}" data-origin-scroll-key="task-status" aria-label="タスクの状態別件数">${statusMarkers}</div>
  <div class="work-toolbar origin-task-toolbar" data-mobile-advanced="${taskAdvancedOpen}"><div class="tab-pills" data-origin-scroll-key="task-tabs" role="group" aria-label="タスクの表示条件">${filterOptions.map(([id,label])=>`<button type="button" class="${taskFilter===id?'active':''}" data-action="task-filter" data-value="${id}" aria-pressed="${taskFilter===id}">${label}</button>`).join('')}</div><div class="spacer"></div>
- <label class="quiet-small origin-advanced-only" for="groupSelect">まとめ方</label><select id="groupSelect" class="select-small origin-advanced-only" aria-label="タスクをまとめる方法"><option value="deadline" ${taskGrouping==='deadline'?'selected':''}>期限別</option><option value="status" ${taskGrouping==='status'?'selected':''}>状態別</option><option value="assignee" ${taskGrouping==='assignee'?'selected':''}>担当者別</option></select>
+ 
  <button type="button" class="secondary-button" data-action="new" data-kind="tasks">${icon('plus')} タスクを追加</button></div>
  <div class="origin-task-summary"><span>表示 ${visible.length}件 ／ 全体 ${data.tasks.length}件${renderedCount<visible.length?' · 画面に'+renderedCount+'件':''}${selectedBulk.size?' · '+selectedBulk.size+'件選択中':''}${taskFilterSummary?`<span class="origin-filter-current">${taskFilterSummary}</span>`:''}</span>${filtered?'<button type="button" data-action="task-reset">絞り込みを解除</button>':''}</div>
  ${selectedBulk.size?`<div class="bulkbar">${icon('check',16)} ${selectedBulk.size}件選択中 <div class="spacer"></div><button data-action="bulk-done">まとめて完了</button><button data-action="bulk-clear">選択解除</button></div>`:''}
@@ -833,8 +835,9 @@ function renderTasks(){
 function taskRow(t){
  const urgent=!t.completed&&t.due&&t.due<base;
  const dateText=t.due?humanDue(t.due)+(t.dueTime?' '+t.dueTime:''):'期限なし';
+  const statusSelect=`<select class="origin-task-inline-status" data-action="task-inline-status" data-id="${esc(t.id)}" aria-label="${esc(t.title)}の状態を変更">${snapshot.statuses.map(name=>`<option value="${esc(name)}" ${t.status===name?'selected':''}>${esc(name)}</option>`).join('')}</select>`;
  const due=t.due?`<span class="origin-task-mobile-due ${urgent?'urgent':''}">${esc(dateText)}</span>`:'';
- return `<div class="item-row"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}" title="${esc(t.title)}" aria-label="${esc(t.title)}の詳細を開く"><span class="origin-task-title-text">${esc(t.title)}</span><span class="origin-task-detail-arrow" aria-hidden="true">${icon('right',14)}</span></button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}<span class="origin-task-mobile-assignee">${esc(t.assignee||'担当未設定')}</span></div></div><span class="item-assignee">${esc(t.assignee||'未設定')}</span><span class="item-date ${urgent?'urgent':''}">${esc(dateText)}</span><div class="row-last"><button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="tasks" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を編集" title="タスクを編集">${icon('edit',15)}</button><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
+ return `<div class="item-row"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}" title="${esc(t.title)}" aria-label="${esc(t.title)}の詳細を開く"><span class="origin-task-title-text">${esc(t.title)}</span><span class="origin-task-detail-arrow" aria-hidden="true">${icon('right',14)}</span></button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}<span class="origin-task-mobile-assignee">${esc(t.assignee||'担当未設定')}</span></div></div><span class="item-assignee">${esc(t.assignee||'未設定')}</span><span class="item-date ${urgent?'urgent':''}">${esc(dateText)}</span><div class="row-last">${statusSelect}<button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="tasks" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を編集" title="タスクを編集">${icon('edit',15)}</button><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
 }
 // Pending and completed ToDos use bounded initial rendering, like tasks and notes.
 const TODO_RENDER_BATCH=24;
@@ -1045,7 +1048,7 @@ function renderCalendar(){
       <button type="button" data-action="schedule-search-scope" data-value="week" aria-pressed="${scheduleSearchScope==='week'}">この週</button>
       <button type="button" data-action="schedule-search-scope" data-value="all" aria-pressed="${scheduleSearchScope==='all'}">全期間</button>
     </div>
-   ${scheduleSearchScope==='all'?`<div class="origin-schedule-advanced" role="group" aria-label="全期間の詳細条件">
+   ${scheduleSearchScope==='all'?`<button type="button" class="origin-schedule-advanced-trigger" data-action="schedule-advanced-toggle" aria-expanded="${scheduleAdvancedOpen}" aria-controls="originScheduleAdvanced">詳細条件 ${scheduleCategory!=='all'||scheduleDateFrom||scheduleDateTo||scheduleSearchSort!=='upcoming'?'・指定中':''} ${icon('chevron',14)}</button><div id="originScheduleAdvanced" class="origin-schedule-advanced" role="group" aria-label="全期間の詳細条件" ${scheduleAdvancedOpen?'':'hidden'}>
     <label>分類<select id="originScheduleCategory" aria-label="予定の分類で絞り込む"><option value="all">すべての分類</option>${[...new Set(data.events.map(e=>e.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja')).map(c=>`<option value="${esc(c)}" ${scheduleCategory===c?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
     <label>開始日<input type="date" id="originScheduleFrom" aria-label="検索期間の開始日" value="${esc(scheduleDateFrom)}"/></label>
     <label>終了日<input type="date" id="originScheduleTo" aria-label="検索期間の終了日" value="${esc(scheduleDateTo)}"/></label>
@@ -2237,6 +2240,20 @@ async function toggleTodo(id){
  }
  restoreOriginTodoListReturn(listReturn,{sameItem:!saved});
 }
+async function updateOriginInlineStatus(select){
+ const t=findItem('tasks',select.dataset.id),status=select.value;
+ if(!t||!snapshot.statuses.includes(status)){render();return}
+ if(t.status===status)return;
+ const oldStatus=t.status;
+ select.disabled=true;
+ try{
+  const ok=await send({type:'task.update',id:t.id,revision:Number(t.revision),ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+   title:t.title,assignee:t.assignee==='自分'?snapshot.currentUser:t.assignee,status,priority:t.priority,category:t.category,
+   dueDate:t.due,dueTime:t.due?t.dueTime:'',requester:t.requester,description:t.desc,tags:(t.tags||[]).join(','),
+   checklist:(t.checklist||[]).map(x=>x.text).join('\n'),checklistDone:(t.checklist||[]).map(x=>Boolean(x.done)),pinned:Boolean(t.pinned)},'状態を変更しました');
+  if(!ok){select.value=oldStatus;select.disabled=false}
+ }catch(error){select.value=oldStatus;select.disabled=false;notify('状態の変更に失敗しました')}
+}
 async function toggleTaskDone(id){
  const t=findItem('tasks',id);if(!t)return;
  const type=t.completed?'task.reopen':'task.complete';
@@ -2727,6 +2744,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
   (window.innerWidth<=770?$('#workspace [data-action="schedule-filter-toggle"]'):$('#originScheduleSearch'))?.focus({preventScroll:true});
   return;
  }
+ if(a==='schedule-advanced-toggle'){scheduleAdvancedOpen=!scheduleAdvancedOpen;render();return}
  if(a==='schedule-search-scope'){
   if(!['week','all'].includes(value)||scheduleSearchScope===value)return;
   scheduleSearchScope=value;scheduleSearchLimit=30;render();
@@ -2996,6 +3014,7 @@ mount.addEventListener('change',e=>{
  if(t.id==='originMemoSort'){memoSort=['updated','title','category'].includes(t.value)?t.value:'updated';memoVisibleLimit=MEMO_RENDER_BATCH;render();return}
  if(t.id==='groupSelect'){taskGrouping=t.value;taskVisibleLimits.clear();selectedBulk.clear();render();return}
  if(t.id==='originTaskSort'){taskSortMode=['due','priority','updated'].includes(t.value)?t.value:'due';taskVisibleLimits.clear();selectedBulk.clear();render();return}
+  if(t.dataset.action==='task-inline-status'){updateOriginInlineStatus(t);return}
  if(t.dataset.action==='task-check'){taskCheckToggle(t);return}
  if(t.dataset.action==='todo-check'){toggleTodo(t.dataset.id,t.checked);return}
  if(t.dataset.action==='bulk-toggle'){if(t.checked)selectedBulk.add(t.dataset.id);else selectedBulk.delete(t.dataset.id);render();return}
