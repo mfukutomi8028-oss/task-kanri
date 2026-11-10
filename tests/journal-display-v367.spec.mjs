@@ -3747,8 +3747,8 @@ test('JOURNAL V567 phone paging opens a folded destination shelf and keeps the n
     await dialog.locator('#taskPriority').selectOption(priority);
     await dialog.locator('#taskForm button[type="submit"]').click();
     await expect(dialog).toBeHidden();
-    if(await page.locator('.detail-panel').getAttribute('class')?.then(v=>v?.includes('open')))
-      await dismissSavedTaskDetailForTest(page);
+    // Saving opens the canonical detail panel; close it before desk controls.
+    await dismissSavedTaskDetailForTest(page);
   };
   const focusTitle='JOURNAL V567 今すぐ進める案件';
   const otherTitle='JOURNAL V567 その他の案件';
@@ -3798,8 +3798,8 @@ test('JOURNAL V567 desktop log and index handoff reveal a folded case without re
   await dialog.locator('#taskTitle').fill(title);
   await dialog.locator('#taskForm button[type="submit"]').click();
   await expect(dialog).toBeHidden();
-  if(await page.locator('.detail-panel').getAttribute('class')?.then(v=>v?.includes('open')))
-    await dismissSavedTaskDetailForTest(page);
+  // Avoid the retained canonical detail overlay intercepting index clicks.
+  await dismissSavedTaskDetailForTest(page);
   const toggle=board.locator('[data-j565-island-toggle="other"]');
   const card=board.locator('[data-j420-task-id]').filter({hasText:title});
   await toggle.click();
