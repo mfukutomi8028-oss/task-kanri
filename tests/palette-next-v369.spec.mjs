@@ -193,6 +193,8 @@ test('Palette NEXT creates and edits a task through canonical revision-safe writ
   await expect.poll(()=>page.evaluate(()=>
     window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.title==='Palette NEXT 新規タスク検証')?.description
   )).toBe('現地の端末を確認します');
+  // The visual board is the default; test this existing dense-list contract.
+  await page.locator('#paletteNextRoot [data-pn-task-view="list"]').click();
   const row=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'Palette NEXT 新規タスク検証'});
   await row.locator('[data-pn-detail="task"]').click();
   await page.locator('#pnDetail [data-pn-edit="task"]').click();
@@ -771,6 +773,8 @@ test('Palette NEXT bulk updates selected task status and rejects a stale revisio
     await form.locator('[type="submit"]').click();
     await expect.poll(()=>page.evaluate(title=>window.WorkBoardPaletteBridge.readSnapshot().tasks.some(t=>t.title===title),name)).toBe(true);
   }
+  // The visual board is the default; test this existing dense-list contract.
+  await page.locator('#paletteNextRoot [data-pn-task-view="list"]').click();
   const rows=page.locator('#paletteNextRoot .pn-flowrow');
   for(const name of ['一括変更A','一括変更B']){
     await rows.filter({hasText:name}).locator('[data-pn-bulk-id]').check();
@@ -1187,6 +1191,8 @@ test('Palette task inspector presents checklist progress, timeline and tags with
   await expect.poll(()=>page.evaluate(()=>
     window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.title==='Palette 詳細UIテスト')?.checklist.length
   )).toBe(2);
+  // The visual board is the default; test this existing dense-list contract.
+  await page.locator('#paletteNextRoot [data-pn-task-view="list"]').click();
   const row=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'Palette 詳細UIテスト'});
   await expect(row).toBeVisible();
   await row.locator('[data-pn-detail="task"]').click();
@@ -1284,6 +1290,8 @@ test('Palette task portfolio shows genuine urgency, checklist progress and compa
   await expect(form).toHaveCount(0);
   await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot()
     .tasks.some(t=>t.title==='Palette 視覚的なタスク一覧'))).toBe(true);
+  // The visual board is the default; test this existing dense-list contract.
+  await page.locator('#paletteNextRoot [data-pn-task-view="list"]').click();
   const row=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'Palette 視覚的なタスク一覧'});
   await expect(row).toBeVisible();
   await expect(row).toHaveAttribute('data-task-tone','overdue');
@@ -1584,6 +1592,8 @@ for(const width of [390,1366]){
   const metricBounds=await metrics.evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect()));
   expect(Math.max(...metricBounds.map(x=>x.top))-Math.min(...metricBounds.map(x=>x.top))).toBeLessThan(2);
   expect(Math.max(...metricBounds.map(x=>x.height))).toBeLessThan(115);
+  // The visual board is the default; test this existing dense-list contract.
+  await page.locator('#paletteNextRoot [data-pn-task-view="list"]').click();
   const row=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'情報密度確認用のタスク'});
   await expect(row).toBeVisible();
   const bounds=await row.locator('.pn-bulkcheck').evaluate(el=>el.getBoundingClientRect().toJSON());
@@ -1692,6 +1702,8 @@ for(const width of [390,1366]){
   expect(created?.ok).toBe(true);
   const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
   await page.locator(nav+' [data-pn-route="tasks"]').click();
+  // The visual board is the default; test this existing dense-list contract.
+  await page.locator('#paletteNextRoot [data-pn-task-view="list"]').click();
   const row=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'キーボード一括選択'});
   const check=row.locator('[data-pn-bulk-id]');
   await check.focus();
@@ -1847,6 +1859,8 @@ for(const width of [320,390,1366]){
   });
   expect(created).toBe(true);
   await page.locator('#pnSearch').fill('一覧移動');
+  // The visual board is the default; test this existing dense-list contract.
+  await page.locator('#paletteNextRoot [data-pn-task-view="list"]').click();
   const rows=page.locator('#paletteNextRoot .pn-flowrow');
   await expect(rows).toHaveCount(3);
   await page.locator('#paletteNextRoot [data-pn-task-sort]').selectOption('priority');
@@ -2113,6 +2127,8 @@ for(const width of [320,390,1366]){
     return dims;
   }
   await page.locator(nav+' [data-pn-route="tasks"]').click();
+  // The visual board is the default; test this existing dense-list contract.
+  await page.locator('#paletteNextRoot [data-pn-task-view="list"]').click();
   const taskRow=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'操作統一タスク'});
   await taskRow.locator('[data-pn-detail="task"]').click();
   await check('task',3,0,'内容を編集');
@@ -2251,6 +2267,8 @@ for(const width of [390,1366]){
   });
   expect(result?.ok).toBe(true);
   await page.locator('#pnSearch').fill('描画フォーカス保持の対象');
+  // The visual board is the default; test this existing dense-list contract.
+  await page.locator('#paletteNextRoot [data-pn-task-view="list"]').click();
   const row=page.locator('.pn-flowrow [data-pn-detail="task"]');
   await expect(row).toHaveCount(1);
   await row.focus();
@@ -2443,6 +2461,8 @@ for(const width of [390,1366]){
   });
   expect(created).toBe(true);
   await page.locator('#pnSearch').fill('詳細復帰位置検証');
+  // The visual board is the default; test this existing dense-list contract.
+  await page.locator('#paletteNextRoot [data-pn-task-view="list"]').click();
   const rows=page.locator('#pnWorkspace .pn-flowrow');
   await expect(rows).toHaveCount(2);
   // Create a long list viewport without changing any record or data writer.
@@ -2516,6 +2536,8 @@ for(const width of [320,390]){
     if(selector!=='.pn-todoopen')expect(box?.width||0,selector).toBeGreaterThanOrEqual(44);
   }
   await nav.locator('[data-pn-route="tasks"]').click();
+  // The visual board is the default; test this existing dense-list contract.
+  await page.locator('#paletteNextRoot [data-pn-task-view="list"]').click();
   const task=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:'タップ領域確認タスク'}).first();
   await expect(task).toBeVisible();
   for(const selector of ['.pn-flowtitle','.pn-task-star']){
@@ -2680,3 +2702,61 @@ test('Palette shows a required-field error without removing the editor draft',as
   await form.locator('[data-pn-cancel]').click();
   await expect(form).toBeHidden();
 });
+
+
+for(const width of [320,390,1366]){
+ test('Palette editorial cover and visual board keep canonical tasks intact at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,width);
+  await expect(page.locator('#paletteNextRoot .pn-hero-feature')).toBeVisible();
+  await expect(page.locator('#paletteNextRoot .pn-hero h1')).toContainText('いいリズム');
+  const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+  await page.locator(nav+' [data-pn-route="tasks"]').click();
+  const boardToggle=page.locator('#paletteNextRoot [data-pn-task-view="board"]');
+  const listToggle=page.locator('#paletteNextRoot [data-pn-task-view="list"]');
+  await expect(boardToggle).toHaveAttribute('aria-pressed','true');
+  const name='Palette ボード検査 '+width;
+  const created=await page.evaluate(async title=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    return bridge.dispatch({
+      type:'task.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+      title,assignee:s.currentUser,status:s.statuses.find(x=>x!=='完了')||'未着手',
+      priority:'高',category:s.categories[0]||'その他',
+      description:'',requester:'',tags:'',checklist:'',pinned:false
+    });
+  },name);
+  expect(created?.ok).toBe(true);
+  await page.locator('#pnSearch').fill(name);
+  const card=page.locator('#paletteNextRoot .pn-board-card').filter({hasText:name});
+  await expect(card).toHaveCount(1);
+  await expect(page.locator('#paletteNextRoot .pn-task-board')).toBeVisible();
+  await expect(card.locator('[data-pn-detail="task"]')).toBeVisible();
+  const before=await page.evaluate(title=>{
+    const task=window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.title===title);
+    return task&&{id:task.id,revision:task.revision,status:task.status};
+  },name);
+  expect(before?.id).toBeTruthy();
+  await card.locator('[data-pn-bulk-id]').check();
+  await expect(page.locator('#paletteNextRoot .pn-bulk-heading')).toContainText('1件選択中');
+  await listToggle.click();
+  await expect(listToggle).toHaveAttribute('aria-pressed','true');
+  const row=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:name});
+  await expect(row).toHaveCount(1);
+  await expect(row.locator('[data-pn-bulk-id]')).toBeChecked();
+  await row.locator('[data-pn-detail="task"]').click();
+  await expect(page.locator('#pnDetail .pn-inspect-hero')).toContainText(name);
+  await page.locator('#pnDetail [data-pn-close]').click();
+  await boardToggle.click();
+  await expect(boardToggle).toHaveAttribute('aria-pressed','true');
+  await expect(card).toHaveCount(1);
+  await expect(page.locator('#pnSearch')).toHaveValue(name);
+  const after=await page.evaluate(title=>{
+    const task=window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.title===title);
+    return task&&{id:task.id,revision:task.revision,status:task.status};
+  },name);
+  expect(after).toEqual(before);
+  expect(await page.evaluate(()=>
+    document.documentElement.scrollWidth-document.documentElement.clientWidth
+  )).toBeLessThanOrEqual(2);
+ });
+}
