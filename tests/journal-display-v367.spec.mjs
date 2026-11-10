@@ -3735,3 +3735,96 @@ for(const width of [320,390]){
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   });
 }
+
+test('JOURNAL V567 phone paging opens a folded destination shelf and keeps the notebook readable',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),dialog=page.locator('#taskDialog');
+  const create=async(title,priority)=>{
+    await board.locator('[data-j420-new-task]').click();
+    await dialog.locator('#taskTitle').fill(title);
+    await dialog.locator('#taskPriority').selectOption(priority);
+    await dialog.locator('#taskForm button[type="submit"]').click();
+    await expect(dialog).toBeHidden();
+    // Saving opens the canonical detail panel; close it before desk controls.
+    await dismissSavedTaskDetailForTest(page);
+  };
+  const focusTitle='JOURNAL V567 今すぐ進める案件';
+  const otherTitle='JOURNAL V567 その他の案件';
+  await create(focusTitle,'高');
+  await create(otherTitle,'中');
+  const focus=board.locator('[data-j420-task-id]').filter({hasText:focusTitle});
+  const other=board.locator('[data-j420-task-id]').filter({hasText:otherTitle});
+  const otherToggle=board.locator('[data-j565-island-toggle="other"]');
+  await expect(focus).toBeVisible();
+  await expect(other).toBeVisible();
+  await otherToggle.click();
+  await expect(otherToggle).toHaveAttribute('aria-expanded','false');
+  await expect(other).toBeHidden();
+  await focus.click();
+  const note=board.locator('#j494AtelierNote');
+  await expect(note).toBeVisible();
+  await expect(note.locator('[data-j553-case-position]')).toHaveText('1 / 2 件');
+  // The next real card still belongs to the folded shelf. Open only that
+  // shelf instead of moving the note inside a hidden ancestor.
+  await note.locator('[data-j553-case-step="1"]').click();
+  await expect(otherToggle).toHaveAttribute('aria-expanded','true');
+  await expect(other).toBeVisible();
+  await expect(note).toBeVisible();
+  await expect(note.locator('.j420-note-lead h4')).toHaveText(otherTitle);
+  await expect(note.locator('[data-j553-case-position]')).toHaveText('2 / 2 件');
+  await otherToggle.click();
+  await expect(otherToggle).toHaveAttribute('aria-expanded','false');
+  await expect(note).toBeHidden();
+  // Ordinary route changes must not unfold the explicitly closed shelf.
+  await page.locator('#wbJournalDockV367 [data-journal-route="today"]').click();
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await expect(board.locator('[data-j565-island-toggle="other"]')).toHaveAttribute('aria-expanded','false');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+  await page.setViewportSize({width:320,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});
+
+test('JOURNAL V567 desktop log and index handoff reveal a folded case without resetting other shelves',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,1366);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),dialog=page.locator('#taskDialog');
+  const title='JOURNAL V567 棚から探す案件';
+  await board.locator('[data-j420-new-task]').click();
+  await dialog.locator('#taskTitle').fill(title);
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  // Avoid the retained canonical detail overlay intercepting index clicks.
+  await dismissSavedTaskDetailForTest(page);
+  const toggle=board.locator('[data-j565-island-toggle="other"]');
+  const card=board.locator('[data-j420-task-id]').filter({hasText:title});
+  await toggle.click();
+  await expect(card).toBeHidden();
+  await board.locator('[data-j420-log-task]').filter({hasText:title}).click();
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await expect(card).toBeVisible();
+  const note=board.locator('#j494AtelierNote');
+  await expect(note).toHaveClass(/j562-desk-open/);
+  await expect(note).toBeVisible();
+  await board.locator('[data-j562-close-desk]').click();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded','false');
+  await board.locator('[data-j420-layout="list"]').click();
+  const list=page.locator('#listView');
+  const row=list.locator('[data-j425-row]').filter({hasText:title});
+  // A pointer click waits 240ms before updating the preview to permit
+  // double-click editing. Switch pages within the same browser turn to
+  // prove the clicked row is handed off even before the delay expires.
+  await row.dispatchEvent('click',{detail:1});
+  await list.locator('[data-j425-task-layout="board"]').evaluate(el=>el.click());
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await expect(card).toBeVisible();
+  await expect(card).toHaveClass(/is-selected/);
+  // Focus follows only while the source row remains in the viewport.
+  // Clicking the list toolbar may scroll the source row out of view first;
+  // its deliberate selection must still reveal the target shelf.
+});
