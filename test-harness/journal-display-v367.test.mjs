@@ -546,10 +546,10 @@ test('JOURNAL V463 weekly availability merges overlaps and honors day boundaries
   assert.equal(allDay.busyMinutes,720);
   assert.equal(allDay.largestGap,null);
   assert.doesNotMatch(app,/j463-week-overview|weekOverviewV463/);
-  assert.match(app,/class="j466-duration-row j562-week-controls"/);
+  assert.doesNotMatch(app,/weekDurationControlsV562|data-j466-duration/);
   assert.match(app,/data-j425-day="\$\{iso\}"/);
   assert.match(app,/getFilteredSchedules\(\{start:new Date\(0\),end:addDays\(weekStart,7\)\}\)/);
-  assert.match(css,/JOURNAL V562/);
+  assert.doesNotMatch(css,/\.j562-week-controls|\.j466-duration-row/);
   assert.doesNotMatch(css,/\.j463-week-days/);
 });
 
@@ -628,9 +628,10 @@ test('JOURNAL V466 duration and post-save focus stay within canonical schedule p
   assert.equal(seed(day,edge,30),null,'Second-level rounding must not cross a boundary');
   assert.equal(seed(day,fullHour,30).assignee,'current-user');
 
-  assert.match(app,/let journalGapDurationV466=60/);
-  assert.match(app,/data-j466-duration/);
-  assert.match(app,/aria-pressed="\$\{journalGapDurationV466===minutes\}"/);
+  assert.match(app,/const journalGapDurationV466=30/);
+  assert.doesNotMatch(app,/data-j466-duration/);
+  assert.match(app,/JOURNAL_SCHEDULE_DURATIONS_V565 = \[30, 60, 90, 120\]/);
+  assert.match(read('index.html'),/data-j565-schedule-minutes="120"/);
   assert.match(app,/journalGapScheduleSeedV466\(/);
   assert.match(app,/data-j473-free-date/);
   assert.match(app,/dataset\.journalGapFocus='1'/);
@@ -638,8 +639,8 @@ test('JOURNAL V466 duration and post-save focus stay within canonical schedule p
   assert.match(app,/const followJournalGapV466 = !editingId/);
   assert.match(app,/if \(!result\.ok\) return showWriteFailure\(result, "予定を保存できませんでした。入力内容はそのままです。"\)/);
   assert.match(app,/journalSchedulePreviewIdV459=schedule\.id/);
-  assert.match(css,/JOURNAL V466/);
-  assert.match(css,/\.j466-duration-choice/);
+  assert.match(css,/\.j565-schedule-duration/);
+  assert.match(css,/\.j425-schedule-layout>\.j425-schedule-index/);
 });
 
 test('JOURNAL V469 chosen starts respect boundaries and existing form ownership',()=>{
