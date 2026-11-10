@@ -7246,11 +7246,12 @@ function journalRefreshAtelierControlV516(tasks,source,locate){
 let journalTaskSyncTokenV530 = 0;
 const journalTaskSyncAttrsV530 = {
   board:['data-j420-task-id','data-j420-search','data-j420-view',
+    'data-j565-atelier-sort','data-j565-island-toggle','data-j565-reserved-open',
     'data-j420-category','data-j420-reset-view','data-j502-toggle-index',
     'data-j420-log-task','data-j420-layout','data-j420-new-task',
     'data-j520-empty-reset','data-j520-empty-new','data-j420-note-detail',
     'data-j420-note-edit','data-j494-atelier-back','data-j553-case-step'],
-  list:['data-j425-row','data-j425-query','data-j425-sort',
+  list:['data-j425-row','data-j425-query','data-j425-sort','data-j565-reserved-open',
     'data-j430-facet','data-j425-due','data-j425-preset',
     'data-j425-task-layout','data-j425-new-task','data-j447-toggle-filters',
     'data-j425-reset','data-j518-empty-reset','data-bulk-id','data-bulk-all',
@@ -7450,7 +7451,15 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
       journalCaptureAtelierReaderAnchorV556();
   });
 }
+// Collapse state is presentation-only and resets when the room/user changes.
+const journalAtelierCollapsedGroupsV565=new Set();
+let journalAtelierGroupOwnerV565='';
 function journalAtelierV420(tasks){
+  const groupOwnerV565=ROOM_ID+'|'+getCurrentUser();
+  if(groupOwnerV565!==journalAtelierGroupOwnerV565){
+    journalAtelierCollapsedGroupsV565.clear();
+    journalAtelierGroupOwnerV565=groupOwnerV565;
+  }
   // A new local or subscribed render supersedes all older note-page focus work.
   ++journalAtelierPageTokenV553;
   const syncAnchorV530=journalCaptureTaskPageSyncAnchorV530('board');
@@ -7517,10 +7526,23 @@ function journalAtelierV420(tasks){
     journalAtelierReturnAnchorV516=null;
   }
   const chosen=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
-  const renderGroup=g=>`<section class="j420-island j420-island-${g.id} ${g.items.length?'':'j520-empty-island'}" aria-label="${g.title}">
-    <header><span class="j420-island-roman">${g.roman}</span><h3>${g.title}</h3><small>${g.items.length} 件</small><svg class="j425-island-pin" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#pin"></use></svg></header>
-    <div class="j420-island-items">${g.items.map(journalAtelierCardV420).join('')||'<p class="j420-island-empty">この棚の案件はありません</p>'}</div>
-  </section>`;
+  const renderGroup=g=>{
+    const expanded=!journalAtelierCollapsedGroupsV565.has(g.id);
+    return `<section class="j420-island j420-island-${g.id} ${g.items.length?'':'j520-empty-island'}"
+      aria-label="${g.title}" data-j565-island="${g.id}" data-j565-expanded="${expanded}">
+      <header><span class="j420-island-roman">${g.roman}</span>
+        <button type="button" class="j565-island-toggle" data-j565-island-toggle="${g.id}"
+          aria-expanded="${expanded}" aria-controls="j565IslandItems-${g.id}"
+          aria-label="${escapeHtml(g.title)}を${expanded?'折りたたむ':'展開する'}">
+          <span class="j565-island-title">${g.title}</span>
+          <small>${g.items.length} 件</small><span class="j565-island-chevron" aria-hidden="true">⌄</span>
+        </button><svg class="j425-island-pin" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#pin"></use></svg>
+      </header>
+      <div class="j420-island-items" id="j565IslandItems-${g.id}" ${expanded?'':'hidden'}>
+        ${g.items.map(journalAtelierCardV420).join('')||'<p class="j420-island-empty">この棚の案件はありません</p>'}
+      </div>
+    </section>`;
+  };
   elements.boardView.innerHTML=`<div class="j420-atelier">
     <header class="j420-atelier-hero">
       <div><span class="j420-eyebrow">03 / TASK ATELIER</span><h2>案件アトリエ</h2></div>
@@ -7642,6 +7664,34 @@ function journalAtelierV420(tasks){
     const value=btn.dataset.j420Category;
     journalAtelierCategoryV420=value;
     journalRefreshAtelierControlV516(tasks,btn,()=>[...elements.boardView.querySelectorAll('[data-j420-category]')].find(el=>el.dataset.j420Category===value));
+  }));
+  root.querySelector('[data-j565-atelier-sort]')?.addEventListener('change',event=>{
+    elements.sortSelect.value=event.currentTarget.value;
+    journalRefreshAtelierControlV516(getFilteredTasks(),event.currentTarget,
+      ()=>elements.boardView.querySelector('[data-j565-atelier-sort]'));
+  });
+  root.querySelectorAll('[data-j565-island-toggle]').forEach(button=>button.addEventListener('click',()=>{
+    const key=button.dataset.j565IslandToggle;
+    const island=button.closest('[data-j565-island]');
+    const items=island?.querySelector('.j420-island-items');
+    if(!items)return;
+    const expanded=items.hidden;
+    items.hidden=!expanded;
+    island.dataset.j565Expanded=String(expanded);
+    button.setAttribute('aria-expanded',String(expanded));
+    button.setAttribute('aria-label',island.getAttribute('aria-label')+(expanded?'を折りたたむ':'を展開する'));
+    if(expanded)journalAtelierCollapsedGroupsV565.delete(key);
+    else{
+      journalAtelierCollapsedGroupsV565.add(key);
+      // Closing a shelf must not leave the open reader with a hidden origin.
+      const current=[...island.querySelectorAll('[data-j420-task-id]')]
+        .some(card=>card.dataset.j420TaskId===journalAtelierSelectedV420);
+      if(current){
+        journalAtelierInlineOpenV494=false;
+        journalAtelierDeskNoteOpenV562=false;
+        journalPositionAtelierNoteV494(root);
+      }
+    }
   }));
   // The toolbar and the empty-state recovery share a single reset path.
   const resetAtelierV520=(source,focusSearch)=>{
