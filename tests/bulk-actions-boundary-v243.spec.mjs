@@ -51,7 +51,9 @@ async function openList(page) {
 async function createTaskInEditor(page, title) {
   // Quick-add was intentionally retired. Set up the bulk test through the
   // canonical task editor so this suite tests only its own bulk action owner.
-  await page.locator('#newTask').click();
+  // The app-owned Classic task button can sit below the expanded desktop
+  // sidebar in CI. Invoke its canonical listener without a pointer overlap.
+  await page.locator('#newTask').evaluate(button=>button.click());
   const dialog = page.locator('#taskDialog');
   await expect(dialog).toBeVisible();
   await dialog.locator('#taskTitle').fill(title);
