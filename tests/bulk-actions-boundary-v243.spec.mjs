@@ -48,10 +48,23 @@ async function openList(page) {
   await expect(page.locator('#listView')).toBeVisible();
 }
 
-async function quickAdd(page, title) {
-  await page.locator('#quickAddInput').fill(title);
-  await page.locator('#quickAddButton').click();
-  await expect(page.locator('#quickAddInput')).toHaveValue('');
+async function createTaskInEditor(page, title) {
+  // Quick-add was intentionally retired. Set up the bulk test through the
+  // canonical task editor so this suite tests only its own bulk action owner.
+  // The app-owned Classic task button can sit below the expanded desktop
+  // sidebar in CI. Invoke its canonical listener without a pointer overlap.
+  await page.locator('#newTask').evaluate(button=>button.click());
+  const dialog = page.locator('#taskDialog');
+  await expect(dialog).toBeVisible();
+  await dialog.locator('#taskTitle').fill(title);
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  await expect(taskRow(page, title)).toHaveCount(1);
+  const detail = page.locator('.detail-panel');
+  if (await detail.evaluate(node => node.classList.contains('open'))) {
+    await page.locator('#closeDetail').evaluate(button => button.click());
+    await expect(detail).not.toHaveClass(/open/);
+  }
 }
 
 function taskRow(page, title) {
@@ -64,8 +77,8 @@ test('Ver.243 product: local bulk status/delete stay app-owned while only v243 r
 
   const statusTitle = '一括状態製品確認';
   const deleteTitle = '一括削除製品確認';
-  await quickAdd(page, statusTitle);
-  await quickAdd(page, deleteTitle);
+  await createTaskInEditor(page, statusTitle);
+  await createTaskInEditor(page, deleteTitle);
 
   const statusRow = taskRow(page, statusTitle);
   const deleteRow = taskRow(page, deleteTitle);

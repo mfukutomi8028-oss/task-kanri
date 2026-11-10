@@ -60,7 +60,7 @@ test('Today final semantics are app-owned while retired stable is cached-only an
 
   assert.match(app, /const openTasks = state\.tasks\.filter\(t => !isCompletedStatus\(t\.status\) && normalizeText\(t\.status\) !== normalizeText\("保留"\) && \(!scopeHasMine\(\) \|\| isCurrentUserOrGroupAssignee\(t\.assignee\)\) && matchesTodaySidebarFilters\(t\)\);/);
   assert.match(app, /\.filter\(s => !scopeHasMine\(\) \|\| isCurrentUserOrGroupAssignee\(s\.assignee\)\)/);
-  assert.match(app, /const spare = openTasks\.filter\(t => !t\.dueDate && !isUnsortedTask\(t\) && normalizeText\(t\.status\) !== normalizeText\("確認待ち"\)\)/);
+  assert.match(app, /const spare = openTasks\.filter\(t => !t\.dueDate && normalizeText\(t\.status\) !== normalizeText\("確認待ち"\)\)/);
   assert.doesNotMatch(coreStyle, /#todayView\s*\[data-v108-hidden\]/);
 
   const mobilePatchAll = functionBody(mobile, '  function patchAll()');

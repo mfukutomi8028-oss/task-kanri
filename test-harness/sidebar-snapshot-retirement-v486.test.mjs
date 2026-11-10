@@ -23,7 +23,6 @@ const RETIRED_SIDEBAR_FILES = Object.freeze([
 const ACTIVE_SNAPSHOT_OWNERS = Object.freeze([
   'icon-visual.spec.mjs',
   'mobile-regression-v187.spec.mjs',
-  'task-toolbar-visual.spec.mjs',
   'workflow-inbox-archive-visual.spec.mjs',
   'workspace-density-v188.spec.mjs'
 ]);
@@ -75,5 +74,15 @@ test('Ver.486: all remaining screenshot directories belong to active Playwright 
     assert.ok(suite.snapshots.length > 0, 'visual suite has no baselines: ' + suite.owner);
     count += suite.snapshots.length;
   }
-  assert.equal(count, 50, 'remaining visual baselines changed unexpectedly');
+  assert.equal(count, 42, 'remaining visual baselines changed unexpectedly');
+});
+
+test('Ver.566: retired task quick-add snapshots are absent, while responsive toolbar geometry stays covered', () => {
+  const owner = path.join(TESTS, 'task-toolbar-visual.spec.mjs');
+  const source = fs.readFileSync(owner, 'utf8');
+  assert.doesNotMatch(source, /\.toHaveScreenshot\s*\(|\.toMatchSnapshot\s*\(/,
+    'the removed quick-add layout must not retain obsolete pixel baselines');
+  assert.match(source, /assertToolbarGeometry\(page\)/);
+  assert.match(source, /gridTemplateAreas/);
+  assert.equal(fs.existsSync(path.join(TESTS, 'task-toolbar-visual.spec.mjs-snapshots')), false);
 });

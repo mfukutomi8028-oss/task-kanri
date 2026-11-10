@@ -5493,58 +5493,6 @@ html[data-wb-display="journal"] #scheduleView .j459-day-review[aria-pressed="tru
 }
 
 
-/* JOURNAL V562 — retain the compact 30/60-minute action, without
-   the duplicate weekly occupancy strip and its obsolete per-day cards. */
-html[data-wb-display="journal"] #scheduleView .j562-week-controls {
-  margin:9px 0 11px;padding:9px 12px;
-  border:1px solid #ded8c9;border-radius:5px;background:#faf9f3;
-}
-html[data-wb-display="journal"] #scheduleView .j562-week-controls >small {
-  color:#687769;font:600 11px/1.5 var(--j-text);
-}
-@media(max-width:760px){
- html[data-wb-display="journal"] #scheduleView .j562-week-controls {
-   margin:7px 0 9px;padding:8px;
- }
-}
-
-/* JOURNAL V466 — select a 30/60-minute note without expanding every day slip. */
-html[data-wb-display="journal"] #scheduleView .j466-duration-row {
-  display:flex;align-items:center;justify-content:space-between;gap:5px 9px;
-  flex-wrap:wrap;min-width:0;margin:0 0 9px;
-}
-html[data-wb-display="journal"] #scheduleView .j466-duration-row>small {
-  color:#7a8377;font:550 10px/1.45 var(--j-text);
-}
-html[data-wb-display="journal"] #scheduleView .j466-duration-choice {
-  display:flex;align-items:center;gap:4px;min-width:0;
-}
-html[data-wb-display="journal"] #scheduleView .j466-duration-choice>span {
-  padding-right:3px;color:#50624f;font:750 11px/1.45 var(--j-text);
-}
-html[data-wb-display="journal"] #scheduleView .j466-duration-choice>button {
-  box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
-  min-width:51px;min-height:38px;padding:6px 8px;
-  border:1px solid #d5dece!important;border-radius:4px!important;
-  background:#fffefa!important;color:#4d6a51!important;
-  font:750 11px/1.35 var(--j-text);cursor:pointer;
-}
-html[data-wb-display="journal"] #scheduleView .j466-duration-choice>button[aria-pressed="true"] {
-  border-color:#759a7b!important;background:#e5f0df!important;
-  color:#34583e!important;box-shadow:inset 0 0 0 1px #95ae92;
-}
-html[data-wb-display="journal"] #scheduleView .j466-duration-choice>button:focus-visible {
-  outline:2px solid #6d9475;outline-offset:2px;
-}
-@media(max-width:760px) {
-  html[data-wb-display="journal"] #scheduleView .j466-duration-row {
-    align-items:flex-start;gap:5px;margin-bottom:8px;
-  }
-  html[data-wb-display="journal"] #scheduleView .j466-duration-choice>button {
-    min-height:42px;min-width:58px;
-  }
-}
-
 /* JOURNAL V473 — free intervals are genuine actions, never overlay booked cards.
    Desktop strips live under the existing schedule buttons (z-index:1/3). */
 html[data-wb-display="journal"] #scheduleView .j473-grid-gap-layer {
@@ -6847,5 +6795,149 @@ html[data-wb-display="journal"] #boardView .j562-desk-note-close {
   }
   html[data-wb-display="journal"] #boardView .j562-desk-open .j425-note-pin {
     display:none;
+  }
+}
+
+
+/* Ver.565 — a duration is selected inside the canonical schedule editor,
+   not in a second toolbar above the weekly timetable. */
+#scheduleDialog .j565-schedule-duration {display:none!important}
+html[data-wb-display="journal"] #scheduleDialog .j565-schedule-duration {
+  box-sizing:border-box;grid-column:1/-1;
+  display:flex!important;flex-wrap:wrap;align-items:center;gap:7px;
+  margin:0;padding:5px 0 11px;border-bottom:1px solid #ded9cb;
+}
+html[data-wb-display="journal"] #scheduleDialog .j565-schedule-duration>span {
+  margin-right:3px;color:#677163;font:750 12px/1.4 var(--j-text,system-ui);
+}
+html[data-wb-display="journal"] #scheduleDialog .j565-schedule-duration>button {
+  box-sizing:border-box;min-height:42px;min-width:62px;
+  padding:8px 11px;border:1px solid #d6dacf!important;border-radius:7px!important;
+  background:#fdfcf8!important;color:#4e5b4c!important;
+  font:750 12px/1.4 var(--j-text,system-ui);cursor:pointer;
+}
+html[data-wb-display="journal"] #scheduleDialog .j565-schedule-duration>button[aria-pressed="true"] {
+  border-color:#678a74!important;background:#e6eee5!important;
+  box-shadow:inset 0 0 0 1px #6c9179;color:#2c543d!important;
+}
+html[data-wb-display="journal"] #scheduleDialog .j565-schedule-duration>button:focus-visible {
+  outline:2px solid #537866;outline-offset:2px;
+}
+
+/* Keep the Classic task console available for Classic, but do not show its
+   duplicate navigation, quick tools, or sort controls in JOURNAL. */
+html[data-wb-display="journal"] body:is(.task-mode,.dashboard-mode) .j-task-console-v372 {
+  display:none!important;
+}
+html[data-wb-display="journal"] #boardView .j420-atelier-index>.j420-ribbon {
+  left:-11px!important;top:23px!important;z-index:0!important;
+  width:14px!important;height:57px!important;pointer-events:none;
+  transform:rotate(-5deg);
+  clip-path:polygon(0 0,100% 0,100% 87%,50% 100%,0 87%);
+}
+
+/* The single JOURNAL navigation can reach all four task layouts. */
+html[data-wb-display="journal"] .j565-reserved-shortcut {
+  box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-width:100px;min-height:40px;padding:7px 11px;
+  border:1px solid #c1ceb8!important;border-radius:7px!important;
+  background:#edf3e7!important;color:#365842!important;
+  font:750 12px/1.4 var(--j-text,system-ui);cursor:pointer;white-space:nowrap;
+}
+html[data-wb-display="journal"] .j565-reserved-shortcut[hidden] {display:none!important}
+html[data-wb-display="journal"] .j565-reserved-shortcut small {
+  display:inline-grid;place-items:center;min-width:24px;min-height:24px;
+  border-radius:99px;background:#e2d8ac;color:#655728;
+  padding:0 5px;font-size:11px;font-weight:800;
+}
+html[data-wb-display="journal"] .j565-reserved-shortcut:focus-visible,
+html[data-wb-display="journal"] .j565-island-toggle:focus-visible,
+html[data-wb-display="journal"] .j565-atelier-sort select:focus-visible,
+html[data-wb-display="journal"] .j565-index-sort select:focus-visible {
+  outline:2px solid #577b60;outline-offset:2px;
+}
+html[data-wb-display="journal"] #boardView .j565-atelier-sort,
+html[data-wb-display="journal"] #listView .j565-index-sort {
+  display:grid;gap:6px;margin:13px 0 8px;padding:11px 0 0;
+  border-top:1px dashed #d7dac9;font:750 12px/1.4 var(--j-text,system-ui);color:#405b47;
+}
+html[data-wb-display="journal"] :is(#boardView .j565-atelier-sort,#listView .j565-index-sort)>select {
+  box-sizing:border-box;width:100%;min-width:0;min-height:44px;
+  border:1px solid #c9d2c4;border-radius:6px;padding:8px;
+  color:#354f3a;background:#fffefa;font:650 12px var(--j-text,system-ui);
+}
+html[data-wb-display="journal"] #boardView .j420-island[data-j565-expanded="false"] {
+  padding-bottom:0;
+}
+html[data-wb-display="journal"] #boardView .j420-island-items[hidden] {display:none!important}
+html[data-wb-display="journal"] #boardView .j565-island-toggle {
+  display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0;
+  min-height:44px;padding:4px 0;border:0;background:transparent;
+  color:#3b4e3e;cursor:pointer;text-align:left;
+}
+html[data-wb-display="journal"] #boardView .j565-island-title {
+  font:800 15px/1.4 var(--j-serif,serif);min-width:0;overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #boardView .j565-island-toggle small {
+  margin-left:auto;font:700 11px var(--j-text,system-ui);white-space:nowrap;
+  color:#677465;
+}
+html[data-wb-display="journal"] #boardView .j565-island-chevron {
+  font:800 17px/1 var(--j-text,system-ui);transition:transform .15s ease;
+  color:#607b66;
+}
+html[data-wb-display="journal"] #boardView [data-j565-expanded="false"] .j565-island-chevron {
+  transform:rotate(-90deg);
+}
+html[data-wb-display="journal"] #boardView .j420-island>header {margin-bottom:7px}
+html[data-wb-display="journal"] #boardView .j420-island[data-j565-expanded="false"]>header {
+  margin-bottom:0;border-bottom:0;
+}
+html[data-wb-display="journal"] #listView .j425-index-head-controls {
+  display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;
+}
+html[data-wb-display="journal"] :is(#boardView .j420-atelier-switch,#listView .j425-mode-switch,
+  #timelineView .j509-chronicle-switch,#dashboardView .j425-mode-switch) {
+  display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-width:0;
+}
+html[data-wb-display="journal"] :is(#boardView .j420-atelier-switch,#listView .j425-mode-switch,
+  #timelineView .j509-chronicle-switch,#dashboardView .j425-mode-switch)>button {
+  min-width:0;min-height:40px;padding:7px 10px;
+  font:750 12px/1.3 var(--j-text,system-ui);
+}
+html[data-wb-display="journal"] #dashboardView .j565-dashboard-navigation {
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:13px 15px;margin:0 0 14px;border:1px solid #d6d9c9;
+  border-radius:8px;background:#fcfaf2;
+}
+html[data-wb-display="journal"] #dashboardView .j565-dashboard-navigation [aria-pressed="true"] {
+  background:#607f6d!important;color:#fff!important;
+}
+@media(min-width:1191px) {
+  html[data-wb-display="journal"] #scheduleView .j425-schedule-layout>.j425-schedule-index {
+    position:sticky!important;top:12px;align-self:start;
+    max-height:calc(100dvh - 28px);overflow-y:auto!important;
+    overflow-x:hidden!important;scrollbar-width:thin;overscroll-behavior:contain;
+  }
+}
+@media(max-width:1190px) {
+  html[data-wb-display="journal"] #scheduleView .j425-schedule-layout>.j425-schedule-index {
+    position:static!important;max-height:none!important;overflow:visible!important;
+  }
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #boardView .j420-atelier-tools .j420-atelier-switch {
+    display:grid;grid-column:1/-1;grid-template-columns:repeat(4,minmax(0,1fr));
+    width:100%;gap:3px;
+  }
+  html[data-wb-display="journal"] #boardView .j420-atelier-switch>button {
+    padding:7px 3px;font-size:11px;min-height:44px;
+  }
+  html[data-wb-display="journal"] :is(#listView .j425-mode-switch,#timelineView .j509-chronicle-switch,
+    #dashboardView .j425-mode-switch)>button {
+    min-height:44px;padding:7px 8px;font-size:11px;
+  }
+  html[data-wb-display="journal"] #scheduleDialog .j565-schedule-duration>button {
+    flex:1 1 auto;min-height:44px;
   }
 }

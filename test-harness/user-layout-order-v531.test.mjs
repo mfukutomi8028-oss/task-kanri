@@ -34,7 +34,7 @@ test('activity notices always show a common kind/timestamp header and consistent
 });
 
 test('Today personal panel order persists separately from task/schedule shared writes', () => {
-  assert.match(app, /const TODAY_PANEL_KEYS_V531 = \['schedule', 'overdue', 'due-today', 'unsorted', 'spare'\]/);
+  assert.match(app, /const TODAY_PANEL_KEYS_V531 = \['schedule', 'overdue', 'due-today', 'spare'\]/);
   assert.match(app, /workBoardTodayPanelOrderV531/);
   assert.match(app, /enableTodayPanelOrderingV531\(elements\.todayView\)/);
   assert.match(app, /function moveTodayPanelV531\(/);

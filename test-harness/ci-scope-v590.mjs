@@ -108,13 +108,24 @@ export function classifyPaths(changedFiles, eventName = 'pull_request') {
   }
   const runBrowser = fullBrowser || targets.size > 0;
   const sortedTargets = [...targets].sort();
+  // JOURNAL's ~90 independent Playwright scenarios live in one spec file.
+  // With fullyParallel:false, regular file-level sharding cannot split them.
+  // Isolated JOURNAL PRs use two test-level shards; full suites use four
+  // disjoint test-level shards so a large JOURNAL spec cannot monopolize a
+  // single runner. Playwright CI keeps workers=1 and unchanged retries.
+  // Every test still runs with unchanged retries and failure thresholds.
+  const journalParallel = !fullBrowser && sortedTargets.length === 1
+    && sortedTargets[0] === JOURNAL[0];
+  const shards = fullBrowser ? [1, 2, 3, 4] : journalParallel ? [1, 2] : runBrowser ? [1] : [];
   return Object.freeze({
     mode: fullBrowser ? 'full' : runBrowser ? 'targeted' : 'protocol-only',
     browser: runBrowser,
     firebase,
     authorization,
     fullBrowser,
-    shards: fullBrowser ? [1, 2] : runBrowser ? [1] : [],
+    journalParallel,
+    shardCount: shards.length,
+    shards,
     targets: fullBrowser ? '' : sortedTargets.join(' ')
   });
 }
@@ -130,6 +141,8 @@ function main() {
     firebase: String(result.firebase),
     authorization: String(result.authorization),
     full_browser: String(result.fullBrowser),
+    journal_parallel: String(result.journalParallel),
+    shard_count: String(result.shardCount),
     shards: JSON.stringify(result.shards),
     targets: result.targets
   };

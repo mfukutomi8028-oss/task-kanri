@@ -67,6 +67,6 @@ test('Origin reaction failure leaves the draft and count intact and permits a su
 });
 test('Origin local reactions explain availability and tool cards retain their native routes',async({page})=>{
  const root=await boot(page,320);await expect(root.locator('[data-action="comment-reaction"]').first()).toBeDisabled();await expect(root.locator('.origin-comment-connect')).toContainText('共同編集をON');
- await root.locator('.sheet-close').click();await root.locator('#mobileNav [data-route="tools"]').click();await expect(root.locator('.origin-tool-nav button')).toHaveCount(6);
+ await root.locator('.sheet-close').click();await root.locator('#mobileNav [data-route="tools"]').click();await expect(root.locator('.origin-tool-nav button')).toHaveCount(5);await expect(root.locator('#originInboxButton')).toBeAttached();
  await root.locator('[data-action="tool-tab"][data-value="settings"]').click();await expect(root.locator('.origin-management')).toHaveCount(3);expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });

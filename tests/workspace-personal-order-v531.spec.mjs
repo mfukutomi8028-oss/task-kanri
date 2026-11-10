@@ -55,7 +55,7 @@ test('Today panels move using visible arrows and retain the user-specific order 
   await page.setViewportSize({ width: 1366, height: 900 });
   await boot(page, 'test-v531-today-order');
   const panels = page.locator('#todayView .today-grid [data-today-panel-id]');
-  await expect(panels).toHaveCount(5);
+  await expect(panels).toHaveCount(4);
   await expect(panels.first()).toHaveAttribute('data-today-panel-id', 'schedule');
   await page.locator('#todayView [data-today-panel-id="schedule"] .today-panel-shift-v531').nth(1).click();
   await expect(panels.first()).toHaveAttribute('data-today-panel-id', 'overdue');

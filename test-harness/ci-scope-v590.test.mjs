@@ -20,9 +20,33 @@ test('CI scope: Origin, Palette and JOURNAL each keep their own browser contract
   assert.equal(result.firebase, false);
 });
 
+test('CI scope: only an isolated JOURNAL change uses test-level browser sharding', () => {
+  const journal = classifyPaths(['journal-display-v367.js', 'journal-display-v367.css',
+    'tests/journal-display-v367.spec.mjs']);
+  assert.equal(journal.mode, 'targeted');
+  assert.equal(journal.targets, 'tests/journal-display-v367.spec.mjs');
+  assert.equal(journal.journalParallel, true);
+  assert.deepEqual(journal.shards, [1, 2]);
+  assert.equal(journal.shardCount, 2);
+  assert.equal(journal.firebase, false);
+  assert.equal(journal.authorization, false);
+
+  const mixed = classifyPaths(['journal-display-v367.js', 'palette-next-v369.js']);
+  assert.equal(mixed.journalParallel, false);
+  assert.deepEqual(mixed.shards, [1]);
+  assert.equal(mixed.shardCount, 1);
+
+  const origin = classifyPaths(['origin-modern-v372.js']);
+  assert.equal(origin.journalParallel, false);
+  assert.deepEqual(origin.shards, [1]);
+  assert.equal(origin.shardCount, 1);
+});
+
 test('CI scope: shared application data code is always full-risk', () => {
   const result = classifyPaths(['app.js']);
-  assert.deepEqual(result.shards, [1, 2]);
+  assert.deepEqual(result.shards, [1, 2, 3, 4]);
+  assert.equal(result.shardCount, 4);
+  assert.equal(result.journalParallel, false);
   assert.equal(result.mode, 'full');
   assert.equal(result.firebase, true);
   assert.equal(result.authorization, true);
@@ -67,7 +91,8 @@ test('CI scope: manual and scheduled checks always run all suites independently 
   for (const event of ['schedule', 'workflow_dispatch']) {
     const result = classifyPaths([], event);
     assert.equal(result.mode, 'full');
-    assert.deepEqual(result.shards, [1, 2]);
+    assert.deepEqual(result.shards, [1, 2, 3, 4]);
+    assert.equal(result.shardCount, 4);
     assert.equal(result.firebase, true);
     assert.equal(result.authorization, true);
   }

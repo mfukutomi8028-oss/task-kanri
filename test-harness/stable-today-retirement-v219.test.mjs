@@ -13,7 +13,7 @@ const OPEN_TASKS_AFTER = 'const openTasks = state.tasks.filter(t => !isCompleted
 const SCHEDULE_BEFORE = '.filter(s => !scopeHasMine() || s.assignee === getCurrentUser())';
 const SCHEDULE_AFTER = '.filter(s => !scopeHasMine() || isCurrentUserOrGroupAssignee(s.assignee))';
 const SPARE_BEFORE = 'const spare = openTasks.filter(t => !t.dueDate && !isUnsortedTask(t)).sort(compareSmartTasks).slice(0, 10);';
-const SPARE_AFTER = 'const spare = openTasks.filter(t => !t.dueDate && !isUnsortedTask(t) && normalizeText(t.status) !== normalizeText("確認待ち")).sort(compareSmartTasks).slice(0, 10);';
+const SPARE_AFTER = 'const spare = openTasks.filter(t => !t.dueDate && normalizeText(t.status) !== normalizeText("確認待ち")).sort(compareSmartTasks).slice(0, 10);';
 
 function count(source, token) {
   return source.split(token).length - 1;
