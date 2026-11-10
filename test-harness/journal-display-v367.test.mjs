@@ -717,7 +717,7 @@ test('JOURNAL V470 lists each valid free window without changing the longest sum
   assert.match(app,/data-j476-mobile-gap=/);
   assert.match(app,/data-j473-free-start=/);
   assert.match(app,/journalGapWindowByDateV470\.clear\(\)/);
-  assert.match(css,/JOURNAL V470/);
+  assert.match(css,/JOURNAL V473/);
   assert.match(css,/\.j473-mobile-gap-options/);
 });
 
@@ -766,7 +766,7 @@ test('JOURNAL V475 shows explicit selected interval and preserves the mobile dis
   assert.match(app,/class="j476-mobile-choice"/);
   assert.match(app,/data-j475-mobile-date/);
   assert.match(app,/journalExplicitGapDaysV475\.add\(dateIso\)/);
-  assert.match(app,/journalExplicitGapDaysV475\.add\(date\)/);
+  assert.match(app,/journalExplicitGapDaysV475\.add\(iso\)/);
   assert.match(app,/gridLeft=root\.querySelector\('\.j425-week-scroll'\)/);
   assert.match(css,/JOURNAL V475/);
   assert.match(css,/\.j475-grid-selection/);
@@ -1696,7 +1696,7 @@ test('JOURNAL V554 latest focus beats queued card and pager restoration',()=>{
   assert.match(note,/const activeAtRequestV554=document\.activeElement/);
   assert.match(note,/current!==activeAtRequestV554/);
   assert.match(note,/current\.isConnected\)return/);
-  assert.match(desk,/if\(!journalAtelierPagingV554\)journalFocusAtelierNoteV500\(root\)/);
+  assert.match(desk,/if\(!journalAtelierPagingV554\)journalFocusAtelierNoteV500\(root,true\)/);
   assert.match(desk,/journalAtelierPagingV554=true/);
   assert.match(desk,/try\{next\.click\(\);\}/);
   assert.match(desk,/finally\{journalAtelierPagingV554=false;\}/);
