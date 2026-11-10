@@ -398,6 +398,26 @@ test('Palette ToDo entry uses an inline action and a disclosure for optional not
   assert.match(css,/@media\(max-width:780px\)/);
 });
 
+test('Palette daily rhythm and editorial gallery are read-only projections',()=>{
+  const rhythm=shell.slice(shell.indexOf('  function scheduleDayGroups(items) {'),
+    shell.indexOf('  // Derive the visible series',shell.indexOf('  function scheduleDayGroups(items) {')));
+  const gallery=shell.slice(shell.indexOf('  function memoPage() {'),
+    shell.indexOf('  const pages={today:',shell.indexOf('  function memoPage() {')));
+  assert.match(rhythm,/items:items\.filter\(item=>schedulePeriod\(item\)===key\)/);
+  assert.match(rhythm,/data-pn-period-jump/);
+  assert.match(rhythm,/rows\.map\(scheduleRow\)/);
+  assert.match(shell,/target\.hasAttribute\('data-pn-period-jump'\)/);
+  assert.match(gallery,/const items=visibleSortedMemos\(matched\)/);
+  assert.match(gallery,/const gallerySummary=/);
+  assert.match(gallery,/data-paper-color/);
+  assert.match(gallery,/const featured=items\.length>=3&&index===0/);
+  assert.doesNotMatch(rhythm+gallery,/bridge\.dispatch\(|localStorage\.setItem\(|runTransaction\(/);
+  assert.match(css,/#paletteNextRoot \.pn-day-rhythm/);
+  assert.match(css,/#paletteNextRoot \.pn-gallery-intro/);
+  assert.match(css,/#paletteNextRoot \.pn-memotile\.is-editorial-feature/);
+  assert.doesNotMatch(css,/\.pn-memotile:nth-child/);
+});
+
 test('Palette weekly agenda reuses canonical schedules and preserves one-day navigation',()=>{
  const start=shell.indexOf('  function schedulePage() {');
  const end=shell.indexOf('  function memoPage() {',start);
