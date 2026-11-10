@@ -6711,10 +6711,15 @@ function journalTaskNavigationTargetV534(root,layout,id){
 }
 function journalTaskNavigationSourceV534(layout,root){
   if(!root||root.hidden)return null;
-  const id=layout==='board'?journalAtelierSelectedV420:
-    layout==='list'?journalIndexStateV425.selected:
-    (journalTaskNavigationSelectionV534.layout==='timeline'
-      ?journalTaskNavigationSelectionV534.id:'');
+  const remembered=journalTaskNavigationSelectionV534.layout===layout
+    ?journalTaskNavigationSelectionV534.id:'';
+  // The list delays single-click selection for double-click editing. A rapid
+  // switch can happen before that timer runs, so prefer the last clicked row
+  // only while that real row still exists in this page's own filtered list.
+  const intent=remembered&&journalTaskNavigationTargetV534(root,layout,remembered)
+    ?remembered:'';
+  const id=intent||(layout==='board'?journalAtelierSelectedV420:
+    layout==='list'?journalIndexStateV425.selected:'');
   if(!id||!state.tasks.some(task=>task.id===id))return null;
   const row=journalTaskNavigationTargetV534(root,layout,id);
   const rect=row?.getBoundingClientRect();
@@ -8184,7 +8189,9 @@ function journalIndexV425(tasks){
         });
       }
     };
-    journalBindReadAndEditPointer(row,select,()=>journalOpenTaskNoteV519(row.dataset.j425Row,'list','row',row,true));
+    journalBindReadAndEditPointer(row,select,
+      ()=>journalOpenTaskNoteV519(row.dataset.j425Row,'list','row',row,true),
+      ()=>journalRememberTaskNavigationV534('list',row.dataset.j425Row));
     row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('input,button,label,select')){e.preventDefault();select()}});
   });
   root.querySelectorAll('[data-j430-facet]').forEach(button=>button.addEventListener('click',()=>{
@@ -8556,13 +8563,16 @@ journalRestoreChronicleSyncAnchorV528(syncAnchorV528,root);
 
 // Keep the source node alive until a mouse double-click can be distinguished
 // from a read click. Touch and keyboard activation remain immediate.
-function journalBindReadAndEditPointer(row,read,edit){
+function journalBindReadAndEditPointer(row,read,edit,rememberIntent){
   let timer=0;
   const ignored=event=>event.target.closest('button,input,select,label');
   row.addEventListener('click',event=>{
     if(ignored(event))return;
     clearTimeout(timer);
     if(event.detail>1)return;
+    // Record the user's latest list-row navigation intent synchronously.
+    // Keep the existing 240ms read delay so double-click editing is unchanged.
+    rememberIntent?.();
     if(event.detail===0||event.pointerType==='touch')read();
     else timer=setTimeout(()=>{if(row.isConnected)read()},240);
   });
