@@ -3509,6 +3509,11 @@ test('Origin independent inbox separates important messages and categorized acti
  await expect(dialog).toBeHidden();
  await expect(host.locator('#sheet')).toContainText('独立受信箱の検証タスク');
  await host.locator('#sheet .sheet-close').click();
+ // The inspector now returns to the inbox instead of exposing the underlying route.
+ await expect(dialog).toBeVisible();
+ await expect(dialog.locator('[data-action="origin-inbox-section"][data-value="important"]')).toHaveAttribute('aria-selected','true');
+ await dialog.locator('[data-action="origin-inbox-close"]').click();
+ await expect(shortcut).toBeFocused();
  await host.locator('#desktopNav [data-route="tools"]').click();
  await expect(host.locator('.origin-tool-nav button')).toHaveCount(5);
  await expect(host.locator('.origin-tool-nav')).not.toContainText('受信箱');
