@@ -155,7 +155,8 @@ test('Ver.340 product: base-sort ownership remains direct #sortSelect input whil
   }, room);
   await resetRegressionActivity(page);
 
-  await page.locator('#quickAddInput').fill('unrelated input probe');
+  // Quick-add no longer exists. An unrelated synthetic input must still
+  // leave the sort listener and column-sort storage untouched.
   await page.evaluate(() => {
     const probe = document.createElement('input');
     document.body.appendChild(probe);
