@@ -1434,7 +1434,7 @@ test('JOURNAL V534 transfers only view-level case selection and retains page/day
   assert.match(nav,/function journalRememberTaskNavigationV534\(layout,id\)/);
   assert.match(nav,/function journalTaskNavigationSourceV534\(layout,root\)/);
   assert.match(nav,/function journalTaskNavigationTargetV534\(root,layout,id\)/);
-  assert.match(nav,/const handoffV534=previous===\'dashboard\'?null:journalTaskNavigationSourceV534\(previous,oldView\)/);
+  assert.ok(nav.includes("const handoffV534=previous==='dashboard'?null:journalTaskNavigationSourceV534(previous,oldView)"));
   assert.match(nav,/journalAtelierSelectedV420=handoffV534\.id/);
   assert.match(nav,/journalIndexStateV425\.selected=handoffV534\.id/);
   assert.match(nav,/const handoffVisibleV534=handoffTargetV534/);
