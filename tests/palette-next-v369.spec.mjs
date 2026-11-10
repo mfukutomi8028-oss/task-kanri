@@ -2968,3 +2968,100 @@ for (const width of [320,390,1366]) {
     }
   });
 }
+
+
+// Synthetic, local-only comparison captures for reviewing Palette against
+// Origin. No production room, real tasks or Firebase credentials are used.
+// Keep the evidence in CI artifacts instead of committing screenshot binaries.
+for (const width of [390,1366]) {
+  test('Palette and Origin visual comparison uses identical sample work at '+width+'px',async({page},testInfo)=>{
+    test.setTimeout(90000);
+    await page.addInitScript(({room})=>{
+      const now=Date.now();
+      const colors=['peach','sky','mint','lavender','lemon','ivory'];
+      const titles=['端末更新の手順','共有連絡先','会議の準備','定型案内','作業メモ','確認事項'];
+      const rows=Object.fromEntries(colors.map((color,i)=>{
+        const id='visual-note-'+i;
+        return [id,{id,title:titles[i],body:'業務内容を手早く確認するためのテスト用メモです。'+(i%2?' 進行状況と次の対応を記録します。':''),
+          category:['手順','宛先・連絡先','定型情報'][i%3],
+          tags:[],paperColor:color,pinned:i===0,
+          createdAt:now-i*1000,updatedAt:now-i*1000,createdBy:'福冨',updatedBy:'福冨',revision:1}];
+      }));
+      localStorage.setItem('system-business-memos:'+room,JSON.stringify(rows));
+    },{room});
+    await boot(page,width);
+    const seeded=await page.evaluate(async()=>{
+      const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+      const status=s.statuses.filter(value=>value!=='完了');
+      const category=s.categories;
+      const tasks=[
+        ['PC入れ替えの準備',0,'高'],
+        ['定期点検の確認',1,'中'],
+        ['院内サイトの校正',0,'中'],
+        ['印刷機器の設定',2,'低'],
+        ['端末配布の連絡',1,'高']
+      ];
+      const today=new Date().toLocaleDateString('sv-SE');
+      for(let i=0;i<tasks.length;i++){
+        const [title,index,priority]=tasks[i];
+        const result=await bridge.dispatch({
+          type:'task.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+          title,assignee:s.currentUser,status:status[index]||status[0]||'未着手',
+          priority,category:category[i%Math.max(1,category.length)]||'その他',
+          dueDate:i===0?today:'',requester:'',description:'画面比較用のサンプルです。',
+          tags:'',checklist:'',pinned:false
+        });
+        if(!result?.ok)return 'task: '+(result?.error||title);
+      }
+      for(const text of ['点検表を更新する','作業連絡を確認する']){
+        const result=await bridge.dispatch({type:'todo.create',text,memo:''});
+        if(!result?.ok)return 'todo: '+(result?.error||text);
+      }
+      for(const [title,start,end] of [
+        ['朝の確認','09:00','09:40'],
+        ['作業準備','11:00','12:00'],
+        ['情報共有','15:30','16:00']
+      ]){
+        const result=await bridge.dispatch({
+          type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+          values:{title,startAt:today+'T'+start,endAt:today+'T'+end,
+            assignee:s.currentUser,category:category[0]||'その他',location:'会議室',
+            memo:'画面比較用',relatedTaskId:''}
+        });
+        if(!result?.ok)return 'schedule: '+(result?.error||title);
+      }
+      return '';
+    });
+    expect(seeded).toBe('');
+    const paletteNav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+    const originNav=width<=780?'#mobileNav':'#desktopNav';
+    const paths=[
+      {name:'today',palette:'today',origin:'today',marker:'.pn-hero-feature'},
+      {name:'tasks',palette:'tasks',origin:'tasks',marker:'.pn-task-sheet'},
+      {name:'schedule',palette:'schedule',origin:'calendar',marker:'.pn-schedule-sheet'},
+      {name:'memos',palette:'memos',origin:'notes',marker:'.pn-gallery-intro'}
+    ];
+    for(const path of paths){
+      await page.locator('#paletteNextRoot '+paletteNav+' [data-pn-route="'+path.palette+'"]').click();
+      await expect(page.locator('#paletteNextRoot '+path.marker)).toBeVisible();
+      await page.screenshot({
+        path:testInfo.outputPath('visual-compare-'+width+'-palette-'+path.name+'.png'),
+        animations:'disabled',caret:'hide'
+      });
+      await page.locator('#pnMode').selectOption('modern');
+      await expect(page.locator('html')).toHaveAttribute('data-wb-display','modern');
+      await expect(page.locator('#modernOriginRoot')).toBeVisible();
+      await page.locator('#modernOriginRoot '+originNav+' [data-route="'+path.origin+'"]').click();
+      await expect(page.locator('#modernOriginRoot #workspace')).toBeVisible();
+      await page.screenshot({
+        path:testInfo.outputPath('visual-compare-'+width+'-origin-'+path.name+'.png'),
+        animations:'disabled',caret:'hide'
+      });
+      await page.locator('[data-wb-display-choice="palette"]').evaluate(el=>el.click());
+      await expect(page.locator('#paletteNextRoot .wb-pn')).toBeVisible();
+    }
+    const count=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks
+      .filter(item=>item.title==='PC入れ替えの準備').length);
+    expect(count).toBe(1);
+  });
+}
