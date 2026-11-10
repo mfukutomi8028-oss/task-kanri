@@ -3816,9 +3816,11 @@ test('JOURNAL V567 desktop log and index handoff reveal a folded case without re
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView');
   const row=list.locator('[data-j425-row]').filter({hasText:title});
-  await row.click();
-  await expect(row).toHaveClass(/is-selected/);
-  await list.locator('[data-j425-task-layout="board"]').click();
+  // A pointer click waits 240ms before updating the preview to permit
+  // double-click editing. Switch pages within the same browser turn to
+  // prove the clicked row is handed off even before the delay expires.
+  await row.dispatchEvent('click',{detail:1});
+  await list.locator('[data-j425-task-layout="board"]').evaluate(el=>el.click());
   await expect(toggle).toHaveAttribute('aria-expanded','true');
   await expect(card).toBeVisible();
   await expect(card).toHaveClass(/is-selected/);
