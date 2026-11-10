@@ -718,9 +718,7 @@ function render(){
  const next=$('#workspace [data-form="quick-todo"] [name="title"]');
  if(next){next.value=quickTodoDraft;if(active){next.focus({preventScroll:true});if(selection[0]!==null)next.setSelectionRange(...selection)}}
  restoreOriginFocus(focus);
- // A canonical update must not steal focus from the independent modal inbox.
- if(!$('#originInboxDialog')?.open)
-  mount.querySelectorAll('#workspace [data-autofocus]')?.forEach(x=>x.focus());
+ mount.querySelectorAll('#workspace [data-autofocus]')?.forEach(x=>x.focus());
  // Content may change height; browser safely clamps when the old position is gone.
  if(window.scrollY!==previousScroll)window.scrollTo({top:previousScroll,behavior:'instant'});
 }
@@ -1438,7 +1436,9 @@ function restoreOriginInboxReadCursor(cursor,saved){
  for(const id of candidates){
   if(!id)continue;
   const row=rows.find(item=>item.dataset.inboxId===id);
-  const action=row?.querySelector('[data-action="origin-inbox-read"]:not(:disabled),[data-action="origin-inbox-open"]');
+  // Read actions take precedence over the detail button in the same notification row.
+  const action=row?.querySelector('[data-action="origin-inbox-read"]:not(:disabled)')
+   ||row?.querySelector('[data-action="origin-inbox-open"]');
   if(action){action.focus({preventScroll:true});action.scrollIntoView({block:'nearest',behavior:'instant'});return;}
  }
  // When the last matching notification disappears, keep keyboard focus in the inbox.
