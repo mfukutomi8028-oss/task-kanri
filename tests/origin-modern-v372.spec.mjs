@@ -3707,3 +3707,56 @@ for(const width of [1366,390,320]){
   await dialog.locator('[data-action="origin-inbox-close"]').click();
  });
 }
+
+for(const width of [1366,390,320]){
+ test('Origin inbox keeps the next unread action focused after marking rows ('+width+'px)',async({page})=>{
+  test.setTimeout(90000);
+  const host=await launchOriginV415(page,'origin-inbox-reading-cursor-'+width,width);
+  await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,s=bridge.readSnapshot();
+   const result=await bridge.dispatch({type:'task.create',revision:0,ownerRoom:s.roomId,
+    ownerUser:s.currentUser,title:'受信箱の連続確認',description:'',assignee:s.currentUser,
+    status:s.statuses[0],category:s.categories[0],priority:'中',tags:'',requester:'',
+    checklist:'',checklistDone:[],dueDate:'',dueTime:'',pinned:false});
+   if(!result?.ok)throw Error('fixture task create failed');
+   const id=bridge.readSnapshot().tasks.find(t=>t.title==='受信箱の連続確認')?.id;
+   if(!id)throw Error('fixture task missing');
+   const now=Date.now();
+   for(const [key,minutes] of [['cursor-first',0],['cursor-middle',1],['cursor-last',2]]){
+    const saved=await flow.writeInboxEvent(s.currentUser,key,{taskId:id,type:'mention',
+     title:'連続確認 '+key,body:'既読操作後の位置',actor:'同僚',createdAt:now-minutes*60000});
+    if(!saved?.ok)throw Error('fixture inbox write failed');
+   }
+  });
+  const dialog=host.locator('#originInboxDialog');
+  await host.locator('#originInboxButton').click();
+  await dialog.locator('[data-action="origin-inbox-genre"][data-value="mention"]').click();
+  const quick=dialog.locator('#originInboxUnreadQuick');
+  await quick.click();
+  const rows=dialog.locator('.origin-inbox-item');
+  expect(await rows.evaluateAll(items=>items.map(x=>x.dataset.inboxId)))
+   .toEqual(['cursor-first','cursor-middle','cursor-last']);
+  const button=id=>dialog.locator('[data-action="origin-inbox-read"][data-id="'+id+'"]');
+  await button('cursor-middle').click();
+  await expect(rows).toHaveCount(2);
+  await expect(button('cursor-last')).toBeFocused();
+  await button('cursor-last').click();
+  await expect(rows).toHaveCount(1);
+  await expect(button('cursor-first')).toBeFocused();
+  await button('cursor-first').click();
+  await expect(rows).toHaveCount(0);
+  await expect(quick).toHaveText('すべて表示');
+  await expect(quick).toBeFocused();
+  await expect(host.locator('#originInboxBadge')).toBeHidden();
+  await quick.click();
+  await expect(rows).toHaveCount(3);
+  await dialog.locator('#originInboxReadFilter').selectOption('read');
+  await button('cursor-first').click();
+  await expect(rows).toHaveCount(2);
+  await expect(button('cursor-middle')).toBeFocused();
+  await expect(host.locator('#originInboxBadge')).toHaveText('1');
+  const viewport=await page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth}));
+  expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.width+3);
+  await dialog.locator('[data-action="origin-inbox-close"]').click();
+ });
+}
