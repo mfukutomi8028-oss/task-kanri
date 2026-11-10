@@ -2253,6 +2253,11 @@ test('Origin searches appointments across weeks and returns to the matching week
  await expect(hits.first()).toContainText('全期間検索対象・未来');
  await expect(hits.nth(1)).toContainText('全期間検索対象・過去');
  await expect(host.locator('.origin-schedule-global-head')).toContainText('2件一致');
+ // Advanced all-period search filters start collapsed to keep the weekly calendar visible.
+ const advanced=host.locator('[data-action="schedule-advanced-toggle"]');
+ await expect(advanced).toHaveAttribute('aria-expanded','false');
+ await advanced.click();
+ await expect(advanced).toHaveAttribute('aria-expanded','true');
  const sort=host.locator('#originScheduleSort'),category=host.locator('#originScheduleCategory');
  await sort.selectOption('oldest');
  await expect(hits.first()).toContainText('全期間検索対象・過去');
