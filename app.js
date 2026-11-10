@@ -4639,9 +4639,12 @@ function journalScheduleV425(){
  root.querySelectorAll('[data-j476-mobile-start]').forEach(picker=>picker.addEventListener('change',()=>{
    const iso=picker.dataset.j476MobileStart;
    const start=Number(picker.value);
-   const selectedGap=journalEligibleGapWindowsV470(weekInsightByDateV473.get(iso),journalGapDurationV466)
-     .find(gap=>gap.start===journalGapWindowByDateV470.get(iso));
+   const eligible=journalEligibleGapWindowsV470(weekInsightByDateV473.get(iso),journalGapDurationV466);
+   // The removed week overview used to seed this map. Use the same first
+   // available window shown in the phone picker until a user chooses one.
+   const selectedGap=eligible.find(gap=>gap.start===journalGapWindowByDateV470.get(iso))||eligible[0];
    if(!selectedGap || !journalGapStartOptionsV469(selectedGap,journalGapDurationV466).includes(start))return;
+   journalGapWindowByDateV470.set(iso,selectedGap.start);
    journalGapStartByDateV469.set(iso,start);
    journalExplicitGapDaysV475.add(iso);
    keepMobileChoicesV476(iso);
@@ -4649,10 +4652,10 @@ function journalScheduleV425(){
  }));
  root.querySelectorAll('[data-j476-mobile-create]').forEach(button=>button.addEventListener('click',()=>{
    const iso=button.dataset.j476MobileCreate;
-   const gap=journalEligibleGapWindowsV470(weekInsightByDateV473.get(iso),journalGapDurationV466)
-     .find(item=>item.start===journalGapWindowByDateV470.get(iso));
+   const eligible=journalEligibleGapWindowsV470(weekInsightByDateV473.get(iso),journalGapDurationV466);
+   const gap=eligible.find(item=>item.start===journalGapWindowByDateV470.get(iso))||eligible[0];
    const chosen=Number(root.querySelector('[data-j476-mobile-start="'+iso+'"]')?.value);
-   if(!gap)return;
+   if(!gap || !journalGapStartOptionsV469(gap,journalGapDurationV466).includes(chosen))return;
    keepMobileChoicesV476(iso);
    openJournalGapDraftV473(iso,gap.start,chosen,true);
  }));
