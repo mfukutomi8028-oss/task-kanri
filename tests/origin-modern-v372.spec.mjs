@@ -3452,3 +3452,122 @@ test('Origin header preserves all six tabs and groups appearance and user settin
   await expect(host.locator('#workspace')).toContainText('その他');
  }
 });
+
+
+test('Origin independent inbox separates important messages and categorized activity without route changes',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-inbox-v562-priority-room',1366);
+ const fixture=await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
+  const created=await bridge.dispatch({type:'task.create',revision:0,ownerRoom:state.roomId,ownerUser:state.currentUser,
+   title:'独立受信箱の検証タスク',description:'活動の一覧に表示する',assignee:state.currentUser,
+   status:state.statuses[0],priority:'中',category:state.categories[0],requester:'',
+   tags:'',checklist:'',checklistDone:[],dueDate:'',dueTime:'',pinned:false});
+  if(!created?.ok)throw Error('task.create '+created?.error);
+  const task=bridge.readSnapshot().tasks.find(x=>x.title==='独立受信箱の検証タスク');
+  if(!task)throw Error('fixture task missing');
+  const now=Date.now();
+  for(const [id,type,title] of [['important-mention','mention','検証用メンション'],['important-reply','reply','検証用返信'],
+   ['activity-status','status','検証用の状態変更']]){
+   await flow.writeInboxEvent(state.currentUser,id,{taskId:task.id,type,title,body:'受信箱の詳細を確認',actor:'森井',createdAt:now});
+  }
+  return{taskId:task.id};
+ });
+ await host.locator('#desktopNav [data-route="tasks"]').click();
+ const current=host.locator('#desktopNav [data-route="tasks"]');
+ await expect(current).toHaveAttribute('aria-current','page');
+ const shortcut=host.locator('#originInboxButton'),dialog=host.locator('#originInboxDialog');
+ await expect(shortcut.locator('#originInboxBadge')).toHaveText('3');
+ await shortcut.click();
+ await expect(dialog).toBeVisible();
+ await expect(current).toHaveAttribute('aria-current','page');
+ await expect(host.locator('.origin-tool-nav [data-value="inbox"]')).toHaveCount(0);
+ await expect(dialog.locator('#originInboxImportantCount')).toContainText('2件未読');
+ await dialog.locator('[data-action="origin-inbox-section"][data-value="important"]').focus();
+ await page.keyboard.press('ArrowRight');
+ await expect(dialog.locator('[data-action="origin-inbox-section"][data-value="activity"]')).toHaveAttribute('aria-selected','true');
+ await page.keyboard.press('ArrowLeft');
+ await expect(dialog.locator('[data-action="origin-inbox-section"][data-value="important"]')).toHaveAttribute('aria-selected','true');
+ await expect(dialog.locator('.origin-inbox-item')).toHaveCount(2);
+ await dialog.locator('[data-action="origin-inbox-genre"][data-value="mention"]').click();
+ await expect(dialog.locator('.origin-inbox-item')).toHaveCount(1);
+ await expect(dialog.locator('.origin-inbox-item')).toContainText('検証用メンション');
+ await dialog.locator('[data-action="origin-inbox-genre"][data-value="all"]').click();
+ await dialog.locator('[data-action="origin-inbox-read"][data-id="important-mention"]').click();
+ await expect.poll(()=>page.evaluate(()=>window.WorkBoardWorkflowV152.inboxFor()['important-mention'].readAt)).toBeGreaterThan(0);
+ await dialog.locator('#originInboxReadFilter').selectOption('unread');
+ await expect(dialog.locator('.origin-inbox-item')).toHaveCount(1);
+ await dialog.locator('[data-action="origin-inbox-section"][data-value="activity"]').click();
+ await expect(dialog.locator('[data-action="origin-inbox-genre"][data-value="task"]')).toBeVisible();
+ await dialog.locator('[data-action="origin-inbox-genre"][data-value="task"]').click();
+ await expect(dialog.locator('#originInboxList')).toContainText('タスクを作成');
+ await expect(dialog.locator('#originInboxList')).toContainText('独立受信箱の検証タスク');
+ await dialog.locator('[data-action="origin-inbox-genre"][data-value="status"]').click();
+ await expect(dialog.locator('#originInboxList')).toContainText('検証用の状態変更');
+ await dialog.locator('[data-action="origin-inbox-section"][data-value="important"]').click();
+ await dialog.locator('[data-action="origin-inbox-open"][data-kind="tasks"][data-id="'+fixture.taskId+'"]').first().click();
+ await expect(dialog).toBeHidden();
+ await expect(host.locator('#sheet')).toContainText('独立受信箱の検証タスク');
+ await host.locator('#sheet .sheet-close').click();
+ await host.locator('#desktopNav [data-route="tools"]').click();
+ await expect(host.locator('.origin-tool-nav button')).toHaveCount(5);
+ await expect(host.locator('.origin-tool-nav')).not.toContainText('受信箱');
+});
+
+for(const width of [320,390]){
+ test('Origin inbox centered mobile dialog and keyboard focus at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  const host=await launchOriginV415(page,'origin-inbox-v562-mobile-'+width,width);
+  const shortcut=host.locator('#originInboxButton'),dialog=host.locator('#originInboxDialog');
+  await shortcut.focus();
+  await page.keyboard.press('Enter');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('[data-action="origin-inbox-close"]')).toBeFocused();
+  const bounds=await dialog.evaluate(el=>{
+   const rect=el.getBoundingClientRect();
+   return {left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom};
+  });
+  expect(bounds.left).toBeGreaterThanOrEqual(-1);
+  expect(bounds.right).toBeLessThanOrEqual(width+1);
+  expect(bounds.top).toBeGreaterThanOrEqual(-1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width+3);
+  await dialog.locator('[data-action="origin-inbox-section"][data-value="activity"]').click();
+  await expect(dialog.locator('#originInboxReadLabel')).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(shortcut).toBeFocused();
+  await host.locator('#mobileNav [data-route="tools"]').click();
+  await expect(host.locator('.origin-tool-nav button')).toHaveCount(5);
+  await expect(host.locator('.origin-tool-nav')).not.toContainText('受信箱');
+ });
+}
+
+test('Origin inbox uses the selected user and canonical read-all without leaking other users notifications',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-inbox-v562-user-room',1366);
+ await page.evaluate(async()=>{
+  const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
+  const created=await bridge.dispatch({type:'task.create',ownerRoom:state.roomId,ownerUser:state.currentUser,revision:0,
+   title:'利用者別受信の検証',description:'',assignee:state.currentUser,status:state.statuses[0],
+   category:state.categories[0],priority:'中',tags:'',requester:'',checklist:'',checklistDone:[],
+   dueDate:'',dueTime:'',pinned:false});
+  if(!created.ok)throw Error('fixture');
+  const id=bridge.readSnapshot().tasks.find(t=>t.title==='利用者別受信の検証').id;
+  await flow.writeInboxEvent(state.currentUser,'for-first',{taskId:id,type:'mention',title:'福冨宛通知',actor:'森井'});
+  await flow.writeInboxEvent('森井','for-second',{taskId:id,type:'mention',title:'森井宛通知',actor:state.currentUser});
+ });
+ const dialog=host.locator('#originInboxDialog');
+ await host.locator('#originInboxButton').click();
+ await expect(dialog.locator('#originInboxList')).toContainText('福冨宛通知');
+ await expect(dialog.locator('#originInboxList')).not.toContainText('森井宛通知');
+ await dialog.locator('[data-action="origin-inbox-read-all"]').click();
+ await expect.poll(()=>page.evaluate(()=>window.WorkBoardWorkflowV152.inboxFor()['for-first'].readAt)).toBeGreaterThan(0);
+ await dialog.locator('[data-action="origin-inbox-close"]').click();
+ await expect(host.locator('#originInboxBadge')).toBeHidden();
+ await host.locator('#originSettingsToggle').click();
+ await host.locator('#originUserSelect').selectOption('森井');
+ await expect(host.locator('#originInboxBadge')).toHaveText('1');
+ await host.locator('#originInboxButton').click();
+ await expect(dialog.locator('#originInboxList')).toContainText('森井宛通知');
+ await expect(dialog.locator('#originInboxList')).not.toContainText('福冨宛通知');
+});
