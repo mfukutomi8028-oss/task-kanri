@@ -1762,6 +1762,22 @@ for(const width of [320,390,1366]){
   await expect(rhythm).toBeVisible();
   await expect(rhythm.locator('[data-pn-period-jump]')).toHaveCount(3);
   await expect(rhythm).toContainText('登録済みの予定 6件');
+  // Ensure all timeline shortcuts remain usable without side scrolling.
+  const rhythmLayout=await rhythm.evaluate(el=>({
+    viewport:document.documentElement.clientWidth,
+    overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+    buttons:[...el.querySelectorAll('[data-pn-period-jump]')].map(node=>{
+      const b=node.getBoundingClientRect();
+      return {left:b.left,right:b.right,height:b.height};
+    })
+  }));
+  expect(rhythmLayout.overflow).toBeLessThanOrEqual(2);
+  expect(rhythmLayout.buttons).toHaveLength(3);
+  for(const button of rhythmLayout.buttons){
+    expect(button.left).toBeGreaterThanOrEqual(-1);
+    expect(button.right).toBeLessThanOrEqual(rhythmLayout.viewport+1);
+    expect(button.height).toBeGreaterThanOrEqual(44);
+  }
   await rhythm.locator('[data-pn-period-jump="afternoon"]').click();
   await expect(groups.nth(1).locator('.pn-timehead h3')).toBeFocused();
   await expect(groups.nth(1).locator('.pn-scheduleopen')).toContainText('Palette密度-午後4');
@@ -1940,6 +1956,55 @@ for(const width of [320,390,1366]){
   await expect(gallery.locator('.pn-gallery-colorband [data-paper-color]')).toHaveCount(4);
   await expect(tiles.filter({has:page.locator('.pn-memo-feature-caption')})).toHaveCount(1);
   await expect(tiles.first()).toHaveClass(/is-editorial-feature/);
+  // Editorial layout is deliberately asymmetric on desktop and single-column
+  // on phones. Validate actual rendered rectangles, not CSS text alone.
+  const galleryLayout=await tiles.evaluateAll(elements=>({
+    viewport:document.documentElement.clientWidth,
+    overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+    widths:elements.map(el=>el.getBoundingClientRect().width),
+    ends:elements.map(el=>{
+      const r=el.getBoundingClientRect();return {left:r.left,right:r.right};
+    })
+  }));
+  expect(galleryLayout.overflow).toBeLessThanOrEqual(2);
+  for(const edge of galleryLayout.ends){
+    expect(edge.left).toBeGreaterThanOrEqual(-1);
+    expect(edge.right).toBeLessThanOrEqual(galleryLayout.viewport+1);
+  }
+  if(width>780)expect(galleryLayout.widths[0]).toBeGreaterThan(galleryLayout.widths[1]*1.5);
+  else expect(Math.abs(galleryLayout.widths[0]-galleryLayout.widths[1])).toBeLessThanOrEqual(2);
+
+  // Color-coded cards must retain readable text in both light and dark modes.
+  for(const mode of ['light','dark']){
+    if(mode==='dark')await page.locator('#paletteNextRoot [data-pn-theme]').click();
+    await expect(page.locator('#pnApp')).toHaveAttribute('data-theme',mode);
+    const contrast=await tiles.evaluateAll(elements=>{
+      // Computed colors can be serialized as rgb() or CSS Color 4 color(srgb).
+      const luminance=value=>{
+        const legacy=value.match(/^rgba?\(([^)]+)\)$/);
+        const modern=value.match(/^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+        const channels=legacy?legacy[1].match(/[\d.]+/g)?.slice(0,3).map(v=>Number(v)/255):
+          modern?modern.slice(1,4).map(Number):null;
+        if(!channels||channels.length!==3||channels.some(v=>!Number.isFinite(v)))return NaN;
+        const [r,g,b]=channels.map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+        return .2126*r+.7152*g+.0722*b;
+      };
+      return elements.flatMap(card=>{
+        const background=luminance(getComputedStyle(card).backgroundColor);
+        return [card.querySelector('strong'),card.querySelector('small')].map(node=>{
+          if(!node)return NaN;
+          const foreground=luminance(getComputedStyle(node).color);
+          return (Math.max(foreground,background)+.05)/(Math.min(foreground,background)+.05);
+        });
+      });
+    });
+    expect(contrast).toHaveLength(8);
+    for(const ratio of contrast){
+      expect(Number.isFinite(ratio)).toBe(true);
+      expect(ratio).toBeGreaterThanOrEqual(4.5);
+    }
+  }
+  await page.locator('#paletteNextRoot [data-pn-theme]').click();
   await sorter.selectOption('title');
   expect(await ids()).toEqual(['palette-sort-pinned','palette-sort-a','palette-sort-b','palette-sort-c']);
   await sorter.selectOption('updated');

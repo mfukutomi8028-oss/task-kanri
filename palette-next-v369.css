@@ -1320,7 +1320,9 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
 }
 #paletteNextRoot .pn-memotile small{
   position:relative;margin-top:auto;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--pn-ink) 9%,transparent);
-  color:var(--pn-muted);font-size:11px;
+  /* Muted alone fails 4.5:1 on five light note colors; use a calmer but legible ink mix. */
+  color:color-mix(in srgb,var(--pn-ink) 55%,var(--pn-muted));
+  font-size:12px;line-height:1.5;font-weight:650;
 }
 #paletteNextRoot .pn-memobody{
   border:1px solid var(--pn-border);background:var(--pn-bg);color:var(--pn-ink);
