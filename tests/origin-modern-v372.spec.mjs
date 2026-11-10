@@ -3737,9 +3737,13 @@ for(const width of [1366,390,320]){
   expect(await rows.evaluateAll(items=>items.map(x=>x.dataset.inboxId)))
    .toEqual(['cursor-first','cursor-middle','cursor-last']);
   const button=id=>dialog.locator('[data-action="origin-inbox-read"][data-id="'+id+'"]');
+  const focusedAction=()=>page.evaluate(()=>{
+   const active=document.getElementById('modernOriginRoot')?.shadowRoot?.activeElement;
+   return [active?.dataset?.action||active?.id||'',active?.dataset?.id||''].join(':');
+  });
   await button('cursor-middle').click();
   await expect(rows).toHaveCount(2);
-  await expect(button('cursor-last')).toBeFocused();
+  await expect.poll(focusedAction).toBe('origin-inbox-read:cursor-last');
   await button('cursor-last').click();
   await expect(rows).toHaveCount(1);
   await expect(button('cursor-first')).toBeFocused();
