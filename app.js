@@ -6766,6 +6766,9 @@ function journalSwitchTaskPageV509(next){
       ||state.layout!=='tasks'||state.taskLayout!==next)return;
     const view=journalTaskPageV509(next);
     if(!view||view.hidden)return;
+    // A deliberate handoff from the index must not focus a case in a folded shelf.
+    if(next==='board'&&handoffV534?.follow)
+      journalRevealAtelierTaskV567(view,handoffV534.id);
     const offset=journalTaskPagePositionsV509[next]??0;
     const pageTop=window.scrollY+view.getBoundingClientRect().top;
     const maxTop=Math.max(0,(document.scrollingElement?.scrollHeight||0)-window.innerHeight);
@@ -7454,6 +7457,31 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
 // Collapse state is presentation-only and resets when the room/user changes.
 const journalAtelierCollapsedGroupsV565=new Set();
 let journalAtelierGroupOwnerV565='';
+// V567: one canonical shelf toggle serves both the user and explicit case
+// navigation. A folded shelf keeps its preference until its task is opened.
+function journalSetAtelierShelfExpandedV567(island,expanded){
+  const items=island?.querySelector('.j420-island-items');
+  const button=island?.querySelector('[data-j565-island-toggle]');
+  if(!items||!button)return false;
+  items.hidden=!expanded;
+  island.dataset.j565Expanded=String(expanded);
+  button.setAttribute('aria-expanded',String(expanded));
+  button.setAttribute('aria-label',
+    island.getAttribute('aria-label')+(expanded?'を折りたたむ':'を展開する'));
+  const key=island.dataset.j565Island;
+  if(expanded)journalAtelierCollapsedGroupsV565.delete(key);
+  else journalAtelierCollapsedGroupsV565.add(key);
+  return true;
+}
+function journalRevealAtelierTaskV567(root,id){
+  if(!root||!id)return null;
+  const card=[...root.querySelectorAll('[data-j420-task-id]')]
+    .find(el=>el.dataset.j420TaskId===id);
+  const island=card?.closest('[data-j565-island]');
+  if(island?.querySelector('.j420-island-items')?.hidden)
+    journalSetAtelierShelfExpandedV567(island,true);
+  return card;
+}
 function journalAtelierV420(tasks){
   const groupOwnerV565=ROOM_ID+'|'+getCurrentUser();
   if(groupOwnerV565!==journalAtelierGroupOwnerV565){
@@ -7608,8 +7636,14 @@ function journalAtelierV420(tasks){
     </section>
   </div>`;
   const root=elements.boardView;
+  // Preserve an already-open reader when a subscribed update regroups its case.
+  // A normally folded, closed shelf remains folded across ordinary renders.
+  if(journalAtelierInlineOpenV494||journalAtelierDeskNoteOpenV562)
+    journalRevealAtelierTaskV567(root,journalAtelierSelectedV420);
   root.querySelectorAll('[data-j420-task-id]').forEach(card=>{
     const select=()=>{
+      // Mobile paging can deliberately select a card from a folded next shelf.
+      journalRevealAtelierTaskV567(root,card.dataset.j420TaskId);
       ++journalAtelierPageTokenV553;
       journalAtelierReaderAnchorV556=null;
       journalAtelierSelectedV420=card.dataset.j420TaskId;
@@ -7671,26 +7705,27 @@ function journalAtelierV420(tasks){
       ()=>elements.boardView.querySelector('[data-j565-atelier-sort]'));
   });
   root.querySelectorAll('[data-j565-island-toggle]').forEach(button=>button.addEventListener('click',()=>{
-    const key=button.dataset.j565IslandToggle;
     const island=button.closest('[data-j565-island]');
     const items=island?.querySelector('.j420-island-items');
     if(!items)return;
     const expanded=items.hidden;
-    items.hidden=!expanded;
-    island.dataset.j565Expanded=String(expanded);
-    button.setAttribute('aria-expanded',String(expanded));
-    button.setAttribute('aria-label',island.getAttribute('aria-label')+(expanded?'を折りたたむ':'を展開する'));
-    if(expanded)journalAtelierCollapsedGroupsV565.delete(key);
-    else{
-      journalAtelierCollapsedGroupsV565.add(key);
-      // Closing a shelf must not leave the open reader with a hidden origin.
-      const current=[...island.querySelectorAll('[data-j420-task-id]')]
+    const top=button.getBoundingClientRect().top;
+    if(!journalSetAtelierShelfExpandedV567(island,expanded))return;
+    if(!expanded){
+      // A hidden origin cannot own a visible desktop or mobile note.
+      const containsSelected=[...island.querySelectorAll('[data-j420-task-id]')]
         .some(card=>card.dataset.j420TaskId===journalAtelierSelectedV420);
-      if(current){
+      if(containsSelected){
         journalAtelierInlineOpenV494=false;
         journalAtelierDeskNoteOpenV562=false;
         journalPositionAtelierNoteV494(root);
       }
+    }
+    // Keep the clicked shelf heading stationary when the notebook unmounts
+    // or another tall shelf below/above it changes height.
+    if(top>=0&&top<=window.innerHeight&&document.scrollingElement){
+      const offset=button.getBoundingClientRect().top-top;
+      if(Number.isFinite(offset))document.scrollingElement.scrollTop+=offset;
     }
   }));
   // The toolbar and the empty-state recovery share a single reset path.
