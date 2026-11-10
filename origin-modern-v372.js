@@ -341,6 +341,7 @@
     mount.querySelector('style').appendChild(document.createTextNode("\n.origin-schedule-advanced-trigger{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 12px;background:var(--paper);border:1px solid var(--line);border-radius:9px;color:var(--ink-soft);font-size:12px;font-weight:740}\n.origin-schedule-advanced-trigger[aria-expanded=\"true\"]{color:var(--accent-dark);background:var(--accent-bg)}\n.origin-schedule-advanced[hidden]{display:none!important}\n.origin-task-order-pair{display:flex;align-items:center;gap:9px;flex-wrap:wrap}\n.origin-task-order-pair label{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}\n.origin-task-order-pair select{height:40px;min-width:105px;border:1px solid var(--line);border-radius:9px;padding:6px;background:var(--paper);color:var(--ink)}\n.origin-task-inline-status{min-width:82px;max-width:112px;min-height:35px;border:1px solid var(--line);border-radius:8px;padding:5px 6px;background:var(--paper);color:var(--ink);font-size:11px;font-weight:740}\n@media(max-width:770px){.origin-task-order-pair{flex:1 1 100%}.origin-task-order-pair label{flex:1 1 130px}}\n"));
     mount.querySelector('style').appendChild(document.createTextNode(".origin-inbox-shortcut{display:inline-flex;align-items:center;justify-content:center}.origin-inbox-shortcut:hover{background:var(--accent-bg);color:var(--accent-dark)}"));
     mount.querySelector('style').appendChild(document.createTextNode(".origin-color-control{display:inline-flex;align-items:center;min-width:0}.origin-color-control select{width:92px;max-width:92px;min-height:39px;padding:5px 7px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-size:11px;font-weight:650}.origin-color-control select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}@media(max-width:770px){.origin-color-control select{width:43px;max-width:43px;min-height:44px;padding:3px;font-size:10px}}"));
+    mount.querySelector('style').appendChild(document.createTextNode("\n/* Retain critical task dates and assignees in compact mobile layouts. */\n.origin-task-collection.origin-tasks-compact .item-name{font-size:14px;line-height:1.5}\n.origin-task-collection.origin-tasks-compact .origin-task-group-toggle{min-height:44px}\n@media(max-width:770px){\n .origin-task-collection.origin-tasks-compact .row-under{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}\n .origin-task-collection.origin-tasks-compact .origin-task-mobile-due,\n .origin-task-collection.origin-tasks-compact .origin-task-mobile-assignee{display:inline-flex}\n .origin-task-tools[data-mobile-advanced=\"false\"] .origin-task-order-pair{display:none}\n .origin-task-tools[data-mobile-advanced=\"true\"] .origin-task-order-pair{display:flex}\n}\n"));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -607,6 +608,13 @@ function syncOriginColorTheme(){
  if(/^#[0-9a-f]{3,8}$/i.test(shade)){
   host.style.setProperty('--accent',shade);
   host.style.setProperty('--accent-dark',shade);
+  // Choose readable button text separately from the Classic color swatch.
+  const hex=shade.slice(1);
+  const channels=(hex.length===3?hex.split('').map(value=>value+value):[hex.slice(0,2),hex.slice(2,4),hex.slice(4,6)])
+    .map(value=>parseInt(value,16)/255)
+    .map(value=>value<=0.04045?value/12.92:((value+0.055)/1.055)**2.4);
+  const luminance=0.2126*channels[0]+0.7152*channels[1]+0.0722*channels[2];
+  host.style.setProperty('--on-accent',luminance>=0.179?'#000000':'#ffffff');
   host.style.setProperty('--accent-bg','color-mix(in srgb, '+shade+' 10%, var(--paper))');
  }
 }
@@ -2253,19 +2261,20 @@ async function toggleTodo(id){
  }
  restoreOriginTodoListReturn(listReturn,{sameItem:!saved});
 }
+// Use the canonical status-only command. This must not rewrite other task fields.
 async function updateOriginInlineStatus(select){
- const t=findItem('tasks',select.dataset.id),status=select.value;
- if(!t||!snapshot.statuses.includes(status)){render();return}
- if(t.status===status)return;
- const oldStatus=t.status;
+ const task=findItem('tasks',select.dataset.id),status=select.value;
+ if(!task||!snapshot.statuses.includes(status)){render();return}
+ if(task.status===status)return;
+ const previous=task.status;
  select.disabled=true;
  try{
-  const ok=await send({type:'task.update',id:t.id,revision:Number(t.revision),ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
-   title:t.title,assignee:t.assignee==='自分'?snapshot.currentUser:t.assignee,status,priority:t.priority,category:t.category,
-   dueDate:t.due,dueTime:t.due?t.dueTime:'',requester:t.requester,description:t.desc,tags:(t.tags||[]).join(','),
-   checklist:(t.checklist||[]).map(x=>x.text).join('\n'),checklistDone:(t.checklist||[]).map(x=>Boolean(x.done)),pinned:Boolean(t.pinned)},'状態を変更しました');
-  if(!ok){select.value=oldStatus;select.disabled=false}
- }catch(error){select.value=oldStatus;select.disabled=false;notify('状態の変更に失敗しました')}
+  const ok=await send({type:'task.status',id:task.id,status},'状態を変更しました');
+  if(!ok){select.value=previous;select.disabled=false}
+ }catch(error){
+  select.value=previous;select.disabled=false;
+  notify('状態を変更できませんでした。最新の内容を確認してください。');
+ }
 }
 async function toggleTaskDone(id){
  const t=findItem('tasks',id);if(!t)return;
