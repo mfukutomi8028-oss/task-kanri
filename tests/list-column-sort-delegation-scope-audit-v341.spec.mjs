@@ -119,9 +119,12 @@ test('Ver.342 product: click/keydown delegation is scoped to fixed #listView', a
   ]);
 
   await resetActivity(page);
-  await page.locator('#quickAddButton').click();
-  await page.locator('#quickAddInput').focus();
-  await page.keyboard.press('Enter');
+  // The old quick-add was removed. Use an unrelated live toolbar control
+  // plus an unowned synthetic button to prove delegation does not escape #listView.
+  await page.locator('#newTask').focus();
+  await page.locator('#newTask').press('Enter');
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await page.locator('#closeTaskDialog').evaluate(button=>button.click());
   await page.evaluate(() => {
     const probe = document.createElement('button');
     probe.type = 'button';
