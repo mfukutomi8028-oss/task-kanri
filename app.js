@@ -4318,7 +4318,7 @@ function journalScheduleV425(){
  // getFilteredSchedules retains the existing scope, assignee, category and search filters.
  const weekAnalysisRecordsV463=mode==='week'
    ?getFilteredSchedules({start:new Date(0),end:addDays(weekStart,7)}).filter(matchesCategory):[];
- // The bookmark summary and timed paper grid share precisely the same free windows.
+ // The timetable and mobile day slips share precisely the same free windows.
  const weekInsightByDateV473=mode==='week'
    ?new Map(days.map(day=>[toISODate(day),journalWeekAvailabilityV463(day,weekAnalysisRecordsV463)]))
    :new Map();
@@ -4326,86 +4326,13 @@ function journalScheduleV425(){
    const t=new Date(timestamp);
    return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
  };
- const weekOverviewV463=mode==='week'?`<section class="j463-week-overview"
-     aria-label="週間の予定登録状況">
-   <div class="j463-week-intro"><strong>週の見通し</strong>
-     <small>8:00〜20:00・現在の表示条件での予定登録状況</small></div>
-   <div class="j466-duration-row">
-     <div class="j466-duration-choice" role="group" aria-label="予定の所要時間">
-       <span>所要時間</span>
-       ${[30,60].map(minutes=>`<button type="button" data-j466-duration="${minutes}"
-         aria-pressed="${journalGapDurationV466===minutes}">${minutes}分</button>`).join('')}
-     </div>
-     <small>選択時間が収まる未登録枠のみ作成できます</small>
-   </div>
-   <div class="j463-week-days">${days.map(day=>{
-     const iso=toISODate(day);
-     const insight=weekInsightByDateV473.get(iso);
-     const count=byDay(iso).length;
-     const percentage=Math.min(100,Math.max(0,Math.round(insight.busyMinutes/720*100)));
-     const longGap=insight.largestGap;
-     const availableGaps=journalEligibleGapWindowsV470(insight,journalGapDurationV466);
-     const remembered=journalGapWindowByDateV470.get(iso);
-     // Preserve the longest window as default, with a per-day temporary selection.
-     const selectedGap=availableGaps.find(g=>g.start===remembered)
-       ||availableGaps.find(g=>g.start===longGap?.start)||availableGaps[0];
-     const gapText=longGap && journalGapStartOptionsV469(longGap,journalGapDurationV466).length
-       ?fmtTimeV463(longGap.start)+'〜'+fmtTimeV463(longGap.end)
-       :'未登録の連続'+journalGapDurationV466+'分なし';
-     const concurrent=insight.maxConcurrent>1?'同時刻 '+insight.maxConcurrent+'件':'';
-     const summary='登録 '+count+'件、8時から20時の最長未登録 '+gapText
-       +(availableGaps.length>1?'、選択可能 '+availableGaps.length+'枠':'')
-       +(concurrent?'、'+concurrent:'');
-     const starts=journalGapStartOptionsV469(selectedGap,journalGapDurationV466);
-     const previous=journalGapStartByDateV469.get(iso);
-     const chosen=starts.includes(previous)?previous:starts[0];
-     // An automatically replaced window/time is not a user's explicit selection.
-     if(journalExplicitGapDaysV475.has(iso) &&
-       (selectedGap?.start!==remembered || !starts.includes(previous)))
-       journalExplicitGapDaysV475.delete(iso);
-     if(selectedGap){
-       journalGapWindowByDateV470.set(iso,selectedGap.start);
-       journalGapStartByDateV469.set(iso,chosen);
-     }else{
-       journalGapWindowByDateV470.delete(iso);
-       journalGapStartByDateV469.delete(iso);
-     }
-     const canCreate=starts.length>0;
-     const selectedGapLabel=selectedGap
-       ?fmtTimeV463(selectedGap.start)+'〜'+fmtTimeV463(selectedGap.end):'';
-     const explicit=canCreate && journalExplicitGapDaysV475.has(iso);
-     return `<div class="j464-week-day">
-       <button type="button" class="j463-day-link"
-         data-j425-day="${iso}" data-j463-density="${percentage>=65?'busy':percentage<=15?'quiet':'normal'}"
-         aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日 '+summary)}">
-         <span class="j463-day-date">${day.getMonth()+1}/${day.getDate()} ${'日月火水木金土'[day.getDay()]}</span>
-         <strong>${count}件${concurrent?'・重なり':''}</strong>
-         <span class="j463-busy-bar" aria-hidden="true"><i style="width:${percentage}%"></i></span>
-         <small>${escapeHtml(gapText)}</small>
-       </button>
-       ${canCreate?`${availableGaps.length>1?`<label class="j470-gap-picker">空き枠
-         <select data-j470-gap="${iso}" aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の未登録時間帯')}">
-           ${availableGaps.map(g=>`<option value="${g.start}" ${g.start===selectedGap.start?'selected':''}>${fmtTimeV463(g.start)}〜${fmtTimeV463(g.end)}</option>`).join('')}
-         </select>
-       </label>`:''}
-       <label class="j469-start-picker">開始
-         <select data-j469-gap-start="${iso}" aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の開始時刻')}">
-           ${starts.map(ms=>`<option value="${ms}" ${ms===chosen?'selected':''}>${fmtTimeV463(ms)}</option>`).join('')}
-         </select>
-       </label>
-       ${explicit?`<div class="j476-choice-row">
-         <span class="j475-selected-range" role="status">選択中 ${fmtTimeV463(chosen)}〜${fmtTimeV463(chosen+journalGapDurationV466*60000)}</span>
-         <button type="button" class="j476-clear-choice" data-j476-clear-date="${iso}"
-           aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の開始時刻選択を解除')}">解除</button>
-       </div>`:''}
-       <button type="button" class="j464-gap-create" data-j464-gap-date="${iso}"
-         data-j470-gap-start="${selectedGap.start}" data-j470-gap-label="${selectedGapLabel}"
-         aria-label="${escapeHtml((day.getMonth()+1)+'月'+day.getDate()+'日の未登録時間帯 '+selectedGapLabel+'、'+fmtTimeV463(chosen)+'から'+journalGapDurationV466+'分の予定を作成')}">
-         ＋ ${journalGapDurationV466}分で作成
-       </button>`:''}
-     </div>`;
-   }).join('')}</div>
- </section>`:'';
+ // The timed calendar replaces the redundant seven-day occupancy summary.
+ const weekDurationControlsV562=mode==='week'?`<div class="j466-duration-row j562-week-controls" role="group" aria-label="空き時間の予定作成">
+ <div class="j466-duration-choice"><span>空き時間から追加 · 所要時間</span>
+ ${[30,60].map(minutes=>`<button type="button" data-j466-duration="${minutes}"
+ aria-pressed="${journalGapDurationV466===minutes}">${minutes}分</button>`).join('')}
+ </div><small>空いている時間帯を選んで予定を作成できます</small>
+ </div>`:'';
  const renderEvent=(s,i)=>{
     const st=new Date(s.startAt),ed=new Date(s.endAt);
     let startMinutes=st.getHours()*60+st.getMinutes(),endMinutes=ed.getHours()*60+ed.getMinutes();
@@ -4594,7 +4521,7 @@ function journalScheduleV425(){
       </div></div></details>
     </aside>
     <section class="j425-schedule-planner"><div class="j425-schedule-datebar"><button type="button" data-j425-shift="-1">‹ 前へ</button><strong>${escapeHtml(rangeLabel)}</strong><button type="button" data-j425-shift="1">次へ ›</button><button type="button" data-j425-today>今日</button>${mode==='day'?'<button type="button" class="j459-return-week" data-j459-return-week>週へ戻る</button>':''}</div>
-      ${weekOverviewV463}
+      ${weekDurationControlsV562}
       ${weekBody}
       <div class="j425-schedule-footnotes"><section><h3>関連タスク <small>${related.length}件</small></h3>${related.map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}"><span>□</span>${escapeHtml(t.title)}<small>${escapeHtml(t.dueDate)}</small></button>`).join('')||'<p>表示期間に期限があるタスクはありません</p>'}</section><section><h3>予定のメモ</h3>${notes.map(s=>`<p><strong>${escapeHtml(s.title)}</strong>：${escapeHtml(s.memo)}</p>`).join('')||'<p>表示期間の予定にメモはありません</p>'}</section></div>
       <div class="j425-stationery-row j425-schedule-props" aria-hidden="true"><img class="j442-schedule-botanical" src="./assets/journal-schedule-botanical-v442.svg" alt="" decoding="async"></div>
@@ -4628,19 +4555,15 @@ function journalScheduleV425(){
  root.querySelectorAll('[data-j425-mode]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.mode=b.dataset.j425Mode;journalScheduleV425()}));
  root.querySelector('[data-j425-add-schedule]')?.addEventListener('click',()=>openScheduleDialog());
  root.querySelectorAll('[data-j425-day]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.anchor=b.dataset.j425Day;journalScheduleStateV425.mode='day';journalScheduleV425()}));
- // Preserve horizontal scroll/focus while both selects update the weekly card.
+ // Preserve the real timetable's horizontal position and focused control.
  const refreshWeekChoicesV470=focusSelector=>{
-   const scrollLeft=root.querySelector('.j463-week-days')?.scrollLeft||0;
-   const gridLeft=root.querySelector('.j425-week-scroll')?.scrollLeft||0;
-   journalScheduleV425();
-   requestAnimationFrame(()=>{
-     const nextRoot=elements.scheduleView;
-     const strip=nextRoot.querySelector('.j463-week-days');
-     const grid=nextRoot.querySelector('.j425-week-scroll');
-     if(strip)strip.scrollLeft=scrollLeft;
-     if(grid)grid.scrollLeft=gridLeft;
-     nextRoot.querySelector(focusSelector)?.focus({preventScroll:true});
-   });
+  const gridLeft=root.querySelector('.j425-week-scroll')?.scrollLeft||0;
+  journalScheduleV425();
+  requestAnimationFrame(()=>{
+   const nextRoot=elements.scheduleView,grid=nextRoot.querySelector('.j425-week-scroll');
+   if(grid)grid.scrollLeft=gridLeft;
+   nextRoot.querySelector(focusSelector)?.focus({preventScroll:true});
+  });
  };
  root.querySelectorAll('[data-j466-duration]').forEach(button=>button.addEventListener('click',()=>{
    const selected=Number(button.dataset.j466Duration);
@@ -4648,28 +4571,7 @@ function journalScheduleV425(){
    journalGapDurationV466=selected;
    refreshWeekChoicesV470('[data-j466-duration="'+selected+'"]');
  }));
- root.querySelectorAll('[data-j470-gap]').forEach(picker=>picker.addEventListener('change',()=>{
-   const date=picker.dataset.j470Gap;
-   const chosen=Number(picker.value);
-   if(!Number.isFinite(chosen))return;
-   const day=parseISODate(date);
-   const selectedWindow=day && journalEligibleGapWindowsV470(
-     journalWeekAvailabilityV463(day,weekAnalysisRecordsV463),journalGapDurationV466)
-     .find(gap=>gap.start===chosen);
-   if(!selectedWindow)return;
-   journalGapWindowByDateV470.set(date,chosen);
-   journalGapStartByDateV469.set(date,journalGapStartOptionsV469(selectedWindow,journalGapDurationV466)[0]);
-   journalExplicitGapDaysV475.add(date);
-   refreshWeekChoicesV470('[data-j470-gap="'+date+'"]');
- }));
- root.querySelectorAll('[data-j469-gap-start]').forEach(picker=>picker.addEventListener('change',()=>{
-   const selected=Number(picker.value),date=picker.dataset.j469GapStart;
-   if(!Number.isFinite(selected))return;
-   journalGapStartByDateV469.set(date,selected);
-   journalExplicitGapDaysV475.add(date);
-   refreshWeekChoicesV470('[data-j469-gap-start="'+date+'"]');
- }));
- // Both the bookmark selectors and the timed grid use this one verified draft path.
+ // The timed grid and phone day slips share one verified draft path.
  const openJournalGapDraftV473=(dateIso,chosenWindow,chosen,syncGridChoice=false)=>{
    const date=parseISODate(dateIso);
    if(!date || mode!=='week' || date<weekStart || date>=addDays(weekStart,7))return;
@@ -4692,13 +4594,9 @@ function journalScheduleV425(){
      if(root.querySelector('[data-j475-mobile-date="'+dateIso+'"]')?.open)
        journalMobileGapOpenDaysV475.add(dateIso);
      const weekLeft=root.querySelector('.j425-week-scroll')?.scrollLeft||0;
-     const outlookLeft=root.querySelector('.j463-week-days')?.scrollLeft||0;
      journalScheduleV425();
-     const next=elements.scheduleView;
-     const grid=next.querySelector('.j425-week-scroll');
-     const outlook=next.querySelector('.j463-week-days');
-     if(grid)grid.scrollLeft=weekLeft;
-     if(outlook)outlook.scrollLeft=outlookLeft;
+      const grid=elements.scheduleView.querySelector('.j425-week-scroll');
+      if(grid)grid.scrollLeft=weekLeft;
    }
    if(journalScheduleCategoryV430 && state.categories.includes(journalScheduleCategoryV430))
      suggestion.category=journalScheduleCategoryV430;
@@ -4706,12 +4604,6 @@ function journalScheduleV425(){
    // Save success alone triggers the existing JOURNAL day-note focus.
    elements.scheduleForm.dataset.journalGapFocus='1';
  };
- root.querySelectorAll('[data-j464-gap-date]').forEach(button=>button.addEventListener('click',()=>{
-   const iso=button.dataset.j464GapDate;
-   const chosenWindow=Number(button.dataset.j470GapStart);
-   const chosen=Number(root.querySelector('[data-j469-gap-start="'+iso+'"]')?.value);
-   openJournalGapDraftV473(iso,chosenWindow,chosen);
- }));
  root.querySelectorAll('[data-j475-mobile-date]').forEach(details=>details.addEventListener('toggle',()=>{
    // A replaced <details> may deliver an old queued toggle after the redraw.
    if(!details.isConnected)return;
@@ -4766,12 +4658,9 @@ function journalScheduleV425(){
  }));
  root.querySelectorAll('[data-j476-clear-date]').forEach(button=>button.addEventListener('click',()=>{
    const iso=button.dataset.j476ClearDate;
-   const onPhone=Boolean(button.closest('.j473-mobile-gaps'));
    journalClearGapChoiceV476(iso);
-   if(onPhone)journalMobileGapOpenDaysV475.add(iso);
-   const target=onPhone?'[data-j475-mobile-date="'+iso+'"]>summary'
-     :'[data-j469-gap-start="'+iso+'"]';
-   refreshWeekChoicesV470(target);
+    journalMobileGapOpenDaysV475.add(iso);
+    refreshWeekChoicesV470('[data-j475-mobile-date="'+iso+'"]>summary');
  }));
  root.querySelectorAll('[data-j473-free-date]').forEach(button=>button.addEventListener('click',event=>{
    const iso=button.dataset.j473FreeDate;
@@ -6906,6 +6795,8 @@ function journalSwitchTaskPageV509(next){
 // JOURNAL V494: one existing paper note follows its selected case on a phone.
 const journalAtelierInlineMediaV494=window.matchMedia('(max-width:760px)');
 let journalAtelierInlineOpenV494=false;
+// V562: the original note is a dismissible side reader on wide screens.
+let journalAtelierDeskNoteOpenV562=false;
 // JOURNAL V516: temporary mobile reading anchor; never saved in task data.
 let journalAtelierReturnAnchorV516=null;
 // V556: remember only the visible part of an open phone note.
@@ -6995,6 +6886,7 @@ function journalPositionAtelierNoteV494(root){
   const card=[...root.querySelectorAll('[data-j420-task-id]')]
     .find(el=>el.dataset.j420TaskId===journalAtelierSelectedV420);
   const inline=Boolean(journalAtelierInlineMediaV494.matches&&journalAtelierInlineOpenV494&&card);
+  const desktopOpen=Boolean(!journalAtelierInlineMediaV494.matches&&journalAtelierDeskNoteOpenV562&&card);
   if(inline){
     if(note.previousElementSibling!==card||note.parentElement!==card.parentElement)card.after(note);
   }else{
@@ -7002,9 +6894,12 @@ function journalPositionAtelierNoteV494(root){
     if(note.parentElement!==desktop)desktop.append(note);
   }
   note.classList.toggle('j494-inline-note',inline);
+  note.classList.toggle('j562-desk-open',desktopOpen);
+  note.hidden=!inline&&!desktopOpen;
+  note.setAttribute('aria-hidden',String(note.hidden));
   if(!inline)journalAtelierReaderAnchorV556=null;
   root.querySelectorAll('[data-j420-task-id]').forEach(el=>
-    el.setAttribute('aria-expanded',String(inline&&el===card)));
+    el.setAttribute('aria-expanded',String((inline||desktopOpen)&&el===card)));
   // V553: the real rendered card order, not the filtered task array, owns
   // mobile note paging across the different desk shelves.
   const pager=note.querySelector('.j553-atelier-pager');
@@ -7020,8 +6915,11 @@ function journalPositionAtelierNoteV494(root){
     });
   }
 }
-journalAtelierInlineMediaV494.addEventListener('change',()=>
-  journalPositionAtelierNoteV494(elements.boardView?.querySelector('.j420-atelier')));
+journalAtelierInlineMediaV494.addEventListener('change',()=>{
+  if(journalAtelierInlineMediaV494.matches&&journalAtelierDeskNoteOpenV562)
+    journalAtelierInlineOpenV494=true;
+  journalPositionAtelierNoteV494(elements.boardView?.querySelector('.j420-atelier'));
+});
 
 // The existing detail panel remains the single owner of open/close and editing.
 // Only the originating journal row is remembered for keyboard focus restoration.
@@ -7246,10 +7144,13 @@ function journalFocusAtelierNoteV500(root,includeDesktop=false){
       &&current!==document.body&&current!==document.documentElement
       &&current.isConnected)return;
     const note=root.querySelector('#j494AtelierNote');
-    if(!note||(journalAtelierInlineMediaV494.matches&&!note.classList.contains('j494-inline-note')))return;
+    if(!note||(journalAtelierInlineMediaV494.matches&&!note.classList.contains('j494-inline-note'))
+      ||(!journalAtelierInlineMediaV494.matches&&!note.classList.contains('j562-desk-open')))return;
     const heading=note.querySelector('.j420-note-lead h4');
     if(!heading)return;
-    note.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
+    if(journalAtelierInlineMediaV494.matches)
+      note.scrollIntoView({behavior:'auto',block:'start',inline:'nearest'});
+    else note.scrollTop=0;
     heading.tabIndex=-1;
     heading.focus({preventScroll:true});
     journalCaptureAtelierReaderAnchorV556();
@@ -7527,6 +7428,9 @@ function journalAtelierV420(tasks){
   // A new local or subscribed render supersedes all older note-page focus work.
   ++journalAtelierPageTokenV553;
   const syncAnchorV530=journalCaptureTaskPageSyncAnchorV530('board');
+  const formerNoteV562=elements.boardView.querySelector('#j494AtelierNote.j562-desk-open');
+  const readerScrollV562=formerNoteV562?.scrollTop||0;
+  const readerTaskV562=journalAtelierSelectedV420;
   const waitingRe=/確認待|回答待|承認待|レビュー待|検収待/;
   const supplyRe=/材料待|準備待|部品待|資料待|納品待|手配待/;
   const requestRe=/依頼中|対応待|外部依頼/;
@@ -7581,6 +7485,7 @@ function journalAtelierV420(tasks){
       :returnAnchorV538
         ?journalNearestSurvivingTaskV532(returnAnchorV538,viewTasks.map(t=>t.id))
         :viewTasks[0]?.id||'';
+    journalAtelierDeskNoteOpenV562=false;
     journalAtelierInlineOpenV494=Boolean(syncAnchorV530?.atelierInlineReaderV552
       &&journalAtelierSelectedV420);
     journalAtelierReturnAnchorV516=null;
@@ -7637,9 +7542,9 @@ function journalAtelierV420(tasks){
         <button type="button" class="j420-log-all" data-j420-layout="timeline">日付日誌を開く →</button>
       </aside>
     </div>
-    <section class="j420-project-note" id="j494AtelierNote" aria-label="選択中の案件ノート">
+    <section class="j420-project-note" id="j494AtelierNote" aria-label="選択中の案件ノート" hidden>
       <div class="j420-note-binding" aria-hidden="true"></div>
-      <header><span aria-hidden="true">▣</span><strong>案件ノート</strong><small>PROJECT NOTE</small><button type="button" class="j494-atelier-back" data-j494-atelier-back>← 机上へ戻る</button></header>
+      <header><span aria-hidden="true">▣</span><strong>案件ノート</strong><small>PROJECT NOTE</small><button type="button" class="j494-atelier-back" data-j494-atelier-back>← 机上へ戻る</button><button type="button" class="j562-desk-note-close" data-j562-close-desk aria-label="案件ノートを閉じる">閉じる ×</button></header>
       <div class="j553-atelier-pager" role="group" aria-label="案件ノートの前後移動" hidden>
         <button type="button" data-j553-case-step="-1">前の案件</button>
         <span data-j553-case-position aria-live="polite"></span>
@@ -7659,6 +7564,7 @@ function journalAtelierV420(tasks){
       journalAtelierReturnAnchorV516=journalAtelierInlineMediaV494.matches
         ?{id:journalAtelierSelectedV420,top:card.getBoundingClientRect().top,width:window.innerWidth}:null;
       journalAtelierInlineOpenV494=journalAtelierInlineMediaV494.matches;
+      journalAtelierDeskNoteOpenV562=true;
       root.querySelectorAll('[data-j420-task-id]').forEach(el=>
         el.classList.toggle('is-selected',el.dataset.j420TaskId===journalAtelierSelectedV420));
       const chosenTask=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
@@ -7666,7 +7572,7 @@ function journalAtelierV420(tasks){
       if(currentNote)currentNote.outerHTML=journalAtelierNoteV420(chosenTask);
       bindJournalAtelierNoteActionsV420(root);
       journalPositionAtelierNoteV494(root);
-      if(!journalAtelierPagingV554)journalFocusAtelierNoteV500(root);
+      if(!journalAtelierPagingV554)journalFocusAtelierNoteV500(root,true);
     };
     card.addEventListener('click',select);
     card.addEventListener('dblclick',e=>{e.preventDefault();journalOpenTaskNoteV519(card.dataset.j420TaskId,'board','row',card,true)});
@@ -7684,6 +7590,7 @@ function journalAtelierV420(tasks){
     journalRememberTaskNavigationV534('board',task.id);
     journalAtelierReturnAnchorV516=null;
     journalAtelierInlineOpenV494=journalAtelierInlineMediaV494.matches;
+    journalAtelierDeskNoteOpenV562=true;
     journalAtelierV420(tasks);
     journalFocusAtelierNoteV500(elements.boardView,true);
   }));
@@ -7749,6 +7656,22 @@ function journalAtelierV420(tasks){
   root.querySelectorAll('[data-j420-layout]').forEach(btn=>btn.addEventListener('click',()=>journalSwitchTaskPageV509(btn.dataset.j420Layout)));
   bindJournalAtelierNoteActionsV420(root);
   journalPositionAtelierNoteV494(root);
+  if(journalAtelierDeskNoteOpenV562&&readerTaskV562===journalAtelierSelectedV420)
+    root.querySelector('#j494AtelierNote.j562-desk-open')?.scrollTo({top:readerScrollV562,behavior:'instant'});
+  const closeDeskNoteV562=()=>{
+    if(!journalAtelierDeskNoteOpenV562||journalAtelierInlineMediaV494.matches)return;
+    journalAtelierDeskNoteOpenV562=false;
+    journalPositionAtelierNoteV494(root);
+    const source=[...root.querySelectorAll('[data-j420-task-id]')]
+      .find(el=>el.dataset.j420TaskId===journalAtelierSelectedV420);
+    source?.focus({preventScroll:true});
+  };
+  root.querySelector('[data-j562-close-desk]')?.addEventListener('click',closeDeskNoteV562);
+  root.querySelector('#j494AtelierNote')?.addEventListener('keydown',event=>{
+    if(event.key!=='Escape'||journalAtelierInlineMediaV494.matches
+      ||elements.detailPanel?.classList.contains('open')||elements.taskDialog?.open)return;
+    event.preventDefault();event.stopPropagation();closeDeskNoteV562();
+  });
   // V553: reuse the same real card click path as ordinary selection.
   root.querySelectorAll('[data-j553-case-step]').forEach(button=>button.addEventListener('click',()=>{
     if(!journalAtelierInlineMediaV494.matches||!journalAtelierInlineOpenV494
