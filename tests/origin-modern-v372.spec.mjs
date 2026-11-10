@@ -3571,3 +3571,84 @@ test('Origin inbox uses the selected user and canonical read-all without leaking
  await expect(dialog.locator('#originInboxList')).toContainText('森井宛通知');
  await expect(dialog.locator('#originInboxList')).not.toContainText('福冨宛通知');
 });
+
+
+for(const width of [1366,390,320]){
+ test('Origin inbox genre unread badges, unread-first order and quick filter ('+width+'px)',async({page})=>{
+  test.setTimeout(90000);
+  const host=await launchOriginV415(page,'origin-inbox-unread-v565-'+width,width);
+  await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
+   const created=await bridge.dispatch({type:'task.create',ownerRoom:state.roomId,ownerUser:state.currentUser,
+    title:'未読バッジの検証',description:'',assignee:state.currentUser,status:state.statuses[0],
+    category:state.categories[0],priority:'中',tags:'',requester:'',checklist:'',checklistDone:[],
+    dueDate:'',dueTime:'',pinned:false});
+   if(!created.ok)throw Error('fixture task could not be created');
+   const id=bridge.readSnapshot().tasks.find(t=>t.title==='未読バッジの検証').id,now=Date.now();
+   for(const [key,type,title,when] of [
+    ['unread-mention-old','mention','古い未読メンション',now-120000],
+    ['read-mention-new','mention','新しい既読メンション',now-1000],
+    ['unread-reply','reply','未読の返信',now-15000],
+    ['unread-status','status','未読の状態変更',now-8000]
+   ]){
+    const result=await flow.writeInboxEvent(state.currentUser,key,{taskId:id,type,title,body:'確認してください',actor:'同僚',createdAt:when});
+    if(!result?.ok)throw Error('writeInboxEvent '+key);
+   }
+   const marked=await flow.markInboxRead('read-mention-new',true,state.currentUser,0);
+   if(!marked.ok)throw Error('fixture read update failed');
+  });
+  const dialog=host.locator('#originInboxDialog');
+  await expect(host.locator('#originInboxBadge')).toHaveText('3');
+  await host.locator('#originInboxButton').click();
+  await expect(dialog).toBeVisible();
+  const pills=dialog.locator('#originInboxGenres');
+  await expect(dialog.locator('#originInboxImportantCount')).toContainText('2件未読');
+  await expect(pills.locator('[data-value="all"] .origin-inbox-unread-count')).toHaveText('未読2');
+  await expect(pills.locator('[data-value="mention"] .origin-inbox-unread-count')).toHaveText('未読1');
+  await expect(pills.locator('[data-value="reply"] .origin-inbox-unread-count')).toHaveText('未読1');
+  await expect(pills.locator('[data-value="assign"] .origin-inbox-unread-count')).toHaveCount(0);
+  await expect(pills.locator('[data-value="mention"]')).toHaveAttribute('aria-label','メンション 2件、未読1件');
+  const rows=dialog.locator('.origin-inbox-item');
+  await expect(rows).toHaveCount(3);
+  expect(await rows.evaluateAll(items=>items.map(x=>x.dataset.inboxId)))
+   .toEqual(['unread-reply','unread-mention-old','read-mention-new']);
+  await expect(rows.first()).toHaveClass(/is-unread/);
+  await expect(rows.last()).toHaveClass(/is-read/);
+  const border=await rows.first().evaluate(el=>parseFloat(getComputedStyle(el).borderLeftWidth));
+  expect(border).toBeGreaterThanOrEqual(3);
+  const quick=dialog.locator('#originInboxUnreadQuick');
+  await expect(quick).toHaveText('未読2件だけ表示');
+  await quick.click();
+  await expect(rows).toHaveCount(2);
+  await expect(quick).toHaveText('すべて表示');
+  await pills.locator('[data-value="mention"]').click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toHaveAttribute('data-inbox-id','unread-mention-old');
+  await quick.click();
+  await expect(rows).toHaveCount(2);
+  await rows.locator('[data-action="origin-inbox-read"][data-id="unread-mention-old"]').click();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardWorkflowV152.inboxFor()['unread-mention-old'].readAt)).toBeGreaterThan(0);
+  await expect(pills.locator('[data-value="mention"] .origin-inbox-unread-count')).toHaveCount(0);
+  await expect(pills.locator('[data-value="all"] .origin-inbox-unread-count')).toHaveText('未読1');
+  await expect(quick).toBeHidden();
+  await pills.locator('[data-value="reply"]').click();
+  await rows.locator('[data-action="origin-inbox-read"][data-id="unread-reply"]').click();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardWorkflowV152.inboxFor()['unread-reply'].readAt)).toBeGreaterThan(0);
+  await expect(pills.locator('[data-value="all"] .origin-inbox-unread-count')).toHaveCount(0);
+  await expect(host.locator('#originInboxBadge')).toHaveText('1');
+  await dialog.locator('[data-action="origin-inbox-section"][data-value="activity"]').click();
+  await expect(quick).toBeHidden();
+  await expect(pills.locator('[data-value="status"] .origin-inbox-unread-count')).toHaveText('未読1');
+  await expect(pills.locator('[data-value="task"] .origin-inbox-unread-count')).toHaveCount(0);
+  await pills.locator('[data-value="status"]').click();
+  await expect(rows.first()).toHaveClass(/is-unread/);
+  await rows.locator('[data-action="origin-inbox-read"][data-id="unread-status"]').click();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardWorkflowV152.inboxFor()['unread-status'].readAt)).toBeGreaterThan(0);
+  await expect(pills.locator('[data-value="status"] .origin-inbox-unread-count')).toHaveCount(0);
+  await expect(host.locator('#originInboxBadge')).toBeHidden();
+  const viewport=await page.evaluate(()=>({screen:innerWidth,document:document.documentElement.scrollWidth}));
+  expect(viewport.document).toBeLessThanOrEqual(viewport.screen+3);
+  await dialog.locator('[data-action="origin-inbox-close"]').click();
+  await expect(host.locator('#originInboxButton')).toBeFocused();
+ });
+}
