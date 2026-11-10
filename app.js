@@ -7722,6 +7722,8 @@ function journalAtelierV420(tasks){
   root.querySelector('[data-j494-atelier-back]')?.addEventListener('click',()=>{
     ++journalAtelierPageTokenV553;
     journalAtelierInlineOpenV494=false;
+    // A closed phone notebook must remain closed after returning to a PC width.
+    journalAtelierDeskNoteOpenV562=false;
     journalPositionAtelierNoteV494(root);
     const source=[...root.querySelectorAll('[data-j420-task-id]')]
       .find(el=>el.dataset.j420TaskId===journalAtelierSelectedV420);
