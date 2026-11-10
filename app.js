@@ -6501,6 +6501,49 @@ function dashboardScopeText() {
   return parts.length ? parts.join(" / ") : "全体";
 }
 
+// JOURNAL shortcuts invoke the existing reserved-task dialog. No separate
+// future-task data store or second dialog is introduced.
+function journalReservedTaskShortcutV565(){
+  return '<button type="button" class="j565-reserved-shortcut" data-j565-reserved-open hidden>'+
+    '予約タスク <small data-j565-reserved-count></small></button>';
+}
+let journalReservedObserverV565=null;
+function journalBindReservedTaskShortcutV565(root){
+  journalReservedObserverV565?.disconnect();
+  const shortcuts=[...root.querySelectorAll('[data-j565-reserved-open]')];
+  if(!shortcuts.length)return;
+  const update=()=>{
+    const source=document.querySelector('[data-reserved-task-open]');
+    const count=source?.querySelector('span')?.textContent?.trim()||'0';
+    shortcuts.forEach(button=>{
+      if(!button.isConnected)return;
+      button.hidden=!source||source.hidden;
+      const counter=button.querySelector('[data-j565-reserved-count]');
+      if(counter)counter.textContent=count+'件';
+    });
+  };
+  shortcuts.forEach(button=>button.addEventListener('click',()=>{
+    document.querySelector('[data-reserved-task-open]')?.click();
+  }));
+  // Restrict observation to the existing reserved-button owner.
+  const owner=document.querySelector('.task-control-row');
+  if(owner){
+    journalReservedObserverV565=new MutationObserver(update);
+    journalReservedObserverV565.observe(owner,{attributes:true,subtree:true,
+      childList:true,characterData:true,attributeFilter:['hidden']});
+  }
+  update();
+}
+function journalDashboardNavigationV565(){
+  if(document.documentElement.dataset.wbDisplay!=='journal')return '';
+  return '<nav class="j565-dashboard-navigation" aria-label="JOURNALのタスク画面切替">'+
+    '<div class="j425-mode-switch" role="group" aria-label="タスク表示形式">'+
+    '<button type="button" data-j565-task-layout="board">机上</button>'+
+    '<button type="button" data-j565-task-layout="list">一覧</button>'+
+    '<button type="button" data-j565-task-layout="timeline">日誌</button>'+
+    '<button type="button" aria-pressed="true">ダッシュボード</button></div>'+
+    journalReservedTaskShortcutV565()+'</nav>';
+}
 function renderDashboard(tasks) {
   // ダッシュボードも、左メニューの「自分の担当」「完了」や各種絞り込みを反映する。
   // 以前は state.tasks を直接参照していたため、常に全体集計になっていた。
@@ -6515,6 +6558,7 @@ function renderDashboard(tasks) {
   const scopeText = dashboardScopeText();
 
   elements.dashboardView.innerHTML = `
+    ${journalDashboardNavigationV565()}
     <div class="dashboard-head">
       <div>
         <h3>ダッシュボード</h3>
@@ -6540,6 +6584,9 @@ function renderDashboard(tasks) {
   `;
 
   elements.dashboardView.querySelector("[data-dashboard-refresh]")?.addEventListener("click", render);
+  elements.dashboardView.querySelectorAll('[data-j565-task-layout]').forEach(button=>
+    button.addEventListener('click',()=>journalSwitchTaskPageV509(button.dataset.j565TaskLayout)));
+  journalBindReservedTaskShortcutV565(elements.dashboardView);
   elements.dashboardView.querySelectorAll("[data-task-id]").forEach(el => {
     el.addEventListener("click", () => selectTask(el.dataset.taskId));
     el.addEventListener("dblclick", (event) => {
@@ -6677,11 +6724,13 @@ function journalTaskNavigationSourceV534(layout,root){
     &&rect.bottom>32&&rect.top<window.innerHeight-32)};
 }
 function journalSwitchTaskPageV509(next){
-  if(!journalTaskV411()||!['board','list','timeline'].includes(next))return;
-  const previous=state.layout==='tasks'?state.taskLayout:null;
+  if(document.documentElement.dataset.wbDisplay!=='journal'
+    ||!['tasks','dashboard'].includes(state.layout)
+    ||!['board','list','timeline','dashboard'].includes(next))return;
+  const previous=state.layout==='dashboard'?'dashboard':state.taskLayout;
   if(previous===next)return;
-  const oldView=journalTaskPageV509(previous);
-  const handoffV534=journalTaskNavigationSourceV534(previous,oldView);
+  const oldView=previous==='dashboard'?elements.dashboardView:journalTaskPageV509(previous);
+  const handoffV534=previous==='dashboard'?null:journalTaskNavigationSourceV534(previous,oldView);
   if(oldView&&!oldView.hidden){
     // Relative to the top of this paper page, not the document's absolute Y.
     // This survives differing headers, card counts and responsive layouts.
@@ -6697,6 +6746,15 @@ function journalSwitchTaskPageV509(next){
     journalIndexStateV425.selected=handoffV534.id;
     journalTaskInlineSelectedV491='';
     journalIndexReturnAnchorV513=null;
+  }
+  if(next==='dashboard'){
+    state.layout='dashboard';
+    closeDetail();
+    render();
+    requestAnimationFrame(()=>elements.dashboardView
+      .querySelector('.j565-dashboard-navigation [aria-pressed="true"]')
+      ?.focus({preventScroll:true}));
+    return;
   }
   state.layout='tasks';
   state.taskLayout=next;
