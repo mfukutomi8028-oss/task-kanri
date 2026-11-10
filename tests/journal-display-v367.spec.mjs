@@ -812,7 +812,7 @@ test('JOURNAL Memo has live index, color filters and varied fastener styles',asy
 });
 
 
-test('JOURNAL Task Atelier renders indexed shelves and a bottom notebook instead of a Classic Kanban',async ({page})=>{
+test('JOURNAL Task Atelier renders indexed shelves and an on-demand right-side notebook',async ({page})=>{
   test.setTimeout(90000);await boot(page,1680);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
   const board=page.locator('#boardView');
@@ -827,7 +827,13 @@ test('JOURNAL Task Atelier renders indexed shelves and a bottom notebook instead
   await editor.locator('#taskForm button[type="submit"]').click();
   await expect(editor).toBeHidden();
   await expect(board.locator('.j420-island').first()).toBeVisible();
-  await expect(board.locator('.j420-project-note')).toBeVisible();
+  const notebook=board.locator('.j420-project-note');
+  await expect(notebook).toBeHidden();
+  const item=board.locator('[data-j420-task-id]').filter({hasText:'JOURNAL 棚の表示確認'});
+  await item.click();
+  await expect(notebook).toBeVisible();
+  await expect(notebook).toHaveClass(/j562-desk-open/);
+  await expect(item).toHaveAttribute('aria-expanded','true');
   await expect(board.locator('.board-column')).toHaveCount(0);
   expect(await board.locator('.j420-island').count()).toBeGreaterThanOrEqual(4);
   await expect(board.locator('[data-j420-new-task]')).toBeVisible();
