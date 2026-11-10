@@ -1416,15 +1416,51 @@ function closeOriginInbox(restoreFocus=true){
  dialog.close();document.body.style.overflow=originInboxPreviousOverflow;
  if(restoreFocus)$('#originInboxButton')?.focus({preventScroll:true});
 }
+// Keep a stable reading cursor while a notification moves between the read and unread groups.
+function originInboxReadCursor(id){
+ const items=Array.from($('#originInboxList')?.querySelectorAll('.origin-inbox-item')||[]);
+ const index=items.findIndex(item=>item.dataset.inboxId===id);
+ return {user:snapshot.currentUser,section:originInboxSection,genre:originInboxGenre,
+  readFilter:originInboxReadFilter,query:originInboxQuery,id,
+  nextId:index>=0?items[index+1]?.dataset.inboxId||'':'',
+  previousId:index>0?items[index-1].dataset.inboxId:''};
+}
+function restoreOriginInboxReadCursor(cursor,saved){
+ const dialog=$('#originInboxDialog');
+ if(!cursor||!dialog?.open||snapshot.currentUser!==cursor.user
+   ||originInboxSection!==cursor.section||originInboxGenre!==cursor.genre
+   ||originInboxReadFilter!==cursor.readFilter||originInboxQuery!==cursor.query)return;
+ const rows=Array.from($('#originInboxList')?.querySelectorAll('.origin-inbox-item')||[]);
+ const candidates=saved?[cursor.nextId,cursor.previousId,cursor.id]
+  :[cursor.id,cursor.nextId,cursor.previousId];
+ for(const id of candidates){
+  if(!id)continue;
+  const row=rows.find(item=>item.dataset.inboxId===id);
+  const action=row?.querySelector('[data-action="origin-inbox-read"]:not(:disabled),[data-action="origin-inbox-open"]');
+  if(action){action.focus({preventScroll:true});action.scrollIntoView({block:'nearest',behavior:'instant'});return;}
+ }
+ // When the last matching notification disappears, keep keyboard focus in the inbox.
+ const quick=$('#originInboxUnreadQuick');
+ const fallback=originInboxSection==='important'
+  ?(!quick.hidden?quick:$('#originInboxReadFilter'))
+  :$('#originInboxGenres [data-action="origin-inbox-genre"][aria-pressed="true"]');
+ fallback?.focus({preventScroll:true});
+}
 async function originInboxRead(id){
  const flow=window.WorkBoardWorkflowV152,record=flow?.inboxFor?.()?.[id];
  if(!record||originInboxBusy)return;
+ const cursor=originInboxReadCursor(id);
+ let saved=false;
  originInboxBusy=true;renderOriginInbox();
  try{
   const result=await flow.markInboxRead(id,!Number(record.readAt),snapshot.currentUser,Number(record.readAt)||0);
-  if(!result?.ok)notify('既読の保存に失敗しました。最新の通知を確認してください。');
+  saved=Boolean(result?.ok);
+  if(!saved)notify('既読の保存に失敗しました。最新の通知を確認してください。');
  }catch(e){notify('通知の操作に失敗しました。再度お試しください。')}
- finally{originInboxBusy=false;renderOriginInbox();originInboxUpdateBadge()}
+ finally{
+  originInboxBusy=false;renderOriginInbox();originInboxUpdateBadge();
+  restoreOriginInboxReadCursor(cursor,saved);
+ }
 }
 async function originInboxReadAll(){
  const flow=window.WorkBoardWorkflowV152;if(!flow||originInboxBusy)return;
