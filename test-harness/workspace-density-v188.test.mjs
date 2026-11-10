@@ -329,7 +329,7 @@ test('Ver.462 retires overwritten v15 toolbar grid and v29 quick-add layout but 
     'v33 narrow toolbar layout remains');
   assert.match(css, /\.hero-actions,\s*\.hero-compact-button,\s*\.density-switcher\s*\{\s*display:\s*none\s*!important\s*;/,
     'cached hidden controls remain guarded');
-  assert.match(html, /class="quick-add"/);
+  assert.doesNotMatch(html, /class="quick-add"/);
   assert.match(html, /id="sortSelect"/);
   assert.match(browser, /VER462_RETIRED_STYLES/);
   assert.match(browser, /Ver\.462 toolbar\/quick-add changed/);
