@@ -6711,15 +6711,17 @@ function journalTaskNavigationTargetV534(root,layout,id){
 }
 function journalTaskNavigationSourceV534(layout,root){
   if(!root||root.hidden)return null;
-  const remembered=journalTaskNavigationSelectionV534.layout===layout
+  // Only list rows defer their read click for double-click editing.
+  // Keep board/diary source selection unchanged; use the latest explicit
+  // list-row click if the 240ms preview timer has not finished yet.
+  const pendingListId=layout==='list'
+    &&journalTaskNavigationSelectionV534.layout==='list'
+    &&journalTaskNavigationTargetV534(root,'list',journalTaskNavigationSelectionV534.id)
     ?journalTaskNavigationSelectionV534.id:'';
-  // The list delays single-click selection for double-click editing. A rapid
-  // switch can happen before that timer runs, so prefer the last clicked row
-  // only while that real row still exists in this page's own filtered list.
-  const intent=remembered&&journalTaskNavigationTargetV534(root,layout,remembered)
-    ?remembered:'';
-  const id=intent||(layout==='board'?journalAtelierSelectedV420:
-    layout==='list'?journalIndexStateV425.selected:'');
+  const id=layout==='board'?journalAtelierSelectedV420:
+    layout==='list'?(pendingListId||journalIndexStateV425.selected):
+    (journalTaskNavigationSelectionV534.layout==='timeline'
+      ?journalTaskNavigationSelectionV534.id:'');
   if(!id||!state.tasks.some(task=>task.id===id))return null;
   const row=journalTaskNavigationTargetV534(root,layout,id);
   const rect=row?.getBoundingClientRect();
