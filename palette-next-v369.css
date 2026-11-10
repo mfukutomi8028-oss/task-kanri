@@ -1406,7 +1406,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
 #paletteNextRoot .wb-pn[data-theme="dark"] .pn-rail [data-pn-route="tasks"] .pn-symbol{color:#ffc5cc}
 #paletteNextRoot .wb-pn[data-theme="dark"] .pn-rail [data-pn-route="memos"] .pn-symbol{color:#f9deac}
 @media(max-width:780px){
-  #paletteNextRoot .pn-workactions{margin:0 0 14px}
+  #paletteNextRoot .pn-workactions{margin:0 0 9px}
   #paletteNextRoot .pn-editor-grid{grid-template-columns:minmax(0,1fr);gap:13px}
   #paletteNextRoot .pn-editor-field:first-child,#paletteNextRoot .pn-editor-field.wide,#paletteNextRoot .pn-editor-check{grid-column:1}
   #paletteNextRoot .pn-editor-actions .pn-button{flex:1 1 130px}
@@ -3272,6 +3272,8 @@ html[data-wb-palette-next-preview="true"] body{
     font-size:clamp(11px,3vw,12px);white-space:nowrap;
   }
   #paletteNextRoot .pn-task-overview{margin-bottom:9px}
+  /* No selection means no actionable bulk bar. Show it again after a check. */
+  #paletteNextRoot .pn-task-sheet>.pn-bulkbar[data-empty="true"]{display:none}
   /* Keep the title, count, view switch and sort visible in two compact rows. */
   #paletteNextRoot .pn-task-sheet>.pn-sheethead{
     display:grid;grid-template-columns:minmax(0,1fr) auto;
