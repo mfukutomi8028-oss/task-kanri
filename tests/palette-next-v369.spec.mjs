@@ -1979,20 +1979,26 @@ for(const width of [320,390,1366]){
     if(mode==='dark')await page.locator('#paletteNextRoot [data-pn-theme]').click();
     await expect(page.locator('#pnApp')).toHaveAttribute('data-theme',mode);
     const contrast=await tiles.evaluateAll(elements=>{
-      const luminance=color=>{
-        if(!/^rgba?\(/.test(color))return NaN;
-        const components=color.match(/[\d.]+/g)?.slice(0,3).map(Number)||[];
-        if(components.length!==3)return NaN;
-        const [r,g,b]=components.map(n=>{
-          const x=n/255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4;
-        });
+      // Computed colors can be serialized as rgb() or CSS Color 4 color(srgb).
+      const luminance=value=>{
+        const legacy=value.match(/^rgba?\(([^)]+)\)$/);
+        const modern=value.match(/^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+        const channels=legacy?legacy[1].match(/[\d.]+/g)?.slice(0,3).map(v=>Number(v)/255):
+          modern?modern.slice(1,4).map(Number):null;
+        if(!channels||channels.length!==3||channels.some(v=>!Number.isFinite(v)))return NaN;
+        const [r,g,b]=channels.map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
         return .2126*r+.7152*g+.0722*b;
       };
-      return elements.map(el=>{
-        const c=getComputedStyle(el),fg=luminance(c.color),bg=luminance(c.backgroundColor);
-        return (Math.max(fg,bg)+.05)/(Math.min(fg,bg)+.05);
+      return elements.flatMap(card=>{
+        const background=luminance(getComputedStyle(card).backgroundColor);
+        return [card.querySelector('strong'),card.querySelector('small')].map(node=>{
+          if(!node)return NaN;
+          const foreground=luminance(getComputedStyle(node).color);
+          return (Math.max(foreground,background)+.05)/(Math.min(foreground,background)+.05);
+        });
       });
     });
+    expect(contrast).toHaveLength(8);
     for(const ratio of contrast){
       expect(Number.isFinite(ratio)).toBe(true);
       expect(ratio).toBeGreaterThanOrEqual(4.5);
