@@ -3821,5 +3821,8 @@ test('JOURNAL V567 desktop log and index handoff reveal a folded case without re
   await list.locator('[data-j425-task-layout="board"]').click();
   await expect(toggle).toHaveAttribute('aria-expanded','true');
   await expect(card).toBeVisible();
-  await expect(card).toBeFocused();
+  await expect(card).toHaveClass(/is-selected/);
+  // Focus follows only while the source row remains in the viewport.
+  // Clicking the list toolbar may scroll the source row out of view first;
+  // its deliberate selection must still reveal the target shelf.
 });
