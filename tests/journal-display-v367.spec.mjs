@@ -3828,3 +3828,51 @@ test('JOURNAL V567 desktop log and index handoff reveal a folded case without re
   // Clicking the list toolbar may scroll the source row out of view first;
   // its deliberate selection must still reveal the target shelf.
 });
+
+for (const width of [390,1366]) {
+  test(`JOURNAL V568 toolbar appointment opens its saved day note and restores edited content (${width}px)`,async({page})=>{
+    test.setTimeout(90000);
+    await boot(page,width);await choose(page,'journal');
+    await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+    const planner=page.locator('#scheduleView');
+    await planner.locator('[data-j425-mode="month"]').click();
+    await planner.locator('[data-j425-add-schedule]').click();
+    const dialog=page.locator('#scheduleDialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('#scheduleForm')).toHaveAttribute('data-journal-create-focus','1');
+    const title='JOURNAL V568 予定作成と編集の往復 '+width;
+    await dialog.locator('#scheduleTitle').fill(title);
+    await dialog.locator('[data-j565-schedule-minutes="90"]').click();
+    await dialog.locator('#scheduleForm button[type="submit"]').click();
+    await expect(dialog).toBeHidden();
+    await expect(planner.locator('.j425-week-grid.is-single-day')).toBeVisible();
+    const note=planner.locator('#j459SchedulePreview');
+    await expect(note).toBeVisible();
+    await expect(note.locator('h3')).toHaveText(title);
+    await expect(note).toBeFocused();
+    await expect(planner.locator('.j459-day-record').filter({hasText:title})).toBeVisible();
+    await note.locator('[data-j459-edit]').click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('#scheduleId')).not.toHaveValue('');
+    await dialog.locator('#scheduleMemo').fill('保存後の予定ノートに戻りました');
+    await dialog.locator('#scheduleForm button[type="submit"]').click();
+    await expect(dialog).toBeHidden();
+    await expect(note).toBeVisible();
+    await expect(note).toContainText('保存後の予定ノートに戻りました');
+    await expect(note).toBeFocused();
+    await note.locator('[data-j459-back]').click();
+    await expect(planner.locator('#j459SchedulePreview')).toHaveCount(0);
+    await expect(planner.locator('.j459-day-record').filter({hasText:title})
+      .locator('[data-j459-review]')).toBeFocused();
+    // Cancelling the top creation must not leak its post-save handoff into
+    // a different day-cell creation. This remains a view-only form marker.
+    await planner.locator('[data-j425-add-schedule]').click();
+    await expect(dialog.locator('#scheduleForm')).toHaveAttribute('data-journal-create-focus','1');
+    await dialog.locator('#closeScheduleDialog').click();
+    await planner.locator('[data-j443-add-schedule-date]').first().click();
+    await expect(dialog.locator('#scheduleForm')).not.toHaveAttribute('data-journal-create-focus','1');
+    await dialog.locator('#closeScheduleDialog').click();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+      .toBeLessThanOrEqual(2);
+  });
+}
