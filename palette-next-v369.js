@@ -767,12 +767,31 @@
         '<span data-period="'+key+'">'+label+' '+counts.get(key)+'</span>').join('')+'</div>';
   }
   function scheduleDayGroups(items) {
-    return schedulePeriods.map(([key,label])=>{
-      const group=items.filter(item=>schedulePeriod(item)===key);
-      return group.length?'<section class="pn-time-block" data-period="'+key+'">'+
-        '<header class="pn-timehead"><h3>'+label+'</h3><span>'+group.length+'件</span></header>'+
-        '<div class="pn-time-items">'+group.map(scheduleRow).join('')+'</div></section>':'';
-    }).join('');
+    // The daily rhythm bar and visual rail are read-only projections of the
+    // same event rows. No invented time slots, duplicate events or new writers.
+    const groups=schedulePeriods.map(([key,label])=>({
+      key,label,items:items.filter(item=>schedulePeriod(item)===key)
+    }));
+    const periods=groups.filter(group=>group.items.length>0);
+    const rhythm='<div class="pn-day-rhythm" aria-label="選択日の予定の流れ">'+
+      '<div class="pn-day-rhythm-title"><span>DAY IN MOTION / DAILY FLOW</span>'+
+      '<strong>この日の時間を見渡す</strong>'+
+      '<small>登録済みの予定 '+items.length+'件を時間帯で整理</small></div>'+
+      '<div class="pn-day-rhythm-steps" role="group" aria-label="時間帯へ移動">'+
+      periods.map(({key,label,items:rows},index)=>
+        '<button type="button" class="pn-day-rhythm-step" data-period="'+key+
+        '" data-pn-period-jump="'+key+'" aria-label="'+label+'の予定 '+rows.length+'件へ移動">'+
+        '<span class="pn-day-rhythm-step-no">'+String(index+1).padStart(2,'0')+'</span>'+
+        '<strong>'+label+'</strong><small>'+rows.length+'件</small></button>'
+      ).join('')+'</div></div>';
+    return rhythm+'<div class="pn-daily-flow" aria-label="時間帯別の予定タイムライン">'+
+      periods.map(({key,label,items:rows},index)=>
+        '<section class="pn-time-block" data-period="'+key+'">'+
+        '<header class="pn-timehead"><div><span class="pn-timehead-index">'+
+        String(index+1).padStart(2,'0')+' / '+escape(key.toUpperCase())+'</span>'+
+        '<h3 tabindex="-1">'+label+'</h3></div><span>'+rows.length+'件</span></header>'+
+        '<div class="pn-time-items">'+rows.map(scheduleRow).join('')+'</div></section>'
+      ).join('')+'</div>';
   }
   // Derive the visible series from canonical schedule records only.
   function seriesOccurrences(item) {
@@ -1094,9 +1113,28 @@
     const emptyReason=hasQuery&&hasColor?'検索語と選択した色に一致するメモはありません':
       hasQuery?'検索に一致するメモはありません':
       hasColor?'この色に該当するメモはありません':'メモはまだありません';
+    // Count only visible canonical notes. Color segments never reorder or
+    // duplicate the cards, and all filters retain the existing manual order.
+    const pinned=items.filter(memo=>memo.pinned).length;
+    const colorCounts=memoColors.map(([key,label])=>({
+      key,label,total:items.filter(memo=>memoPaperColor(memo.paperColor)===key).length
+    })).filter(row=>row.total>0);
+    const gallerySummary='<section class="pn-gallery-intro" aria-label="メモギャラリーの概要">'+
+      '<div class="pn-gallery-lead"><span>THE IDEA COLLECTION / YOUR NOTES</span>'+
+      '<h2>残した言葉を、<em>ひと目で。</em></h2>'+
+      '<p>色と配置で見渡せる、あなたの仕事のコレクション。</p></div>'+
+      '<div class="pn-gallery-overview"><div class="pn-gallery-counts">'+
+      '<div><strong>'+items.length+'</strong><span>表示中のメモ</span></div>'+
+      '<div><strong>'+pinned+'</strong><span>固定中</span></div>'+
+      '<div><strong>'+colorCounts.length+'</strong><span>使用中の色</span></div></div>'+
+      '<div class="pn-gallery-colorband" aria-hidden="true">'+
+      colorCounts.map(row=>'<span data-paper-color="'+row.key+
+        '" style="flex-grow:'+row.total+'"></span>').join('')+
+      '</div></div></section>';
     return pageHead('KEEP IT CLOSE','メモのギャラリー')+
       '<div class="pn-workactions"><span class="pn-section-eyebrow">MEMO COLLECTION / '+matched.length+'</span>'+
       '<button class="pn-button primary" type="button" data-pn-edit="memo">＋ 新しいメモ</button></div>'+
+      gallerySummary+
       '<div class="pn-memo-filterbar" role="group" aria-label="メモをカード色で絞り込み">'+
       filters.map(([key,label])=>{
         const count=key==='all'?matched.length:matched.filter(memo=>memoPaperColor(memo.paperColor)===key).length;
@@ -1118,13 +1156,17 @@
       '</div>'+
       '<div class="pn-memogrid">'+(items.length?items.map((memo,index)=>{
         const color=memoPaperColor(memo.paperColor);
+        // First visible item receives editorial emphasis, never a new sort key.
+        const featured=items.length>=3&&index===0;
         return '<button class="pn-memotile'+(memo.pinned?' is-pinned':'')+
+          (featured?' is-editorial-feature':'')+
           '" type="button" data-paper-color="'+color+'" data-pn-detail="memo" data-id="'+escape(memo.id)+'" aria-label="'+escape((memo.title||'無題')+'の詳細を開く')+'">'+
           '<div class="pn-memotop"><span class="pn-memo-number">NO. '+String(index+1).padStart(2,'0')+'</span>'+
           '<span class="pn-chip">'+escape(memo.category||'その他')+'</span>'+
           (memo.pinned?'<span aria-label="固定中">★</span>':'')+'</div>'+
+          (featured?'<span class="pn-memo-feature-caption" aria-hidden="true">FEATURED NOTE</span>':'')+
           '<strong>'+escape(memo.title||'無題')+'</strong>'+
-          (memo.body?'<p>'+escape(memo.body.slice(0,100))+'</p>':'')+
+          (memo.body?'<p>'+escape(memo.body.slice(0,featured?180:100))+'</p>':'')+
           '<small><span class="pn-memo-card-color">'+escape(memoColorLabel(color))+'</span>'+
           escape(memo.updatedBy||'')+(memo.updatedAt?' · '+escape(dateParts(memo.updatedAt)):'')+'</small></button>';
       }).join(''):'<div class="pn-sheet pn-empty pn-memo-empty-state" role="status">'+
@@ -3567,6 +3609,16 @@
       state.queries.schedule='';
       state.scrollPositions.schedule=0;
       switchPaletteRoute('schedule');
+      return;
+    }
+    if(target.hasAttribute('data-pn-period-jump')){
+      if(state.route!=='schedule'||state.scheduleView!=='day')return;
+      const period=target.dataset.pnPeriodJump;
+      const block=[...workspace.querySelectorAll('.pn-daily-flow .pn-time-block')]
+        .find(node=>node.dataset.period===period);
+      if(!block)return;
+      block.scrollIntoView({block:'start',behavior:'instant'});
+      block.querySelector('.pn-timehead h3')?.focus({preventScroll:true});
       return;
     }
     if(target.dataset.pnRoute) {

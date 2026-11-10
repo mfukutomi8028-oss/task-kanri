@@ -385,13 +385,15 @@ test('CI keeps Protocol mandatory, selects impacted suites, and protects nightly
   assert.match(protocol, /run: \.\/release-check\.ps1/);
   assert.doesNotMatch(protocol, /Install Chromium|Setup Java for Firebase RTDB Emulator/);
 
-  // Full mode uses two isolated browser shards. UI-only changes run only the
-  // known impacted specs (one shard); empty impacted targets must fail closed.
+  // Full mode runs four isolated browser shards and JOURNAL-only mode uses
+  // two. Other impacted specs use one shard; empty targets must fail closed.
   assert.match(browser, /needs: scope/);
   assert.match(browser, /if: \$\{\{ needs\.scope\.outputs\.browser == 'true' \}\}/);
   assert.match(browser, /fail-fast: false/);
   assert.match(browser, /shard: \$\{\{ fromJSON\(needs\.scope\.outputs\.shards\) \}\}/);
-  assert.match(browser, /npm run test:ui -- --shard=\$\{\{ matrix\.shard \}\}\/2/);
+  assert.ok(browser.includes('npm run test:ui -- --fully-parallel --shard=${{ matrix.shard }}/${{ needs.scope.outputs.shard_count }}'));
+  assert.match(read('playwright.config.mjs'), /workers:\s*process\.env\.CI \? 1/);
+  assert.ok(browser.includes('Browser shard ${{ matrix.shard }}/${{ needs.scope.outputs.shard_count }}'));
   assert.match(browser, /npx playwright test "\$\{selected\[@\]\}"/);
   assert.match(browser, /Targeted checks must not be empty/);
   assert.match(browser, /name: browser-report-\$\{\{ github\.run_id \}\}-shard-\$\{\{ matrix\.shard \}\}/);

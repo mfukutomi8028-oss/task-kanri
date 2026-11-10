@@ -1758,6 +1758,13 @@ for(const width of [320,390,1366]){
     await expect(groups.nth(index)).toHaveAttribute('data-period',period);
     await expect(groups.nth(index).locator('.pn-scheduleitem')).toHaveCount(count);
   }
+  const rhythm=page.locator('.pn-schedule-sheet .pn-day-rhythm');
+  await expect(rhythm).toBeVisible();
+  await expect(rhythm.locator('[data-pn-period-jump]')).toHaveCount(3);
+  await expect(rhythm).toContainText('登録済みの予定 6件');
+  await rhythm.locator('[data-pn-period-jump="afternoon"]').click();
+  await expect(groups.nth(1).locator('.pn-timehead h3')).toBeFocused();
+  await expect(groups.nth(1).locator('.pn-scheduleopen')).toContainText('Palette密度-午後4');
   await page.locator('[data-pn-schedule-view="week"]').click();
   const card=page.locator('.pn-week-agenda-day[data-pn-agenda-day="'+day+'"]');
   const rows=card.locator('.pn-week-agenda-list .pn-scheduleitem');
@@ -1927,6 +1934,12 @@ for(const width of [320,390,1366]){
   await expect(tiles).toHaveCount(4);
   await expect(sorter).toHaveValue('manual');
   expect(await ids()).toEqual(manual);
+  const gallery=page.locator('#paletteNextRoot .pn-gallery-intro');
+  await expect(gallery).toBeVisible();
+  await expect(gallery.locator('.pn-gallery-counts strong')).toHaveText(['4','1','4']);
+  await expect(gallery.locator('.pn-gallery-colorband [data-paper-color]')).toHaveCount(4);
+  await expect(tiles.filter({has:page.locator('.pn-memo-feature-caption')})).toHaveCount(1);
+  await expect(tiles.first()).toHaveClass(/is-editorial-feature/);
   await sorter.selectOption('title');
   expect(await ids()).toEqual(['palette-sort-pinned','palette-sort-a','palette-sort-b','palette-sort-c']);
   await sorter.selectOption('updated');
@@ -1936,6 +1949,9 @@ for(const width of [320,390,1366]){
   await page.locator('[data-pn-memo-filter="mint"]').click();
   await expect(tiles).toHaveCount(1);
   await expect(page.locator('.pn-memo-results')).toHaveText('表示 1件 ／ 全体 4件');
+  await expect(gallery.locator('.pn-gallery-counts strong')).toHaveText(['1','0','1']);
+  await expect(gallery.locator('.pn-gallery-colorband [data-paper-color="mint"]')).toHaveCount(1);
+  await expect(tiles.first()).not.toHaveClass(/is-editorial-feature/);
   await page.locator('[data-pn-memo-clear-filter]').click();
   await expect(tiles).toHaveCount(4);
   await expect(page.locator('[data-pn-memo-filter="all"]')).toHaveAttribute('aria-pressed','true');
