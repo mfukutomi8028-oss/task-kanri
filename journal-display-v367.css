@@ -6862,7 +6862,7 @@ html[data-wb-display="journal"] #listView .j565-index-sort {
   border-top:1px dashed #d7dac9;font:750 12px/1.4 var(--j-text,system-ui);color:#405b47;
 }
 html[data-wb-display="journal"] :is(#boardView .j565-atelier-sort,#listView .j565-index-sort)>select {
-  box-sizing:border-box;width:100%;min-width:0;min-height:42px;
+  box-sizing:border-box;width:100%;min-width:0;min-height:44px;
   border:1px solid #c9d2c4;border-radius:6px;padding:8px;
   color:#354f3a;background:#fffefa;font:650 12px var(--j-text,system-ui);
 }
