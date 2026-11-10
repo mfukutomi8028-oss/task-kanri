@@ -2841,3 +2841,97 @@ for(const width of [320,390,1366]){
   )).toBeLessThanOrEqual(2);
  });
 }
+
+
+// Visual finishing gate: rendered geometry and WCAG AA text on all six paper
+// colors, both themes, and the supported narrow/desktop viewports.
+// The existing screenshot-on-failure policy retains visual evidence on errors.
+for (const width of [320,390,1366]) {
+  test('Palette finishing gate: legible cards and distinct route layouts at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await page.addInitScript(({room})=>{
+      const key='system-business-memos:'+room;
+      const colors=['ivory','lemon','peach','mint','sky','lavender'];
+      const now=Date.now();
+      const entries=Object.fromEntries(colors.map((color,index)=>{
+        const id='palette-qa-'+color;
+        return [id,{id,title:'Palette QA '+color,body:'色付きメモの視認性を確認します。',
+          category:'その他',tags:[],paperColor:color,pinned:false,
+          createdAt:now-index*1000,updatedAt:now-index*1000,
+          createdBy:'福冨',updatedBy:'福冨',revision:1}];
+      }));
+      localStorage.setItem(key,JSON.stringify(entries));
+    },{room});
+    await boot(page,width);
+    const root=page.locator('#paletteNextRoot');
+    const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+    for(const mode of ['light','dark']){
+      if(mode==='dark')await root.locator('[data-pn-theme]').click();
+      await expect(page.locator('#pnApp')).toHaveAttribute('data-theme',mode);
+      await root.locator(nav+' [data-pn-route="today"]').click();
+      const cover=await root.locator('.pn-hero').evaluate(el=>{
+        const r=el.getBoundingClientRect();
+        return {left:r.left,right:r.right,width:r.width,height:r.height,
+          overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+      });
+      expect(cover.left).toBeGreaterThanOrEqual(-1);
+      expect(cover.right).toBeLessThanOrEqual(width+1);
+      expect(cover.overflow).toBeLessThanOrEqual(2);
+      if(width>780){
+        expect(cover.width).toBeGreaterThanOrEqual(500);
+        expect(cover.height).toBeGreaterThanOrEqual(160);
+      }else{
+        expect(cover.width).toBeGreaterThanOrEqual(width-55);
+      }
+
+      await root.locator(nav+' [data-pn-route="tasks"]').click();
+      await expect(root.locator('.pn-task-sheet')).toBeVisible();
+      await root.locator(nav+' [data-pn-route="schedule"]').click();
+      await expect(root.locator('.pn-schedule-sheet')).toBeVisible();
+      await root.locator(nav+' [data-pn-route="memos"]').click();
+      await expect(root.locator('.pn-gallery-intro')).toBeVisible();
+      const tiles=root.locator('.pn-memotile');
+      await expect(tiles).toHaveCount(6);
+      const result=await tiles.evaluateAll(elements=>{
+        const luminance=value=>{
+          const legacy=value.match(/^rgba?\(([^)]+)\)$/);
+          const modern=value.match(/^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+          const channels=legacy?legacy[1].match(/[\d.]+/g)?.slice(0,3).map(v=>Number(v)/255):
+            modern?modern.slice(1,4).map(Number):null;
+          if(!channels||channels.length!==3||channels.some(v=>!Number.isFinite(v)))return NaN;
+          const [r,g,b]=channels.map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+          return .2126*r+.7152*g+.0722*b;
+        };
+        return elements.map(card=>{
+          const box=card.getBoundingClientRect();
+          const bg=luminance(getComputedStyle(card).backgroundColor);
+          const text=['.pn-memo-number','strong','small'].map(selector=>{
+            const el=card.querySelector(selector);
+            if(!el)return {selector,contrast:NaN,fontSize:0};
+            const cs=getComputedStyle(el),fg=luminance(cs.color);
+            return {selector,fontSize:parseFloat(cs.fontSize),
+              contrast:(Math.max(fg,bg)+.05)/(Math.min(fg,bg)+.05)};
+          });
+          return {color:card.dataset.paperColor,left:box.left,right:box.right,
+            width:box.width,text};
+        });
+      });
+      expect(result.map(row=>row.color).sort()).toEqual(
+        ['ivory','lemon','peach','mint','sky','lavender'].sort());
+      for(const card of result){
+        expect(card.left).toBeGreaterThanOrEqual(-1);
+        expect(card.right).toBeLessThanOrEqual(width+1);
+        expect(card.width).toBeGreaterThanOrEqual(width<=410?180:135);
+        for(const item of card.text){
+          expect(Number.isFinite(item.contrast),
+            mode+' '+card.color+' '+item.selector+' contrast').toBe(true);
+          expect(item.contrast,mode+' '+card.color+' '+item.selector).toBeGreaterThanOrEqual(4.5);
+          expect(item.fontSize,mode+' '+card.color+' '+item.selector).toBeGreaterThanOrEqual(10);
+        }
+      }
+      const overflow=await page.evaluate(()=>
+        document.documentElement.scrollWidth-document.documentElement.clientWidth);
+      expect(overflow).toBeLessThanOrEqual(2);
+    }
+  });
+}
