@@ -32,3 +32,27 @@ JOURNALの画面を、Classicと無関係な手帳型UIとして高品質に見�
 4. 小物のネットワーク要求はバージョン付きの同一サイト相対パス。Canvaの有効期限付きリンクを参照しない。
 5. JOURNALからClassic・Origin・Paletteへ切り替えても装飾用ノードやスタイルが残らない。
 6. 既存のProtocol/ブラウザ回帰に加え、表示・実操作とメモ並び替え/色変更/画面切替を確認する。
+
+## 2026-11-10：大人向けエディトリアル文具画への改修
+
+以前のCanva原本（上記デザインID）は参考資料であり、現行アプリが直接読み込んでいる画像ではない。現在のJOURNALには恒久的な同一サイト内SVGが配置されている。期限付きCanva URLを使用しない方針は維持する。
+
+### 今回実際に使用されている8素材（既存ファイルを直接改修）
+| 画面 | SVG | 改修 |
+| --- | --- | --- |
+| 今日 | `assets/journal-bookmark-seal-v440.svg` | 彩度を抑えた封蝋と和紙・布しおり |
+| タスク机上 | `assets/journal-atelier-cards-v441.svg` | 生成り・オリーブ・クラフト紙の重なり |
+| タスク一覧 | `assets/journal-pen-v425.svg` | マットな深緑のペンと古美真鍮の細線 |
+| タスク一覧 | `assets/journal-plant-v425.svg` | 植物図鑑風の細い茎・葉脈 |
+| ToDo | `assets/journal-todo-stationery-v442.svg` | 落ち着いた木製スタンプ・真鍮色定規 |
+| 予定 | `assets/journal-schedule-botanical-v442.svg` | 押し花標本と目立たない日付紙片 |
+| メモ | `assets/journal-memo-linen-v442.svg` | 麻織り・柔らかな布リボン |
+| タスク・メモ | `assets/journal-fasteners-v425.svg` | 8種類の留め具の金属光沢・和紙彩度を抑制 |
+
+旧素材 `journal-date-stamp-v425.svg`、`journal-herbarium-v425.svg`、`journal-ruler-v425.svg`、`journal-stamp-v425.svg` は現行のJOURNAL実画面から参照されていないため、再表示や新規組込みはしない。現在利用中の8素材の既存パス・サイズ・外部SVGシンボルIDは変えず、画面レイアウト・Firebase・操作処理を維持する。
+
+### 品質と確認
+- ページ固有の小物を使い回しせず、細い線、低彩度の草色・深緑、生成り、古美真鍮、薄い実物感のある陰影に統一。
+- ブラウザ幅320px/390px/1366px、既存の画像枠、`pointer-events:none`、`aria-hidden` を保持する。
+- 全SVGは外部画像・CanvaサムネイルURL・フォントファイルなし。メモ留め具の8つの`<symbol>` IDも維持。
+- 画像ファイルの増殖は避け、Git履歴を残したうえで現存ファイルを直接改修。

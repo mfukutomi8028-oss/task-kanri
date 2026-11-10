@@ -1,1 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 255" role="img" aria-label="装飾用の緑の枝葉"><defs><linearGradient id="leaf" x2=".8" y2="1"><stop stop-color="#bdd09b"/><stop offset=".4" stop-color="#648b54"/><stop offset="1" stop-color="#2a613e"/></linearGradient><filter id="s"><feGaussianBlur stdDeviation="4"/></filter></defs><ellipse cx="267" cy="53" rx="80" ry="24" fill="#464b38" opacity=".07" filter="url(#s)"/><path d="M357 17Q225 34 164 83T8 226" fill="none" stroke="#70855e" stroke-width="5" stroke-linecap="round"/><path d="M323 22Q249 76 194 131M288 29Q217 14 180 64M223 59Q144 43 100 111M130 108Q83 79 38 118M139 109Q160 153 115 198M87 160Q39 154 8 195" stroke="#738c64" stroke-width="3.6" fill="none"/><g fill="url(#leaf)" stroke="#457349" stroke-width="1.1"><path d="M302 24Q303-12 259 1Q245 21 302 24Z"/><path d="M275 51Q302 78 329 44Q326 21 275 51Z"/><path d="M237 57Q235 17 193 32Q186 55 237 57Z"/><path d="M197 81Q230 112 250 75Q250 50 197 81Z"/><path d="M184 102Q168 67 135 85Q130 112 184 102Z"/><path d="M154 125Q178 160 205 130Q202 108 154 125Z"/><path d="M115 133Q114 98 79 104Q65 134 115 133Z"/><path d="M96 164Q135 190 148 153Q132 129 96 164Z"/><path d="M69 170Q65 138 34 141Q22 164 69 170Z"/><path d="M42 192Q78 229 99 194Q94 176 42 192Z"/><path d="M13 220Q11 188 0 202L1 230Z"/></g><g stroke="#d0dfb6" stroke-width="1.3" opacity=".55"><path d="M282 19l-18-7M214 52l-18-6M182 92l-31 1M101 129l-20-11M66 167l-28-10"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 255" role="img" aria-label="植物図鑑風のオリーブの枝葉">
+
+<defs>
+ <linearGradient id="leaves" x2="1" y2="1"><stop stop-color="#9eae93"/><stop offset="1" stop-color="#536e5b"/></linearGradient>
+</defs>
+<!-- A slender field-botanical drawing; quiet ink veins replace glossy cartoon leaves. -->
+<path d="M349 22Q268 39 203 83Q130 136 63 207Q42 228 13 240" fill="none" stroke="#657762" stroke-width="2.7" stroke-linecap="round"/>
+<path d="M308 37Q289 66 280 89M282 45Q240 39 225 48M241 63Q248 94 239 114M211 79Q174 66 153 72M188 94Q207 122 204 143M166 112Q136 99 107 108M143 136Q153 158 145 180M117 154Q81 139 61 151M96 174Q110 198 103 218M67 207Q47 184 30 190" fill="none" stroke="#70836b" stroke-width="1.75" stroke-linecap="round"/>
+<g fill="url(#leaves)" stroke="#58725b" stroke-width=".95" stroke-linejoin="round">
+ <path d="M301 42Q292 4 263 12Q260 35 301 42Z"/><path d="M285 74Q313 88 334 60Q318 40 285 74Z"/>
+ <path d="M264 57Q258 25 227 32Q226 55 264 57Z"/><path d="M242 101Q267 119 287 90Q272 75 242 101Z"/>
+ <path d="M217 78Q208 47 181 55Q181 75 217 78Z"/><path d="M200 126Q230 132 242 108Q218 96 200 126Z"/>
+ <path d="M178 100Q171 76 143 81Q141 101 178 100Z"/><path d="M160 151Q188 165 203 137Q188 124 160 151Z"/>
+ <path d="M145 129Q132 103 108 116Q116 139 145 129Z"/><path d="M109 174Q136 188 150 161Q131 149 109 174Z"/>
+ <path d="M95 164Q81 144 57 158Q64 181 95 164Z"/><path d="M68 204Q89 221 105 204Q91 184 68 204Z"/>
+ <path d="M55 221Q42 198 22 212Q26 234 55 221Z"/>
+</g>
+<g fill="none" stroke="#d2dbbf" stroke-width=".7" opacity=".85" stroke-linecap="round">
+ <path d="M266 21L299 40M333 61L287 75M228 34L263 56M285 92L243 103M181 56L216 77M241 110L201 125M144 83L177 101M202 137L164 152M109 118L144 130M148 163L111 174M58 159L94 165M104 205L70 205M22 214L54 222"/>
+</g>
+<path d="M23 241q25-8 44-29" stroke="#9b9e82" fill="none" stroke-width=".65" opacity=".65"/>
+</svg>

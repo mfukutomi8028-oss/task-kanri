@@ -300,6 +300,31 @@ test('Ver.440 JOURNAL Today uses a permanent local vector without duplicated CSS
   assert.doesNotMatch(artwork,/(?:href|xlink:href)=[\"']https?:\/\//);
 });
 
+test('JOURNAL editorial stationery keeps all eight active local illustrations compatible',()=>{
+  const views=[
+    ['journal-bookmark-seal-v440.svg','300 116'],
+    ['journal-atelier-cards-v441.svg','260 116'],
+    ['journal-pen-v425.svg','540 98'],
+    ['journal-plant-v425.svg','360 255'],
+    ['journal-todo-stationery-v442.svg','540 148'],
+    ['journal-schedule-botanical-v442.svg','505 186'],
+    ['journal-memo-linen-v442.svg','340 145']
+  ];
+  for(const [filename,size] of views){
+    const svg=read('assets/'+filename);
+    assert.match(svg,/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+    assert.ok(svg.includes('viewBox="0 0 '+size+'"'),filename+' preserves its intrinsic canvas');
+    assert.match(svg,/<\/svg>\s*$/);
+    assert.doesNotMatch(svg,/<(?:script|foreignObject|image)\b|(?:href|xlink:href)=["']https?:\/\//);
+    assert.ok(svg.length>1200,filename+' contains real vector drawing');
+  }
+  const hardware=read('assets/journal-fasteners-v425.svg');
+  for(const id of ['binder','clip','pin','tape','washi','corner','grommet','bulldog'])
+    assert.match(hardware,new RegExp('<symbol id="'+id+'"'));
+  assert.match(hardware,/<\/svg>\s*$/);
+  assert.doesNotMatch(hardware,/<(?:script|foreignObject|image)\b|(?:href|xlink:href)=["']https?:\/\//);
+});
+
 test('Ver.443 JOURNAL condensed folios preserve meaningful details and allow touch calendar creation',()=>{
   const app=read('app.js'),styles=read('journal-display-v367.css');
   assert.match(app,/data-j443-add-schedule-date/);

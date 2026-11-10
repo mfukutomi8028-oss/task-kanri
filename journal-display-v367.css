@@ -3711,7 +3711,7 @@ html[data-wb-display="journal"] .j420-atelier-stationery {
    duplicate was removed instead of leaving two competing visual owners. */
 html[data-wb-display="journal"] .j420-atelier-stationery .j441-atelier-cards {
   display:block;flex:0 1 148px;width:min(48%,148px);height:60px;object-fit:contain;
-  object-position:left center;filter:drop-shadow(1px 2px 1px #6c63452b);
+  object-position:left center;filter:drop-shadow(0 1px 1px #514a4020);
 }
 html[data-wb-display="journal"] .j420-atelier-stationery .j420-stamp {
   position:relative;inset:auto;display:grid;place-items:center;transform:rotate(4deg);
@@ -3736,7 +3736,7 @@ html[data-wb-display="journal"] .j425-today-stationery {
 html[data-wb-display="journal"] .j425-today-stationery .j440-today-bookmark {
   display:block;flex:0 1 300px;width:min(100%,300px);height:auto;
   max-height:94px;object-fit:contain;object-position:center right;
-  filter:drop-shadow(1px 2px 2px #6c63452b);
+  filter:drop-shadow(0 1px 1px #514a4020);
 }
 @media(max-width:480px) {
   html[data-wb-display="journal"] .j425-today-stationery {
@@ -4641,7 +4641,7 @@ html[data-wb-display="journal"] .j425-memo-fastener {
   position:absolute;display:block;z-index:2;pointer-events:none;
   width:29px;height:29px;top:-13px;left:40%;
   transform:translateX(var(--j-fastener-nudge,0px)) rotate(var(--j-fastener-tilt,0deg));
-  filter:drop-shadow(1px 2px 1px #7e6f5535);
+  filter:drop-shadow(0 1px 1px #574e421b);
 }
 html[data-wb-display="journal"] .j425-memo-fastener svg {width:100%;height:100%;display:block;overflow:visible}
 html[data-wb-display="journal"] .j425-memo-fastener.is-clip,
@@ -4867,7 +4867,7 @@ html[data-wb-display="journal"] .j425-list-props {
 html[data-wb-display="journal"] .j425-list-props .j430-list-plant {
   display:block!important;width:100px!important;height:79px!important;min-width:0!important;
   object-fit:contain!important;align-self:end;
-  filter:drop-shadow(1px 2px 1px #53674936)!important;
+  filter:drop-shadow(0 1px 1px #4857481f)!important;
 }
 html[data-wb-display="journal"] .j425-list-props .j430-list-paper-tag {
   align-self:center;justify-self:start;transform:rotate(-5deg);
@@ -4884,7 +4884,7 @@ html[data-wb-display="journal"] .j425-list-props .j430-list-pen {
   display:block!important;width:100%!important;max-width:350px!important;
   height:auto!important;min-width:0!important;justify-self:end;
   object-fit:contain!important;object-position:center bottom!important;
-  filter:drop-shadow(1px 3px 2px #3d44302b)!important;
+  filter:drop-shadow(0 1px 1px #4147391f)!important;
 }
 
 /* ToDo trays: foldable notebook shelves; no fictitious due/priority fields. */
@@ -4927,7 +4927,7 @@ html[data-wb-display="journal"] .j425-todo-props {
 html[data-wb-display="journal"] .j425-todo-props .j442-todo-stationery {
   display:block;flex:0 1 400px;width:min(100%,400px);height:auto;
   max-height:110px;object-fit:contain;object-position:right center;
-  filter:drop-shadow(1px 2px 2px #685d4730);
+  filter:drop-shadow(0 1px 1px #514a4020);
 }
 /* Schedule has its own pressed-flower and date-stamp vignette, no pen. */
 html[data-wb-display="journal"] .j430-schedule-categories {
@@ -4954,11 +4954,11 @@ html[data-wb-display="journal"] .j425-schedule-props {
 html[data-wb-display="journal"] .j425-schedule-props .j442-schedule-botanical {
   display:block;flex:0 1 390px;width:min(100%,390px);height:auto;
   max-height:120px;object-fit:contain;object-position:left center;
-  filter:drop-shadow(1px 2px 2px #63574728);
+  filter:drop-shadow(0 1px 1px #514a4020);
 }
 /* Memo cards retain distinct fasteners; the footer alone uses linen. */
 html[data-wb-display="journal"] .j425-memo-gallery .j425-memo-fastener {
-  z-index:2!important;pointer-events:none!important;filter:drop-shadow(1px 3px 2px #58493051)!important;
+  z-index:2!important;pointer-events:none!important;filter:drop-shadow(0 1px 1px #574e4228)!important;
 }
 html[data-wb-display="journal"] .j425-memo-gallery .j425-memo-fastener.is-pin {
   left:calc(50% - 12px + var(--j-fastener-nudge,0px))!important;top:-16px!important;width:27px!important;height:27px!important;
@@ -4974,7 +4974,7 @@ html[data-wb-display="journal"] .j425-memo-gallery .work-memo-card-v167.j425-mem
 html[data-wb-display="journal"] .j425-memo-gallery .j442-memo-linen {
   display:block;width:min(205px,58%);height:auto;max-height:90px;
   margin:15px 9px 3px auto;object-fit:contain;pointer-events:none;
-  filter:drop-shadow(1px 2px 2px #54483222);
+  filter:drop-shadow(0 1px 1px #514a4020);
 }
 html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {
   max-height:min(85dvh,960px)!important;
