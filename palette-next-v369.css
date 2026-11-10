@@ -64,7 +64,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   display:flex;align-items:center;justify-content:center;flex-direction:column;
   min-height:68px;width:100%;gap:5px;border:1px solid transparent;
   border-radius:17px;background:transparent;color:var(--pn-muted);
-  font-size:11px;font-weight:760;letter-spacing:.01em;transition:background .16s,transform .16s,border-color .16s;
+  font-size:12px;font-weight:760;letter-spacing:.01em;transition:background .16s,transform .16s,border-color .16s;
 }
 #paletteNextRoot .pn-rail button .pn-symbol{
   width:29px;height:29px;display:grid;place-items:center;border-radius:10px;
@@ -516,7 +516,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
 #paletteNextRoot .pn-task-metric[data-metric="mine"]{background:var(--pn-mint)}
 #paletteNextRoot .pn-task-metric-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:16px}
 #paletteNextRoot .pn-task-metric-top small{
-  color:var(--pn-muted);font-size:10px;font-weight:880;letter-spacing:.14em;
+  color:var(--pn-muted);font-size:12px;font-weight:880;letter-spacing:.08em;
 }
 #paletteNextRoot .pn-task-metric-icon{
   position:absolute;width:20px;height:20px;right:-6px;top:-6px;
@@ -1037,14 +1037,14 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
   #paletteNextRoot .pn-inspect-facts-task .pn-inspect-fact:nth-child(-n+3){
     padding:8px;min-height:70px;
   }
-  #paletteNextRoot .pn-inspect-facts-task .pn-inspect-fact dt{font-size:10px}
+  #paletteNextRoot .pn-inspect-facts-task .pn-inspect-fact dt{font-size:12px}
   #paletteNextRoot .pn-inspect-facts-task .pn-inspect-fact:nth-child(-n+3) dd{
-    font-size:12px;line-height:1.4;
+    font-size:13px;line-height:1.4;
   }
   #paletteNextRoot .pn-inspect-facts-schedule{gap:6px;margin-bottom:10px}
   #paletteNextRoot .pn-inspect-facts-schedule .pn-inspect-fact{padding:8px 7px}
-  #paletteNextRoot .pn-inspect-facts-schedule .pn-inspect-fact dt{font-size:10px}
-  #paletteNextRoot .pn-inspect-facts-schedule .pn-inspect-fact dd{font-size:12px}
+  #paletteNextRoot .pn-inspect-facts-schedule .pn-inspect-fact dt{font-size:12px}
+  #paletteNextRoot .pn-inspect-facts-schedule .pn-inspect-fact dd{font-size:13px}
   #paletteNextRoot .pn-inspect-agenda{padding:0 14px;gap:6px;margin-bottom:9px}
   #paletteNextRoot .pn-inspect-agenda-field{padding:8px 9px}
   #paletteNextRoot .pn-detail[data-inspector="schedule"] .pn-inspect-timeband{
@@ -1244,7 +1244,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
     background:color-mix(in srgb,var(--pn-dock) 96%,transparent);
     backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(28,22,48,.15);
   }
-  #paletteNextRoot .pn-mobile-nav button{display:grid;justify-items:center;align-content:center;gap:2px;min-height:59px;border:0;border-radius:15px;background:transparent;color:var(--pn-muted);font-size:11px;font-weight:720}
+  #paletteNextRoot .pn-mobile-nav button{display:grid;justify-items:center;align-content:center;gap:2px;min-height:59px;border:0;border-radius:15px;background:transparent;color:var(--pn-muted);font-size:12px;font-weight:720}
   #paletteNextRoot .pn-mobile-nav button .pn-symbol{display:grid;place-items:center;width:26px;height:26px}
   #paletteNextRoot .pn-mobile-nav button svg{width:21px;height:21px}
   #paletteNextRoot .pn-mobile-nav button[aria-current="page"]{background:var(--pn-soft);color:var(--pn-strong)}
@@ -1311,7 +1311,7 @@ html[data-wb-palette-next-preview="true"] body{padding:0!important;overflow-x:hi
 #paletteNextRoot .pn-memotile:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(39,27,62,.095);border-color:color-mix(in srgb,var(--pn-accent) 48%,var(--pn-border))}
 #paletteNextRoot .pn-memotop{display:flex;align-items:center;justify-content:space-between;gap:7px;position:relative}
 #paletteNextRoot .pn-memo-number{font-size:11px;font-weight:860;letter-spacing:.13em;color:color-mix(in srgb,var(--pn-ink) 55%,var(--pn-muted))}
-#paletteNextRoot .pn-memotile .pn-chip{font-size:10px;padding:4px 8px;background:color-mix(in srgb,var(--pn-paper) 70%,transparent);max-width:72%;overflow:hidden;text-overflow:ellipsis}
+#paletteNextRoot .pn-memotile .pn-chip{font-size:12px;padding:4px 8px;background:color-mix(in srgb,var(--pn-paper) 70%,transparent);max-width:72%;overflow:hidden;text-overflow:ellipsis}
 #paletteNextRoot .pn-memotile strong{position:relative;font-size:17px;font-weight:870;line-height:1.4;letter-spacing:-.03em;overflow-wrap:anywhere}
 #paletteNextRoot .pn-memotile p{
   position:relative;font-size:13px;line-height:1.75;overflow-wrap:anywhere;
@@ -3196,7 +3196,7 @@ html[data-wb-palette-next-preview="true"] body{
   display:flex;align-items:center;justify-content:space-between;gap:9px;min-width:0;
 }
 #paletteNextRoot .pn-board-card-label{
-  font-size:11px;font-weight:800;color:var(--pn-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:12px;font-weight:800;color:var(--pn-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 #paletteNextRoot .pn-board-star{min-width:40px;min-height:40px;font-size:20px}
 #paletteNextRoot .pn-board-open{
@@ -3387,7 +3387,7 @@ html[data-wb-palette-next-preview="true"] body{
   color:var(--pn-ink);font-size:clamp(20px,2.4vw,30px);line-height:1.1;
   font-weight:900;font-variant-numeric:tabular-nums;
 }
-#paletteNextRoot .pn-gallery-counts span{color:var(--pn-muted);font-size:10px;line-height:1.5;font-weight:700}
+#paletteNextRoot .pn-gallery-counts span{color:var(--pn-muted);font-size:12px;line-height:1.45;font-weight:700;overflow-wrap:anywhere}
 #paletteNextRoot .pn-gallery-colorband{
   display:flex;gap:4px;overflow:hidden;height:9px;border-radius:99px;
   background:var(--pn-bg);
@@ -3453,7 +3453,7 @@ html[data-wb-palette-next-preview="true"] body{
   #paletteNextRoot .pn-day-rhythm-steps{grid-template-columns:repeat(3,minmax(0,1fr))}
   #paletteNextRoot .pn-day-rhythm-step{min-height:76px;padding:8px}
   #paletteNextRoot .pn-day-rhythm-step-no{font-size:9px}
-  #paletteNextRoot .pn-gallery-counts span{font-size:9px}
+  #paletteNextRoot .pn-gallery-counts span{font-size:11px}
   #paletteNextRoot .pn-memogrid{grid-template-columns:minmax(0,1fr)}
   #paletteNextRoot .pn-memotile.is-editorial-feature{grid-column:auto;min-height:162px;padding:15px}
   #paletteNextRoot .pn-memotile.is-editorial-feature strong{font-size:20px}

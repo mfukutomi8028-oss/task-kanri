@@ -1030,6 +1030,13 @@ for (const width of [390,1366]) {
   await expect(page.locator('#pnDetail [data-pn-related-back]')).toBeVisible();
   await page.locator('#pnDetail [data-pn-related-back]').click();
   await expect(page.locator('#pnDetail')).toContainText('SCHEDULE DETAIL');
+  if(width<=780){
+    const type=await page.locator('#pnDetail .pn-inspect-facts-schedule .pn-inspect-fact').first()
+      .evaluate(el=>({label:parseFloat(getComputedStyle(el.querySelector('dt')).fontSize),
+        value:parseFloat(getComputedStyle(el.querySelector('dd')).fontSize)}));
+    expect(type.label).toBeGreaterThanOrEqual(12);
+    expect(type.value).toBeGreaterThanOrEqual(13);
+  }
   await expect(page.locator('#pnDetail .pn-inspect-agenda [data-pn-linked-task]')).toHaveCount(1);
   await page.locator('#pnDetail [data-pn-linked-task]').click();
   await expect(page.locator('#pnDetail')).toContainText('TASK DETAIL');
@@ -1896,6 +1903,14 @@ for(const width of [320,390,1366]){
   await rows.first().locator('[data-pn-detail="task"]').click();
   const detail=page.locator('#pnDetail');
   await expect(detail.locator('.pn-inspect-sequence-position')).toHaveText('1 / 3');
+  if(width<=780){
+    const type=await detail.locator('.pn-inspect-facts-task .pn-inspect-fact').first().evaluate(el=>({
+      label:parseFloat(getComputedStyle(el.querySelector('dt')).fontSize),
+      value:parseFloat(getComputedStyle(el.querySelector('dd')).fontSize)
+    }));
+    expect(type.label).toBeGreaterThanOrEqual(12);
+    expect(type.value).toBeGreaterThanOrEqual(13);
+  }
   await expect(detail.locator('[data-pn-inspect-step="-1"]')).toBeDisabled();
   await detail.locator('[data-pn-inspect-step="1"]').click();
   await expect(detail.locator('.pn-inspect-hero h2')).toHaveText('一覧移動 B');
@@ -2812,6 +2827,9 @@ for(const width of [320,390,1366]){
   await expect(card).toHaveCount(1);
   await expect(page.locator('#paletteNextRoot .pn-task-board')).toBeVisible();
   await expect(card.locator('[data-pn-detail="task"]')).toBeVisible();
+  const categorySize=await card.locator('.pn-board-card-label')
+    .evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+  expect(categorySize).toBeGreaterThanOrEqual(12);
   const before=await page.evaluate(title=>{
     const task=window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.title===title);
     return task&&{id:task.id,revision:task.revision,status:task.status};
@@ -2868,6 +2886,10 @@ for (const width of [320,390,1366]) {
     for(const mode of ['light','dark']){
       if(mode==='dark')await root.locator('[data-pn-theme]').click();
       await expect(page.locator('#pnApp')).toHaveAttribute('data-theme',mode);
+      const navFontSizes=await root.locator(nav+' [data-pn-route]').evaluateAll(nodes=>
+        nodes.map(el=>parseFloat(getComputedStyle(el).fontSize)));
+      expect(navFontSizes).toHaveLength(5);
+      for(const fontSize of navFontSizes)expect(fontSize).toBeGreaterThanOrEqual(12);
       await root.locator(nav+' [data-pn-route="today"]').click();
       const cover=await root.locator('.pn-hero').evaluate(el=>{
         const r=el.getBoundingClientRect();
@@ -2886,12 +2908,23 @@ for (const width of [320,390,1366]) {
 
       await root.locator(nav+' [data-pn-route="tasks"]').click();
       await expect(root.locator('.pn-task-sheet')).toBeVisible();
+      const metricFont=await root.locator('.pn-task-metric-top small').first()
+        .evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+      expect(metricFont).toBeGreaterThanOrEqual(12);
       await root.locator(nav+' [data-pn-route="schedule"]').click();
       await expect(root.locator('.pn-schedule-sheet')).toBeVisible();
       await root.locator(nav+' [data-pn-route="memos"]').click();
       await expect(root.locator('.pn-gallery-intro')).toBeVisible();
+      const statSizes=await root.locator('.pn-gallery-counts span').evaluateAll(nodes=>
+        nodes.map(el=>parseFloat(getComputedStyle(el).fontSize)));
+      expect(statSizes).toHaveLength(3);
+      for(const size of statSizes)expect(size).toBeGreaterThanOrEqual(width<=410?11:12);
       const tiles=root.locator('.pn-memotile');
       await expect(tiles).toHaveCount(6);
+      const categoryFonts=await tiles.locator('.pn-chip').evaluateAll(nodes=>
+        nodes.map(el=>parseFloat(getComputedStyle(el).fontSize)));
+      expect(categoryFonts).toHaveLength(6);
+      for(const size of categoryFonts)expect(size).toBeGreaterThanOrEqual(12);
       const result=await tiles.evaluateAll(elements=>{
         const luminance=value=>{
           const legacy=value.match(/^rgba?\(([^)]+)\)$/);
