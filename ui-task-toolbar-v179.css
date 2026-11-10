@@ -1,11 +1,9 @@
-/* Ver.565: canonical toolbar after retiring the unsorted quick-add action.
- * Classic keeps its create/search/sort controls; JOURNAL owns separate task
- * navigation. Do not reserve an empty grid track for removed .quick-add.
- *
- * The two sidebar-specific selectors preserve existing collapsed/pinned layout
- * precedence against old cached base CSS without reintroducing quick add.
+/* Ver.566: Classic task toolbar after the removed unsorted quick-add.
+ * Scope the geometry strictly to task-mode. Other screens (Today, ToDo,
+ * Schedule and modal surfaces) retain their existing CSS owners and visuals.
+ * JOURNAL hides its legacy console and uses its own layout navigation.
  */
-html body .app-shell .main > .toolbar,
+html body.task-mode .app-shell .main > .toolbar,
 html body.task-mode .app-shell.detail-open .main > .toolbar,
 html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .main > .toolbar,
 html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .main > .toolbar {
@@ -16,38 +14,17 @@ html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detai
   gap:10px 12px!important;
   max-width:100%!important;
 }
-html body .app-shell .main > .toolbar > * {min-width:0!important}
-html body .app-shell .main > .toolbar .search-box {
-  width:100%!important;
-  min-width:0!important;
+html body.task-mode .app-shell .main > .toolbar > * {min-width:0!important}
+html body.task-mode .app-shell .main > .toolbar .search-box,
+html body.task-mode .app-shell .main > .toolbar #sortSelect {
+  width:100%!important;min-width:0!important;
 }
-html body .app-shell .main > .toolbar #sortSelect {
-  width:100%!important;
-  min-width:0!important;
-}
-html body.today-mode .app-shell .main > .toolbar {
-  grid-template-columns:minmax(0,280px)!important;
-  grid-template-areas:"new"!important;
-}
-html body.schedule-mode .app-shell .main > .toolbar {
-  grid-template-columns:minmax(0,1fr)!important;
-  grid-template-areas:"search"!important;
-}
-html body.dashboard-mode .app-shell .main > .toolbar {display:none!important}
 @media(max-width:980px){
-  html body .app-shell .main > .toolbar,
+  html body.task-mode .app-shell .main > .toolbar,
   html body.task-mode .app-shell.detail-open .main > .toolbar,
   html body.task-mode.desktop-sidebar-v158:not(.desktop-sidebar-pinned) .app-shell.detail-open .main > .toolbar,
   html body.task-mode.desktop-sidebar-v158.desktop-sidebar-pinned .app-shell.detail-open .main > .toolbar {
     grid-template-columns:minmax(0,1fr)!important;
     grid-template-areas:"new" "search" "sort"!important;
-  }
-  html body.today-mode .app-shell .main > .toolbar {
-    grid-template-columns:minmax(0,1fr)!important;
-    grid-template-areas:"new"!important;
-  }
-  html body.schedule-mode .app-shell .main > .toolbar {
-    grid-template-columns:minmax(0,1fr)!important;
-    grid-template-areas:"search"!important;
   }
 }

@@ -595,7 +595,7 @@ test('Origin related-detail return preserves previous pager, body scroll and lis
  assert.match(origin,/const origin=detailTrail\[0\]/);
  assert.match(origin,/restorePanelReturnPosition\(origin\?\.kind\|\|kind,origin\?\.id\|\|id\)/);
  assert.match(origin,/detailTrail=\[\];panelReturnSearch/);
- assert.match(origin,/if\(force\)detailTrail=\[\]/);
+ assert.match(origin,/else if\(force\)\{detailTrail=\[\];originInboxReturn=null;\}/);
  assert.match(origin,/if\(!force&&panelMode==='edit'&&formSnapshot/);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });

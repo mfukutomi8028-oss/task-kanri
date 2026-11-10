@@ -3509,6 +3509,11 @@ test('Origin independent inbox separates important messages and categorized acti
  await expect(dialog).toBeHidden();
  await expect(host.locator('#sheet')).toContainText('独立受信箱の検証タスク');
  await host.locator('#sheet .sheet-close').click();
+ // The inspector now returns to the inbox instead of exposing the underlying route.
+ await expect(dialog).toBeVisible();
+ await expect(dialog.locator('[data-action="origin-inbox-section"][data-value="important"]')).toHaveAttribute('aria-selected','true');
+ await dialog.locator('[data-action="origin-inbox-close"]').click();
+ await expect(shortcut).toBeFocused();
  await host.locator('#desktopNav [data-route="tools"]').click();
  await expect(host.locator('.origin-tool-nav button')).toHaveCount(5);
  await expect(host.locator('.origin-tool-nav')).not.toContainText('受信箱');
@@ -3650,5 +3655,55 @@ for(const width of [1366,390,320]){
   expect(viewport.document).toBeLessThanOrEqual(viewport.screen+3);
   await dialog.locator('[data-action="origin-inbox-close"]').click();
   await expect(host.locator('#originInboxButton')).toBeFocused();
+ });
+}
+
+for(const width of [1366,390,320]){
+ test('Origin inbox returns to the same genre, search and scroll after opening a task ('+width+'px)',async({page})=>{
+  test.setTimeout(90000);
+  const host=await launchOriginV415(page,'origin-inbox-return-v566-'+width,width);
+  const taskId=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
+   const result=await bridge.dispatch({type:'task.create',revision:0,ownerRoom:state.roomId,
+    ownerUser:state.currentUser,title:'受信箱往復検査のタスク',description:'',
+    assignee:state.currentUser,status:state.statuses[0],category:state.categories[0],
+    priority:'中',tags:'',requester:'',checklist:'',checklistDone:[],dueDate:'',dueTime:'',pinned:false});
+   if(!result?.ok)throw Error('task.create failed');
+   const id=bridge.readSnapshot().tasks.find(t=>t.title==='受信箱往復検査のタスク')?.id;
+   if(!id)throw Error('missing task');
+   for(let i=0;i<45;i++){
+    const saved=await flow.writeInboxEvent(state.currentUser,'return-test-'+i,
+     {taskId:id,type:'mention',title:'往復通知 '+i,body:'検査対象',actor:'同僚',createdAt:Date.now()-i*1000});
+    if(!saved?.ok)throw Error('write inbox '+i);
+   }
+   return id;
+  });
+  const dialog=host.locator('#originInboxDialog');
+  await host.locator('#originInboxButton').click();
+  await dialog.locator('[data-action="origin-inbox-genre"][data-value="mention"]').click();
+  await dialog.locator('#originInboxSearch').fill('往復通知');
+  const list=dialog.locator('#originInboxList');
+  await dialog.locator('[data-action="origin-inbox-more"]').click();
+  await list.evaluate(el=>{el.scrollTop=220});
+  const before=await list.evaluate(el=>el.scrollTop);
+  const row=dialog.locator('[data-inbox-id="return-test-20"]');
+  await row.locator('[data-action="origin-inbox-open"]').click();
+  await expect(dialog).toBeHidden();
+  await expect(host.locator('#sheet')).toContainText('受信箱往復検査のタスク');
+  await host.locator('#sheet .sheet-close').click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('[data-action="origin-inbox-genre"][data-value="mention"]')).toHaveAttribute('aria-pressed','true');
+  await expect(dialog.locator('#originInboxSearch')).toHaveValue('往復通知');
+  await expect(dialog.locator('.origin-inbox-item')).toHaveCount(45);
+  expect(await list.evaluate(el=>el.scrollTop)).toBeGreaterThanOrEqual(Math.max(0,before-10));
+  await expect(dialog.locator('[data-inbox-id="return-test-20"] [data-action="origin-inbox-open"]')).toBeFocused();
+  const stillUnread=await page.evaluate(()=>!Number(window.WorkBoardWorkflowV152.inboxFor()['return-test-20'].readAt));
+  expect(stillUnread).toBe(true);
+  await dialog.locator('[data-action="origin-inbox-close"]').click();
+  await expect(host.locator('#originInboxButton')).toBeFocused();
+  await host.locator('#originInboxButton').click();
+  await expect(dialog.locator('#originInboxSearch')).toHaveValue('');
+  await expect(dialog.locator('[data-action="origin-inbox-genre"][data-value="all"]')).toHaveAttribute('aria-pressed','true');
+  await dialog.locator('[data-action="origin-inbox-close"]').click();
  });
 }

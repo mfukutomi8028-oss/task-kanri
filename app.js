@@ -3856,7 +3856,7 @@ function bindTodoWorkspace(root = elements.todoView) {
   });
 }
 
-const TODAY_PANEL_KEYS_V531 = ['schedule', 'overdue', 'due-today', 'unsorted', 'spare'];
+const TODAY_PANEL_KEYS_V531 = ['schedule', 'overdue', 'due-today', 'spare'];
 
 function todayPanelOrderKeyV531() {
   return `workBoardTodayPanelOrderV531:${ROOM_ID}:${normalizeUser(getCurrentUser())}`;

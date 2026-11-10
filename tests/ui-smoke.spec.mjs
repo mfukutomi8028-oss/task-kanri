@@ -231,7 +231,8 @@ test('major navigation, new-task dialog, memo view and reload remain usable', as
 
   await clickLayout('tasks');
   await expect(page.locator('#searchInput')).toBeVisible();
-  await expect(page.locator('#quickAddInput')).toBeVisible();
+  await expect(page.locator('#quickAddInput')).toHaveCount(0);
+  await expect(page.locator('#newTask')).toBeVisible();
 
   await page.locator('#newTask').click();
   await expect(page.locator('#taskDialog')).toBeVisible();

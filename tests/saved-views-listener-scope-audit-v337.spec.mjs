@@ -87,7 +87,8 @@ test('Ver.338 product: saved views uses one direct #sortSelect input listener wi
   ]);
 
   await resetRegressionWrites(page);
-  await page.locator('#quickAddInput').fill('listener scope probe');
+  // The retired quick-add input is not an event owner. The synthetic input
+  // below verifies unrelated input/change events never wake the saved view.
   await page.evaluate(() => {
     const probe = document.createElement('input');
     document.body.appendChild(probe);

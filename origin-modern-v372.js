@@ -1257,6 +1257,8 @@ function taskCheckRow(x={}){return '<div class="origin-checkrow"><input type="ch
 function taskCheckboxRows(v){return (v.checklist||[]).map(taskCheckRow).join('')}
 let originInboxSection='important',originInboxGenre='all',originInboxReadFilter='all',originInboxQuery='',originInboxLimit=40;
 let originInboxBusy=false,originInboxUser='',originInboxPreviousOverflow='';
+// Temporary return target for an inspector opened from the inbox; never persisted.
+let originInboxReturn=null;
 function originInboxStamp(value){
  const n=Number(value);
  if(Number.isFinite(n)&&n>0)return n<1e11?n*1000:n;
@@ -1388,15 +1390,26 @@ function renderOriginInbox(){
   (same||genre.querySelector('button'))?.focus({preventScroll:true});
  }
 }
-function openOriginInbox(){
+function openOriginInbox(preserve=false){
  const dialog=$('#originInboxDialog');if(!dialog||dialog.open)return;
  closeOriginSettings();$('#createMenu').hidden=true;closeSearch();
- originInboxUser=snapshot.currentUser;originInboxSection='important';originInboxGenre='all';originInboxReadFilter='all';originInboxQuery='';originInboxLimit=40;
- $('#originInboxSearch').value='';
+ if(!preserve){
+  originInboxReturn=null;
+  originInboxSection='important';originInboxGenre='all';originInboxReadFilter='all';originInboxQuery='';originInboxLimit=40;
+ }
+ originInboxUser=snapshot.currentUser;
+ $('#originInboxSearch').value=originInboxQuery;
  originInboxPreviousOverflow=document.body.style.overflow;
  dialog.showModal();document.body.style.overflow='hidden';
  renderOriginInbox();
- dialog.querySelector('[data-action="origin-inbox-close"]')?.focus({preventScroll:true});
+ if(preserve&&originInboxReturn){
+  const list=$('#originInboxList'),saved=originInboxReturn;
+  list.scrollTop=saved.scrollTop;
+  const target=Array.from(list.querySelectorAll('[data-inbox-id]'))
+   .find(item=>item.dataset.inboxId===saved.notificationId);
+  (target?.querySelector('.origin-inbox-open')||target?.querySelector('[data-action="origin-inbox-read"]')
+   ||dialog.querySelector('[data-action="origin-inbox-close"]'))?.focus({preventScroll:true});
+ }else dialog.querySelector('[data-action="origin-inbox-close"]')?.focus({preventScroll:true});
 }
 function closeOriginInbox(restoreFocus=true){
  const dialog=$('#originInboxDialog');if(!dialog?.open)return;
@@ -2402,6 +2415,7 @@ function closePanel(force=false,restoreFocus=true){
    if(!window.confirm('入力中の変更を破棄して閉じますか？'))return false;
  }
  const kind=panelKind,id=panelId;
+ const returnToInbox=Boolean(restoreFocus&&originInboxReturn&&originInboxReturn.user===snapshot.currentUser);
  originTaskScheduleSource=null;
  $('#overlay').hidden=true;$('#sheet').innerHTML='';syncOriginEditorViewport();document.body.style.overflow='';
  panelOpen=false;panelKind='';panelId='';originEditorInitialHeight=0;
@@ -2411,7 +2425,9 @@ function closePanel(force=false,restoreFocus=true){
   if(origin)detailSequence=origin.sequence;
   restorePanelReturnPosition(origin?.kind||kind,origin?.id||id);
   detailTrail=[];
- }else if(force)detailTrail=[];
+  if(returnToInbox)openOriginInbox(true);
+  originInboxReturn=null;
+ }else if(force){detailTrail=[];originInboxReturn=null;}
  return true;
 }
 function notify(message){const t=$('#originToast');window.clearTimeout(toastTimer);
@@ -2471,6 +2487,7 @@ function closeSearch(clear=false){
 }
 function handleRoute(route){
  if(!viewDefs.some(x=>x[0]===route))return;
+ originInboxReturn=null;
  closeOriginInbox(false);
  closeOriginSettings();
  if(panelOpen&&!closePanel(false,false))return;
@@ -2894,7 +2911,17 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  if(a==='origin-inbox-unread-quick'){originInboxReadFilter=originInboxReadFilter==='unread'?'all':'unread';originInboxLimit=40;return renderOriginInbox()}
  if(a==='origin-inbox-read')return originInboxRead(id);
  if(a==='origin-inbox-read-all')return originInboxReadAll();
- if(a==='origin-inbox-open'){closeOriginInbox(false);if(!findItem(kind,id))return notify('該当の記録が見つかりません。');return panelShow(kind,id,false)}
+ if(a==='origin-inbox-open'){
+  if(!findItem(kind,id))return notify('該当の記録が見つかりません。');
+  const list=$('#originInboxList');
+  const selected=el.closest('[data-inbox-id]');
+  const returnContext={user:snapshot.currentUser,scrollTop:list?.scrollTop||0,notificationId:selected?.dataset.inboxId||''};
+  closeOriginInbox(false);
+  panelShow(kind,id,false);
+  // A failed navigation must not leave a stale return context.
+  originInboxReturn=panelOpen&&panelId===id&&panelKind===kind?returnContext:null;
+  return;
+ }
  if(a==='theme')return setTheme();
  if(a==='task-advanced-toggle'){
   taskAdvancedOpen=!taskAdvancedOpen;render();
@@ -3225,7 +3252,7 @@ mount.addEventListener('change',e=>{
    // Clear the live input as well: bridge subscribers can render synchronously.
    if(quick)quick.value='';
    quickTodoDraft='';for(const key of Object.keys(originManagementDrafts))delete originManagementDrafts[key];originToolQuery='';originToolLimit=60;
-   closeOriginInbox(false);
+   closeOriginInbox(false);originInboxReturn=null;
    const result=bridge.selectUser?.(next);
    if(!result?.ok){quickTodoDraft=draft;t.value=old;render();notify('利用者を切り替えられませんでした。');return}
    selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;todoSearchHistory=false;todoCompletedOpen=false;todoPendingLimit=TODO_RENDER_BATCH;todoCompletedLimit=TODO_RENDER_BATCH;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;scheduleSearchScope='week';scheduleSearchLimit=30;scheduleCategory='all';scheduleDateFrom='';scheduleDateTo='';scheduleSearchSort='upcoming';scheduleGlobalReturn=null;scheduleGlobalResultIds=[];scheduleWeekResultIds=[];scheduleExpandedDays.clear();
