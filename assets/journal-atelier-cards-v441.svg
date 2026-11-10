@@ -1,29 +1,32 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 116" role="img" aria-label="クラフト紙の案件カード">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 116" role="img" aria-label="麻紙とクラフト紙の案件カード束">
+
 <defs>
- <linearGradient id="card" x2=".85" y2="1"><stop stop-color="#fffdf5"/><stop offset=".55" stop-color="#f5eedb"/><stop offset="1" stop-color="#e6dcc2"/></linearGradient>
- <linearGradient id="kraft" x2=".9" y2=".9"><stop stop-color="#fbedd0"/><stop offset=".5" stop-color="#dcca9f"/><stop offset="1" stop-color="#b49a6c"/></linearGradient>
- <linearGradient id="sage" x2="1" y2="1"><stop stop-color="#e8ebdd"/><stop offset="1" stop-color="#b7c9b1"/></linearGradient>
- <filter id="shadow" x="-20%" y="-35%" width="150%" height="190%"><feGaussianBlur stdDeviation="3.5"/></filter>
+ <linearGradient id="folio" x2=".8" y2="1"><stop stop-color="#f8f5eb"/><stop offset="1" stop-color="#e4dac8"/></linearGradient>
+ <linearGradient id="slip" x2=".7" y2="1"><stop stop-color="#d7dbc9"/><stop offset="1" stop-color="#aebbad"/></linearGradient>
+ <linearGradient id="kraft" x2=".85" y2="1"><stop stop-color="#e5d9c4"/><stop offset="1" stop-color="#c7b395"/></linearGradient>
 </defs>
-<ellipse cx="128" cy="103" rx="108" ry="8" fill="#463c27" opacity=".13" filter="url(#shadow)"/>
-<g transform="translate(28 8) rotate(-9 80 50)">
- <rect x="6" y="15" width="139" height="75" rx="3" fill="#766543" opacity=".16" transform="translate(4 5)"/>
- <rect x="6" y="15" width="139" height="75" rx="3" fill="url(#sage)" stroke="#9eac91" stroke-width="1.5"/>
- <path d="M17 33H132M17 48H132M17 63H132M17 78H132" stroke="#8eaa98" stroke-width="1" opacity=".45"/>
- <path d="M20 22H79" stroke="#849a88" stroke-width="2" opacity=".55"/>
+<ellipse cx="128" cy="101" rx="105" ry="8" fill="#504638" opacity=".08"/>
+<g transform="translate(27 11) rotate(-9 81 47)">
+ <rect x="7" y="13" width="145" height="78" rx="1.5" fill="#514b3e" opacity=".09" transform="translate(2 3)"/>
+ <rect x="7" y="13" width="145" height="78" rx="1.5" fill="url(#slip)" stroke="#8b9b8d" stroke-width="1"/>
+ <path d="M17 29h123M17 42h123M17 55h123M17 68h123M17 81h123" stroke="#e8eadf" opacity=".7" stroke-width=".8"/>
+ <path d="M20 21h44" stroke="#6d806f" opacity=".55" stroke-width="1.5"/>
 </g>
-<g transform="translate(80 3) rotate(7 82 52)">
- <rect x="2" y="10" width="154" height="84" rx="2.5" fill="#382f20" opacity=".14" transform="translate(3 5)" filter="url(#shadow)"/>
- <path d="M6 10H148L158 20V91H6Z" fill="url(#card)" stroke="#c5b597" stroke-width="1.4"/>
- <path d="M148 10v10h10" fill="none" stroke="#b3a07e" stroke-width="1.3"/>
- <path d="M18 36H142M18 49H142M18 62H142M18 75H142" stroke="#a3b19b" stroke-width="1" opacity=".5"/>
- <path d="M18 18h38" stroke="#b99c6b" stroke-width="2" opacity=".65"/>
- <circle cx="138" cy="23" r="4.5" fill="#ded0a9" stroke="#9e8156" stroke-width="1.3"/>
+<g transform="translate(83 5) rotate(7 78 48)">
+ <path d="M5 11H145L156 22V92H5Z" fill="#4f4237" opacity=".11" transform="translate(2 3)"/>
+ <path d="M5 11H145L156 22V92H5Z" fill="url(#folio)" stroke="#b9ab94" stroke-width="1.2"/>
+ <path d="M145 11v11h11" stroke="#b9ab94" stroke-width=".85" fill="none"/>
+ <path d="M18 29h119M18 43h119M18 57h119M18 71h119M18 85h91" stroke="#abaea0" stroke-width=".75" opacity=".65"/>
+ <path d="M18 18h46" stroke="#8c8874" stroke-width="1.25" opacity=".66"/>
+ <circle cx="137" cy="27" r="4" fill="#cbbd9f" stroke="#98896c" stroke-width="1"/>
+ <circle cx="137" cy="27" r="1.4" fill="#f5f0df"/>
 </g>
-<g transform="translate(14 12) rotate(-5 43 40)">
- <path d="M8 8L74 3l10 14v74L9 94Z" fill="url(#kraft)" stroke="#ab8f62" stroke-width="1.5"/>
- <circle cx="18" cy="21" r="6.3" fill="#fff9e8" stroke="#a0875d" stroke-width="2.5"/>
- <path d="M31 35h37M31 45h27M31 55h34" stroke="#a78c61" stroke-width="2" opacity=".6"/>
- <path d="M9 93q17-5 34-2t40-1" fill="none" stroke="#9e8158" stroke-width="1" opacity=".5"/>
+<g transform="translate(11 13) rotate(-5 45 39)">
+ <path d="M11 11L77 8L88 22V89L9 93Z" fill="#594d3f" opacity=".1" transform="translate(2 3)"/>
+ <path d="M11 11L77 8L88 22V89L9 93Z" fill="url(#kraft)" stroke="#aa9679" stroke-width="1.25"/>
+ <path d="M77 8V22H88" stroke="#9b886d" stroke-width="1" fill="none"/>
+ <circle cx="21" cy="24" r="5.2" fill="#f7f3e9" stroke="#9d8b72" stroke-width="1.3"/>
+ <path d="M33 34h38M32 44h31M32 54h36M32 64h25" stroke="#94846c" opacity=".72" stroke-width="1.25" stroke-linecap="round"/>
+ <path d="M13 84Q37 81 75 84" stroke="#b1a080" stroke-width=".9" fill="none"/>
 </g>
 </svg>

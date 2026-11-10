@@ -1,26 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 116" aria-label="封蝋のついた手帳のしおり">
- <defs>
-  <linearGradient id="paper" x1="0" x2=".94" y1=".05" y2="1"><stop stop-color="#fffaf0"/><stop offset=".38" stop-color="#f2e9d4"/><stop offset=".72" stop-color="#fff6e2"/><stop offset="1" stop-color="#daccae"/></linearGradient>
-  <linearGradient id="ribbon" x1="0" x2="1" y1="0" y2=".7"><stop stop-color="#567562"/><stop offset=".33" stop-color="#aac2a1"/><stop offset=".6" stop-color="#79927a"/><stop offset="1" stop-color="#385847"/></linearGradient>
-  <radialGradient id="wax" cx=".3" cy=".25" r=".8"><stop stop-color="#c68a79"/><stop offset=".28" stop-color="#9e534b"/><stop offset=".72" stop-color="#793b3b"/><stop offset="1" stop-color="#572b2f"/></radialGradient>
-  <linearGradient id="brass" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#755b36"/><stop offset=".25" stop-color="#f8e7ae"/><stop offset=".56" stop-color="#bea066"/><stop offset="1" stop-color="#74613e"/></linearGradient>
-  <filter id="shade" x="-30%" y="-45%" width="165%" height="220%"><feGaussianBlur stdDeviation="3.3"/></filter>
- </defs>
- <ellipse cx="155" cy="94" rx="125" ry="12" fill="#5f5641" opacity=".16" filter="url(#shade)"/>
- <g transform="rotate(-4 150 56)">
-  <path d="M14 35 Q14 24 25 23 L244 17 L280 52 L249 96 L25 91 Q16 91 16 82Z" fill="url(#paper)" stroke="#cdbf9d" stroke-width="2"/>
-  <path d="M25 28 L242 23 M24 84 L248 89" fill="none" stroke="#fffef8" stroke-width="2" opacity=".8"/>
-  <path d="M74 25 L100 24 L105 90 L80 88 L81 72 L91 64 L78 59Z" fill="url(#ribbon)" stroke="#54715c" stroke-width="1" opacity=".92"/>
-  <path d="M77 28 L82 84 M96 27 L100 84" fill="none" stroke="#d9e8c8" stroke-dasharray="1 4" stroke-width="1.3" opacity=".7"/>
-  <path d="M41 48 C30 42 24 36 19 28" fill="none" stroke="#baa779" stroke-width="2.2" stroke-linecap="round"/>
-  <circle cx="45" cy="57" r="10" fill="url(#brass)" stroke="#9a7b49" stroke-width="1.7"/>
-  <circle cx="45" cy="57" r="5.3" fill="#f8efda" stroke="#ad9562" stroke-width="1.2"/>
-  <path d="M58 40 C107 38 160 39 183 39 M58 73 C114 75 148 72 183 75" fill="none" stroke="#d6c7a8" stroke-width="1" opacity=".6"/>
-  <path d="M125 48 h46 M125 55 h38 M125 62 h46" fill="none" stroke="#afa18a" stroke-width="1" stroke-linecap="round" opacity=".7"/>
-  <path d="M212 29 Q221 23 227 31 Q241 25 247 34 Q260 36 257 49 Q266 57 256 65 Q258 78 244 79 Q237 92 224 86 Q212 90 205 80 Q190 78 191 65 Q184 55 195 45 Q193 33 205 32Z" fill="#693b37" opacity=".21" transform="translate(2 3)" filter="url(#shade)"/>
-  <path d="M212 29 Q221 23 227 31 Q241 25 247 34 Q260 36 257 49 Q266 57 256 65 Q258 78 244 79 Q237 92 224 86 Q212 90 205 80 Q190 78 191 65 Q184 55 195 45 Q193 33 205 32Z" fill="url(#wax)" stroke="#7b403d" stroke-width="1.5"/>
-  <circle cx="225" cy="57" r="19.5" fill="none" stroke="#e3afa0" stroke-width="1.7" opacity=".63"/>
-  <path d="M225 69 V45 M226 61 Q211 56 215 48 Q226 47 226 61 M225 54 Q239 45 242 51 Q238 61 225 58" fill="none" stroke="#d9ae96" stroke-width="2.1" stroke-linecap="round"/>
-  <path d="M213 33 Q223 29 229 33" fill="none" stroke="#f3d1bd" stroke-width="2" opacity=".62" stroke-linecap="round"/>
- </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 116" role="img" aria-label="和紙のしおりと深い赤茶の封蝋">
+
+<defs>
+ <linearGradient id="paper" x2=".9" y2="1"><stop stop-color="#f8f4e9"/><stop offset=".55" stop-color="#eae0ce"/><stop offset="1" stop-color="#dbcfba"/></linearGradient>
+ <linearGradient id="ribbon" x2="1" y2=".7"><stop stop-color="#50665c"/><stop offset=".5" stop-color="#748575"/><stop offset="1" stop-color="#3e554b"/></linearGradient>
+ <radialGradient id="wax" cx=".34" cy=".27" r=".79"><stop stop-color="#a87c71"/><stop offset=".5" stop-color="#8c615a"/><stop offset="1" stop-color="#684843"/></radialGradient>
+ <linearGradient id="brass" x2="1" y2="1"><stop stop-color="#786c55"/><stop offset=".52" stop-color="#b5a17d"/><stop offset="1" stop-color="#776a56"/></linearGradient>
+</defs>
+<path d="M27 35L253 24L282 50L254 91L29 95Q18 95 18 84L17 47Q17 37 27 35Z" fill="#66584b" opacity=".10" transform="translate(2 3)"/>
+<g transform="rotate(-3 149 57)">
+ <path d="M25 31L251 26L276 53L252 91L25 91Q17 91 17 82L17 43Q17 33 25 31Z" fill="url(#paper)" stroke="#bbae97" stroke-width="1.2"/>
+ <path d="M24 37L246 32M27 85L246 85" fill="none" stroke="#f9f6ec" stroke-width="1.3" opacity=".78"/>
+ <path d="M26 76l15 .3M28 72l12 .2M29 68l11 .2" stroke="#c4b7a3" stroke-width=".65" opacity=".8"/>
+ <path d="M77 27L98 27L101 94L88 88L79 94Z" fill="url(#ribbon)" stroke="#506457" stroke-width=".8"/>
+ <path d="M81 32L84 84M93 31L96 84" stroke="#c7d2bf" opacity=".5" stroke-width=".8"/>
+ <path d="M57 46h115M57 72h111" stroke="#c9beaa" stroke-width=".7" opacity=".54"/>
+ <path d="M123 53h46M124 59h37M123 65h50" stroke="#988e7d" stroke-width="1" opacity=".66" stroke-linecap="round"/>
+ <path d="M45 51Q32 44 25 36" stroke="#928468" fill="none" stroke-width="1.5"/>
+ <circle cx="44" cy="54" r="8.3" fill="url(#brass)" stroke="#6d6655" stroke-width="1"/>
+ <circle cx="44" cy="54" r="4.5" fill="url(#paper)" stroke="#716a5b" stroke-width=".9"/>
+ <path d="M200 44Q205 34 216 38Q230 31 238 42Q252 44 248 56Q256 67 245 72Q244 87 230 84Q217 90 210 80Q198 81 196 68Q189 60 198 52Z" transform="translate(2 2)" fill="#40342e" opacity=".10"/>
+ <path d="M200 44Q205 34 216 38Q230 31 238 42Q252 44 248 56Q256 67 245 72Q244 87 230 84Q217 90 210 80Q198 81 196 68Q189 60 198 52Z" fill="url(#wax)" stroke="#704f49" stroke-width="1.2"/>
+ <ellipse cx="224" cy="61" rx="18" ry="17" stroke="#c09a88" stroke-width="1" fill="none" opacity=".8"/>
+ <path d="M225 73V50M225 62q-11-6-8-11q10-1 8 11M225 57q11-12 15-5q-4 8-15 5" fill="none" stroke="#d1ae99" stroke-width="1.25" stroke-linecap="round"/>
+ <path d="M211 43q9-6 18-3" stroke="#d1b0a0" stroke-width=".8" fill="none" opacity=".65"/>
+</g>
 </svg>
