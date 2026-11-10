@@ -589,7 +589,7 @@ test('JOURNAL V464 gap draft respects length, precision and existing form owners
   assert.equal(hourGap.start,t(10,15),'Summary result is not mutated');
 
   assert.match(app,/data-j473-free-date/);
-  assert.match(app,/openScheduleDialog\(suggestion\)/);
+  assert.match(app,/openJournalCreateWithFollowV568\(suggestion\)/);
   assert.match(app,/journalEligibleGapWindowsV470\(/);
   assert.match(app,/getFilteredSchedules\(\{start:new Date\(0\),end:addDays\(weekStart,7\)\}\)/);
   assert.match(css,/JOURNAL V473/);
@@ -634,9 +634,14 @@ test('JOURNAL V466 duration and post-save focus stay within canonical schedule p
   assert.match(read('index.html'),/data-j565-schedule-minutes="120"/);
   assert.match(app,/journalGapScheduleSeedV466\(/);
   assert.match(app,/data-j473-free-date/);
-  assert.match(app,/dataset\.journalGapFocus='1'/);
-  assert.match(app,/delete elements\.scheduleForm\.dataset\.journalGapFocus/);
-  assert.match(app,/const followJournalGapV466 = !editingId/);
+  assert.match(app,/const openJournalCreateWithFollowV568=\(seed=null\)=>/);
+  assert.match(app,/openJournalCreateWithFollowV568\(suggestion\)/);
+  assert.match(app,/\[data-j425-add-schedule\][\s\S]*openJournalCreateWithFollowV568\(\)/);
+  assert.match(app,/dataset\.journalCreateFocus='1'/);
+  assert.match(app,/delete elements\.scheduleForm\.dataset\.journalCreateFocus/);
+  assert.match(app,/const followJournalCreationV568 = !editingId/);
+  assert.match(app,/state\.layout === 'schedule'/);
+  assert.doesNotMatch(app,/journalGapFocus/,'Replaced temporary flag must not linger');
   assert.match(app,/if \(!result\.ok\) return showWriteFailure\(result, "予定を保存できませんでした。入力内容はそのままです。"\)/);
   assert.match(app,/journalSchedulePreviewIdV459=schedule\.id/);
   assert.match(css,/\.j565-schedule-duration/);
