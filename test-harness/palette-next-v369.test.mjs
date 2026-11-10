@@ -597,7 +597,9 @@ test('Palette task and memo inspectors share the visible list order without writ
   const memoEnd=shell.indexOf('  function memoPage() {',memoStart);
   const memoView=shell.slice(memoStart,memoEnd);
   assert.ok(start>=0&&end>start&&memoStart>=0&&memoEnd>memoStart);
-  assert.match(task,/return filteredTasks\(\)\.sort/);
+  assert.match(task,/const ordered=filteredTasks\(\)\.sort/);
+  assert.match(task,/if\(state\.taskView!=='board'\)return ordered/);
+  assert.match(task,/return ordered\.sort/);
   assert.match(task,/const tasks=visibleSortedTasks\(\)/);
   assert.match(memoView,/return sortedMemos\(visible\)/);
   assert.match(shell,/const items=visibleSortedMemos\(matched\)/);
