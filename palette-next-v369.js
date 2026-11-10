@@ -34,7 +34,7 @@
   ];
   const state = {
     route:'today', query:'', queries:Object.fromEntries(nav.map(([id])=>[id,''])),
-    scrollPositions:Object.fromEntries(nav.map(([id])=>[id,0])), todayFocusExpanded:false, taskFilter:'all', taskSort:'due', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', seriesSort:'upcoming', expandedSeriesGroups:new Set(), doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
+    scrollPositions:Object.fromEntries(nav.map(([id])=>[id,0])), todayFocusExpanded:false, taskFilter:'all', taskSort:'due', taskView:'board', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', seriesSort:'upcoming', expandedSeriesGroups:new Set(), doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     // Unsaved local composer draft; never a second source of persisted ToDo data.
     todoDraft:{text:'',memo:''},
@@ -396,6 +396,17 @@
     const overdue=urgent.filter(task=>taskRisk(task)==='期限超過').length;
     const dateLabel=new Intl.DateTimeFormat('ja-JP',{month:'long',day:'numeric',weekday:'long'})
       .format(new Date((state.snapshot.today||currentDate())+'T12:00:00'));
+    // The cover introduces the first canonical focus item; the actual
+    // action stays in the focus list to preserve one stable detail target.
+    const featured=focusPreview[0];
+    const coverFeature='<div class="pn-hero-feature" aria-label="今日の注目タスク">'+
+      '<span class="pn-hero-feature-index">TODAY’S PICK <i aria-hidden="true">✳</i></span>'+
+      '<strong>'+escape(featured?.title||
+        (searching?'一致する優先タスクはありません':'次の仕事を選んでみましょう'))+'</strong>'+
+      (featured?'<small>'+escape(featured.category||'優先タスク')+
+        (featured.dueDate?' · 期限 '+escape(dateParts(featured.dueDate)):'')+'</small>':
+        '<small>大切なことから少しずつ。</small>')+
+      '</div>';
     const attention=alertTasks.length?
       '<aside class="pn-today-attention" aria-label="期限の確認">'+
       '<div class="pn-today-attention-heading"><strong>期限を確認</strong>'+
@@ -419,12 +430,12 @@
       '<div class="pn-empty">'+(state.query?'一致する予定はありません':'今日は予定がありません')+'</div>';
     return '<section class="pn-hero"><div class="pn-hero-copy"><span class="pn-kicker">'+
       '<span class="pn-kicker-dot" aria-hidden="true"></span> MY DAILY PALETTE <span class="pn-hero-date">'+escape(dateLabel)+'</span></span>'+
-      '<h1>今日の<em>ワークスペース。</em></h1>'+
+      '<h1>今日の仕事に、<em>いいリズムを。</em></h1>'+
       '<div class="pn-chiprow"><span class="pn-chip pn-chip-focus">優先 '+focus.length+'件</span>'+
       '<span class="pn-chip pn-chip-todo">未完了ToDo '+todoMatches.length+'件</span>'+
       '<span class="pn-chip pn-chip-plan">今日の予定 '+schedulesAll.length+'件</span>'+
       (overdue?'<span class="pn-chip warn">期限超過 '+overdue+'件</span>':'')+
-      '</div></div>'+
+      '</div>'+coverFeature+'</div>'+
       '<div class="pn-hero-art" aria-hidden="true"><span class="pn-art pn-art-one"></span>'+
       '<span class="pn-art pn-art-two"></span><span class="pn-art pn-art-three"></span>'+
       '<span class="pn-art pn-art-four"></span><span class="pn-art-label">make<br>space.</span></div></section>'+
@@ -608,6 +619,60 @@
       '" type="button" aria-label="'+(task.favorite?'スターを外す':'スターを付ける')+'" '+
       'aria-pressed="'+Boolean(task.favorite)+'">'+(task.favorite?'★':'☆')+'</button></div>';
   }
+  // A visual status board is a projection, not a second task store.
+  // The same task IDs, revisions, search filter and bulk commands are used
+  // in both views so switching cannot alter canonical records.
+  function taskBoardCard(task) {
+    const tone=taskVisualTone(task);
+    const checks=Array.isArray(task.checklist)?task.checklist:[];
+    const checked=checks.filter(item=>item.done).length;
+    const progress=checks.length?Math.round(checked/checks.length*100):0;
+    const due=task.dueDate?dateParts(task.dueDate):'期限なし';
+    const risk=taskRisk(task);
+    return '<article class="pn-board-card" data-task-tone="'+tone+'">'+
+      '<div class="pn-board-card-head"><span class="pn-board-card-label">'+
+      escape(task.category||'業務タスク')+'</span>'+
+      '<button class="pn-smallbtn pn-board-star" type="button" data-pn-cmd="task.star" '+
+      'data-id="'+escape(task.id)+'" aria-label="'+(task.favorite?'スターを外す':'スターを付ける')+
+      '" aria-pressed="'+Boolean(task.favorite)+'">'+(task.favorite?'★':'☆')+'</button></div>'+
+      '<button type="button" class="pn-board-open" data-pn-detail="task" data-id="'+
+      escape(task.id)+'" aria-label="'+escape(task.title)+'の詳細を開く">'+
+      '<strong>'+escape(task.title)+'</strong>'+
+      '<span class="pn-board-open-hint">タスクを開く <span aria-hidden="true">↗</span></span></button>'+
+      '<div class="pn-board-facts"><span class="pn-board-assignee">'+
+      escape(task.assignee||'担当未設定')+'</span>'+
+      (['緊急','高'].includes(task.priority)&&!task.completed
+        ?'<span class="pn-board-priority">'+escape(task.priority)+'</span>':'')+'</div>'+
+      (checks.length?'<div class="pn-board-progress" role="progressbar" '+
+        'aria-label="チェックリスト '+checked+' / '+checks.length+'件" '+
+        'aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+progress+'">'+
+        '<span class="pn-board-progress-caption">チェックリスト '+checked+'/'+checks.length+'</span>'+
+        '<span class="pn-board-progress-track" aria-hidden="true"><i style="width:'+progress+'%"></i></span>'+
+        '</div>':'')+
+      '<div class="pn-board-card-foot"><span class="pn-board-due" data-due-tone="'+tone+'">'+
+      escape(risk==='期限超過'?'期限超過 · '+due:risk==='今日まで'?'今日まで · '+due:
+        task.dueDate?'期限 · '+due:'期限なし')+'</span>'+
+      '<label class="pn-board-select"><input type="checkbox" data-pn-bulk-id="'+
+      escape(task.id)+'" '+(state.bulkSelected.has(task.id)?'checked':'')+
+      ' aria-label="'+escape(task.title)+'を選択"><span>選択</span></label></div></article>';
+  }
+  function taskBoardMarkup(tasks) {
+    if(!tasks.length)return '<div class="pn-empty pn-board-empty">該当タスクはありません</div>';
+    const groups=new Map();
+    for(const task of tasks){
+      const status=task.completed?'完了':String(task.status||'未着手');
+      if(!groups.has(status))groups.set(status,[]);
+      groups.get(status).push(task);
+    }
+    return '<div class="pn-task-board" aria-label="状態別タスクボード">'+
+      [...groups].map(([status,rows],index)=>
+        '<section class="pn-board-lane" data-lane-tone="'+(index%4)+'">'+
+        '<header class="pn-board-lane-head"><div><span class="pn-board-lane-kicker">FLOW / '+
+        String(index+1).padStart(2,'0')+'</span><h3>'+escape(status)+'</h3></div>'+
+        '<span class="pn-board-lane-count" aria-label="'+rows.length+'件">'+rows.length+'</span></header>'+
+        '<div class="pn-board-stack">'+rows.map(taskBoardCard).join('')+'</div></section>'
+      ).join('')+'</div>';
+  }
   // One read-only ordering contract for both the task list and its detail navigator.
   function visibleSortedTasks() {
     const priorityOrder={'緊急':0,'高':1,'中':2,'低':3};
@@ -616,7 +681,7 @@
       const numeric=Number(task.updatedAt);
       return Number.isFinite(numeric)&&numeric>0?numeric:Date.parse(task.updatedAt)||0;
     };
-    return filteredTasks().sort((a,b)=>
+    const ordered=filteredTasks().sort((a,b)=>
       (state.taskSort==='priority'
         ?(priorityOrder[a.priority]??4)-(priorityOrder[b.priority]??4)||dueSort(a,b)
         :state.taskSort==='updated'
@@ -624,6 +689,16 @@
           :dueSort(a,b))||
       (Number(b.pinned)-Number(a.pinned))||
       String(a.title||'').localeCompare(String(b.title||''),'ja'));
+    if(state.taskView!=='board')return ordered;
+    // Group by canonical status while keeping the chosen sort within each
+    // lane. The inspector reads this same order for its previous/next actions.
+    const statuses=Array.isArray(state.snapshot.statuses)?state.snapshot.statuses:[];
+    const ranks=new Map(statuses.map((name,index)=>[String(name),index]));
+    const label=task=>task.completed?'完了':String(task.status||'未着手');
+    const rank=task=>task.completed?statuses.length+2:
+      (ranks.get(label(task))??statuses.length+1);
+    return ordered.sort((a,b)=>rank(a)-rank(b)||
+      label(a).localeCompare(label(b),'ja'));
   }
   function taskPage() {
     const filters=[['all','未完了'],['mine','自分の担当'],['urgent','期限が近い'],['done','完了']];
@@ -648,9 +723,14 @@
       '<div class="pn-flowtabs" aria-label="タスクの絞り込み">'+
       filters.map(([key,label])=>'<button class="pn-filter" type="button" data-pn-filter="'+key+
         '" aria-pressed="'+(state.taskFilter===key)+'">'+label+'</button>').join('')+'</div>'+
-      '<section class="pn-sheet pn-task-sheet">'+
-      '<header class="pn-sheethead"><div><span class="pn-section-eyebrow">TASK INDEX</span>'+
-      '<h2>タスク一覧</h2></div><div class="pn-task-view-tools">'+
+      '<section class="pn-sheet pn-task-sheet" data-task-view="'+state.taskView+'">'+
+      '<header class="pn-sheethead"><div><span class="pn-section-eyebrow">VISUAL WORKFLOW</span>'+
+      '<h2>'+(state.taskView==='board'?'仕事の進み具合を見渡す':'タスク一覧')+
+      '</h2></div><div class="pn-task-view-tools">'+
+      '<div class="pn-task-view-switch" role="group" aria-label="タスクの表示形式">'+
+      [['board','ボード'],['list','一覧']].map(([view,label])=>
+        '<button type="button" data-pn-task-view="'+view+'" aria-pressed="'+
+        (state.taskView===view)+'">'+label+'</button>').join('')+'</div>'+
       '<span class="pn-chip">表示中 '+tasks.length+'件</span>'+
       '<label class="pn-task-sort">並び順 <select data-pn-task-sort aria-label="タスクの並び順">'+
       [['due','期限順'],['priority','優先度順'],['updated','更新順']].map(([value,label])=>
@@ -660,9 +740,10 @@
       (tasks.length>0 && tasks.every(t=>state.bulkSelected.has(t.id))?'checked':'')+
       ' '+(!tasks.length?'disabled':'')+'> 表示中のタスクをすべて選択</label>'+
       '<span>最大200件</span></div>'+bulkControls()+
-      '<div class="pn-task-rows">'+(tasks.length?tasks.map(taskListRow).join(''):
-      '<div class="pn-empty">該当タスクはありません</div>')+
-      '</div></section><p class="pn-footnote">繰り返し設定の編集や削除範囲の指定は、対応する詳細機能から操作してください。</p>';
+      (state.taskView==='board'?taskBoardMarkup(tasks):
+        '<div class="pn-task-rows">'+(tasks.length?tasks.map(taskListRow).join(''):
+        '<div class="pn-empty">該当タスクはありません</div>')+'</div>')+
+      '</section><p class="pn-footnote">繰り返し設定の編集や削除範囲の指定は、対応する詳細機能から操作してください。</p>';
   }
   function scheduleMatches(item) {
     const task=state.snapshot.tasks.find(t=>t.id===item.relatedTaskId);
@@ -2644,6 +2725,7 @@
     state.bulkSelected.clear();
     state.taskFilter='all';
     state.taskSort='due';
+    state.taskView='board';
     state.memoColorFilter='all';
     state.memoSort='manual';
     state.seriesSort='upcoming';
@@ -3492,6 +3574,16 @@
       return;
     }
     if(target.hasAttribute('data-pn-theme')){state.theme=state.theme==='dark'?'light':'dark';setTheme();return}
+    if(target.hasAttribute('data-pn-task-view')){
+      const view=target.dataset.pnTaskView;
+      if(state.route!=='tasks'||!['board','list'].includes(view))return;
+      if(view!==state.taskView){
+        state.taskView=view;
+        render();
+        focusRebuiltControl('data-pn-task-view',view);
+      }
+      return;
+    }
     if(target.dataset.pnFilter){
       state.taskFilter=target.dataset.pnFilter;state.bulkSelected.clear();render();
       focusRebuiltControl('data-pn-filter',state.taskFilter);return;

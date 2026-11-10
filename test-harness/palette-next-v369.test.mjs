@@ -36,6 +36,23 @@ test('Palette NEXT owns its independent DOM and uses only the canonical bridge',
   assert.equal((css.match(/\{/g)||[]).length,(css.match(/\}/g)||[]).length);
 });
 
+
+test('Palette editorial Today and status board reuse canonical task identity and list actions',()=>{
+  assert.match(shell,/taskView:'board'/);
+  assert.match(shell,/function taskBoardCard\(task\)/);
+  assert.match(shell,/function taskBoardMarkup\(tasks\)/);
+  assert.match(shell,/data-pn-task-view/);
+  assert.match(shell,/state\.taskView='board'/);
+  assert.match(shell,/data-pn-detail="task"/);
+  assert.match(shell,/data-pn-bulk-id/);
+  assert.match(shell,/data-pn-cmd="task\.star"/);
+  assert.match(shell,/return ordered\.sort/);
+  assert.match(shell,/const coverFeature=/);
+  assert.match(css,/#paletteNextRoot \.pn-task-board/);
+  assert.match(css,/#paletteNextRoot \.pn-hero-feature/);
+  assert.match(css,/@media\(max-width:780px\)/);
+});
+
 test('Palette NEXT dispatch uses canonical business writers and exposes read-only snapshots',()=>{
   const start=app.indexOf('/* Palette NEXT Phase 1');
   const end=app.indexOf('// v31: すべての定義が完了してから初期化する',start);
@@ -580,7 +597,9 @@ test('Palette task and memo inspectors share the visible list order without writ
   const memoEnd=shell.indexOf('  function memoPage() {',memoStart);
   const memoView=shell.slice(memoStart,memoEnd);
   assert.ok(start>=0&&end>start&&memoStart>=0&&memoEnd>memoStart);
-  assert.match(task,/return filteredTasks\(\)\.sort/);
+  assert.match(task,/const ordered=filteredTasks\(\)\.sort/);
+  assert.match(task,/if\(state\.taskView!=='board'\)return ordered/);
+  assert.match(task,/return ordered\.sort/);
   assert.match(task,/const tasks=visibleSortedTasks\(\)/);
   assert.match(memoView,/return sortedMemos\(visible\)/);
   assert.match(shell,/const items=visibleSortedMemos\(matched\)/);
