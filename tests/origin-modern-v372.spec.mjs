@@ -3579,7 +3579,7 @@ for(const width of [1366,390,320]){
   const host=await launchOriginV415(page,'origin-inbox-unread-v565-'+width,width);
   await page.evaluate(async()=>{
    const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
-   const created=await bridge.dispatch({type:'task.create',ownerRoom:state.roomId,ownerUser:state.currentUser,
+   const created=await bridge.dispatch({type:'task.create',revision:0,ownerRoom:state.roomId,ownerUser:state.currentUser,
     title:'未読バッジの検証',description:'',assignee:state.currentUser,status:state.statuses[0],
     category:state.categories[0],priority:'中',tags:'',requester:'',checklist:'',checklistDone:[],
     dueDate:'',dueTime:'',pinned:false});
