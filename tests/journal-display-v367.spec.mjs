@@ -2212,7 +2212,7 @@ test('JOURNAL V515 phone index keeps sorting and filter focus after list redraws
   expect(geometry.width).toBeLessThanOrEqual(geometry.viewport);
   expect(geometry.overflow).toBeLessThanOrEqual(2);
   expect(geometry.searchWidth).toBeGreaterThan(200);
-  expect(geometry.sortHeight).toBeGreaterThanOrEqual(43);
+  expect(geometry.sortHeight).toBeGreaterThanOrEqual(44);
   await page.setViewportSize({width:390,height:900});
   await expect(list.locator('[data-j425-sort]')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
