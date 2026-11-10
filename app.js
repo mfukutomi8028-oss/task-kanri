@@ -7539,6 +7539,9 @@ function journalAtelierV420(tasks){
           <button type="button" data-j420-category="" aria-pressed="${!journalAtelierCategoryV420}">すべての分類</button>
           ${categories.map((c,i)=>`<button type="button" data-j420-category="${escapeHtml(c)}" aria-pressed="${journalAtelierCategoryV420===c}"><span class="j420-index-num">${String(i+1).padStart(2,'0')}</span>${escapeHtml(c)}<strong>${tasks.filter(t=>t.category===c).length}</strong></button>`).join('')}
         </nav>
+        <label class="j565-atelier-sort">表示順<select data-j565-atelier-sort>
+          ${[['smart','おすすめ順'],['due','期限が近い順'],['updated','更新日時（新しい順）'],['priority','優先度順']].map(([k,v])=>`<option value="${k}" ${elements.sortSelect.value===k?'selected':''}>${v}</option>`).join('')}
+        </select></label>
         <button type="button" class="j420-index-reset" data-j420-reset-view>索引をリセット</button>
         </div>
       </aside>
@@ -7551,7 +7554,9 @@ function journalAtelierV420(tasks){
             <button type="button" aria-pressed="true" title="アトリエ">机上</button>
             <button type="button" data-j420-layout="list" title="索引一覧">一覧</button>
             <button type="button" data-j420-layout="timeline" title="日付日誌">日誌</button>
+            <button type="button" data-j420-layout="dashboard" title="集計ダッシュボード">ダッシュボード</button>
           </div>
+          ${journalReservedTaskShortcutV565()}
         </div>
         <div class="j420-island-grid">${displayGroups.map(renderGroup).join('')||`<div class="j420-atelier-empty j520-atelier-empty" role="status">
           <strong>${syncAnchorV530?.atelierInlineReaderV552
@@ -7680,6 +7685,7 @@ function journalAtelierV420(tasks){
     resetAtelierV520(event.currentTarget,true));
   root.querySelector('[data-j520-empty-new]')?.addEventListener('click',()=>openTaskDialog());
   root.querySelectorAll('[data-j420-layout]').forEach(btn=>btn.addEventListener('click',()=>journalSwitchTaskPageV509(btn.dataset.j420Layout)));
+  journalBindReservedTaskShortcutV565(root);
   bindJournalAtelierNoteActionsV420(root);
   journalPositionAtelierNoteV494(root);
   if(journalAtelierDeskNoteOpenV562&&readerTaskV562===journalAtelierSelectedV420)
@@ -7964,13 +7970,15 @@ function journalIndexV425(tasks){
   elements.listView.innerHTML=`<div class="j425-task-index">
     <header class="j425-editorial-head"><div><span>03 / TASK INDEX</span><h2>タスク一覧</h2></div>
     <div class="j425-index-head-controls"><button type="button" class="j425-action-primary" data-j425-new-task>＋ タスクを追加</button>
-      <div class="j425-mode-switch"><button type="button" data-j425-task-layout="board">机上</button><button type="button" aria-pressed="true">一覧</button><button type="button" data-j425-task-layout="timeline">日誌</button></div></div></header>
+      <div class="j425-mode-switch"><button type="button" data-j425-task-layout="board">机上</button><button type="button" aria-pressed="true">一覧</button><button type="button" data-j425-task-layout="timeline">日誌</button><button type="button" data-j425-task-layout="dashboard">ダッシュボード</button></div>
+      ${journalReservedTaskShortcutV565()}</div></header>
     <div class="j425-editorial-layout j425-task-index-layout">
       <aside class="j425-index-rail" aria-label="案件の絞り込み"><span class="j430-index-edge-tab" aria-hidden="true"></span>
        <div class="j447-task-filter-heading"><h3>絞り込み</h3><button type="button" data-j447-toggle-filters aria-expanded="${journalIndexFiltersExpandedV447}" aria-controls="j447TaskFilterPanel">${journalIndexFiltersExpandedV447?'条件を閉じる':'条件を選ぶ'}${appliedFilters?' ('+appliedFilters+'件適用)':''}</button></div>
        <div id="j447TaskFilterPanel" class="j447-task-filter-panel ${journalIndexFiltersExpandedV447?'is-open':''}"><small>INDEX & FILTER</small>
        ${facet('status','状態',statuses,filters.status)}
        ${facet('category','分類',categories,filters.category)}
+       <label class="j565-index-sort">表示順<select data-j425-sort>${[['default','現在の順番'],['updated','更新が新しい順'],['due','期限が近い順'],['priority','優先度順'],['title','タイトル順']].map(([k,v])=>`<option value="${k}" ${filters.sort===k?'selected':''}>${v}</option>`).join('')}</select></label>
        ${facet('assignee','担当',assignees,filters.assignee)}
        <h4>期限</h4>${[{id:'all',label:'すべて'},{id:'week',label:'今週まで'},{id:'overdue',label:'期限超過'},{id:'none',label:'期限なし'}].map(v=>`<button type="button" class="j425-index-option" data-j425-due="${v.id}" aria-pressed="${filters.due===v.id}">${v.label}<span>${v.id==='all'?tasks.length:tasks.filter(t=>v.id==='week'?soon(t):v.id==='overdue'?overdue(t):!t.dueDate).length}</span></button>`).join('')}
        <h4>作業のしおり</h4><button type="button" class="j425-index-option" data-j425-preset="mine">自分の担当</button><button type="button" class="j425-index-option" data-j425-preset="priority">高優先度から</button>
@@ -7978,7 +7986,7 @@ function journalIndexV425(tasks){
       </aside>
       <main class="j425-index-workpaper" aria-label="案件の記録一覧">
        <div class="j425-workbench-toolbar"><label>検索<input type="search" data-j425-query value="${escapeHtml(filters.query)}" placeholder="タイトル・内容・分類で検索"></label>
-       <label>並び替え<select data-j425-sort>${[['default','現在の順番'],['updated','更新が新しい順'],['due','期限が近い順'],['priority','優先度順'],['title','タイトル順']].map(([k,v])=>`<option value="${k}" ${filters.sort===k?'selected':''}>${v}</option>`).join('')}</select></label>
+
        <span class="j425-index-counter">${ordered.length} 件</span></div>
        <div class="bulk-bar j425-index-bulk" data-bulk-bar hidden><strong><span data-bulk-count>0</span>件選択中</strong><select data-bulk-action><option value="">操作を選択</option><option value="status">状態を変更</option><option value="assignee">担当者を変更</option><option value="category">分類を変更</option><option value="complete">完了にする</option><option value="delete">削除</option></select><select data-bulk-target hidden></select><button type="button" data-bulk-apply>適用</button></div>
        <div class="j425-index-results-head"><label><input type="checkbox" data-bulk-all> すべて選択</label><span>表示 ${ordered.length}件 ／ 全体 ${tasks.length}件</span></div>
@@ -8108,6 +8116,7 @@ function journalIndexV425(tasks){
     journalRefreshIndexV515(tasks,e.target,()=>root.querySelector('[data-j425-sort]'));
   });
   root.querySelectorAll('[data-j425-task-layout]').forEach(b=>b.addEventListener('click',()=>journalSwitchTaskPageV509(b.dataset.j425TaskLayout)));
+  journalBindReservedTaskShortcutV565(root);
   root.querySelector('[data-j425-new-task]')?.addEventListener('click',()=>openTaskDialog());
   root.querySelectorAll('[data-j425-preset]').forEach(b=>b.addEventListener('click',()=>{
     const preset=b.dataset.j425Preset;
@@ -8404,7 +8413,7 @@ const dayJumpOptions=dates.map(d=>{
   const weekday=['日','月','火','水','木','金','土'][d.getDay()];
   return `<option value="${date}" ${date===journalChronicleSelectedDateV523?'selected':''}>${d.getMonth()+1}/${d.getDate()}（${weekday}） ${count}件</option>`;
 }).join('');
-elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付" id="j523ChronicleDateSelect"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div><nav class="j511-chronicle-travel" aria-label="日誌内の画面切替"><div class="j509-chronicle-switch" role="group" aria-label="タスク表示形式"><button type="button" data-j509-layout="board">机上</button><button type="button" data-j509-layout="list">一覧</button><button type="button" aria-pressed="true">日誌</button></div><button type="button" class="j511-date-picker" data-j511-date-picker aria-controls="j523ChronicleDateSelect">日付を選ぶ<small class="j523-selected-date">${selectedDayV523}</small></button></nav>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section>`;
+elements.timelineView.innerHTML=`<header class="jv-section-head"><span>DAILY CHRONICLE</span><h3>日付日誌 <small>${tasks.length}件</small></h3></header><div class="jv-time-controls"><span>${formatMonthDay(dates[0])} - ${formatMonthDay(dates[dates.length-1])}</span><select aria-label="表示範囲" data-timeline-range><option value="14" ${state.timelineRange==='14'?'selected':''}>14日</option><option value="month" ${state.timelineRange==='month'?'selected':''}>1か月</option></select><label class="j505-date-jump"><span>日付へ移動</span><select data-j505-date-jump aria-label="移動先の日付" id="j523ChronicleDateSelect"><option value="">日付を選ぶ</option>${dayJumpOptions}</select></label><button type="button" data-timeline-prev>← 前</button><button type="button" data-timeline-today>今日</button><button type="button" data-timeline-next>次 →</button></div><nav class="j511-chronicle-travel" aria-label="日誌内の画面切替"><div class="j509-chronicle-switch" role="group" aria-label="タスク表示形式"><button type="button" data-j509-layout="board">机上</button><button type="button" data-j509-layout="list">一覧</button><button type="button" aria-pressed="true">日誌</button><button type="button" data-j509-layout="dashboard">ダッシュボード</button></div>${journalReservedTaskShortcutV565()}<button type="button" class="j511-date-picker" data-j511-date-picker aria-controls="j523ChronicleDateSelect">日付を選ぶ<small class="j523-selected-date">${selectedDayV523}</small></button></nav>${dateRows}<section class="jv-undated" data-jv-undated="true"><h4>期限のない記録 <small>${undated.length}件</small></h4><div>${undated.map(journalDayItemV411).join('')||'<p>期限なしの記録はありません。</p>'}</div></section>`;
 bindTaskDragSources(elements.timelineView);
 elements.timelineView.querySelectorAll('.jv-day-item').forEach(row=>{journalBindReadAndEditPointer(row,()=>journalOpenTimelineDetailV494(row.dataset.taskId),()=>journalOpenTimelineEditorV505(row.dataset.taskId));row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,input,select')){e.preventDefault();journalOpenTimelineDetailV494(row.dataset.taskId)}})});
 elements.timelineView.querySelectorAll('[data-j494-open-task]').forEach(b=>b.addEventListener('click',e=>{
@@ -8417,6 +8426,7 @@ elements.timelineView.querySelectorAll('[data-jv-add-date]').forEach(b=>b.addEve
 const root=elements.timelineView;
 root.querySelectorAll('[data-j509-layout]').forEach(button=>button.addEventListener('click',
   ()=>journalSwitchTaskPageV509(button.dataset.j509Layout)));
+journalBindReservedTaskShortcutV565(root);
 // The sticky paper bookmark opens the existing native picker directly where
 // supported, instead of sending a phone reader back to the top of a long diary.
 // Older browsers continue using the same select via a focusable jump.
