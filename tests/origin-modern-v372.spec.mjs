@@ -26,7 +26,8 @@ test('Modern origin renders real app data and can switch back to Classic', async
   await expect(root.locator('#workspace')).toContainText('タスク');
   await root.locator('#desktopNav [data-route="todos"]').click();
   await expect(root.locator('#workspace')).toContainText('ToDo');
-  await root.locator('#originDisplaySelect').selectOption('classic');
+  await root.locator('#originSettingsToggle').click();
+   await root.locator('#originDisplaySelect').selectOption('classic');
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
   await expect(root).toBeHidden();
   await expect(page.locator('.app-shell')).toBeVisible();
@@ -51,7 +52,8 @@ test('Origin ToDo changes appear in Classic with the same data source', async ({
   await host.locator('[data-form="quick-todo"] input[name="title"]').fill('共通データ接続の確認');
   await host.locator('[data-form="quick-todo"] button[type="submit"]').click();
   await expect(host.locator('#workspace')).toContainText('共通データ接続の確認');
-  await host.locator('#originDisplaySelect').selectOption('classic');
+  await host.locator('#originSettingsToggle').click();
+   await host.locator('#originDisplaySelect').selectOption('classic');
   await page.locator('.nav-item[data-layout="todos"]').evaluate(el=>el.click());
   await expect(page.locator('#todoView')).toContainText('共通データ接続の確認');
 });
@@ -93,7 +95,8 @@ test('Origin schedule creates and edits in the Modern drawer, using the canonica
     window.WorkBoardPaletteBridge.readSnapshot().schedules.some(item=>item.title==='Modern予定を更新しました')
   )).toBe(true);
   await expect(page.locator('#scheduleDialog')).toBeHidden();
-  await root.locator('#originDisplaySelect').selectOption('classic');
+  await root.locator('#originSettingsToggle').click();
+   await root.locator('#originDisplaySelect').selectOption('classic');
   await expect(page.locator('.app-shell')).toBeVisible();
 });
 
@@ -250,7 +253,8 @@ test('Origin retains unsaved ToDo text on updates and confirms a user change',as
  const result=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text:'他の更新'}));
  expect(result?.ok).toBe(true);
  await expect(input).toHaveValue('作業途中のメモ');
- const picker=host.locator('#originUserSelect');
+ await host.locator('#originSettingsToggle').click();
+  const picker=host.locator('#originUserSelect');
  await expect(picker).toHaveValue('福冨');
  page.once('dialog',dialog=>dialog.dismiss());
  await picker.selectOption('森井');
@@ -561,7 +565,8 @@ test('Origin remembers each tab scroll position but resets it on account change'
  expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThan(450);
  await host.locator('#desktopNav [data-route="tasks"]').click();
  expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThan(150);
- const picker=host.locator('#originUserSelect');
+ await host.locator('#originSettingsToggle').click();
+  const picker=host.locator('#originUserSelect');
  await picker.selectOption('森井');
  await expect(picker).toHaveValue('森井');
  expect(await page.evaluate(()=>window.scrollY)).toBe(0);
@@ -1215,7 +1220,7 @@ test('Origin long titles and theme contrast fit at 320, 390 and desktop widths',
  for(const width of [320,390,1366]){
    await page.setViewportSize({width,height:820});
    for(const theme of ['light','dark']){
-     if(await host.getAttribute('data-theme')!==theme)await host.locator('#themeBtn').click();
+     if(await host.getAttribute('data-theme')!==theme){await host.locator('#originSettingsToggle').click();await host.locator('#themeBtn').click();await host.locator('#originSettingsPanel [data-action="settings-close"]').click();}
      await expect(host).toHaveAttribute('data-theme',theme);
      const contrast=await host.locator('#createBtn').evaluate(el=>{
        const css=getComputedStyle(el);
@@ -3400,3 +3405,50 @@ for(const width of [320,390]){
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width+3);
  });
 }
+
+test('Origin header preserves all six tabs and groups appearance and user settings',async({page})=>{
+ test.setTimeout(90000);
+ const host=await launchOriginV415(page,'origin-v561-header-settings-room',1900);
+ const settings=host.locator('#originSettingsToggle'),panel=host.locator('#originSettingsPanel');
+ await expect(host.locator('#desktopNav [data-route]')).toHaveCount(6);
+ const nav=host.locator('#desktopNav [data-route="tools"]');
+ await expect(nav).toBeVisible();
+ const alignment=await host.evaluate(el=>{
+  const nav=el.shadowRoot.querySelector('#desktopNav [data-route="tools"]').getBoundingClientRect();
+  const tools=el.shadowRoot.querySelector('.header-tools').getBoundingClientRect();
+  return {navRight:nav.right,toolsLeft:tools.left,navTop:nav.top,toolsTop:tools.top};
+ });
+ expect(alignment.navRight).toBeLessThanOrEqual(alignment.toolsLeft+2);
+ await nav.click();
+ await expect(host.locator('#workspace')).toContainText('その他');
+ await expect(panel).toBeHidden();
+ await expect(settings).toHaveAttribute('aria-expanded','false');
+ await settings.click();
+ await expect(panel).toBeVisible();
+ await expect(settings).toHaveAttribute('aria-expanded','true');
+ await expect(panel.locator('#themeBtn')).toBeVisible();
+ await expect(panel.locator('#originColorSelect')).toBeVisible();
+ await expect(panel.locator('#originDisplaySelect')).toBeVisible();
+ await expect(panel.locator('#originUserSelect')).toBeVisible();
+ await panel.locator('#originColorSelect').selectOption('lavender');
+ await expect(page.locator('html')).toHaveAttribute('data-wb-color-theme','lavender');
+ await settings.press('Escape');
+ await expect(panel).toBeHidden();
+ await expect(settings).toBeFocused();
+ await settings.click();
+ await host.locator('#desktopNav [data-route="tasks"]').click();
+ await expect(panel).toBeHidden();
+ for(const width of [390,320]){
+  await page.setViewportSize({width,height:740});
+  await settings.click();
+  await expect(panel).toBeVisible();
+  const bounds=await panel.evaluate(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right}});
+  expect(bounds.left).toBeGreaterThanOrEqual(0);
+  expect(bounds.right).toBeLessThanOrEqual(width+1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width+3);
+  await panel.locator('[data-action="settings-close"]').click();
+  await expect(panel).toBeHidden();
+  await host.locator('#mobileNav [data-route="tools"]').click();
+  await expect(host.locator('#workspace')).toContainText('その他');
+ }
+});
