@@ -1108,7 +1108,7 @@ test('JOURNAL week timetable navigates to a day without the redundant outlook',a
   const schedule=page.locator('#scheduleView');
   await expect(schedule.locator('.j463-week-overview')).toHaveCount(0);
   await expect(schedule.locator('.j425-week-column')).toHaveCount(7);
-  await expect(schedule.locator('.j562-week-controls')).toBeVisible();
+  await expect(schedule.locator('.j562-week-controls')).toHaveCount(0);
   await schedule.locator('[data-j425-mode="day"]').click();
   await expect(schedule.locator('.j425-week-grid.is-single-day')).toBeVisible();
   await expect(schedule.locator('.j425-week-column')).toHaveCount(1);
@@ -1137,22 +1137,18 @@ test('JOURNAL phone free-time choice fills the canonical schedule draft without 
   await expect(editor.locator('#scheduleDialogTitle')).toHaveText('新しい予定');
   await expect(editor.locator('#scheduleId')).toHaveValue('');
   await expect(editor.locator('#scheduleStart')).toHaveValue(date+'T08:00');
-  await expect(editor.locator('#scheduleEnd')).toHaveValue(date+'T09:00');
+  await expect(editor.locator('#scheduleEnd')).toHaveValue(date+'T08:30');
   await editor.locator('#closeScheduleDialog').click();
   await expect(editor).toBeHidden();
   await expect(slots).toHaveAttribute('open','');
 });
 
-test('JOURNAL 30-minute duration navigates to saved day while retaining the weekly grid',async({page})=>{
+test('JOURNAL editor duration preset saves a 90-minute appointment and retains the weekly grid',async({page})=>{
   test.setTimeout(90000);
   await boot(page,390);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
   const schedule=page.locator('#scheduleView');
-  const controls=schedule.locator('.j562-week-controls');
-  await expect(controls.locator('[data-j466-duration]')).toHaveCount(2);
-  await expect(controls.locator('[data-j466-duration="60"]')).toHaveAttribute('aria-pressed','true');
-  await controls.locator('[data-j466-duration="30"]').click();
-  await expect(controls.locator('[data-j466-duration="30"]')).toHaveAttribute('aria-pressed','true');
+  await expect(schedule.locator('.j562-week-controls')).toHaveCount(0);
   const day=schedule.locator('.j425-week-column').first();
   const slots=day.locator('.j473-mobile-gaps');
   await slots.locator(':scope > summary').click();
@@ -1161,25 +1157,27 @@ test('JOURNAL 30-minute duration navigates to saved day while retaining the week
   await button.click();
   const editor=page.locator('#scheduleDialog');
   await expect(editor).toBeVisible();
+  await expect(editor.locator('[data-j565-schedule-minutes]')).toHaveCount(4);
+  await editor.locator('[data-j565-schedule-minutes="90"]').click();
+  await expect(editor.locator('[data-j565-schedule-minutes="90"]')).toHaveAttribute('aria-pressed','true');
   const start=await editor.locator('#scheduleStart').inputValue();
   const end=await editor.locator('#scheduleEnd').inputValue();
-  expect(new Date(end+'+09:00').getTime()-new Date(start+'+09:00').getTime()).toBe(30*60000);
-  await editor.locator('#scheduleTitle').fill('JOURNAL 30分予定の保存確認');
+  expect(new Date(end+'+09:00').getTime()-new Date(start+'+09:00').getTime()).toBe(90*60000);
+  await editor.locator('#scheduleTitle').fill('JOURNAL 90分予定の保存確認');
   await editor.locator('#scheduleForm button[type="submit"]').click();
   await expect(editor).toBeHidden();
   await expect(schedule.locator('.j425-week-grid.is-single-day')).toBeVisible();
   const note=schedule.locator('#j459SchedulePreview');
   await expect(note).toBeVisible();
-  await expect(note.locator('h3')).toHaveText('JOURNAL 30分予定の保存確認');
+  await expect(note.locator('h3')).toHaveText('JOURNAL 90分予定の保存確認');
   await expect(note).toBeFocused();
-  const saved=schedule.locator('.j459-day-record').filter({hasText:'JOURNAL 30分予定の保存確認'});
+  const saved=schedule.locator('.j459-day-record').filter({hasText:'JOURNAL 90分予定の保存確認'});
   await expect(saved).toBeVisible();
   await note.locator('[data-j459-back]').click();
   await expect(saved.locator('[data-j459-review]')).toBeFocused();
   await schedule.locator('[data-j459-return-week]').click();
   await expect(schedule.locator('.j425-week-column')).toHaveCount(7);
-  await expect(schedule.locator('.j562-week-controls [data-j466-duration="30"]'))
-    .toHaveAttribute('aria-pressed','true');
+  await expect(schedule.locator('.j562-week-controls')).toHaveCount(0);
 });
 
 test('JOURNAL V469 phone precision picker prefills a chosen start without saving',async({page})=>{
@@ -1205,7 +1203,7 @@ test('JOURNAL V469 phone precision picker prefills a chosen start without saving
   const end=await editor.locator('#scheduleEnd').inputValue();
   expect(start.startsWith(dayIso+'T')).toBeTruthy();
   expect(await page.evaluate(value=>new Date(value).getTime(),start)).toBe(Number(chosen));
-  expect(new Date(end+'+09:00').getTime()-new Date(start+'+09:00').getTime()).toBe(60*60000);
+  expect(new Date(end+'+09:00').getTime()-new Date(start+'+09:00').getTime()).toBe(30*60000);
   await editor.locator('#closeScheduleDialog').click();
   await expect(editor).toBeHidden();
   await expect(schedule.locator('[data-j476-mobile-start="'+dayIso+'"]')).toHaveValue(chosen);
@@ -1258,7 +1256,7 @@ test('JOURNAL V470 phone precision selects another free window without saving',a
   await expect(editor).toBeVisible();
   await expect(editor.locator('#scheduleId')).toHaveValue('');
   await expect(editor.locator('#scheduleStart')).toHaveValue(date+'T13:30');
-  await expect(editor.locator('#scheduleEnd')).toHaveValue(date+'T14:30');
+  await expect(editor.locator('#scheduleEnd')).toHaveValue(date+'T14:00');
   await editor.locator('#closeScheduleDialog').click();
   await expect(schedule.locator('[data-j476-mobile-gap="'+date+'"]')).toHaveValue(values[1]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
@@ -1292,10 +1290,10 @@ test('JOURNAL V473 desktop free-time strip opens the canonical draft at its tapp
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('#scheduleId')).toHaveValue('');
   await expect(dialog.locator('#scheduleStart')).toHaveValue(date+'T10:30');
-  await expect(dialog.locator('#scheduleEnd')).toHaveValue(date+'T11:30');
+  await expect(dialog.locator('#scheduleEnd')).toHaveValue(date+'T11:00');
   await dialog.locator('#closeScheduleDialog').click();
   await expect(column.locator('.j473-grid-gap[data-j473-selected="true"] .j475-grid-selection'))
-    .toContainText('10:30〜11:30');
+    .toContainText('10:30〜11:00');
 });
 test('JOURNAL V473 phone day slip discloses free times without replacing scheduled items',async({page})=>{
   test.setTimeout(90000);
@@ -1315,13 +1313,13 @@ test('JOURNAL V473 phone day slip discloses free times without replacing schedul
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('#scheduleId')).toHaveValue('');
   await expect(dialog.locator('#scheduleStart')).toHaveValue(date+'T08:00');
-  await expect(dialog.locator('#scheduleEnd')).toHaveValue(date+'T09:00');
+  await expect(dialog.locator('#scheduleEnd')).toHaveValue(date+'T08:30');
   await dialog.locator('#closeScheduleDialog').click();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
     .toBeLessThanOrEqual(2);
 });
 
-test('JOURNAL V475 phone keeps the selected free interval after cancel and duration change',async({page})=>{
+test('JOURNAL V475 phone retains its free interval while editor duration is changed',async({page})=>{
   test.setTimeout(90000);
   await boot(page,390);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
@@ -1337,8 +1335,12 @@ test('JOURNAL V475 phone keeps the selected free interval after cancel and durat
   const retained=schedule.locator('[data-j475-mobile-date="'+date+'"]');
   await expect(retained).toHaveAttribute('open','');
   await expect(retained.locator('[data-j475-selected="true"]')).toHaveCount(1);
-  await expect(retained.locator('.j476-mobile-choice')).toContainText('08:00〜09:00');
-  await schedule.locator('.j562-week-controls [data-j466-duration="30"]').click();
+  await expect(retained.locator('.j476-mobile-choice')).toContainText('08:00〜08:30');
+  await retained.locator('[data-j473-free-date]').first().click();
+  await expect(dialog).toBeVisible();
+  await dialog.locator('[data-j565-schedule-minutes="60"]').click();
+  await expect(dialog.locator('#scheduleEnd')).toHaveValue(date+'T09:00');
+  await dialog.locator('#closeScheduleDialog').click();
   await expect(schedule.locator('[data-j475-mobile-date="'+date+'"] .j476-mobile-choice'))
     .toContainText('08:00〜08:30');
 });
