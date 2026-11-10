@@ -2195,13 +2195,20 @@ test('JOURNAL V515 phone index keeps sorting and filter focus after list redraws
   const reset=list.locator('[data-j425-reset]');
   await reset.click();
   await expect(reset).toBeFocused();
-  const geometry=await list.locator('.j425-workbench-toolbar').evaluate(el=>({
-    width:el.getBoundingClientRect().width,
-    viewport:innerWidth,
-    overflow:document.documentElement.scrollWidth-innerWidth,
-    searchWidth:el.querySelector('[data-j425-query]').getBoundingClientRect().width,
-    sortHeight:el.querySelector('[data-j425-sort]').getBoundingClientRect().height
-  }));
+  // Sort moved next to category filters in Ver.566; it is no longer
+  // nested inside the workbench toolbar. Measure both visible owners.
+  const geometry=await list.evaluate(el=>{
+    const toolbar=el.querySelector('.j425-workbench-toolbar');
+    const query=el.querySelector('[data-j425-query]');
+    const sort=el.querySelector('[data-j425-sort]');
+    return {
+      width:toolbar.getBoundingClientRect().width,
+      viewport:innerWidth,
+      overflow:document.documentElement.scrollWidth-innerWidth,
+      searchWidth:query.getBoundingClientRect().width,
+      sortHeight:sort.getBoundingClientRect().height
+    };
+  });
   expect(geometry.width).toBeLessThanOrEqual(geometry.viewport);
   expect(geometry.overflow).toBeLessThanOrEqual(2);
   expect(geometry.searchWidth).toBeGreaterThan(200);
