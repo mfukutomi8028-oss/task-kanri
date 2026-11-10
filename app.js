@@ -6720,7 +6720,7 @@ function journalTaskNavigationSourceV534(layout,root){
   const rect=row?.getBoundingClientRect();
   const explicit=journalTaskNavigationSelectionV534.layout===layout
     &&journalTaskNavigationSelectionV534.id===id;
-  return {id,follow:Boolean(explicit&&rect&&rect.width>0&&rect.height>0
+  return {id,explicit,follow:Boolean(explicit&&rect&&rect.width>0&&rect.height>0
     &&rect.bottom>32&&rect.top<window.innerHeight-32)};
 }
 function journalSwitchTaskPageV509(next){
@@ -6766,8 +6766,10 @@ function journalSwitchTaskPageV509(next){
       ||state.layout!=='tasks'||state.taskLayout!==next)return;
     const view=journalTaskPageV509(next);
     if(!view||view.hidden)return;
-    // A deliberate handoff from the index must not focus a case in a folded shelf.
-    if(next==='board'&&handoffV534?.follow)
+    // Reveal a deliberately selected case even when clicking the switch has
+    // scrolled the source row out of view. The separate follow flag still
+    // controls whether the destination is auto-scrolled and focused.
+    if(next==='board'&&handoffV534?.explicit)
       journalRevealAtelierTaskV567(view,handoffV534.id);
     const offset=journalTaskPagePositionsV509[next]??0;
     const pageTop=window.scrollY+view.getBoundingClientRect().top;
