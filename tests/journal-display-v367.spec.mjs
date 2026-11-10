@@ -3639,3 +3639,92 @@ test('JOURNAL V558 detail and editor return to the phone note after width change
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V565 duration editor and sticky calendar replace the redundant weekly controls',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,1366);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  const schedule=page.locator('#scheduleView');
+  await expect(schedule.locator('.j562-week-controls')).toHaveCount(0);
+  await expect(schedule.locator('.j425-schedule-index')).toHaveCSS('position','sticky');
+  await schedule.locator('[data-j425-add-schedule]').click();
+  const editor=page.locator('#scheduleDialog');
+  await expect(editor).toBeVisible();
+  const buttons=editor.locator('[data-j565-schedule-minutes]');
+  await expect(buttons).toHaveCount(4);
+  await editor.locator('[data-j565-schedule-minutes="120"]').click();
+  await expect(editor.locator('[data-j565-schedule-minutes="120"]')).toHaveAttribute('aria-pressed','true');
+  const before=await editor.locator('#scheduleStart').inputValue();
+  let end=await editor.locator('#scheduleEnd').inputValue();
+  const minutes=(a,b)=>(new Date(b).getTime()-new Date(a).getTime())/60000;
+  expect(minutes(before,end)).toBe(120);
+  const next=before.slice(0,11)+'13:30';
+  await editor.locator('#scheduleStart').fill(next);
+  await editor.locator('#scheduleStart').dispatchEvent('change');
+  end=await editor.locator('#scheduleEnd').inputValue();
+  expect(minutes(next,end)).toBe(120);
+  await editor.locator('#scheduleEnd').fill(next.slice(0,11)+'15:00');
+  await expect(editor.locator('[data-j565-schedule-minutes="120"]')).toHaveAttribute('aria-pressed','false');
+  await editor.locator('#closeScheduleDialog').click();
+  await expect(editor).toBeHidden();
+});
+
+test('JOURNAL V565 atelier shelves, dashboard and sort use one task navigation',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,1366);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  await expect(board.locator('.j420-atelier')).toBeVisible();
+  await expect(page.locator('#quickAddInput')).toHaveCount(0);
+  await expect(page.locator('.j-task-console-v372')).toBeHidden();
+  const ribbonClear=await board.locator('.j420-atelier-index').evaluate(rail=>{
+    const ribbon=rail.querySelector('.j420-ribbon')?.getBoundingClientRect();
+    const heading=rail.querySelector('.j502-index-contents h3')?.getBoundingClientRect();
+    if(!ribbon||!heading)return false;
+    return ribbon.right <= heading.left || ribbon.left >= heading.right ||
+      ribbon.bottom <= heading.top || ribbon.top >= heading.bottom;
+  });
+  expect(ribbonClear).toBe(true);
+  await board.locator('[data-j420-new-task]').click();
+  const editor=page.locator('#taskDialog');
+  await expect(editor).toBeVisible();
+  await editor.locator('#taskTitle').fill('JOURNAL棚の開閉を確認する');
+  await editor.locator('#taskForm button[type="submit"]').click();
+  await expect(editor).toBeHidden();
+  if(await page.locator('.detail-panel').getAttribute('class')?.then(v=>v?.includes('open'))) {
+    await dismissSavedTaskDetailForTest(page);
+  }
+  const toggle=board.locator('[data-j565-island-toggle]').filter({hasText:'その他の案件'}).first();
+  const group=toggle.locator('xpath=../..');
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded','false');
+  await expect(group.locator('.j420-island-items')).toBeHidden();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await expect(group.locator('.j420-island-items')).toBeVisible();
+  await expect(board.locator('[data-j565-atelier-sort]')).toHaveCount(1);
+  await board.locator('[data-j420-layout="dashboard"]').click();
+  await expect(page.locator('#dashboardView')).toBeVisible();
+  await expect(page.locator('#dashboardView .j565-dashboard-navigation')).toBeVisible();
+  await expect(page.locator('#dashboardView')).not.toContainText('未整理ボックス');
+  await page.locator('#dashboardView [data-j565-task-layout="list"]').click();
+  await expect(page.locator('#listView .j425-task-index')).toBeVisible();
+  await expect(page.locator('#listView .j565-index-sort select')).toBeVisible();
+  await expect(page.locator('#listView [data-j425-sort]')).toHaveCount(1);
+  await page.locator('#listView [data-j425-task-layout="timeline"]').click();
+  await expect(page.locator('#timelineView .jv-chronicle-day').first()).toBeVisible();
+  await expect(page.locator('#timelineView [data-j509-layout="dashboard"]')).toBeVisible();
+});
+
+for(const width of [320,390]){
+  test('JOURNAL V565 task controls do not overflow at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await boot(page,width);await choose(page,'journal');
+    await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+    await expect(page.locator('#boardView .j420-atelier')).toBeVisible();
+    await expect(page.locator('#boardView [data-j420-layout="dashboard"]')).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  });
+}
