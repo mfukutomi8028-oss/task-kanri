@@ -274,6 +274,20 @@ test('Ver.430 paper archive facets and unique stationery are presentation-only',
   assert.doesNotMatch(app,/function renderClassicMemoDuplicateV430/);
 });
 
+test('JOURNAL V562 uses one dismissible desktop reader and retains the mobile inline note',()=>{
+  const app=read('app.js'),css=read('journal-display-v367.css');
+  assert.match(app,/let journalAtelierDeskNoteOpenV562=false/);
+  assert.match(app,/data-j562-close-desk/);
+  assert.match(app,/note.hidden=!inline&&!desktopOpen/);
+  assert.match(app,/const closeDeskNoteV562=/);
+  assert.match(css,/#j494AtelierNote\[hidden\]/);
+  assert.match(css,/\.j562-desk-open/);
+  assert.match(css,/grid-template-columns:minmax\(0,1fr\)!important/);
+  assert.match(css,/@media\(min-width:761px\)/);
+  assert.match(css,/\.j494-inline-note/);
+  assert.doesNotMatch(app,/weekOverviewV463|data-j464-gap-date/);
+});
+
 test('JOURNAL memo fasteners keep a stable individual position without a generic tape overlay',()=>{
   const script=read('journal-display-v367.js');
   const styles=read('journal-display-v367.css');
@@ -531,11 +545,12 @@ test('JOURNAL V463 weekly availability merges overlaps and honors day boundaries
   }]);
   assert.equal(allDay.busyMinutes,720);
   assert.equal(allDay.largestGap,null);
-  assert.match(app,/class="j463-week-overview"/);
+  assert.doesNotMatch(app,/j463-week-overview|weekOverviewV463/);
+  assert.match(app,/class="j466-duration-row j562-week-controls"/);
   assert.match(app,/data-j425-day="\$\{iso\}"/);
   assert.match(app,/getFilteredSchedules\(\{start:new Date\(0\),end:addDays\(weekStart,7\)\}\)/);
-  assert.match(css,/JOURNAL V463/);
-  assert.match(css,/\.j463-week-days/);
+  assert.match(css,/JOURNAL V562/);
+  assert.doesNotMatch(css,/\.j463-week-days/);
 });
 
 test('JOURNAL V464 gap draft respects length, precision and existing form ownership',()=>{
@@ -573,13 +588,13 @@ test('JOURNAL V464 gap draft respects length, precision and existing form owners
   assert.equal(calls,3,'Invalid gaps must never open or prepare a draft');
   assert.equal(hourGap.start,t(10,15),'Summary result is not mutated');
 
-  assert.match(app,/data-j464-gap-date=/);
+  assert.match(app,/data-j473-free-date/);
   assert.match(app,/openScheduleDialog\(suggestion\)/);
   assert.match(app,/journalEligibleGapWindowsV470\(/);
   assert.match(app,/getFilteredSchedules\(\{start:new Date\(0\),end:addDays\(weekStart,7\)\}\)/);
-  assert.match(css,/JOURNAL V464/);
-  assert.match(css,/\.j464-gap-create/);
-  assert.match(css,/\.j464-week-day/);
+  assert.match(css,/JOURNAL V473/);
+  assert.match(css,/\.j473-grid-gap/);
+  assert.match(css,/\.j473-mobile-gaps/);
 });
 
 test('JOURNAL V466 duration and post-save focus stay within canonical schedule paths',()=>{
@@ -617,7 +632,7 @@ test('JOURNAL V466 duration and post-save focus stay within canonical schedule p
   assert.match(app,/data-j466-duration/);
   assert.match(app,/aria-pressed="\$\{journalGapDurationV466===minutes\}"/);
   assert.match(app,/journalGapScheduleSeedV466\(/);
-  assert.match(app,/data-j464-gap-date/);
+  assert.match(app,/data-j473-free-date/);
   assert.match(app,/dataset\.journalGapFocus='1'/);
   assert.match(app,/delete elements\.scheduleForm\.dataset\.journalGapFocus/);
   assert.match(app,/const followJournalGapV466 = !editingId/);
@@ -649,10 +664,10 @@ test('JOURNAL V469 chosen starts respect boundaries and existing form ownership'
   assert.deepEqual(Array.from(starts({start:t(10,15,30),end:t(11,0)},30)),[t(10,16),t(10,30)]);
   assert.deepEqual(Array.from(starts({start:t(10,15,30),end:t(10,45)},30)),[]);
   assert.equal(seed(day,gap,30,t(11,30)).assignee,'member');
-  assert.match(app,/data-j469-gap-start/);
+  assert.match(app,/data-j476-mobile-start/);
   assert.match(app,/journalGapScheduleSeedV469\(date,gap,journalGapDurationV466,chosen\)/);
-  assert.match(css,/JOURNAL V469/);
-  assert.match(css,/\.j469-start-picker/);
+  assert.match(css,/JOURNAL V476/);
+  assert.match(css,/\.j476-precision-fields/);
 });
 
 test('lazy JOURNAL activation reuses canonical navigation after mode already switched',()=>{
@@ -699,11 +714,11 @@ test('JOURNAL V470 lists each valid free window without changing the longest sum
   assert.equal(h.eligible(half,60).length,0);
   assert.equal(h.eligible(half,30).length,1);
   assert.equal(h.summary(day,[meeting(t(8,0),t(20,0))]).gaps.length,0);
-  assert.match(app,/data-j470-gap=/);
-  assert.match(app,/data-j470-gap-start=/);
+  assert.match(app,/data-j476-mobile-gap=/);
+  assert.match(app,/data-j473-free-start=/);
   assert.match(app,/journalGapWindowByDateV470\.clear\(\)/);
-  assert.match(css,/JOURNAL V470/);
-  assert.match(css,/\.j470-gap-picker/);
+  assert.match(css,/JOURNAL V473/);
+  assert.match(css,/\.j473-mobile-gap-options/);
 });
 
 test('JOURNAL V473 snaps a grid tap only to an eligible start within the selected gap',()=>{
@@ -748,10 +763,10 @@ test('JOURNAL V475 shows explicit selected interval and preserves the mobile dis
   assert.match(app,/journalMobileGapOpenDaysV475\.clear\(\)/);
   assert.match(app,/journalGapStartOptionsV469\(gap,journalGapDurationV466\)\.includes\(rememberedStart\)/);
   assert.match(app,/class="j475-grid-selection"/);
-  assert.match(app,/class="j475-selected-range"/);
+  assert.match(app,/class="j476-mobile-choice"/);
   assert.match(app,/data-j475-mobile-date/);
   assert.match(app,/journalExplicitGapDaysV475\.add\(dateIso\)/);
-  assert.match(app,/journalExplicitGapDaysV475\.add\(date\)/);
+  assert.match(app,/journalExplicitGapDaysV475\.add\(iso\)/);
   assert.match(app,/gridLeft=root\.querySelector\('\.j425-week-scroll'\)/);
   assert.match(css,/JOURNAL V475/);
   assert.match(css,/\.j475-grid-selection/);
@@ -786,7 +801,7 @@ test('JOURNAL V476 clear-choice is local only and phone controls use the existin
   assert.match(app,/openJournalGapDraftV473\(iso,gap\.start,chosen,true\)/);
   assert.match(css,/JOURNAL V476/);
   assert.match(css,/\.j476-mobile-precision/);
-  assert.match(css,/\.j476-choice-row/);
+  assert.match(css,/\.j476-mobile-choice/);
 });
 
 test('JOURNAL V478 uses one movable day note with quick canonical actions',()=>{
@@ -1681,7 +1696,7 @@ test('JOURNAL V554 latest focus beats queued card and pager restoration',()=>{
   assert.match(note,/const activeAtRequestV554=document\.activeElement/);
   assert.match(note,/current!==activeAtRequestV554/);
   assert.match(note,/current\.isConnected\)return/);
-  assert.match(desk,/if\(!journalAtelierPagingV554\)journalFocusAtelierNoteV500\(root\)/);
+  assert.match(desk,/if\(!journalAtelierPagingV554\)journalFocusAtelierNoteV500\(root,true\)/);
   assert.match(desk,/journalAtelierPagingV554=true/);
   assert.match(desk,/try\{next\.click\(\);\}/);
   assert.match(desk,/finally\{journalAtelierPagingV554=false;\}/);

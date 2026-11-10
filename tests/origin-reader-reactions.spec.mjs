@@ -42,6 +42,8 @@ for(const width of [320,390,1366])test('Origin reader separates content and reac
  await sheet.screenshot({path:'/tmp/origin-reader-overview-'+width+'.png'});
  if(width===320){
    await root.locator('#originCommentForm textarea').fill('');await root.locator('.sheet-close').click();
+   await root.locator('#originSettingsToggle').click();
+   await expect(root.locator('#originSettingsPanel')).toBeVisible();
    await root.locator('#themeBtn').click();await root.locator('.item-name',{hasText:'Origin 詳細の読みやすさ'}).click();
    await sheet.screenshot({path:'/tmp/origin-reader-dark-320.png'});
  }

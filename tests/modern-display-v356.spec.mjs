@@ -30,12 +30,17 @@ test('Origin is a separate live Modern workspace with safe Classic return',async
   test.setTimeout(90000);
   await boot(page);
   const root=await modern(page);
+  // Display preferences moved from the header into the Origin settings menu.
+  await root.locator('#originSettingsToggle').click();
+  await expect(root.locator('#originSettingsPanel')).toBeVisible();
   await expect(root.locator('#originDisplaySelect')).toBeVisible();
   await expect(root.locator('#workspace')).toBeVisible();
   await root.locator('#desktopNav [data-route="tasks"]').click();
   await expect(root.locator('#workspace')).toContainText('タスク');
   await root.locator('#desktopNav [data-route="todos"]').click();
   await expect(root.locator('#workspace')).toContainText('ToDo');
+  await root.locator('#originSettingsToggle').click();
+  await expect(root.locator('#originDisplaySelect')).toBeVisible();
   await root.locator('#originDisplaySelect').selectOption('classic');
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
   await expect(root).toBeHidden();
@@ -71,6 +76,8 @@ test('Origin dark mode does not replace Classic theme ownership',async ({page})=
   await boot(page);
   const root=await modern(page);
   const previous=await root.getAttribute('data-theme');
+  await root.locator('#originSettingsToggle').click();
+  await expect(root.locator('#originSettingsPanel')).toBeVisible();
   await root.locator('#themeBtn').click();
   await expect(root).not.toHaveAttribute('data-theme',previous);
   await root.locator('#originDisplaySelect').selectOption('classic');
