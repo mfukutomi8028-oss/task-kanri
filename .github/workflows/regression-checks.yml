@@ -165,6 +165,16 @@ jobs:
               npx playwright test "${selected[@]}" 2>&1 | tee browser-results.log
             fi
           fi
+      # A synthetic, read-only visual sample. Upload only when Palette is tested.
+      # No user room or live Firebase data is ever included in these captures.
+      - name: Upload Palette versus Origin visual comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: palette-origin-visual-${{ github.run_id }}-shard-${{ matrix.shard }}
+          path: test-results/**/visual-compare-*.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Summarize browser test failures
         if: failure()
         run: node test-harness/ci-failure-digest.mjs browser-results.log "Browser shard ${{ matrix.shard }}/${{ needs.scope.outputs.shard_count }}"
