@@ -199,8 +199,6 @@ const elements = {
   favoriteOnly: $("favoriteOnly"),
   resetFilters: $("resetFilters"),
   sortSelect: $("sortSelect"),
-  quickAddInput: $("quickAddInput"),
-  quickAddButton: $("quickAddButton"),
   newTask: $("newTask"),
   scheduleDialog: $("scheduleDialog"),
   scheduleForm: $("scheduleForm"),
@@ -600,14 +598,6 @@ function setupEvents() {
     });
   });
 
-  elements.quickAddButton?.addEventListener("click", () => quickAddTask());
-  elements.quickAddInput?.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      quickAddTask();
-    }
-  });
-
   elements.currentUserSelect.addEventListener("change", () => setCurrentUser(elements.currentUserSelect.value));
   elements.userForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -690,6 +680,12 @@ function setupEvents() {
   });
   $("scheduleStart").addEventListener("input", syncScheduleEndFromStart);
   $("scheduleStart").addEventListener("change", syncScheduleEndFromStart);
+  $("scheduleEnd").addEventListener("input", () => {
+    journalSchedulePresetExplicitV565 = false;
+    journalRefreshScheduleDurationButtonsV565();
+  });
+  elements.scheduleDialog.querySelectorAll('[data-j565-schedule-minutes]').forEach(button =>
+    button.addEventListener('click', () => journalApplyScheduleDurationV565(Number(button.dataset.j565ScheduleMinutes))));
   elements.openRelatedTaskFromSchedule.addEventListener("click", () => {
     const taskId = $("scheduleRelatedTask").value;
     if (!taskId) return toast("関連タスクが選択されていません", true);
@@ -1520,9 +1516,7 @@ function setOperationDisabled(key, disabled) {
     }
   });
   const kind = String(key).split(':', 1)[0];
-  const button = kind === 'quick-add'
-    ? elements.quickAddButton
-    : kind.startsWith('schedule')
+  const button = kind.startsWith('schedule')
     ? elements.scheduleForm?.querySelector('[type="submit"]')
     : (kind.startsWith('task') || ['recurring', 'bulk'].includes(kind))
       ? (kind === 'bulk' ? elements.listView?.querySelector('[data-apply-bulk]') : elements.taskForm?.querySelector('[type="submit"]'))
@@ -1530,10 +1524,6 @@ function setOperationDisabled(key, disabled) {
   if (button) {
     button.disabled = disabled;
     button.setAttribute('aria-busy', disabled ? 'true' : 'false');
-  }
-  if (kind === 'quick-add' && elements.quickAddInput) {
-    elements.quickAddInput.disabled = disabled;
-    elements.quickAddInput.setAttribute('aria-busy', disabled ? 'true' : 'false');
   }
   if (kind === 'todo-create') {
     document.querySelectorAll('[data-todo-form]').forEach(form => {
@@ -1878,29 +1868,6 @@ async function persistPromotedTaskV559(task, context) {
       stopRoomRead?.();
     }
   });
-}
-
-async function quickAddTask() {
-  const quickAddOperationId = 'form';
-  if (state.inFlightOperations.has(operationKey('quick-add', quickAddOperationId))) return;
-  const title = elements.quickAddInput?.value.trim();
-  if (!title) return toast("件名を入力してください", true);
-  let task = null;
-  const result = await executeWrite('quick-add', quickAddOperationId, async () => {
-    const now = Date.now();
-    task = normalizeTask({
-      id: generateId(), title, assignee: getCurrentUser(), status: getDefaultOpenStatus(), priority: "中",
-      category: "未整理", requester: "未整理", tags: ["未整理"], description: "", checklist: [], comments: [],
-      history: appendHistory([], "クイック追加で未整理タスクを作成しました。"),
-      lastChange: makeActivityChange("新規タスク", ["クイック追加で作成", `担当: ${getCurrentUser()}`, "状態: 未着手"], { summary: "クイック追加で新しいタスクを作成" }),
-      createdBy: getCurrentUser(), createdAt: now, updatedBy: getCurrentUser(), updatedAt: now
-    });
-    return transactionRecord('tasks', task.id, 0, () => task);
-  });
-  if (!result.ok) return showWriteFailure(result, "クイック追加できませんでした。件名は残っています。");
-  elements.quickAddInput.value = "";
-  state.selectedId = task.id;
-  toast("未整理タスクを追加しました");
 }
 
 function syncHeroUi() {
@@ -2666,8 +2633,7 @@ function renderTodayView() {
 
   const overdue = openTasks.filter(isOverdue).sort(compareSmartTasks);
   const dueToday = openTasks.filter(isDueToday).sort(compareSmartTasks);
-  const unsorted = openTasks.filter(isUnsortedTask).sort(compareSmartTasks);
-  const spare = openTasks.filter(t => !t.dueDate && !isUnsortedTask(t) && normalizeText(t.status) !== normalizeText("確認待ち")).sort(compareSmartTasks).slice(0, 10);
+  const spare = openTasks.filter(t => !t.dueDate && normalizeText(t.status) !== normalizeText("確認待ち")).sort(compareSmartTasks).slice(0, 10);
 
   elements.todayView.innerHTML = `
     ${renderActivityPanel()}
@@ -2681,7 +2647,6 @@ function renderTodayView() {
       ${todayPanel("今日の予定", schedules.length ? schedules.map(scheduleCard).join("") : emptyTodayPanel("今日の予定はありません。", "時間指定の説明会・打合せ・立会いはスケジュールへ登録します。", "予定を追加", "schedule"))}
       ${todayPanel("期限超過", overdue.length ? overdue.map(taskCard).join("") : emptyTodayPanel("期限超過はありません。", "今すぐ対応すべき滞留タスクはありません。"))}
       ${todayPanel("今日までのタスク", dueToday.length ? dueToday.map(taskCard).join("") : emptyTodayPanel("今日までのタスクはありません。", "本日締切のタスクはありません。"))}
-      ${todayPanel("未整理ボックス", unsorted.length ? unsorted.map(taskCard).join("") : emptyTodayPanel("未整理はありません。", "未整理の正式タスクは「新しいタスク」から登録します。", "＋ 新しいタスク", "task"))}
       ${todayPanel("空き時間にやるタスク", spare.length ? spare.map(taskCard).join("") : emptyTodayPanel("期限なしの作業はありません。", "急がない作業が出たら、期限なしで登録しておくと便利です。"))}
     </div>
   `;
@@ -2701,7 +2666,6 @@ function renderTodayView() {
     button.addEventListener("click", () => {
       const action = button.dataset.emptyAction;
       if (action === "schedule") openScheduleDialog();
-      else if (action === "quick") elements.quickAddInput?.focus();
       else openTaskDialog();
     });
   });
@@ -4018,11 +3982,6 @@ function todayEmpty(title, desc, buttonText = "", action = "task") {
   </div>`;
 }
 
-function isUnsortedTask(task) {
-  const tokens = [task.category, task.requester, ...(task.tags || [])].map(normalizeText);
-  return tokens.includes(normalizeText("未整理"));
-}
-
 function restoreScheduleSearchFocus(selection) {
   requestAnimationFrame(() => {
     const input = elements.scheduleView?.querySelector('.schedule-search-v176 input');
@@ -4066,7 +4025,7 @@ const journalScheduleStateV425 = {mode:'week',anchor:''};
 
 let journalScheduleCategoryV430=''; // JOURNAL view-only filter; shared records unchanged.
 let journalScheduleOptionsExpandedV451=false; // Only the compact-page calendar/filter fold.
-let journalGapDurationV466=60; // Local view choice; never a schedule field.
+const journalGapDurationV466=30; // Minimum selectable free slot; actual duration is chosen in the schedule editor.
 const journalGapStartByDateV469=new Map(); // Temporary per-day selection; never persisted.
 const journalGapWindowByDateV470=new Map(); // Unsaved per-day window choice.
 const journalExplicitGapDaysV475=new Set(); // Only show a selected block after a real interaction.
@@ -4326,13 +4285,6 @@ function journalScheduleV425(){
    const t=new Date(timestamp);
    return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
  };
- // The timed calendar replaces the redundant seven-day occupancy summary.
- const weekDurationControlsV562=mode==='week'?`<div class="j466-duration-row j562-week-controls" role="group" aria-label="空き時間の予定作成">
- <div class="j466-duration-choice"><span>空き時間から追加 · 所要時間</span>
- ${[30,60].map(minutes=>`<button type="button" data-j466-duration="${minutes}"
- aria-pressed="${journalGapDurationV466===minutes}">${minutes}分</button>`).join('')}
- </div><small>空いている時間帯を選んで予定を作成できます</small>
- </div>`:'';
  const renderEvent=(s,i)=>{
     const st=new Date(s.startAt),ed=new Date(s.endAt);
     let startMinutes=st.getHours()*60+st.getMinutes(),endMinutes=ed.getHours()*60+ed.getMinutes();
@@ -4521,7 +4473,6 @@ function journalScheduleV425(){
       </div></div></details>
     </aside>
     <section class="j425-schedule-planner"><div class="j425-schedule-datebar"><button type="button" data-j425-shift="-1">‹ 前へ</button><strong>${escapeHtml(rangeLabel)}</strong><button type="button" data-j425-shift="1">次へ ›</button><button type="button" data-j425-today>今日</button>${mode==='day'?'<button type="button" class="j459-return-week" data-j459-return-week>週へ戻る</button>':''}</div>
-      ${weekDurationControlsV562}
       ${weekBody}
       <div class="j425-schedule-footnotes"><section><h3>関連タスク <small>${related.length}件</small></h3>${related.map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}"><span>□</span>${escapeHtml(t.title)}<small>${escapeHtml(t.dueDate)}</small></button>`).join('')||'<p>表示期間に期限があるタスクはありません</p>'}</section><section><h3>予定のメモ</h3>${notes.map(s=>`<p><strong>${escapeHtml(s.title)}</strong>：${escapeHtml(s.memo)}</p>`).join('')||'<p>表示期間の予定にメモはありません</p>'}</section></div>
       <div class="j425-stationery-row j425-schedule-props" aria-hidden="true"><img class="j442-schedule-botanical" src="./assets/journal-schedule-botanical-v442.svg" alt="" decoding="async"></div>
@@ -4565,12 +4516,6 @@ function journalScheduleV425(){
    nextRoot.querySelector(focusSelector)?.focus({preventScroll:true});
   });
  };
- root.querySelectorAll('[data-j466-duration]').forEach(button=>button.addEventListener('click',()=>{
-   const selected=Number(button.dataset.j466Duration);
-   if(selected===journalGapDurationV466 || ![30,60].includes(selected))return;
-   journalGapDurationV466=selected;
-   refreshWeekChoicesV470('[data-j466-duration="'+selected+'"]');
- }));
  // The timed grid and phone day slips share one verified draft path.
  const openJournalGapDraftV473=(dateIso,chosenWindow,chosen,syncGridChoice=false)=>{
    const date=parseISODate(dateIso);
@@ -5345,6 +5290,7 @@ function openScheduleDialog(schedule = null) {
   delete elements.scheduleForm.dataset.journalGapFocus;
   const editing = Boolean(schedule?.id);
   elements.scheduleDialogTitle.textContent = editing ? "予定を編集" : "新しい予定";
+  journalSchedulePresetExplicitV565 = false;
   syncAssigneeOptions($("scheduleAssignee"));
   syncCategoryOptions($("scheduleCategory"));
   syncScheduleRelatedTaskOptions();
@@ -5369,6 +5315,7 @@ function openScheduleDialog(schedule = null) {
   $("copySchedule").textContent = editing ? "コピー" : "まとめて作成";
   elements.deleteSchedule.hidden = !editing;
   elements.scheduleDialog.showModal();
+  journalRefreshScheduleDurationButtonsV565();
   $("scheduleTitle").focus();
 }
 
@@ -6021,22 +5968,50 @@ async function saveScheduleFromForm() {
   toast("予定を保存しました");
 }
 
+// JOURNAL duration controls edit only the existing start/end inputs. The
+// task and schedule data models and the canonical save path stay unchanged.
+const JOURNAL_SCHEDULE_DURATIONS_V565 = [30, 60, 90, 120];
+let journalSchedulePresetExplicitV565 = false;
+let journalSchedulePresetMinutesV565 = 60;
+function journalRefreshScheduleDurationButtonsV565() {
+  const start = new Date($("scheduleStart").value);
+  const end = new Date($("scheduleEnd").value);
+  const elapsed = Number.isFinite(start.getTime()) && Number.isFinite(end.getTime())
+    ? (end.getTime() - start.getTime()) / 60000 : NaN;
+  elements.scheduleDialog.querySelectorAll('[data-j565-schedule-minutes]').forEach(button => {
+    const selected = elapsed === Number(button.dataset.j565ScheduleMinutes);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+}
+function journalApplyScheduleDurationV565(minutes) {
+  if (document.documentElement.dataset.wbDisplay !== 'journal'
+    || !JOURNAL_SCHEDULE_DURATIONS_V565.includes(minutes)) return;
+  const start = new Date($("scheduleStart").value);
+  if (!Number.isFinite(start.getTime())) return;
+  journalSchedulePresetExplicitV565 = true;
+  journalSchedulePresetMinutesV565 = minutes;
+  $("scheduleEnd").value = toDateTimeLocalValue(new Date(start.getTime() + minutes * 60000).toISOString());
+  journalRefreshScheduleDurationButtonsV565();
+}
 function syncScheduleEndFromStart() {
   const startValue = $("scheduleStart").value;
   if (!startValue) return;
-
   const start = new Date(startValue);
-  if (Number.isNaN(start.getTime())) return;
+  if (!Number.isFinite(start.getTime())) return;
 
+  if (document.documentElement.dataset.wbDisplay === 'journal' && journalSchedulePresetExplicitV565) {
+    $("scheduleEnd").value = toDateTimeLocalValue(new Date(start.getTime()
+      + journalSchedulePresetMinutesV565 * 60000).toISOString());
+    journalRefreshScheduleDurationButtonsV565();
+    return;
+  }
   const endValue = $("scheduleEnd").value;
   const end = endValue ? new Date(endValue) : null;
-
-  // 終了日時が未入力、または開始日時以前になってしまう場合だけ、
-  // 開始日時の1時間後へ自動補正する。
-  // 既に終了日時が開始日時より未来なら、長時間予定として扱い、終了日時は動かさない。
-  if (!end || Number.isNaN(end.getTime()) || end <= start) {
+  // Preserve a deliberately longer appointment; correct only invalid/end-before-start.
+  if (!end || !Number.isFinite(end.getTime()) || end <= start) {
     $("scheduleEnd").value = toDateTimeLocalValue(addHours(start, 1).toISOString());
   }
+  journalRefreshScheduleDurationButtonsV565();
 }
 
 function getScheduleAnchorDate() {
@@ -6561,7 +6536,6 @@ function renderDashboard(tasks) {
       ${dashboardPanel("分類別 未完了", renderCountBars(byCategory, open.length))}
       ${dashboardPanel("状態別 未完了", renderCountBars(byStatus, open.length))}
       ${dashboardPanel("見落とし注意", renderAttentionList(open))}
-      ${dashboardPanel("未整理ボックス", renderUnsortedList(open))}
     </div>
   `;
 
@@ -6611,15 +6585,6 @@ function renderAttentionList(tasks) {
   return `<div class="attention-list">${important.map(task => `<button type="button" class="attention-item" data-task-id="${escapeHtml(task.id)}">
     <strong>${escapeHtml(task.title)}</strong>
     <span>${priorityBadge(task.priority)} ${isOverdue(task) ? `<span class="badge priority-緊急">期限超過</span>` : ""}${isDueToday(task) ? `<span class="badge due-today-badge">今日まで</span>` : ""}${isStale(task) ? `<span class="badge stale-badge">放置気味</span>` : ""}</span>
-  </button>`).join("")}</div>`;
-}
-
-function renderUnsortedList(tasks) {
-  const items = tasks.filter(isUnsortedTask).slice(0, 8);
-  if (!items.length) return `<p class="dashboard-empty">未整理のタスクはありません。</p>`;
-  return `<div class="attention-list">${items.map(task => `<button type="button" class="attention-item" data-task-id="${escapeHtml(task.id)}">
-    <strong>${escapeHtml(task.title)}</strong>
-    <span>${userBadge(task.assignee)} ${priorityBadge(task.priority)}</span>
   </button>`).join("")}</div>`;
 }
 
