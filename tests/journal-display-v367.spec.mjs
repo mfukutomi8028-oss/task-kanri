@@ -3833,7 +3833,10 @@ for (const width of [390,1366]) {
   test(`JOURNAL V568 toolbar appointment opens its saved day note and restores edited content (${width}px)`,async({page})=>{
     test.setTimeout(90000);
     await boot(page,width);await choose(page,'journal');
-    await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+    const route=width>=861
+      ?'.wb-journal-tabs-v367 [data-journal-route="schedule"]'
+      :'#wbJournalDockV367 [data-journal-route="schedule"]';
+    await page.locator(route).click();
     const planner=page.locator('#scheduleView');
     await planner.locator('[data-j425-mode="month"]').click();
     await planner.locator('[data-j425-add-schedule]').click();
