@@ -4504,7 +4504,14 @@ function journalScheduleV425(){
     journalScheduleCategoryV430=b.dataset.j430ScheduleCategory;journalScheduleV425();
   }));
  root.querySelectorAll('[data-j425-mode]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.mode=b.dataset.j425Mode;journalScheduleV425()}));
- root.querySelector('[data-j425-add-schedule]')?.addEventListener('click',()=>openScheduleDialog());
+ // Use the existing successful gap-booking return for the main creation
+ // action too. A day-cell draft remains on its originating calendar.
+ const openJournalCreateWithFollowV568=(seed=null)=>{
+   openScheduleDialog(seed);
+   elements.scheduleForm.dataset.journalCreateFocus='1';
+ };
+ root.querySelector('[data-j425-add-schedule]')?.addEventListener('click',
+   ()=>openJournalCreateWithFollowV568());
  root.querySelectorAll('[data-j425-day]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.anchor=b.dataset.j425Day;journalScheduleStateV425.mode='day';journalScheduleV425()}));
  // Preserve the real timetable's horizontal position and focused control.
  const refreshWeekChoicesV470=focusSelector=>{
@@ -4545,9 +4552,8 @@ function journalScheduleV425(){
    }
    if(journalScheduleCategoryV430 && state.categories.includes(journalScheduleCategoryV430))
      suggestion.category=journalScheduleCategoryV430;
-   openScheduleDialog(suggestion);
-   // Save success alone triggers the existing JOURNAL day-note focus.
-   elements.scheduleForm.dataset.journalGapFocus='1';
+   // Save success opens the created record in the existing day note.
+   openJournalCreateWithFollowV568(suggestion);
  };
  root.querySelectorAll('[data-j475-mobile-date]').forEach(details=>details.addEventListener('toggle',()=>{
    // A replaced <details> may deliver an old queued toggle after the redraw.
@@ -5286,8 +5292,8 @@ function groupSchedulesByDate(schedules) {
 }
 
 function openScheduleDialog(schedule = null) {
-  // A fresh dialog never inherits a cancelled JOURNAL free-time navigation.
-  delete elements.scheduleForm.dataset.journalGapFocus;
+  // Fresh dialogs never inherit a cancelled JOURNAL creation handoff.
+  delete elements.scheduleForm.dataset.journalCreateFocus;
   const editing = Boolean(schedule?.id);
   elements.scheduleDialogTitle.textContent = editing ? "予定を編集" : "新しい予定";
   journalSchedulePresetExplicitV565 = false;
@@ -5932,16 +5938,18 @@ async function saveScheduleFromForm() {
   schedule.lastChange = changeInfo;
   const result = await persistSchedule(schedule);
   if (!result.ok) return showWriteFailure(result, "予定を保存できませんでした。入力内容はそのままです。");
-  // This is a display-only follow-up after the canonical write succeeds.
-  // Other entry points keep the original save/close/toast behavior.
-  const followJournalGapV466 = !editingId
-    && elements.scheduleForm.dataset.journalGapFocus === '1'
+  // Only deliberate JOURNAL planner creation (top action or verified gap)
+  // follows the new record. The canonical write path and other entry points
+  // retain their existing behavior, including direct day-cell creation.
+  const followJournalCreationV568 = !editingId
+    && elements.scheduleForm.dataset.journalCreateFocus === '1'
     && elements.scheduleForm.dataset.roomId === ROOM_ID
     && elements.scheduleForm.dataset.selectedUser === getCurrentUser()
-    && document.documentElement.dataset.wbDisplay === 'journal';
-  delete elements.scheduleForm.dataset.journalGapFocus;
+    && document.documentElement.dataset.wbDisplay === 'journal'
+    && state.layout === 'schedule';
+  delete elements.scheduleForm.dataset.journalCreateFocus;
   elements.scheduleDialog.close();
-  if (followJournalGapV466) {
+  if (followJournalCreationV568) {
     journalScheduleStateV425.anchor=toISODate(new Date(schedule.startAt));
     journalScheduleStateV425.mode='day';
     journalSchedulePreviewIdV459=schedule.id;
