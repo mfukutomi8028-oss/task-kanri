@@ -2900,10 +2900,18 @@ for(const width of [320,390,1366]){
     const workbench=page.locator('#paletteNextRoot .pn-flow-workbench');
     await expect(board.locator('.pn-board-card')).toHaveCount(2);
     await expect(workbench).toHaveAttribute('data-flow-id',seeded.first);
+    if(width<=780){
+      await expect(workbench).toHaveAttribute('data-flow-expanded','false');
+      await expect(workbench.locator('#pnFlowBody')).toBeHidden();
+    } else await expect(workbench.locator('#pnFlowBody')).toBeVisible();
     const second=board.locator('.pn-board-card').filter({hasText:'Flow Map 関連予定のある仕事'});
     await second.locator('[data-pn-flow-focus]').click();
     await expect(second).toHaveAttribute('data-flow-active','true');
     await expect(workbench).toHaveAttribute('data-flow-id',seeded.second);
+    if(width<=780){
+      await expect(workbench).toHaveAttribute('data-flow-expanded','true');
+      await expect(workbench.locator('#pnFlowBody')).toBeVisible();
+    }
     await expect(workbench.locator('.pn-flow-linked [data-pn-detail="schedule"]'))
       .toHaveAttribute('data-id',seeded.plan);
     // Status is an explicit single-task CAS command, not a duplicate writer.
