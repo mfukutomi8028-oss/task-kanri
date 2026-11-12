@@ -7093,6 +7093,10 @@ html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-book .schedule-copy-w
 html[data-wb-display="journal"] #detailBody .j-record-page-stack>[data-tab-panel="tools"]:not([hidden]) {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}
 html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"]>:is(.task-tools-intro-v154,.j-record-knowledge) {grid-column:1/-1}
 html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"]>.detail-section::before {display:block;font-size:10px;letter-spacing:.13em;color:var(--j-muted);margin-bottom:10px}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"]>.workflow-dependencies-v149 {order:1!important;grid-area:auto!important}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"]>.workflow-relations-v152 {order:2!important;grid-area:auto!important}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"]>.workflow-reminder-v152 {order:3!important;grid-area:auto!important}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"]>.workflow-organize-v153 {order:4!important;grid-area:auto!important}
 html[data-wb-display="journal"] #detailBody .workflow-dependencies-v149::before {content:'01 / 前提の記録'}
 html[data-wb-display="journal"] #detailBody .workflow-relations-v152::before {content:'02 / 案件をつなぐ'}
 html[data-wb-display="journal"] #detailBody .workflow-reminder-v152::before {content:'03 / 再確認のしおり'}

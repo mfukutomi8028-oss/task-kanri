@@ -4088,6 +4088,8 @@ for(const width of [320,1366])test(`JOURNAL related settings and letters retain 
   const tools=detail.locator('[data-tab-panel="tools"]');
   await expect(tools.locator('[data-dependency-select-v149]')).toBeVisible();
   await expect.poll(()=>tools.evaluate(el=>[...el.children].filter(node=>node.matches('.workflow-dependencies-v149,.workflow-relations-v152,.workflow-reminder-v152,.workflow-organize-v153')).map(node=>node.classList.contains('workflow-dependencies-v149')?'dependency':node.classList.contains('workflow-relations-v152')?'related':node.classList.contains('workflow-reminder-v152')?'reminder':'organize'))).toEqual(['dependency','related','reminder','organize']);
+  const firstLeaf=await tools.locator('.workflow-dependencies-v149').boundingBox(),lastLeaf=await tools.locator('.workflow-organize-v153').boundingBox();
+  expect(firstLeaf.y).toBeLessThan(lastLeaf.y);
   const style=await tools.locator('[data-add-related-v152]').evaluate(el=>({radius:parseFloat(getComputedStyle(el).borderRadius),font:parseFloat(getComputedStyle(el).fontSize)}));
   expect(style.radius).toBeLessThanOrEqual(3);expect(style.font).toBeGreaterThanOrEqual(13);
   await tools.locator('[data-dependency-select-v149]').selectOption('paper-peer');
