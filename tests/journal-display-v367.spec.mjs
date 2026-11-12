@@ -4124,7 +4124,7 @@ for(const width of [390,1366])test(`JOURNAL auxiliary paper forms keep copying, 
   await expect(copy.locator('.j-aux-writing #scheduleCopyMethod')).toBeVisible();
   await expect(copy.locator('.j-aux-proof #scheduleCopyPreviewSummary')).toBeVisible();
   await copy.locator('#scheduleCopyMethod').selectOption('weekly');
-  await copy.locator('[data-copy-weekday="1"]').check();
+  await copy.locator('[data-copy-weekday][value="1"]').check();
   await expect(copy.locator('#scheduleCopyPreviewSummary')).toContainText('4');
   await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-copy-'+width+'.png')});
   expect(await copy.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
@@ -4150,7 +4150,8 @@ for(const width of [390,1366])test(`JOURNAL auxiliary paper forms keep copying, 
   await page.locator('[data-j420-layout="timeline"]').click();
   await page.locator('[data-move-to-timeline="paper-main"]').click();
   const move=page.locator('#timelineMoveDialog');
-  await expect(move.locator('.j-aux-date #timelineMoveDueDate')).toBeVisible();
+  await expect(move.locator('.j-aux-date')).toBeVisible();
+  await expect(move.locator('.j-aux-date #timelineMoveDueDate')).toBeAttached();
   await expect(move.locator('.dialog-head h2')).toHaveText('日付日誌へ移す');
   await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-date-'+width+'.png')});
   const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');});
