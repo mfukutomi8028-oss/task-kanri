@@ -124,7 +124,7 @@ test('Journal avoids Classic component carryover, duplicate summary and memo sch
   assert.match(css,/todo-item/);
   assert.match(css,/schedule-card/);
   assert.match(css,/work-memo-card-v167/);
-  assert.match(css,/dashboard-kpi/);
+  assert.match(css,/j-review-counts/);
   assert.match(css,/@media \(max-width:860px\)/);
   assert.match(css,/@media \(max-width:610px\)/);
   assert.doesNotMatch(css,/max-width:1560px/);

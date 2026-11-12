@@ -6553,6 +6553,7 @@ function journalDashboardNavigationV565(){
     journalReservedTaskShortcutV565()+'</nav>';
 }
 function renderDashboard(tasks) {
+  if (journalTaskV411()) return renderJournalReview(tasks);
   // ダッシュボードも、左メニューの「自分の担当」「完了」や各種絞り込みを反映する。
   // 以前は state.tasks を直接参照していたため、常に全体集計になっていた。
   const sourceTasks = Array.isArray(tasks) ? tasks : [];
@@ -6602,6 +6603,44 @@ function renderDashboard(tasks) {
       openTaskEditorById(el.dataset.taskId);
     });
   });
+}
+
+// JOURNAL owns the review composition. Canonical predicates and the shared
+// insights extension still supply the same metrics, workload and assist rules.
+function renderJournalReview(tasks = []) {
+  const open = tasks.filter(t => !isCompletedStatus(t.status));
+  const counters = [
+    ['未完了', open.length, 'open'],
+    ['期限超過', open.filter(isOverdue).length, 'overdue'],
+    ['今日まで', open.filter(isDueToday).length, 'today'],
+    ['放置気味', open.filter(isStale).length, 'stale'],
+    ['今月完了', tasks.filter(t => isCompletedStatus(t.status) && isCompletedThisMonth(t)).length, 'done']
+  ];
+  const attention = [...open].filter(t => isOverdue(t) || isDueToday(t) || isStale(t) || t.priority === '緊急')
+    .sort(compareSmartTasks).slice(0, 8);
+  const ledger = (label, key) => {
+    const rows = Object.entries(countBy(open, key)).sort((a,b) => b[1]-a[1]);
+    return `<section class="j-review-ledger"><h4>${label}</h4><dl>${rows.map(([name,count]) =>
+      `<div><dt>${escapeHtml(name)}</dt><dd>${count}<small>件</small></dd></div>`).join('')
+      || '<p>対象はありません。</p>'}</dl></section>`;
+  };
+  elements.dashboardView.innerHTML = `${journalDashboardNavigationV565()}
+    <section class="j-review-book" aria-label="業務の振り返り">
+      <header class="j-review-heading"><div><small>REVIEW / 業務の記録</small><h3>振り返りノート</h3>
+        <p>${escapeHtml(dashboardScopeText())}</p></div><button type="button" data-dashboard-refresh>集計を更新</button></header>
+      <dl class="j-review-counts">${counters.map(([label,count,kind]) => `<div data-review-count="${kind}"><dt>${label}</dt><dd>${count}<small>件</small></dd></div>`).join('')}</dl>
+      <div class="j-review-spread"><section class="j-review-attention"><header><small>01 / 確認する記録</small><h4>見落としを防ぐ</h4></header>
+        ${attention.map(t => `<button type="button" data-j-review-task="${escapeHtml(t.id)}"><span><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.assignee || '未割当')} · ${escapeHtml(t.dueDate || '期限なし')}</small></span><em>${isOverdue(t) ? '期限超過' : isDueToday(t) ? '今日まで' : isStale(t) ? '更新なし' : '緊急'}</em></button>`).join('') || '<p class="j-shelf-empty">注意が必要なタスクはありません。</p>'}</section>
+        <section class="j-review-breakdown"><header><small>02 / 未完了の内訳</small><h4>担当と進み具合</h4></header>${ledger('担当者','assignee')}${ledger('分類','category')}${ledger('状態','status')}</section></div>
+      <section class="j-review-insights"><header><small>03 / 全体の見通し</small><h4>担当負荷と自動アシスト</h4><p>この欄は絞り込みにかかわらず全体を集計します。</p></header>
+        <div class="dashboard-grid j-review-insight-pages"></div></section>
+    </section>`;
+  elements.dashboardView.querySelector('[data-dashboard-refresh]').addEventListener('click', render);
+  elements.dashboardView.querySelectorAll('[data-j565-task-layout]').forEach(button =>
+    button.addEventListener('click', () => journalSwitchTaskPageV509(button.dataset.j565TaskLayout)));
+  elements.dashboardView.querySelectorAll('[data-j-review-task]').forEach(button =>
+    button.addEventListener('click', () => selectTask(button.dataset.jReviewTask)));
+  journalBindReservedTaskShortcutV565(elements.dashboardView);
 }
 
 function dashboardKpi(label, value, note, type = "") {
@@ -12665,6 +12704,16 @@ async function savePaletteNextTaskV370(command) {
     : await persistTask(draft);
   return result.ok ? { ok: true, id } : result;
 }
+
+// Presentation-only entry points for JOURNAL's record shelf. They do not
+// change the active page, search conditions, or data ownership.
+window.WorkBoardJournalNavigation = Object.freeze({
+  openTask(id) {
+    if (!journalTaskV411() || !state.tasks.some(t => t.id === id)) return false;
+    selectTask(id);
+    return true;
+  }
+});
 
 window.WorkBoardPaletteBridge = Object.freeze({
   readSnapshot: paletteNextSnapshot,
