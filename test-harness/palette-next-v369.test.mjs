@@ -2581,3 +2581,19 @@ test('Palette Studio contextual workbenches retain canonical identity and writer
   assert.match(css,/@media\(max-width:780px\)/);
   assert.doesNotMatch(shell,/getDatabase\(|runTransaction\(|initializeApp\(/);
 });
+
+test('Palette Studio phase 4 restores action focus and preserves search selection boundaries',()=>{
+  assert.match(shell,/function reconcileStudioSelection\(\)/);
+  assert.match(shell,/function revealStudioSelection\(kind\)/);
+  assert.match(shell,/studioControlKeys=\[/);
+  assert.match(shell,/studioFocus\.top/);
+  assert.match(shell,/roomAtClick=state\.snapshot\.roomId/);
+  assert.match(shell,/fromStudio==='memo'/);
+  assert.match(shell,/fromStudio==='todo'/);
+  assert.match(shell,/data-studio-selected/);
+  assert.match(css,/\.pn-todo-columns \.pn-todo-item/);
+  assert.match(css,/grid-template-areas:"check title" "\. actions"/);
+  assert.match(css,/#paletteNextRoot \.wb-pn\[data-theme="dark"\] \.pn-studio-insight/);
+  assert.doesNotMatch(css,/#paletteNextRoot\[data-theme="dark"\] \.pn-studio-insight/);
+  assert.doesNotMatch(shell,/getDatabase\(|runTransaction\(|initializeApp\(/);
+});
