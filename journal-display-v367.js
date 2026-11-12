@@ -158,7 +158,7 @@
   const shelfSearch = shelf.querySelector('[data-j-shelf-search]');
   const shelfSummary = shelf.querySelector('.j-shelf-summary');
   let shelfPage = 'inbox', shelfQuery = '', shelfUnreadOnly = false, shelfLimit = 40;
-  let shelfOwner = '', shelfBusy = false, shelfEditing = null, shelfQueued = false;
+  let shelfOwner = '', shelfBusy = false, shelfEditing = null, shelfQueued = false, shelfReturnTask = null;
   const shelfArchiveBases = new Map();
   const shelfInboxBases = new Map();
   const shelfEsc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
@@ -179,6 +179,11 @@
   function closeShelf() {
     shelfEditing = null;
     if (shelf.open) shelf.close();
+  }
+  function shelfDraftChanged() {
+    const form=shelfRecords.querySelector('.j-shelf-knowledge-form');
+    if(!shelfEditing || !form)return false;
+    return [...new FormData(form)].some(([key,value])=>String(value)!==String(shelfEditing.record[key]||''));
   }
   function renderShelf() {
     if (shelfEditing || shelfBusy) return;
@@ -259,10 +264,11 @@
     } catch(error) { shelfBusy=false;renderShelf();shelfMessage('更新できませんでした。接続と最新の状態を確認して、やり直してください。'); }
     finally { shelfBusy=false;shelf.querySelectorAll('button').forEach(button=>{if(!button.hasAttribute('data-j-shelf-read-all'))button.disabled=false;}); }
   }
-  function readShelfKnowledge(id) {
-    const snapshot=shelfSnapshot(),record=snapshot.knowledge.find(x=>x.id===id);
+  function readShelfKnowledge(id, taskId = '') {
+    const snapshot=shelfSnapshot(),task=snapshot.tasks.find(x=>x.id===taskId);
+    const record=id?snapshot.knowledge.find(x=>x.id===id):task?{id:'',title:task.title,summary:task.description,symptom:'',action:'',checkpoint:'',revision:0}:null;
     if(!record)return;
-    shelfEditing={record:{...record},ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser};
+    shelfEditing={record:{...record},ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,taskId:task?.id || '',taskRevision:task?.revision};
     shelfSearch.closest('label').hidden=true;
     shelf.querySelector('.j-shelf-controls').innerHTML='';
     shelfRecords.innerHTML=`<form class="j-shelf-knowledge-form"><button type="button" data-j-shelf-back>← 手順の索引へ</button><h4>${shelfEsc(record.title)}</h4>${[['title','件名'],['summary','概要'],['symptom','症状・背景'],['action','対応内容'],['checkpoint','確認事項']].map(([key,label])=>`<label>${label}${['title','action'].includes(key)?'（必須）':''}${key==='title'?`<input name="${key}" maxlength="80" required value="${shelfEsc(record[key])}">`:`<textarea name="${key}" rows="4" maxlength="6000" ${key==='action'?'required':''}>${shelfEsc(record[key])}</textarea>`}</label>`).join('')}<button type="submit">手順を保存</button></form>`;
@@ -274,7 +280,7 @@
       shelfBusy=true;button.disabled=true;
       const values=Object.fromEntries(new FormData(form));
       try {
-        const result=await window.WorkBoardPaletteBridge.dispatch({type:'knowledge.save',id:draft.record.id,revision:draft.record.revision,values,ownerRoom:draft.ownerRoom,ownerUser:draft.ownerUser});
+        const result=await window.WorkBoardPaletteBridge.dispatch({type:'knowledge.save',id:draft.record.id,revision:draft.record.revision,taskId:draft.taskId,taskRevision:draft.taskRevision,values,ownerRoom:draft.ownerRoom,ownerUser:draft.ownerUser});
         if(!result?.ok){shelfMessage('保存できませんでした。入力を残しています。最新の内容・接続状態を確認してください。');return;}
         shelfEditing=null;shelfBusy=false;renderShelf();shelfMessage('手順を保存しました。');
         shelf.querySelector('[data-j-shelf-page="knowledge"]').focus();
@@ -285,19 +291,26 @@
   }
   shelfButton.addEventListener('click',()=>openShelf());
   shelf.querySelector('[data-j-shelf-close]').addEventListener('click',()=>{
-    if(!shelfEditing || confirm('編集中の手順を保存せずに閉じますか？'))closeShelf();
+    if(!shelfDraftChanged() || confirm('編集中の手順を保存せずに閉じますか？'))closeShelf();
   });
   shelf.addEventListener('cancel',event=>{
     if(shelfBusy){event.preventDefault();return;}
-    if(shelfEditing && !confirm('編集中の手順を保存せずに閉じますか？'))event.preventDefault();
+    if(shelfDraftChanged() && !confirm('編集中の手順を保存せずに閉じますか？'))event.preventDefault();
   });
-  shelf.addEventListener('close',()=>{shelfEditing=null;if(isJournal())shelfButton.focus({preventScroll:true});});
+  shelf.addEventListener('close',()=>{
+    shelfEditing=null;
+    const origin=shelfReturnTask;shelfReturnTask=null;
+    if(!isJournal())return;
+    const returned=origin && origin.owner===shelfOwnerKey(shelfSnapshot())
+      && window.WorkBoardJournalNavigation?.openTask(origin.id);
+    if(!returned)shelfButton.focus({preventScroll:true});
+  });
   shelfSearch.addEventListener('input',()=>{shelfQuery=shelfSearch.value;shelfLimit=40;renderShelf();});
   shelf.addEventListener('click',event=>{
     const button=event.target.closest('button');if(!button || shelfBusy)return;
-    if(button.hasAttribute('data-j-shelf-back')){if(confirm('編集中の手順を保存せずに索引へ戻りますか？')){shelfEditing=null;renderShelf();shelf.querySelector('[data-j-shelf-page="knowledge"]').focus();}return;}
+    if(button.hasAttribute('data-j-shelf-back')){if(!shelfDraftChanged() || confirm('編集中の手順を保存せずに索引へ戻りますか？')){shelfEditing=null;renderShelf();shelf.querySelector('[data-j-shelf-page="knowledge"]').focus();}return;}
     if(button.dataset.jShelfPage){
-      if(shelfEditing && !confirm('編集中の手順を保存せずにページを移動しますか？'))return;
+      if(shelfDraftChanged() && !confirm('編集中の手順を保存せずにページを移動しますか？'))return;
       shelfEditing=null;shelfMessage('');shelfPage=button.dataset.jShelfPage;shelfQuery='';shelfSearch.value='';shelfLimit=40;renderShelf();return;
     }
     if(button.hasAttribute('data-j-shelf-more')){shelfLimit+=40;renderShelf();return;}
@@ -314,6 +327,11 @@
     if(button.dataset.jShelfTemplate){const id=button.dataset.jShelfTemplate;closeShelf();createItem('task');requestAnimationFrame(()=>{const select=document.getElementById('taskTemplate');if(select){select.value=id;select.dispatchEvent(new Event('change',{bubbles:true}));}});return;}
     if(button.dataset.jShelfManager){
       const target=document.getElementById(button.dataset.jShelfManager);if(!target)return;
+      const dialogIds={manageTemplates:'templateManageDialog',manageCategories:'categoryManageDialog',manageStatuses:'statusManageDialog',manageUsers:'userManageDialog'};
+      const owner=shelfOwner,page=shelfPage,manager=document.getElementById(dialogIds[target.id]);
+      manager?.addEventListener('close',()=>{
+        if(isJournal() && owner===shelfOwnerKey(shelfSnapshot()))openShelf(page);
+      },{once:true});
       closeShelf();target.click();return;
     }
   });
@@ -1639,7 +1657,40 @@
     }
   }
 
+  let journalReservedRecord=null;
+  function restoreJournalReserved() {
+    if(!journalReservedRecord)return;
+    for(const {marker,node} of journalReservedRecord.moves)if(marker.parentNode)marker.replaceWith(node);
+    journalReservedRecord.groups.forEach(node=>node.remove());
+    journalReservedRecord.list.classList.remove('j-reserved-list');
+    journalReservedRecord=null;
+  }
+  function composeJournalReserved(dialog) {
+    const list=dialog.querySelector('.reserved-task-list-v167');
+    if(!list || journalReservedRecord?.list===list)return;
+    restoreJournalReserved();
+    const record={list,moves:[],groups:[]},days=new Map();
+    list.classList.add('j-reserved-list');
+    for(const card of [...list.children]) {
+      if(!card.matches('[data-reserved-id]'))continue;
+      const date=card.querySelector('[data-reserved-date]')?.value || '';
+      if(!days.has(date)) {
+        const group=document.createElement('section');group.className='j-reserved-day';
+        const heading=document.createElement('header');
+        const label=document.createElement('small');label.textContent='開始日のしおり';
+        const day=document.createElement('h3');day.textContent=date?new Date(date+'T12:00:00').toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'}):'開始日未設定';
+        const records=document.createElement('div');records.className='j-reserved-records';
+        heading.append(label,day);group.append(heading,records);list.append(group);
+        record.groups.push(group);days.set(date,group);
+      }
+      const marker=document.createComment('journal-reserved-card-position');
+      card.before(marker);days.get(date).querySelector('.j-reserved-records').append(card);record.moves.push({marker,node:card});
+    }
+    journalReservedRecord=record;
+  }
+
   function restoreJournalEntriesV385() {
+    restoreJournalReserved();
     for (const [dialog, record] of journalEntryRecordsV385) {
       for (const dispose of record.listeners) dispose();
       for (const {marker,node} of record.moves) {
@@ -1658,9 +1709,11 @@
 
   function syncJournalEntriesV385() {
     if (!isJournal()) {
-      if (journalEntryRecordsV385.size) restoreJournalEntriesV385();
+      if (journalEntryRecordsV385.size || journalReservedRecord) restoreJournalEntriesV385();
       return;
     }
+    const reserved=document.querySelector('#reservedTaskDialogV167[open]');
+    if(reserved)composeJournalReserved(reserved);
     for (const dialog of document.querySelectorAll(
       '#taskDialog[open],#scheduleDialog[open],#workMemoDialogV167[open],'
       + '#scheduleCopyDialog[open],#recurringDeleteDialog[open],#templateManageDialog[open],'
@@ -1690,12 +1743,14 @@
     const watchedDialogs = new WeakSet();
     function watchEntryDialogsV385() {
       for (const dialog of document.querySelectorAll(
-        '#taskDialog,#scheduleDialog,#workMemoDialogV167,#scheduleCopyDialog,#recurringDeleteDialog,#templateManageDialog,#categoryManageDialog,#statusManageDialog,#userManageDialog')) {
+        '#taskDialog,#scheduleDialog,#workMemoDialogV167,#scheduleCopyDialog,#recurringDeleteDialog,#templateManageDialog,#categoryManageDialog,#statusManageDialog,#userManageDialog,#reservedTaskDialogV167')) {
         if (watchedDialogs.has(dialog)) continue;
         watchedDialogs.add(dialog);
         new MutationObserver(syncJournalEntriesV385).observe(dialog, {
           attributes:true,attributeFilter:['open']
         });
+        const reservedList=dialog.querySelector('#reservedTaskListV167');
+        if(reservedList)new MutationObserver(syncJournalEntriesV385).observe(reservedList,{childList:true});
       }
     }
     watchEntryDialogsV385();
@@ -1832,6 +1887,65 @@
     const headLabel=panel.querySelector('.detail-head strong');
     const originalHeadLabel=headLabel?.textContent||'タスク詳細';
     let moreExpanded=false;
+    let recordPages=null;
+    function composeRecordPages() {
+      if(recordPages && !recordPages.stack.isConnected){recordPages.observer.disconnect();recordPages=null;}
+      if(!isJournal()) {
+        detailBody.querySelectorAll('[data-j-record-knowledge]').forEach(button=>button.remove());
+        if(recordPages) {
+          const {stack,index,orientation,observer,onKey}=recordPages;
+          observer.disconnect();
+          index.removeEventListener('keydown',onKey,true);
+          stack.replaceWith(...stack.children);
+          index.classList.remove('j-record-page-index');
+          if(orientation===null)index.removeAttribute('aria-orientation');
+          else index.setAttribute('aria-orientation',orientation);
+          recordPages=null;
+        }
+        detailBody.classList.remove('j-record-detail');
+        return;
+      }
+      if(!recordPages) {
+        // Keep the shared tab bar as a direct child: comments and related
+        // tools use that boundary. Move the live panels, never their controls.
+        const index=detailBody.querySelector(':scope > .task-detail-tabs-v149');
+        const pages=[...detailBody.querySelectorAll(':scope > .task-detail-panel-v149')];
+        if(!index || !pages.length)return;
+        const stack=document.createElement('div');stack.className='j-record-page-stack';
+        index.after(stack);stack.append(...pages);
+        const observer=new MutationObserver(enhance);
+        observer.observe(stack,{childList:true});
+        const onKey=event=>{
+          if(!isJournal() || compact.matches || !['ArrowUp','ArrowDown'].includes(event.key))return;
+          const buttons=[...index.querySelectorAll('.task-detail-tab-v149')];
+          const current=buttons.indexOf(event.target.closest('.task-detail-tab-v149'));
+          if(current<0)return;
+          event.preventDefault();event.stopImmediatePropagation();
+          const next=buttons[(current+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length];
+          next.click();next.focus({preventScroll:true});
+        };
+        index.addEventListener('keydown',onKey,true);
+        recordPages={stack,index,observer,onKey,orientation:index.getAttribute('aria-orientation')};
+        index.classList.add('j-record-page-index');
+        detailBody.classList.add('j-record-detail');
+      }
+      recordPages.index.setAttribute('aria-orientation',compact.matches?'horizontal':'vertical');
+      const tools=detailBody.querySelector('[data-tab-panel="tools"]');
+      if(tools && !tools.querySelector('[data-j-record-knowledge]')) {
+        const button=document.createElement('button');button.type='button';
+        button.dataset.jRecordKnowledge='';button.className='j-record-knowledge';
+        button.textContent='この案件の手順・知識を残す';
+        button.addEventListener('click',()=>{
+          const key=detailBody.querySelector('[data-operation-key^="task-delete:"]')?.dataset.operationKey || '';
+          const task=shelfSnapshot()?.tasks.find(x=>x.id===key.slice('task-delete:'.length));
+          if(!task)return;
+          close.click();openShelf('knowledge');
+          shelfReturnTask={id:task.id,owner:shelfOwner};
+          readShelfKnowledge(task.knowledgeId,task.id);
+        });
+        tools.prepend(button);
+      }
+    }
     // Long records need a stable, useful sticky heading. Only JOURNAL phones
     // override the label, and leaving the view restores its canonical text.
     const syncTaskHeading=()=>{
@@ -1846,6 +1960,7 @@
     // its original listeners and avoids a second editor or persistence owner.
     const enhance=()=>{
       if(!detailBody)return;
+      composeRecordPages();
       syncTaskHeading();
       const actions=detailBody.querySelector('.detail-actions');
       const wrapper=actions?.querySelector('.j495-detail-more');

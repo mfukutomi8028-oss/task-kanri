@@ -3892,13 +3892,14 @@ async function bootRecordShelf(page,width) {
   await boot(page,width);await choose(page,'journal');
 }
 
-for(const width of [320,390,1366])test(`JOURNAL record shelf keeps notifications, archive restore and knowledge in the notebook at ${width}px`,async({page})=>{
+for(const width of [320,390,1366])test(`JOURNAL record shelf keeps notifications, archive restore and knowledge in the notebook at ${width}px`,async({page},testInfo)=>{
   test.setTimeout(90000);
   await bootRecordShelf(page,width);
   await expect(page.locator('.j-shelf-launch')).toContainText('1');
   await page.locator('.j-shelf-launch').click();
   const shelf=page.locator('#jRecordShelf');
   await expect(shelf).toBeVisible();
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-shelf-'+width+'.png')});
   await expect(shelf.locator('.is-unread')).toContainText('確認の依頼');
   await shelf.locator('[data-j-shelf-unread-filter]').click();
   await shelf.locator('[data-j-shelf-read]').click();
@@ -3931,6 +3932,7 @@ for(const width of [320,390,1366])test(`JOURNAL record shelf keeps notifications
   await shelf.locator('[data-j-shelf-page="manage"]').click();
   await shelf.locator('[data-j-shelf-manager="manageCategories"]').click();
   await expect(page.locator('#categoryManageDialog')).toBeVisible();
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-management-'+width+'.png')});
   await page.locator('#closeCategoryManage').click();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
@@ -3959,7 +3961,7 @@ test('JOURNAL shelf opens tasks without clearing search, protects knowledge draf
   expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().knowledge.find(x=>x.id==='shelf-guide').action)).toBe('電源を確認する');
 });
 
-for(const width of [390,1366])test(`JOURNAL review is an independent ledger with canonical insights at ${width}px`,async({page})=>{
+for(const width of [390,1366])test(`JOURNAL review is an independent ledger with canonical insights at ${width}px`,async({page},testInfo)=>{
   await bootRecordShelf(page,width);
   await page.locator((width<=860?'.wb-journal-dock-v367':'.wb-journal-tabs-v367')+' [data-journal-route="tasks"]').click();
   await page.locator('[data-j420-layout="dashboard"]').click();
@@ -3967,7 +3969,92 @@ for(const width of [390,1366])test(`JOURNAL review is an independent ledger with
   await expect(page.locator('.j-review-counts [data-review-count="open"] dd')).toContainText('1');
   await expect(page.locator('#dashboardView .dashboard-kpis')).toHaveCount(0);
   await expect(page.locator('#dashboardView .workflow-dashboard-panel-v148')).toHaveCount(2);
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-review-'+width+'.png')});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await page.locator('[data-j565-task-layout="board"]').click();
   await expect(page.locator('.j420-atelier')).toBeVisible();
+});
+
+for(const width of [390,1366])test(`JOURNAL reserved folios group start days and keep canonical date updates at ${width}px`,async({page},testInfo)=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify(['future-a','future-b','future-c'].map((id,i)=>({id,title:'予約の記録 '+i,status:'未着手',assignee:'JournalTester',priority:'中',revision:1,createdAt:Date.now(),updatedAt:Date.now()}))));
+    localStorage.setItem('system-task-start-dates:'+room,JSON.stringify({'future-a':{date:'2099-01-05',revision:1},'future-b':{date:'2099-01-05',revision:1},'future-c':{date:'2099-01-06',revision:1}}));
+  },{room:ROOM});
+  await boot(page,width);await choose(page,'journal');
+  await page.locator((width<=860?'.wb-journal-dock-v367':'.wb-journal-tabs-v367')+' [data-journal-route="tasks"]').click();
+  await page.locator('[data-j565-reserved-open]').click();
+  const reserved=page.locator('#reservedTaskDialogV167');
+  await expect(reserved.locator('.j-reserved-day')).toHaveCount(2);
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-reserved-'+width+'.png')});
+  await expect(reserved.locator('.j-reserved-day').first().locator('[data-reserved-id]')).toHaveCount(2);
+  await reserved.locator('[data-reserved-date="future-a"]').evaluate(input=>{input.value='2099-01-06';input.dispatchEvent(new Event('change',{bubbles:true}));});
+  await reserved.locator('[data-reserved-save="future-a"]').click();
+  await expect.poll(()=>page.evaluate(({room})=>JSON.parse(localStorage.getItem('system-task-start-dates:'+room))['future-a'].date,{room:ROOM})).toBe('2099-01-06');
+  await expect(reserved.locator('.j-reserved-day').last().locator('[data-reserved-id]')).toHaveCount(2);
+  await reserved.locator('[data-reserved-activate="future-b"]').click();
+  await expect(reserved.locator('[data-reserved-id="future-b"]')).toHaveCount(0);
+  expect(await reserved.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+  await reserved.locator('[data-reserved-close]').click();
+  await choose(page,'classic');
+  await expect(reserved.locator('.j-reserved-day')).toHaveCount(0);
+  await expect(reserved.locator('.reserved-task-list-v167>[data-reserved-id]')).toHaveCount(2);
+});
+
+for(const width of [390,1366])test(`JOURNAL case notebook retains comments and related tools through display switches at ${width}px`,async({page},testInfo)=>{
+  await bootRecordShelf(page,width);
+  await page.locator('.j-shelf-launch').click();
+  await page.locator('#jRecordShelf [data-j-shelf-task]').click();
+  const detail=page.locator('#detailBody');
+  await expect(detail.locator('.j-record-page-stack')).toBeVisible();
+  if(width===1366){
+    expect((await page.locator('.detail-panel').boundingBox()).width).toBeGreaterThanOrEqual(960);
+    expect((await detail.locator('.j-record-page-stack').boundingBox()).width).toBeGreaterThanOrEqual(600);
+  }
+  await expect(detail.locator('.j-record-page-index')).toHaveAttribute('aria-orientation',width<=760?'horizontal':'vertical');
+  await detail.locator('[data-tab="comments"]').click();
+  await expect(detail.locator('.j-record-page-stack [data-tab-panel="comments"]')).toBeVisible();
+  await expect(detail.locator('#commentText')).toBeAttached();
+  await detail.locator('[data-tab="tools"]').click();
+  await expect(detail.locator('.j-record-page-stack [data-tab-panel="tools"]')).toBeVisible();
+  await expect(detail.locator('.workflow-relations-v152')).toBeVisible();
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-detail-'+width+'.png')});
+  if(width===1366){
+    await detail.locator('[data-tab="tools"]').focus();
+    await page.keyboard.press('ArrowUp');
+    await expect(detail.locator('[data-tab-panel="history"]')).toBeVisible();
+    await detail.locator('[data-tab="tools"]').click();
+    await detail.locator('[data-j-record-knowledge]').click();
+    const shelf=page.locator('#jRecordShelf');
+    await expect(shelf.locator('[name="title"]')).toHaveValue('確認する案件');
+    await shelf.locator('[name="action"]').fill('案件から残した対応手順');
+    await shelf.locator('[type="submit"]').click();
+    await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.id==='shelf-active').knowledgeId)).not.toBe('');
+    await shelf.locator('[data-j-shelf-close]').click();
+    await expect(detail.locator('.j-record-page-stack')).toBeVisible();
+  }
+  await choose(page,'classic');
+  await expect(detail.locator('.j-record-page-stack')).toHaveCount(0);
+  await page.locator('.nav-item[data-layout="tasks"]').evaluate(button=>button.click());
+  await page.locator('.task-card[data-task-id="shelf-active"]').first().click();
+  await expect(detail.locator(':scope > .task-detail-tabs-v149')).toBeVisible();
+  await detail.locator('[data-tab="details"]').click();
+  await expect(detail.locator(':scope > [data-tab-panel="details"]')).toBeVisible();
+});
+
+test('JOURNAL knowledge conflicts preserve the unsaved draft and never overwrite a newer guide',async({page})=>{
+  await bootRecordShelf(page,1366);
+  await page.locator('.j-shelf-launch').click();
+  await page.locator('[data-j-shelf-page="knowledge"]').click();
+  await page.locator('[data-j-shelf-knowledge]').click();
+  await page.locator('.j-shelf [name="action"]').fill('未保存の自分の手順');
+  const result=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot(),record=s.knowledge.find(x=>x.id==='shelf-guide');
+    return bridge.dispatch({type:'knowledge.save',id:record.id,revision:record.revision,values:{...record,action:'別の更新で保存済み'},ownerRoom:s.roomId,ownerUser:s.currentUser});
+  });
+  expect(result.ok).toBe(true);
+  await page.locator('.j-shelf [type="submit"]').click();
+  await expect(page.locator('.j-shelf-feedback')).toContainText('入力を残しています');
+  await expect(page.locator('.j-shelf [name="action"]')).toHaveValue('未保存の自分の手順');
+  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().knowledge.find(x=>x.id==='shelf-guide').action)).toBe('別の更新で保存済み');
 });
