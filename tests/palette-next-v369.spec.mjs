@@ -2826,6 +2826,26 @@ for(const width of [320,390,1366]){
   const card=page.locator('#paletteNextRoot .pn-board-card').filter({hasText:name});
   await expect(card).toHaveCount(1);
   await expect(page.locator('#paletteNextRoot .pn-task-board')).toBeVisible();
+  if(width<=780){
+    // All filters and board controls are directly visible without two
+    // stacked toolbars; actual computed layout guards against mobile regressions.
+    const layout=await page.evaluate(()=>{
+      const bounds=selector=>document.querySelector('#paletteNextRoot '+selector)
+        ?.getBoundingClientRect();
+      return {
+        filters:bounds('.pn-flowtabs')?.height,
+        header:bounds('.pn-task-sheet>.pn-sheethead')?.height,
+        laneTop:bounds('.pn-board-lane')?.top,
+        dockTop:bounds('.pn-mobile-nav')?.top,
+        overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth
+      };
+    });
+    expect(layout.filters).toBeLessThanOrEqual(56);
+    expect(layout.header).toBeLessThanOrEqual(138);
+    expect(layout.overflow).toBeLessThanOrEqual(2);
+    if(width===390)expect(layout.laneTop).toBeLessThan(layout.dockTop);
+    await expect(page.locator('#paletteNextRoot .pn-task-sheet>.pn-bulkbar[data-empty="true"]')).toBeHidden();
+  }
   await expect(card.locator('[data-pn-detail="task"]')).toBeVisible();
   const categorySize=await card.locator('.pn-board-card-label')
     .evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
@@ -2837,6 +2857,7 @@ for(const width of [320,390,1366]){
   expect(before?.id).toBeTruthy();
   await card.locator('[data-pn-bulk-id]').check();
   await expect(page.locator('#paletteNextRoot .pn-bulk-heading')).toContainText('1件選択中');
+  if(width<=780)await expect(page.locator('#paletteNextRoot .pn-task-sheet>.pn-bulkbar')).toBeVisible();
   await listToggle.click();
   await expect(listToggle).toHaveAttribute('aria-pressed','true');
   const row=page.locator('#paletteNextRoot .pn-flowrow').filter({hasText:name});
