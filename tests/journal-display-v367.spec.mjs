@@ -4058,3 +4058,116 @@ test('JOURNAL knowledge conflicts preserve the unsaved draft and never overwrite
   await expect(page.locator('.j-shelf [name="action"]')).toHaveValue('未保存の自分の手順');
   expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().knowledge.find(x=>x.id==='shelf-guide').action)).toBe('別の更新で保存済み');
 });
+
+async function bootPaperAuxiliary(page,width) {
+  await page.addInitScript(({room})=>{
+    const now=Date.now(),day=new Date(),next=new Date(day);next.setDate(next.getDate()+1);
+    const iso=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+    const task=(id,title)=>({id,title,status:'未着手',assignee:'JournalQA',priority:'中',dueDate:iso(day),revision:1,createdAt:now,updatedAt:now,createdBy:'JournalQA',updatedBy:'JournalQA'});
+    const main=task('paper-main','紙面を確認する案件');
+    main.comments=[{id:'paper-comment',text:'確認済みの記録です。',author:'JournalQA',type:'作業メモ',createdAt:now,reactions:{'👍':['JournalQA']}}];
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalQA','Peer']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify([main,task('paper-peer','前提となる案件')]));
+    const schedule=(id,date,title,hour,series='')=>({id,title,assignee:'JournalQA',category:'院内',startAt:new Date(date+'T'+hour+':00').toISOString(),endAt:new Date(date+'T'+hour+':30').toISOString(),revision:1,createdAt:now,updatedAt:now,recurrenceSeriesId:series,recurrenceDate:date});
+    localStorage.setItem('system-task-schedules:'+room,JSON.stringify([schedule('paper-plan',iso(day),'コピーする予定','10'),schedule('paper-series-a',iso(day),'繰り返しの確認','12','paper-series'),schedule('paper-series-b',iso(next),'繰り返しの確認','12','paper-series')]));
+  },{room:ROOM});
+  await boot(page,width);
+  await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('JournalQA'));
+  await choose(page,'journal');
+}
+async function paperRoute(page,width,route) {
+  await page.locator((width<=860?'.wb-journal-dock-v367':'.wb-journal-tabs-v367')+' [data-journal-route="'+route+'"]').click();
+}
+
+for(const width of [320,1366])test(`JOURNAL related settings and letters retain canonical operations on paper at ${width}px`,async({page},testInfo)=>{
+  test.setTimeout(90000);
+  await bootPaperAuxiliary(page,width);
+  await page.evaluate(()=>window.WorkBoardJournalNavigation.openTask('paper-main'));
+  const detail=page.locator('#detailBody');
+  await detail.locator('[data-tab="tools"]').click();
+  const tools=detail.locator('[data-tab-panel="tools"]');
+  await expect(tools.locator('[data-dependency-select-v149]')).toBeVisible();
+  const style=await tools.locator('[data-add-related-v152]').evaluate(el=>({radius:parseFloat(getComputedStyle(el).borderRadius),font:parseFloat(getComputedStyle(el).fontSize)}));
+  expect(style.radius).toBeLessThanOrEqual(3);expect(style.font).toBeGreaterThanOrEqual(13);
+  await tools.locator('[data-dependency-select-v149]').selectOption('paper-peer');
+  await tools.locator('[data-add-dependency-v149]').click();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardWorkflowV152.depIds('paper-main'))).toContain('paper-peer');
+  await tools.locator('[data-related-select-v152]').selectOption('paper-peer');
+  await tools.locator('[data-add-related-v152]').click();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardWorkflowV152.relationIds('paper-main'))).toContain('paper-peer');
+  await tools.locator('[data-reminder-preset-v152="30m"]').click();
+  await tools.locator('[data-save-reminder-v152]').click();
+  await expect.poll(()=>page.evaluate(()=>Number(window.WorkBoardWorkflowV152.reminderFor('paper-main')?.at||0))).toBeGreaterThan(0);
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-tools-'+width+'.png')});
+  await detail.locator('[data-tab="comments"]').click();
+  await expect(detail.locator('.activity-text').filter({hasText:'確認済みの記録です。'})).toBeVisible();
+  await expect(detail.locator('.comment-reaction-chip-v165[aria-pressed="true"]')).toHaveCount(1);
+  await detail.locator('#commentText').fill('紙面の入力欄から記録しました。');
+  await detail.locator('#commentForm button[type="submit"]').click();
+  await expect(detail.locator('.activity-text').filter({hasText:'紙面の入力欄から記録しました。'})).toBeVisible();
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-letters-'+width+'.png')});
+  expect(await detail.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+  await page.locator('#closeDetail').click();
+  await choose(page,'classic');
+  expect(await page.evaluate(()=>window.WorkBoardWorkflowV152.depIds('paper-main'))).toContain('paper-peer');
+  expect(await page.evaluate(()=>window.WorkBoardWorkflowV152.relationIds('paper-main'))).toContain('paper-peer');
+});
+
+for(const width of [390,1366])test(`JOURNAL auxiliary paper forms keep copying, series deletion and date changes at ${width}px`,async({page},testInfo)=>{
+  test.setTimeout(120000);
+  await bootPaperAuxiliary(page,width);
+  await paperRoute(page,width,'schedule');
+  await page.locator('[data-j425-mode="day"]').click();
+  await page.locator('[data-j459-review="paper-plan"]').click();
+  await page.locator('#j459SchedulePreview [data-j459-copy]').click();
+  const copy=page.locator('#scheduleCopyDialog');
+  await expect(copy.locator('.j-aux-writing #scheduleCopyMethod')).toBeVisible();
+  await expect(copy.locator('.j-aux-proof #scheduleCopyPreviewSummary')).toBeVisible();
+  await copy.locator('#scheduleCopyMethod').selectOption('weekly');
+  await copy.locator('[data-copy-weekday="1"]').check();
+  await expect(copy.locator('#scheduleCopyPreviewSummary')).toContainText('4');
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-copy-'+width+'.png')});
+  expect(await copy.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+  await copy.locator('#scheduleCopyMethod').selectOption('once');
+  await copy.locator('#scheduleCopySubmit').click();
+  await expect(copy).toBeHidden();
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.length)).toBe(4);
+  await page.locator('#j459SchedulePreview [data-j459-back]').click();
+  await page.locator('[data-j459-review="paper-series-a"]').click();
+  await page.locator('#j459SchedulePreview [data-j459-edit]').click();
+  await page.locator('#scheduleDialog #deleteSchedule').click();
+  const series=page.locator('#recurringDeleteDialog');
+  await expect(series.locator('.j-aux-scope')).toBeVisible();
+  await series.locator('[name="recurringDeleteScope"][value="following"]').check();
+  await expect(series.locator('.j-aux-impact #recurringDeleteImpact')).toContainText('2件');
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-series-'+width+'.png')});
+  await series.locator('[name="recurringDeleteScope"][value="one"]').check();
+  await series.locator('#confirmRecurringDelete').click();
+  await expect(series).toBeHidden();
+  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.some(x=>x.id==='paper-series-a'))).toBe(false);
+  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.some(x=>x.id==='paper-series-b'))).toBe(true);
+  await paperRoute(page,width,'tasks');
+  await page.locator('[data-j420-layout="timeline"]').click();
+  await page.locator('[data-move-to-timeline="paper-main"]').click();
+  const move=page.locator('#timelineMoveDialog');
+  await expect(move.locator('.j-aux-date #timelineMoveDueDate')).toBeVisible();
+  await expect(move.locator('.dialog-head h2')).toHaveText('日付日誌へ移す');
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-date-'+width+'.png')});
+  const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');});
+  await move.locator('#timelineMoveDueDate').evaluate((input,date)=>{input.value=date;input.dispatchEvent(new Event('change',{bubbles:true}));},tomorrow);
+  await move.locator('#confirmTimelineMove').click();
+  await expect(move).toBeHidden();
+  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.id==='paper-main').dueDate)).toBe(tomorrow);
+  await paperRoute(page,width,'today');
+  await page.locator('[data-j420-show-activity]').click();
+  await expect(page.locator('#activityDialog .j-activity-leaf')).toBeVisible();
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-activity-'+width+'.png')});
+  await page.locator('#closeActivityDialog').click();
+  await choose(page,'classic');
+  await expect(page.locator('.j-aux-book,.j-activity-leaf')).toHaveCount(0);
+  await expect(page.locator('#scheduleCopyForm>.schedule-copy-preview')).toBeAttached();
+  await expect(page.locator('#recurringDeleteForm>.recurring-delete-options')).toBeAttached();
+  await expect(page.locator('#timelineMoveForm>.form-grid')).toBeAttached();
+  await expect(page.locator('#timelineMoveDialog .dialog-head h2')).toHaveText('タイムラインへ移動');
+  await expect(page.locator('#activityDialog>#activityDialogBody')).toBeAttached();
+});
