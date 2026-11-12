@@ -876,7 +876,9 @@ test('Palette visual system stays distinctive, legible and responsive without al
   await expect(page.locator('#paletteNextRoot .pn-studio-top-grid .pn-studio-time-rail')).toBeVisible();
   const desktop=await page.evaluate(()=>{
     const hero=document.querySelector('#paletteNextRoot .pn-hero');
-    const shell=document.querySelector('#paletteNextRoot .pn-sheet');
+    // Time Rail deliberately uses an asymmetric leading corner; validate
+    // the secondary work panels using their own surface contract.
+    const shell=document.querySelector('#paletteNextRoot .pn-studio-bottom-grid .pn-sheet');
     return {
       heroRadius:parseFloat(getComputedStyle(hero).borderTopLeftRadius),
       sheetRadius:parseFloat(getComputedStyle(shell).borderTopLeftRadius),
