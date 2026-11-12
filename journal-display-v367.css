@@ -7120,14 +7120,18 @@ html[data-wb-display="journal"] #detailBody .j-record-page-stack :is(.comment-re
 /* Shared-room notices have their own reading sheet, independent from the inbox. */
 html[data-wb-display="journal"] #activityDialog.j-entry-activity-v385 {width:min(980px,calc(100vw - 32px))!important}
 html[data-wb-display="journal"] #activityDialog .j-activity-leaf {padding:12px 24px 24px;background:var(--j-paper)}
-html[data-wb-display="journal"] #activityDialog .activity-dialog-body {padding:0;max-height:none;overflow:visible}
-html[data-wb-display="journal"] #activityDialog .activity-dialog-summary {display:flex;align-items:center;justify-content:space-between;gap:12px;border:0;border-bottom:2px solid var(--j-accent);border-radius:0;background:transparent;color:var(--j-ink);padding:15px 0}
-html[data-wb-display="journal"] #activityDialog .activity-dialog-section {border:0;border-radius:0;background:transparent;padding:20px 0}
-html[data-wb-display="journal"] #activityDialog .activity-dialog-section h3 {font-size:17px;color:var(--j-ink);margin-bottom:12px}
-html[data-wb-display="journal"] #activityDialog .activity-dialog-list {display:block}
-html[data-wb-display="journal"] #activityDialog .activity-item {display:block;width:100%;text-align:left;border:0!important;border-bottom:1px solid var(--j-border)!important;border-radius:0!important;background:transparent!important;color:var(--j-ink)!important;box-shadow:none!important;padding:16px 3px!important;min-height:60px}
-html[data-wb-display="journal"] #activityDialog .activity-item :is(.activity-kind,.activity-meta,.activity-change,time) {color:var(--j-muted)!important;background:transparent!important;border-radius:0!important;line-height:1.8}
-html[data-wb-display="journal"] #activityDialog .activity-item strong {font-size:16px;line-height:1.8;overflow-wrap:anywhere}
+html[data-wb-display="journal"] #activityDialog .activity-dialog-body {padding:0!important;max-height:none!important;overflow:visible!important;gap:20px!important}
+html[data-wb-display="journal"] #activityDialog .activity-dialog-summary {display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;border:0!important;border-bottom:2px solid var(--j-accent)!important;border-radius:0!important;background:transparent!important;color:var(--j-ink)!important;padding:15px 0!important;box-shadow:none!important}
+html[data-wb-display="journal"] #activityDialog .activity-dialog-summary span {border:0!important;border-radius:2px!important;background:var(--j-paper-alt)!important;color:var(--j-muted)!important;padding:6px 8px!important}
+html[data-wb-display="journal"] #activityDialog .activity-dialog-section {border:0!important;border-radius:0!important;background:transparent!important;padding:20px 0!important}
+html[data-wb-display="journal"] #activityDialog .activity-dialog-section h3 {font-size:17px!important;color:var(--j-ink)!important;margin-bottom:12px!important}
+html[data-wb-display="journal"] #activityDialog .activity-dialog-section h3::before {border-radius:0!important;background:var(--j-sage)!important;box-shadow:none!important}
+html[data-wb-display="journal"] #activityDialog .activity-dialog-list {display:block!important}
+html[data-wb-display="journal"] #activityDialog .activity-item {display:block!important;width:100%!important;text-align:left!important;border:0!important;border-bottom:1px solid var(--j-border)!important;border-radius:0!important;background:transparent!important;color:var(--j-ink)!important;box-shadow:none!important;padding:16px 3px!important;min-height:60px!important}
+html[data-wb-display="journal"] #activityDialog .activity-item :is(.activity-kind,.activity-meta,.activity-change,time) {color:var(--j-muted)!important;background:transparent!important;border-radius:0!important;border:0!important;line-height:1.8!important}
+html[data-wb-display="journal"] #activityDialog .activity-item .activity-change {padding:10px 0!important}
+html[data-wb-display="journal"] #activityDialog .activity-item strong {display:block!important;font-size:16px!important;line-height:1.8!important;overflow-wrap:anywhere}
+html[data-wb-display="journal"] #activityDialog .activity-empty {border:0!important;border-top:1px solid var(--j-border)!important;border-radius:0!important;background:transparent!important;padding:28px 0!important;text-align:left!important}
 @media(max-width:820px) {
   html[data-wb-display="journal"] .j-aux-book {grid-template-columns:minmax(0,1fr);margin:14px 13px 18px}
   html[data-wb-display="journal"] .j-aux-leaf {padding:16px 13px}
@@ -7135,7 +7139,7 @@ html[data-wb-display="journal"] #activityDialog .activity-item strong {font-size
   html[data-wb-display="journal"] #detailBody .j-record-page-stack>[data-tab-panel="tools"]:not([hidden]) {grid-template-columns:minmax(0,1fr)}
   html[data-wb-display="journal"] :is(#scheduleCopyDialog,#timelineMoveDialog) .j-aux-book .form-grid {grid-template-columns:minmax(0,1fr)}
   html[data-wb-display="journal"] #activityDialog .j-activity-leaf {padding:10px 14px 18px}
-  html[data-wb-display="journal"] #activityDialog .activity-dialog-summary {display:block;font-size:13px}
+  html[data-wb-display="journal"] #activityDialog .activity-dialog-summary {display:block!important;font-size:13px}
   html[data-wb-display="journal"] #detailBody [data-tab-panel="comments"] button {min-height:42px}
 }
 html[data-wb-display="journal"] #detailBody [data-tab-panel="comments"] .comment-reaction-chip-v165[aria-pressed="true"] {background:var(--j-accent)!important;border-color:var(--j-accent)!important;color:#fff!important}

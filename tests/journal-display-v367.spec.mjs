@@ -4170,6 +4170,7 @@ for(const width of [390,1366])test(`JOURNAL auxiliary paper forms keep copying, 
   await paperRoute(page,width,'today');
   await page.locator('[data-j420-show-activity]').click();
   await expect(page.locator('#activityDialog .j-activity-leaf')).toBeVisible();
+  expect(await page.locator('#activityDialog .activity-dialog-summary').evaluate(el=>parseFloat(getComputedStyle(el).borderRadius))).toBeLessThanOrEqual(3);
   await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-activity-'+width+'.png')});
   await page.locator('#closeActivityDialog').click();
   await choose(page,'classic');
