@@ -3717,3 +3717,190 @@ html[data-wb-palette-next-preview="true"] body{
   #paletteNextRoot .pn-studio-today .pn-hero,
   #paletteNextRoot .pn-studio-today .pn-studio-cta{transition:none}
 }
+
+/* Palette Studio phase 2 — Flow Map, a canvas with an actionable workbench.
+   Palette-only visual layer; status mutations retain canonical CAS writers. */
+#paletteNextRoot .pn-flow-workspace{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(290px,.44fr);
+  gap:18px;align-items:start;min-width:0;
+}
+#paletteNextRoot .pn-flow-board-area{min-width:0}
+#paletteNextRoot .pn-flow-board-area .pn-task-board{
+  grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:13px;
+}
+#paletteNextRoot .pn-flow-board-area .pn-board-lane{
+  min-width:0;border-radius:20px;min-height:0;
+}
+#paletteNextRoot .pn-flow-board-area .pn-board-card{
+  gap:10px;border-radius:17px;
+  transition:background .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+#paletteNextRoot .pn-board-card[data-flow-active="true"]{
+  border-color:var(--pn-strong);
+  background:color-mix(in srgb,var(--pn-soft) 20%,var(--pn-paper));
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--pn-accent) 13%,transparent),
+    0 14px 34px rgba(39,29,63,.09);
+}
+#paletteNextRoot .pn-flow-card-actions{
+  display:flex;align-items:end;flex-wrap:wrap;justify-content:space-between;
+  gap:8px;padding-top:10px;border-top:1px solid var(--pn-border);
+}
+#paletteNextRoot .pn-flow-card-actions>button{
+  display:inline-flex;align-items:center;justify-content:center;flex:1 1 110px;
+  min-height:42px;padding:7px 11px;border:1px solid var(--pn-border);
+  background:var(--pn-soft);color:var(--pn-ink);border-radius:11px;
+  font-size:12px;font-weight:850;line-height:1.35;
+}
+#paletteNextRoot .pn-flow-card-actions>button[aria-pressed="true"]{
+  background:var(--pn-ink);color:var(--pn-paper);
+  border-color:var(--pn-ink);
+}
+#paletteNextRoot .pn-flow-card-actions>button:hover{border-color:var(--pn-accent)}
+#paletteNextRoot .pn-flow-status-control{
+  display:flex;align-items:center;gap:7px;min-width:0;
+  color:var(--pn-muted);font-size:11px;font-weight:820;
+}
+#paletteNextRoot .pn-flow-status-control>span{flex:0 0 auto}
+#paletteNextRoot .pn-flow-status-control select{
+  min-height:42px;min-width:0;max-width:180px;width:100%;
+  padding:7px 23px 7px 9px;border:1px solid var(--pn-border);
+  border-radius:10px;background:var(--pn-paper);color:var(--pn-ink);
+  font-size:12px;font-weight:850;cursor:pointer;
+}
+#paletteNextRoot .pn-flow-card-actions .pn-flow-status-control{flex:1 1 125px}
+#paletteNextRoot .pn-flow-card-actions .pn-flow-status-control select{max-width:150px}
+#paletteNextRoot .pn-flow-workbench{
+  position:sticky;top:109px;min-width:0;max-height:calc(100dvh - 122px);
+  overflow:auto;overscroll-behavior:contain;
+  display:grid;align-content:start;gap:13px;padding:22px 21px;
+  border:1px solid #4b466a;border-radius:26px 9px 26px 26px;
+  color:#fff;background:linear-gradient(153deg,#282440 0%,#343052 72%,#39476a);
+  box-shadow:0 18px 44px rgba(39,30,67,.17);
+}
+#paletteNextRoot .pn-flow-workbench-top{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:8px;flex-wrap:wrap;
+}
+#paletteNextRoot .pn-flow-workbench .pn-section-eyebrow{
+  color:#ddcff5;font-size:11px;letter-spacing:.12em;
+}
+#paletteNextRoot .pn-flow-live-indicator{
+  color:#ddf2e8;background:rgba(166,216,197,.17);padding:4px 8px;
+  border:1px solid rgba(166,216,197,.32);border-radius:9px;
+  font-size:11px;font-weight:770;
+}
+#paletteNextRoot .pn-flow-workbench h3{
+  margin:0;min-width:0;color:#fff;
+  font-size:clamp(20px,1.7vw,26px);line-height:1.38;letter-spacing:-.04em;
+  font-weight:870;overflow-wrap:anywhere;
+}
+#paletteNextRoot .pn-flow-workbench-meta{
+  display:flex;flex-wrap:wrap;gap:5px;
+}
+#paletteNextRoot .pn-flow-workbench-meta span{
+  padding:4px 8px;border:1px solid rgba(255,255,255,.18);
+  border-radius:9px;background:rgba(255,255,255,.09);
+  color:#ebe5f5;font-size:11px;font-weight:710;
+}
+#paletteNextRoot .pn-flow-workbench-controls{padding:10px 0;border-block:1px solid rgba(255,255,255,.18)}
+#paletteNextRoot .pn-flow-workbench .pn-flow-status-control{
+  justify-content:space-between;color:#f2ecfa;font-size:12px;
+}
+#paletteNextRoot .pn-flow-workbench .pn-flow-status-control select{
+  max-width:175px;background:#fffdf9;border-color:#cfc3e4;
+  color:#26223c;font-size:13px;
+}
+#paletteNextRoot .pn-flow-preview{
+  display:grid;gap:6px;min-width:0;
+}
+#paletteNextRoot .pn-flow-preview>small,
+#paletteNextRoot .pn-flow-preview-heading small,
+#paletteNextRoot .pn-flow-linked>small{
+  color:#d8cbeb;font-size:11px;letter-spacing:.06em;font-weight:810;
+}
+#paletteNextRoot .pn-flow-preview p{
+  margin:0;white-space:pre-wrap;overflow-wrap:anywhere;
+  color:#f3eff9;font-size:13px;line-height:1.65;
+}
+#paletteNextRoot .pn-flow-preview-heading{display:flex;justify-content:space-between;gap:8px;align-items:center}
+#paletteNextRoot .pn-flow-preview-heading strong{color:#f3eff9;font-size:12px}
+#paletteNextRoot .pn-flow-mini-track{
+  height:7px;overflow:hidden;border-radius:100px;background:rgba(255,255,255,.2);
+}
+#paletteNextRoot .pn-flow-mini-track i{
+  display:block;height:100%;border-radius:100px;background:#b8e2d0;
+}
+#paletteNextRoot .pn-flow-checks ul{
+  display:grid;gap:4px;list-style:none;margin:3px 0 0;padding:0;
+}
+#paletteNextRoot .pn-flow-checks li{
+  display:flex;align-items:baseline;gap:8px;font-size:12px;
+  line-height:1.5;min-width:0;color:#f1edf7;overflow-wrap:anywhere;
+}
+#paletteNextRoot .pn-flow-checks li[data-done="true"]{color:#d2eddb}
+#paletteNextRoot .pn-flow-checks li>span:first-child{flex:0 0 13px}
+#paletteNextRoot .pn-flow-linked{display:grid;gap:6px}
+#paletteNextRoot .pn-flow-linked button{
+  display:flex;flex-wrap:wrap;align-items:center;gap:7px;
+  min-height:44px;padding:10px;border-radius:11px;
+  border:1px solid rgba(255,255,255,.28);
+  background:rgba(255,255,255,.1);color:#fff;text-align:left;
+}
+#paletteNextRoot .pn-flow-linked button span:first-child{font-size:11px;color:#ded4ed}
+#paletteNextRoot .pn-flow-linked button strong{flex:1 1 110px;min-width:0;overflow-wrap:anywhere;font-size:12px}
+#paletteNextRoot .pn-flow-linked button:hover{background:rgba(255,255,255,.18)}
+#paletteNextRoot .pn-flow-workbench-actions{display:flex;gap:8px;flex-wrap:wrap}
+#paletteNextRoot .pn-flow-workbench-actions button{
+  min-height:44px;padding:9px 12px;border-radius:11px;
+  font-size:12px;font-weight:850;line-height:1.4;
+}
+#paletteNextRoot .pn-flow-primary{
+  flex:1 1 135px;border:1px solid #dfccff;background:#dfccff;color:#26233e;
+}
+#paletteNextRoot .pn-flow-secondary{
+  flex:1 1 90px;border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;
+}
+#paletteNextRoot .pn-flow-primary:hover{background:#f1e7ff}
+#paletteNextRoot .pn-flow-secondary:hover{background:rgba(255,255,255,.12)}
+#paletteNextRoot .pn-flow-workbench-empty strong{
+  color:#fff;font-size:14px;line-height:1.5;
+}
+@media(max-width:1090px){
+  #paletteNextRoot .pn-flow-workspace{grid-template-columns:minmax(0,1fr)}
+  #paletteNextRoot .pn-flow-workbench{
+    position:static;max-height:none;grid-row:1;
+    padding:17px 19px;
+  }
+  #paletteNextRoot .pn-flow-board-area{grid-row:2}
+  #paletteNextRoot .pn-flow-board-area .pn-task-board{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:780px){
+  #paletteNextRoot .pn-flow-workspace{gap:10px}
+  #paletteNextRoot .pn-flow-workbench{
+    gap:7px;border-radius:17px 7px 17px 17px;
+    padding:12px 14px;
+  }
+  #paletteNextRoot .pn-flow-workbench h3{font-size:16px;line-height:1.4}
+  #paletteNextRoot .pn-flow-workbench-top .pn-section-eyebrow{font-size:10px}
+  #paletteNextRoot .pn-flow-workbench-meta{gap:3px}
+  #paletteNextRoot .pn-flow-workbench-meta span{
+    font-size:10px;padding:3px 6px;
+  }
+  #paletteNextRoot .pn-flow-workbench-controls{padding:4px 0}
+  #paletteNextRoot .pn-flow-workbench .pn-flow-status-control select{min-height:40px}
+  /* On phones the workbench is a compact command bar. Full context is in
+     the existing task inspector; avoid burying the first task card. */
+  #paletteNextRoot .pn-flow-workbench .pn-flow-preview,
+  #paletteNextRoot .pn-flow-workbench .pn-flow-linked{display:none}
+  #paletteNextRoot .pn-flow-workbench-actions button{min-height:40px}
+  #paletteNextRoot .pn-flow-board-area .pn-task-board{grid-template-columns:minmax(0,1fr);gap:10px}
+  #paletteNextRoot .pn-flow-card-actions>button{flex:1 1 115px}
+}
+@media(max-width:390px){
+  #paletteNextRoot .pn-flow-workbench-meta span:nth-child(2){display:none}
+  #paletteNextRoot .pn-flow-workbench-actions button{flex:1 1 40%;padding-inline:8px}
+  #paletteNextRoot .pn-flow-card-actions .pn-flow-status-control{flex:1 1 120px}
+}
+@media(prefers-reduced-motion:reduce){
+  #paletteNextRoot .pn-flow-board-area .pn-board-card{transition:none}
+}
