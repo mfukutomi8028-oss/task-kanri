@@ -3728,6 +3728,17 @@
       block.querySelector('.pn-timehead h3')?.focus({preventScroll:true});
       return;
     }
+    if(target.hasAttribute('data-pn-flow-focus')){
+      if(state.route!=='tasks'||state.taskView!=='board'||state.busy)return;
+      const id=target.dataset.id||'';
+      if(!visibleSortedTasks().some(task=>task.id===id))return;
+      state.flowFocusId=id;
+      render();
+      const control=[...workspace.querySelectorAll('[data-pn-flow-focus]')]
+        .find(button=>button.dataset.id===id);
+      control?.focus({preventScroll:true});
+      return;
+    }
     if(target.dataset.pnRoute) {
       switchPaletteRoute(target.dataset.pnRoute);
       return;
@@ -3956,6 +3967,47 @@
       if(!['manual','updated','title','category'].includes(el.value))return;
       state.memoSort=el.value;
       render();focusRebuiltControl('data-pn-memo-sort');return;
+    }
+    if(el.hasAttribute('data-pn-flow-status')){
+      // The select is only a command surface. All writes go through the
+      // revision-checked canonical bulk adapter with exactly one task.
+      if(state.route!=='tasks'||state.taskView!=='board'||state.busy){
+        render();return;
+      }
+      const id=String(el.dataset.id||'');
+      const revision=Number(el.dataset.revision);
+      const status=String(el.value||'');
+      const location=el.dataset.flowLocation||'card';
+      const before=bridge.readSnapshot();
+      const task=before.tasks.find(item=>item.id===id);
+      const sameOwner=before.currentUser===state.snapshot.currentUser&&
+        before.roomId===state.snapshot.roomId;
+      if(!sameOwner||!task||!Number.isSafeInteger(revision)||
+        Number(task.revision)!==revision||
+        !before.statuses.includes(status)){
+        state.snapshot=before;
+        render();
+        notify('他の端末で仕事が更新されました。最新の状態から操作し直してください。');
+        return;
+      }
+      if(status===task.status){el.value=task.status;return;}
+      const ownerUser=before.currentUser,ownerRoom=before.roomId;
+      void dispatch({type:'task.bulk.update',items:[{id,revision}],
+        action:'status',target:status,ownerRoom,ownerUser},el).then(result=>{
+        // Do not restore stale selection or focus after a route/account switch.
+        if(!active()||state.route!=='tasks'||state.taskView!=='board'||
+          state.snapshot.currentUser!==ownerUser||
+          state.snapshot.roomId!==ownerRoom)return;
+        state.snapshot=bridge.readSnapshot();
+        if(result?.ok)state.flowFocusId=id;
+        render();
+        const control=[...workspace.querySelectorAll('[data-pn-flow-status]')]
+          .find(field=>field.dataset.id===id&&field.dataset.flowLocation===location)||
+          workspace.querySelector('.pn-flow-workbench [data-pn-flow-status]')||
+          workspace.querySelector('[data-pn-task-view="board"]');
+        control?.focus({preventScroll:true});
+      });
+      return;
     }
     if(el.hasAttribute('data-pn-task-sort')){
       if(!['due','priority','updated'].includes(el.value))return;
