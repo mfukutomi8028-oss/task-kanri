@@ -4087,6 +4087,7 @@ for(const width of [320,1366])test(`JOURNAL related settings and letters retain 
   await detail.locator('[data-tab="tools"]').click();
   const tools=detail.locator('[data-tab-panel="tools"]');
   await expect(tools.locator('[data-dependency-select-v149]')).toBeVisible();
+  await expect.poll(()=>tools.evaluate(el=>[...el.children].filter(node=>node.matches('.workflow-dependencies-v149,.workflow-relations-v152,.workflow-reminder-v152,.workflow-organize-v153')).map(node=>node.classList.contains('workflow-dependencies-v149')?'dependency':node.classList.contains('workflow-relations-v152')?'related':node.classList.contains('workflow-reminder-v152')?'reminder':'organize'))).toEqual(['dependency','related','reminder','organize']);
   const style=await tools.locator('[data-add-related-v152]').evaluate(el=>({radius:parseFloat(getComputedStyle(el).borderRadius),font:parseFloat(getComputedStyle(el).fontSize)}));
   expect(style.radius).toBeLessThanOrEqual(3);expect(style.font).toBeGreaterThanOrEqual(13);
   await tools.locator('[data-dependency-select-v149]').selectOption('paper-peer');
@@ -4124,6 +4125,13 @@ for(const width of [390,1366])test(`JOURNAL auxiliary paper forms keep copying, 
   await expect(copy.locator('.j-aux-writing #scheduleCopyMethod')).toBeVisible();
   await expect(copy.locator('.j-aux-proof #scheduleCopyPreviewSummary')).toBeVisible();
   await copy.locator('#scheduleCopyMethod').selectOption('weekly');
+  await expect(copy.locator('#scheduleCopyEndDateRow')).toBeHidden();
+  await expect(copy.locator('#scheduleCopyCountRow')).toBeVisible();
+  await copy.locator('#scheduleCopyEndMode').selectOption('date');
+  await expect(copy.locator('#scheduleCopyEndDateRow')).toBeVisible();
+  await expect(copy.locator('#scheduleCopyCountRow')).toBeHidden();
+  await copy.locator('#scheduleCopyEndMode').selectOption('count');
+  expect(await copy.locator('#scheduleCopyStartRow').evaluate(el=>parseFloat(getComputedStyle(el).borderRadius))).toBeLessThanOrEqual(3);
   await copy.locator('[data-copy-weekday][value="1"]').check();
   await expect(copy.locator('#scheduleCopyPreviewSummary')).toContainText('4');
   await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-copy-'+width+'.png')});

@@ -7066,7 +7066,7 @@ html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-s
 html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-step-badge {border:1px solid var(--j-border)!important;border-radius:2px!important;background:var(--j-paper-alt)!important;color:var(--j-accent)!important;box-shadow:none!important}
 html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-method-guide {border:0!important;border-left:3px solid var(--j-sage)!important;border-radius:0!important;background:transparent!important;padding:8px 0 8px 12px!important;margin-top:14px;box-shadow:none!important;color:var(--j-muted)!important}
 html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-method-guide strong {color:var(--j-ink)!important;font-size:14px}
-html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf :is(.schedule-copy-option,.schedule-copy-end,.schedule-copy-nth) {border:0!important;border-top:1px solid var(--j-line)!important;border-radius:0!important;background:transparent!important;padding:14px 0!important}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf :is(.schedule-copy-field,.schedule-copy-option,.schedule-copy-end,.schedule-copy-nth) {border:0!important;border-top:1px solid var(--j-line)!important;border-radius:0!important;background:transparent!important;padding:14px 0!important}
 html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-preview-summary-row {border:0;border-bottom:1px solid var(--j-border);border-radius:0;background:transparent;padding:14px 0}
 html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf :is(.schedule-copy-preview-all,.schedule-copy-conflict-details) {border:1px solid var(--j-border);border-radius:2px;background:var(--j-paper-alt);padding:10px;margin-top:16px}
 html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-preview-dates>* {border:1px solid var(--j-border);border-radius:2px;background:var(--j-paper-alt);color:var(--j-ink);padding:7px 9px;font-variant-numeric:tabular-nums}
@@ -7087,6 +7087,8 @@ html[data-wb-display="journal"] #recurringDeleteDialog #confirmRecurringDelete {
 html[data-wb-display="journal"] #timelineMoveDialog .move-target-card {border:0!important;border-bottom:1px solid var(--j-border)!important;border-radius:0!important;background:transparent!important;padding:0 0 18px!important;box-shadow:none!important;color:var(--j-ink)}
 html[data-wb-display="journal"] #timelineMoveDialog .move-target-card strong {font-size:20px;line-height:1.7;overflow-wrap:anywhere}
 html[data-wb-display="journal"] #timelineMoveDialog .form-help {color:var(--j-muted);font-size:13px;line-height:1.9}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-book [hidden] {display:none!important}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-book .schedule-copy-weekdays label {border:0!important;border-radius:2px!important;background:var(--j-paper-alt)!important;min-height:42px}
 /* Related settings are arranged as four working leaves, with the shared controls. */
 html[data-wb-display="journal"] #detailBody .j-record-page-stack>[data-tab-panel="tools"]:not([hidden]) {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}
 html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"]>:is(.task-tools-intro-v154,.j-record-knowledge) {grid-column:1/-1}

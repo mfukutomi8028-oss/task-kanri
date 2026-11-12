@@ -1989,6 +1989,14 @@
       }
       recordPages.index.setAttribute('aria-orientation',compact.matches?'horizontal':'vertical');
       const tools=detailBody.querySelector('[data-tab-panel="tools"]');
+      if(tools) {
+        // Keep reading and keyboard order alike when shared sections mount
+        // in separate frames. Reorder the live sections only when necessary.
+        const selectors=['.workflow-dependencies-v149','.workflow-relations-v152','.workflow-reminder-v152','.workflow-organize-v153'];
+        const wanted=selectors.map(selector=>tools.querySelector(selector)).filter(Boolean);
+        const current=[...tools.children].filter(node=>wanted.includes(node));
+        if(current.some((node,index)=>node!==wanted[index]))wanted.forEach(node=>tools.append(node));
+      }
       if(tools && !tools.querySelector('[data-j-record-knowledge]')) {
         const button=document.createElement('button');button.type='button';
         button.dataset.jRecordKnowledge='';button.className='j-record-knowledge';
