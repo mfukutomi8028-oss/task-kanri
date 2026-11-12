@@ -2564,3 +2564,20 @@ test('Palette Firebase series reordering keeps the same visible row and focused 
   assert.match(shell,/prepareSeriesLiveSync\(seriesPosition\);\s*render\(\);\s*restoreSeriesLiveSync\(seriesPosition\)/);
   assert.doesNotMatch(source,/bridge\.dispatch\(|runTransaction\(|localStorage\.setItem\(/);
 });
+
+test('Palette Studio contextual workbenches retain canonical identity and writers',()=>{
+  assert.match(shell,/function studioFocusPanel\(kind,rows\)/);
+  assert.match(shell,/data-pn-todo-focus/);
+  assert.match(shell,/data-pn-schedule-focus/);
+  assert.match(shell,/data-pn-memo-pick/);
+  assert.match(shell,/studioFocusPanel\('todo',todos\)/);
+  assert.match(shell,/studioFocusPanel\('schedule',schedules\)/);
+  assert.match(shell,/studioFocusPanel\('memo',items\)/);
+  assert.match(shell,/data-pn-cmd="todo\.toggle"/);
+  assert.match(shell,/data-pn-cmd="memo\.pin"/);
+  assert.match(shell,/data-pn-linked-task/);
+  assert.match(shell,/state\.todoFocusId='';state\.scheduleFocusId='';state\.memoFocusId='';/);
+  assert.match(css,/\.pn-studio-insight/);
+  assert.match(css,/@media\(max-width:780px\)/);
+  assert.doesNotMatch(shell,/getDatabase\(|runTransaction\(|initializeApp\(/);
+});
