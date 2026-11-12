@@ -3883,7 +3883,7 @@ html[data-wb-palette-next-preview="true"] body{
   #paletteNextRoot .pn-flow-workspace{gap:10px}
   #paletteNextRoot .pn-flow-workbench{
     gap:7px;border-radius:17px 7px 17px 17px;
-    padding:12px 14px;
+    padding:12px 14px;scroll-margin-top:132px;
   }
   #paletteNextRoot .pn-flow-workbench h3{font-size:16px;line-height:1.4}
   #paletteNextRoot .pn-flow-workbench-top .pn-section-eyebrow{font-size:10px}
