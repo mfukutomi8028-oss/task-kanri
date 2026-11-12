@@ -1333,7 +1333,7 @@
         const featured=items.length>=3&&index===0;
         return '<button class="pn-memotile'+(memo.pinned?' is-pinned':'')+
           (featured?' is-editorial-feature':'')+
-          '" type="button" data-paper-color="'+color+'" data-pn-detail="memo" data-id="'+escape(memo.id)+'" aria-label="'+escape((memo.title||'無題')+'の詳細を開く')+'">'+
+          '" type="button" data-paper-color="'+color+'" data-studio-selected="'+(state.memoFocusId===memo.id)+'" data-pn-detail="memo" data-id="'+escape(memo.id)+'" aria-label="'+escape((memo.title||'無題')+'の詳細を開く'+(state.memoFocusId===memo.id?'（プレビュー選択中）':''))+'">'+
           '<div class="pn-memotop"><span class="pn-memo-number">NO. '+String(index+1).padStart(2,'0')+'</span>'+
           '<span class="pn-chip">'+escape(memo.category||'その他')+'</span>'+
           (memo.pinned?'<span aria-label="固定中">★</span>':'')+'</div>'+
