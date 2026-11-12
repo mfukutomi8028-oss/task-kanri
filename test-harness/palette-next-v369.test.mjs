@@ -557,7 +557,8 @@ test('Palette preserves keyboard focus on regenerated task and ToDo controls',()
  assert.match(shell,/focusRebuiltControl\('data-pn-bulk-all'\)/);
  assert.match(shell,/focusRebuiltControl\('data-pn-bulk-action'\)/);
  assert.match(shell,/focusRebuiltControl\('data-pn-filter',state\.taskFilter\)/);
- assert.match(shell,/!result\?\.ok \|\| !\['todo\.toggle','todo\.move'\]\.includes\(type\)/);
+ assert.match(shell,/if\(!result\?\.ok\|\|!active\(\)\)return/);
+ assert.match(shell,/if\(!\['todo\.toggle','todo\.move'\]\.includes\(type\)\)return/);
  assert.match(shell,/const same=controls\.find\(el=>el\.dataset\.id===id/);
  assert.match(shell,/focus\(\{preventScroll:true\}\)/);
  assert.doesNotMatch(shell,/getDatabase\(|runTransaction\(|localStorage\.setItem/);
@@ -850,7 +851,9 @@ test('Palette Today detail navigation reuses visible order and ToDo focus after 
   assert.match(today,/upcomingPreview\.map\(scheduleRow\)/);
   assert.match(command,/const todoList=type==='todo\.toggle'\?target\.closest\('\.pn-todolist'\)/);
   assert.match(command,/const nextTodoId=todoIndex>=0/);
-  assert.match(command,/if\(state\.route!==routeAtClick\|\|state\.snapshot\.currentUser!==userAtClick\)return/);
+  assert.match(command,/if\(state\.route!==routeAtClick\|\|state\.snapshot\.currentUser!==userAtClick\|\|/);
+  assert.match(command,/state\.snapshot\.roomId!==roomAtClick/);
+  assert.match(command,/latest\.currentUser!==userAtClick\|\|latest\.roomId!==roomAtClick\)return/);
   assert.match(command,/available\.find\(el=>el\.dataset\.id===nextTodoId\)\|\|available\[0\]/);
   assert.match(command,/saved\.completed\?'ToDoを完了しました'/);
   assert.match(css,/\.pn-surface-schedule \.pn-schedule-actions:empty\{display:none\}/);
