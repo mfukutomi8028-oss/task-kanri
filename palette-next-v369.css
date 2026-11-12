@@ -3778,6 +3778,10 @@ html[data-wb-palette-next-preview="true"] body{
   color:#fff;background:linear-gradient(153deg,#282440 0%,#343052 72%,#39476a);
   box-shadow:0 18px 44px rgba(39,30,67,.17);
 }
+#paletteNextRoot .pn-flow-body{
+  display:grid;align-content:start;gap:13px;min-width:0;
+}
+#paletteNextRoot .pn-flow-expand{display:none}
 #paletteNextRoot .pn-flow-workbench-top{
   display:flex;align-items:center;justify-content:space-between;
   gap:8px;flex-wrap:wrap;
@@ -3883,6 +3887,19 @@ html[data-wb-palette-next-preview="true"] body{
   }
   #paletteNextRoot .pn-flow-workbench h3{font-size:16px;line-height:1.4}
   #paletteNextRoot .pn-flow-workbench-top .pn-section-eyebrow{font-size:10px}
+  #paletteNextRoot .pn-flow-workbench[data-flow-expanded="false"]{
+    gap:6px;padding:10px 13px;
+  }
+  #paletteNextRoot .pn-flow-workbench[data-flow-expanded="false"] .pn-flow-workbench-top{display:none}
+  #paletteNextRoot .pn-flow-workbench[data-flow-expanded="false"] .pn-flow-body{display:none}
+  #paletteNextRoot .pn-flow-expand{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    width:100%;min-height:38px;padding:6px 10px;text-align:left;
+    border:1px solid rgba(255,255,255,.28);border-radius:9px;
+    color:#fff;background:rgba(255,255,255,.13);font-size:12px;font-weight:800;
+  }
+  #paletteNextRoot .pn-flow-expand:hover{background:rgba(255,255,255,.21)}
+  #paletteNextRoot .pn-flow-body{gap:8px}
   #paletteNextRoot .pn-flow-workbench-meta{gap:3px}
   #paletteNextRoot .pn-flow-workbench-meta span{
     font-size:10px;padding:3px 6px;
@@ -3891,8 +3908,8 @@ html[data-wb-palette-next-preview="true"] body{
   #paletteNextRoot .pn-flow-workbench .pn-flow-status-control select{min-height:40px}
   /* On phones the workbench is a compact command bar. Full context is in
      the existing task inspector; avoid burying the first task card. */
-  #paletteNextRoot .pn-flow-workbench .pn-flow-preview,
-  #paletteNextRoot .pn-flow-workbench .pn-flow-linked{display:none}
+  #paletteNextRoot .pn-flow-workbench[data-flow-expanded="false"] .pn-flow-preview,
+  #paletteNextRoot .pn-flow-workbench[data-flow-expanded="false"] .pn-flow-linked{display:none}
   #paletteNextRoot .pn-flow-workbench-actions button{min-height:40px}
   #paletteNextRoot .pn-flow-board-area .pn-task-board{grid-template-columns:minmax(0,1fr);gap:10px}
   #paletteNextRoot .pn-flow-card-actions>button{flex:1 1 115px}
