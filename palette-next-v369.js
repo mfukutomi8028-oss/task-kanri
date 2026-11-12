@@ -331,7 +331,7 @@
   }
   function todoRow(todo,actions=true) {
     const done=Boolean(todo.completed);
-    return '<li><button class="pn-check" type="button" aria-pressed="'+done+
+    return '<li class="pn-todo-item" data-studio-selected="'+(state.todoFocusId===todo.id)+'"><button class="pn-check" type="button" aria-pressed="'+done+
       '" data-pn-cmd="todo.toggle" data-id="'+escape(todo.id)+'" aria-label="'+
       escape(todo.text)+'を'+(done?'未完了に戻す':'完了にする')+'"><span class="pn-checkmark" aria-hidden="true"></span></button>'+
       '<button type="button" class="pn-todotext pn-todoopen'+(done?' done':'')+
@@ -352,7 +352,8 @@
     const related=isSchedule?state.snapshot.tasks.find(task=>task.id===item.relatedTaskId):null;
     const detailKind=isTodo?'todo':isSchedule?'schedule':'memo';
     const note=isTodo?item.memo:isSchedule
-      ?dateParts(item.startAt)+' '+localTime(item.startAt)+' 〜 '+localTime(item.endAt)+
+      ?dateParts(item.startAt)+' '+localTime(item.startAt)+' 〜 '+
+        (localDate(item.endAt)!==localDate(item.startAt)?dateParts(item.endAt)+' ':'')+localTime(item.endAt)+
         (item.location?' · '+item.location:''):item.body;
     return '<aside class="pn-studio-insight pn-studio-insight-'+kind+'" aria-label="選択中の'+
       (isTodo?'ToDo':isSchedule?'予定':'メモ')+'">'+
@@ -369,6 +370,31 @@
       (kind==='memo'?'<button type="button" data-pn-cmd="memo.pin" data-id="'+escape(item.id)+'" data-revision="'+Number(item.revision||0)+'">'+
         (item.pinned?'固定解除':'固定する')+'</button>':'')+
       '<button type="button" data-pn-focus-clear="'+kind+'">閉じる</button></div></aside>';
+  }
+  // Only visible, still-current records may remain selected after searches,
+  // date changes or remote deletions. No selection is saved to Firebase.
+  function reconcileStudioSelection() {
+    if(state.route==='todos'&&state.todoFocusId&&
+      !state.snapshot.todos.some(item=>item.id===state.todoFocusId&&match(item.text+' '+item.memo)))
+      state.todoFocusId='';
+    if(state.route==='schedule'&&state.scheduleFocusId){
+      const item=state.snapshot.schedules.find(row=>row.id===state.scheduleFocusId);
+      if(state.scheduleView!=='day'||!item||
+        localDate(item.startAt)!==state.selectedDay||!scheduleMatches(item))
+        state.scheduleFocusId='';
+    }
+    if(state.route==='memos'&&state.memoFocusId&&
+      !visibleSortedMemos().some(item=>item.id===state.memoFocusId))
+      state.memoFocusId='';
+  }
+  // Selecting a card is an explicit navigation to its existing Studio surface.
+  // The scroll margin keeps it clear of the sticky header on narrow screens.
+  function revealStudioSelection(kind) {
+    const panel=workspace.querySelector('.pn-studio-insight-'+kind);
+    if(!panel)return;
+    panel.scrollIntoView({block:kind==='memo'?'nearest':'start',behavior:'instant'});
+    if(kind!=='memo')
+      panel.querySelector('.pn-studio-insight-primary')?.focus({preventScroll:true});
   }
   function taskRow(task,index) {
     const risk=taskRisk(task);
@@ -1346,9 +1372,22 @@
     syncSearchScope();
     syncAccountControl();
     const name=state.route,screen=pages[name]||todayPage;
+    reconcileStudioSelection();
     // Live updates rebuild the list. Keep the unsaved ToDo field and caret
     // focused rather than interrupting typing on every remote notification.
     const focused=document.activeElement;
+    const studioControlKeys=['data-pn-todo-focus','data-pn-schedule-focus',
+      'data-pn-memo-pick','data-pn-cmd','data-pn-detail',
+      'data-pn-edit','data-pn-linked-task','data-pn-focus-clear'];
+    const studioControl=workspace.contains(focused)&&
+      focused?.matches?.('[data-pn-todo-focus],[data-pn-schedule-focus],[data-pn-memo-pick],.pn-studio-insight-actions button')
+      ?focused:null;
+    const studioControlKey=studioControl?
+      studioControlKeys.find(key=>studioControl.hasAttribute(key)):null;
+    const studioFocus=studioControlKey?{
+      key:studioControlKey,value:studioControl.getAttribute(studioControlKey),
+      id:studioControl.dataset.id||'',top:studioControl.getBoundingClientRect().top
+    }:null;
     const editingTodo=name==='todos'&&focused?.closest?.('[data-pn-form="todo"]');
     const activeField=editingTodo&&['text','memo'].includes(focused.name)?{
       name:focused.name,start:focused.selectionStart,end:focused.selectionEnd
@@ -1365,6 +1404,18 @@
       field?.focus({preventScroll:true});
       if(field && activeField.start!==null && activeField.end!==null)
         field.setSelectionRange(activeField.start,activeField.end);
+    } else if(studioFocus){
+      const matching=[...workspace.querySelectorAll(
+        '[data-pn-todo-focus],[data-pn-schedule-focus],[data-pn-memo-pick],.pn-studio-insight-actions button')]
+        .find(control=>control.getAttribute(studioFocus.key)===studioFocus.value&&
+          (control.dataset.id||'')===studioFocus.id);
+      if(matching){
+        matching.focus({preventScroll:true});
+        // Avoid a jump when a remote save moves rows while the user is working.
+        const delta=matching.getBoundingClientRect().top-studioFocus.top;
+        if(studioFocus.top>=0&&studioFocus.top<window.innerHeight&&Math.abs(delta)>2)
+          window.scrollBy({top:delta,behavior:'instant'});
+      }
     } else if(focusedRecord){
       const matching=[...workspace.querySelectorAll('[data-pn-detail][data-id]')]
         .find(button=>button.dataset.pnDetail===focusedRecord.kind&&
@@ -3775,21 +3826,27 @@
       const id=target.dataset.pnTodoFocus;
       if(!state.snapshot.todos.some(item=>item.id===id&&match(item.text+' '+item.memo)))return;
       state.todoFocusId=id;render();
-      workspace.querySelector('.pn-studio-insight-todo [data-pn-detail]')?.focus({preventScroll:true});return;
+      revealStudioSelection('todo');return;
     }
     if(target.hasAttribute('data-pn-schedule-focus')&&state.route==='schedule'&&state.scheduleView==='day'){
       const id=target.dataset.pnScheduleFocus;
       const item=state.snapshot.schedules.find(row=>row.id===id);
       if(!item||localDate(item.startAt)!==state.selectedDay||!scheduleMatches(item))return;
       state.scheduleFocusId=id;render();
-      workspace.querySelector('.pn-studio-insight-schedule [data-pn-detail]')?.focus({preventScroll:true});return;
+      revealStudioSelection('schedule');return;
     }
     if(target.hasAttribute('data-pn-focus-clear')){
       const kind=target.dataset.pnFocusClear;
       if(!['todo','schedule','memo'].includes(kind))return;
+      const id=state[kind+'FocusId'];
       state[kind+'FocusId']='';render();
-      workspace.querySelector(kind==='memo'?'[data-pn-memo-pick]':
-        kind==='todo'?'[data-pn-todo-focus]':'[data-pn-schedule-focus]')?.focus({preventScroll:true});return;
+      const selector=kind==='memo'?'[data-pn-memo-pick]':
+        kind==='todo'?'[data-pn-todo-focus]':'[data-pn-schedule-focus]';
+      const control=[...workspace.querySelectorAll(selector)]
+        .find(el=>kind==='memo'||el.getAttribute(selector.slice(1,-1))===id);
+      control?.focus({preventScroll:true});
+      if(kind!=='memo')control?.scrollIntoView({block:'nearest',behavior:'instant'});
+      return;
     }
     if(target.hasAttribute('data-pn-flow-focus')){
       if(state.route!=='tasks'||state.taskView!=='board'||state.busy)return;
@@ -4046,7 +4103,8 @@
       const id=String(el.value||'');
       if(id&&!visibleSortedMemos().some(item=>item.id===id))return;
       state.memoFocusId=id;render();
-      workspace.querySelector('[data-pn-memo-pick]')?.focus({preventScroll:true});return;
+      workspace.querySelector('[data-pn-memo-pick]')?.focus({preventScroll:true});
+      if(id)revealStudioSelection('memo');return;
     }
     if(el.hasAttribute('data-pn-memo-sort')){
       if(!['manual','updated','title','category'].includes(el.value))return;
