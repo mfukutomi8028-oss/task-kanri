@@ -3721,10 +3721,11 @@ html[data-wb-palette-next-preview="true"] body{
 /* Palette Studio phase 2 — Flow Map, a canvas with an actionable workbench.
    Palette-only visual layer; status mutations retain canonical CAS writers. */
 #paletteNextRoot .pn-flow-workspace{
-  display:grid;grid-template-columns:minmax(0,1fr) minmax(290px,.44fr);
+  display:grid;grid-template-areas:"board panel";
+  grid-template-columns:minmax(0,1fr) minmax(290px,.44fr);
   gap:18px;align-items:start;min-width:0;
 }
-#paletteNextRoot .pn-flow-board-area{min-width:0}
+#paletteNextRoot .pn-flow-board-area{grid-area:board;min-width:0}
 #paletteNextRoot .pn-flow-board-area .pn-task-board{
   grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:13px;
 }
@@ -3770,7 +3771,7 @@ html[data-wb-palette-next-preview="true"] body{
 #paletteNextRoot .pn-flow-card-actions .pn-flow-status-control{flex:1 1 125px}
 #paletteNextRoot .pn-flow-card-actions .pn-flow-status-control select{max-width:150px}
 #paletteNextRoot .pn-flow-workbench{
-  position:sticky;top:109px;min-width:0;max-height:calc(100dvh - 122px);
+  grid-area:panel;position:sticky;top:109px;min-width:0;max-height:calc(100dvh - 122px);
   overflow:auto;overscroll-behavior:contain;
   display:grid;align-content:start;gap:13px;padding:22px 21px;
   border:1px solid #4b466a;border-radius:26px 9px 26px 26px;
@@ -3866,7 +3867,7 @@ html[data-wb-palette-next-preview="true"] body{
   color:#fff;font-size:14px;line-height:1.5;
 }
 @media(max-width:1090px){
-  #paletteNextRoot .pn-flow-workspace{grid-template-columns:minmax(0,1fr)}
+  #paletteNextRoot .pn-flow-workspace{grid-template-areas:"panel" "board";grid-template-columns:minmax(0,1fr)}
   #paletteNextRoot .pn-flow-workbench{
     position:static;max-height:none;grid-row:1;
     padding:17px 19px;
