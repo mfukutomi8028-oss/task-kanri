@@ -3238,3 +3238,42 @@ for (const width of [390,1366]) {
     expect(count).toBe(1);
   });
 }
+
+for(const width of [320,390,1366]){
+  test('Palette Studio contextual ToDo and memo actions at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await boot(page,width);
+    const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+    await page.locator('#paletteNextRoot '+nav+' [data-pn-route="todos"]').click();
+    await page.locator('#pnTodoInput').fill('Studio focused ToDo '+width);
+    await page.locator('[data-pn-form="todo"] [type="submit"]').click();
+    const row=page.locator('#paletteNextRoot .pn-todolist li').filter({hasText:'Studio focused ToDo '+width}).first();
+    await expect(row).toBeVisible();
+    await row.locator('[data-pn-todo-focus]').click();
+    const panel=page.locator('.pn-studio-insight-todo');
+    await expect(panel).toContainText('Studio focused ToDo '+width);
+    await panel.locator('[data-pn-cmd="todo.toggle"]').click();
+    await expect.poll(()=>page.evaluate(title=>{
+      return window.WorkBoardPaletteBridge.readSnapshot().todos.find(todo=>todo.text===title)?.completed;
+    },'Studio focused ToDo '+width)).toBe(true);
+    await page.locator('#paletteNextRoot '+nav+' [data-pn-route="memos"]').click();
+    await page.locator('[data-pn-edit="memo"]').first().click();
+    const form=page.locator('#pnDetail [data-pn-form="memo-editor"]');
+    await form.locator('[name="title"]').fill('Studio preview memo '+width);
+    await form.locator('[name="body"]').fill('Studio preview body');
+    await form.locator('[type="submit"]').click();
+    await expect(form).toBeHidden();
+    const item=await page.evaluate(title=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot().find(row=>row.title===title),
+      'Studio preview memo '+width);
+    expect(item).toBeTruthy();
+    await page.locator('[data-pn-memo-pick]').selectOption(item.id);
+    await expect(page.locator('.pn-studio-insight-memo')).toContainText('Studio preview body');
+    await page.locator('.pn-studio-insight-memo [data-pn-detail="memo"]').click();
+    await expect(page.locator('#pnDetail')).toHaveAttribute('data-inspector','memo');
+    await page.locator('#pnDetail [data-pn-close]').click();
+    const widths=await page.evaluate(()=>({
+      client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth
+    }));
+    expect(widths.scroll).toBeLessThanOrEqual(widths.client+2);
+  });
+}
