@@ -2922,7 +2922,11 @@
             }
           }
         }
-        notify(result.count ? result.count+'件の予定を作成しました' : '変更を保存しました',review);
+        const pinState=command.type==='memo.pin'
+          ?memoBridge?.readSnapshot?.().find(item=>item.id===command.id)?.pinned:null;
+        notify(result.count?result.count+'件の予定を作成しました':
+          command.type==='memo.pin'?(pinState?'メモを固定しました':'メモの固定を解除しました'):
+          '変更を保存しました',review);
         if(keepDetail&&state.detail?.kind==='memo')updateDetail();
       } else if(result?.error!=='cancelled') {
         const error=result?.error||'write-failed';
@@ -3922,7 +3926,11 @@
     if(target.dataset.pnCmd) {
       const type=target.dataset.pnCmd,id=target.dataset.id||'';
       const direction=target.dataset.direction||'';
-      const routeAtClick=state.route,userAtClick=state.snapshot.currentUser;
+      const routeAtClick=state.route,userAtClick=state.snapshot.currentUser,
+        roomAtClick=state.snapshot.roomId;
+      const studioAction=target.closest('.pn-studio-insight');
+      const fromStudio=studioAction?.classList.contains('pn-studio-insight-todo')?'todo':
+        studioAction?.classList.contains('pn-studio-insight-memo')?'memo':'';
       // Keep the next operation in the same ToDo list, not in another section.
       const todoList=type==='todo.toggle'?target.closest('.pn-todolist'):null;
       const todoScope=todoList?(routeAtClick==='today'?'today':
@@ -3937,11 +3945,32 @@
         revision:target.dataset.revision,
         ownerUser:state.snapshot.currentUser,ownerRoom:state.snapshot.roomId
       },target).then(result=>{
-        if(!result?.ok || !['todo.toggle','todo.move'].includes(type) || !active())return;
-        // An async save must never steal focus after changing tabs or users.
-        if(state.route!==routeAtClick||state.snapshot.currentUser!==userAtClick)return;
-        state.snapshot=bridge.readSnapshot();
+        if(!result?.ok||!active())return;
+        // The account, room and current panel must still match the command's
+        // origin before an asynchronous response may restore keyboard focus.
+        const latest=bridge.readSnapshot();
+        if(state.route!==routeAtClick||state.snapshot.currentUser!==userAtClick||
+          state.snapshot.roomId!==roomAtClick||
+          latest.currentUser!==userAtClick||latest.roomId!==roomAtClick)return;
+        if(type==='memo.pin'&&fromStudio==='memo'&&state.route==='memos'&&
+          state.memoFocusId===id){
+          state.memos=memoBridge?.readSnapshot?.()||state.memos;
+          render();
+          workspace.querySelector('.pn-studio-insight-memo [data-pn-cmd="memo.pin"]')
+            ?.focus({preventScroll:true});
+          return;
+        }
+        if(!['todo.toggle','todo.move'].includes(type))return;
+        state.snapshot=latest;
         render();
+        if(type==='todo.toggle'&&fromStudio==='todo'&&state.route==='todos'&&
+          state.todoFocusId===id){
+          workspace.querySelector('.pn-studio-insight-todo [data-pn-cmd="todo.toggle"]')
+            ?.focus({preventScroll:true});
+          const saved=state.snapshot.todos.find(todo=>todo.id===id);
+          if(saved)notify(saved.completed?'ToDoを完了しました':'ToDoを未完了に戻しました');
+          return;
+        }
         const controls=[...workspace.querySelectorAll('[data-pn-cmd="'+type+'"]')];
         const same=controls.find(el=>el.dataset.id===id&&(!direction||el.dataset.direction===direction));
         if(type==='todo.toggle'&&todoScope){
