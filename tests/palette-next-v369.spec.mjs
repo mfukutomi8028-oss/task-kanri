@@ -3277,3 +3277,115 @@ for(const width of [320,390,1366]){
     expect(widths.scroll).toBeLessThanOrEqual(widths.client+2);
   });
 }
+
+for(const width of [320,390,1366]){
+  test('Palette Studio action focus survives save and search at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await boot(page,width);
+    const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+    await page.locator('#paletteNextRoot '+nav+' [data-pn-route="todos"]').click();
+    const name='Studio focus continuity '+width;
+    await page.locator('#pnTodoInput').fill(name);
+    await page.locator('[data-pn-form="todo"] [type="submit"]').click();
+    const row=page.locator('#paletteNextRoot .pn-todo-columns .pn-todo-item').filter({hasText:name});
+    await row.locator('[data-pn-todo-focus]').click();
+    const panel=page.locator('.pn-studio-insight-todo');
+    await expect(panel).toContainText(name);
+    const toggle=panel.locator('[data-pn-cmd="todo.toggle"]');
+    await expect(toggle).toBeFocused();
+    if(width<=390){
+      const top=await panel.evaluate(node=>({
+        panelTop:node.getBoundingClientRect().top,
+        headerBottom:document.querySelector('#pnApp .pn-topbar').getBoundingClientRect().bottom,
+        viewport:window.innerHeight
+      }));
+      expect(top.panelTop).toBeGreaterThanOrEqual(top.headerBottom-5);
+      expect(top.panelTop).toBeLessThan(top.viewport);
+      const style=await row.evaluate(node=>getComputedStyle(node).display);
+      expect(style).toBe('grid');
+    }
+    await toggle.click();
+    await expect.poll(()=>page.evaluate(title=>
+      window.WorkBoardPaletteBridge.readSnapshot().todos.find(x=>x.text===title)?.completed,name
+    )).toBe(true);
+    await expect(toggle).toBeFocused();
+    await expect(toggle).toContainText('未完了に戻す');
+    await page.locator('#pnSearch').fill('該当しない検索語XYZ');
+    await expect(panel).toHaveCount(0);
+    await page.locator('#pnSearch').fill('');
+    await expect(panel).toHaveCount(0);
+    const widthCheck=await page.evaluate(()=>[
+      document.documentElement.scrollWidth,document.documentElement.clientWidth
+    ]);
+    expect(widthCheck[0]).toBeLessThanOrEqual(widthCheck[1]+2);
+  });
+}
+
+for(const width of [320,1366]){
+  test('Palette Studio schedule selection follows the visible day at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await boot(page,width);
+    const day=await page.evaluate(()=>new Date().toLocaleDateString('sv-SE'));
+    const result=await page.evaluate(async day=>{
+      const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+      return bridge.dispatch({type:'schedule.create',revision:0,
+        ownerRoom:s.roomId,ownerUser:s.currentUser,
+        values:{title:'Studio schedule focus '+day,startAt:day+'T09:00',
+          endAt:day+'T10:00',assignee:s.currentUser,
+          category:s.categories[0]||'その他',location:'会議室',
+          memo:'',relatedTaskId:''}});
+    },day);
+    expect(result.ok).toBe(true);
+    const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
+    await page.locator('#paletteNextRoot '+nav+' [data-pn-route="schedule"]').click();
+    const row=page.locator('.pn-schedule-sheet .pn-scheduleitem').filter({hasText:'Studio schedule focus'});
+    await expect(row).toBeVisible();
+    await row.locator('[data-pn-schedule-focus]').click();
+    const panel=page.locator('.pn-studio-insight-schedule');
+    await expect(panel).toContainText('Studio schedule focus '+day);
+    await expect(panel.locator('[data-pn-detail="schedule"]')).toBeFocused();
+    await page.locator('.pn-schedule-sheet [data-pn-day-step="1"]').click();
+    await expect(panel).toHaveCount(0);
+    await page.locator('.pn-schedule-sheet [data-pn-day-step="-1"]').click();
+    await expect(panel).toHaveCount(0);
+  });
+}
+
+test('Palette Studio memo pin stays keyboard accessible in dark mode',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);
+  await page.locator('.pn-mobile-nav [data-pn-route="memos"]').click();
+  await page.locator('#paletteNextRoot [data-pn-edit="memo"]').first().click();
+  const editor=page.locator('#pnDetail [data-pn-form="memo-editor"]');
+  await editor.locator('[name="title"]').fill('Studio dark focus memo');
+  await editor.locator('[name="body"]').fill('メモ選択と固定の動作');
+  await editor.locator('[type="submit"]').click();
+  await expect(editor).toBeHidden();
+  const item=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+    .find(x=>x.title==='Studio dark focus memo'));
+  expect(item).toBeTruthy();
+  await page.locator('[data-pn-memo-pick]').selectOption(item.id);
+  const panel=page.locator('.pn-studio-insight-memo');
+  await expect(panel).toContainText('メモ選択と固定の動作');
+  const tile=page.locator('.pn-memotile[data-id="'+item.id+'"]');
+  await expect(tile).toHaveAttribute('data-studio-selected','true');
+  const pin=panel.locator('[data-pn-cmd="memo.pin"]');
+  await pin.click();
+  await expect.poll(()=>page.evaluate(id=>
+    window.WorkBoardPaletteMemoBridgeV369.readSnapshot().find(x=>x.id===id)?.pinned,item.id
+  )).toBe(true);
+  await expect(pin).toBeFocused();
+  await expect(pin).toContainText('固定解除');
+  await page.locator('#paletteNextRoot [data-pn-theme]').click();
+  await expect(page.locator('#pnApp')).toHaveAttribute('data-theme','dark');
+  const style=await panel.evaluate(node=>({
+    background:getComputedStyle(node).backgroundColor,
+    color:getComputedStyle(node.querySelector('h3')).color
+  }));
+  expect(style.background).toBe('rgb(41, 38, 64)');
+  expect(style.color).toBe('rgb(255, 255, 255)');
+  await page.locator('#pnSearch').fill('該当しない検索語XYZ');
+  await expect(panel).toHaveCount(0);
+  await page.locator('#pnSearch').fill('');
+  await expect(panel).toHaveCount(0);
+});
