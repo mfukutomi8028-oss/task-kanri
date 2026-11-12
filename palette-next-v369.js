@@ -399,13 +399,39 @@
     // The cover introduces the first canonical focus item; the actual
     // action stays in the focus list to preserve one stable detail target.
     const featured=focusPreview[0];
+
+    // The focus record is the single primary work surface. Related events are
+    // projections from the canonical schedule, never a new task association.
+    const featuredChecks=Array.isArray(featured?.checklist)?featured.checklist:[];
+    const finishedChecks=featuredChecks.filter(item=>item.done).length;
+    const progress=featuredChecks.length?Math.round(finishedChecks/featuredChecks.length*100):0;
+    const relatedPlan=featured?state.snapshot.schedules
+      .filter(item=>item.relatedTaskId===featured.id)
+      .sort((a,b)=>String(a.startAt||'').localeCompare(String(b.startAt||'')))
+      .find(item=>{
+        const end=Date.parse(item.endAt||item.startAt);
+        return Number.isFinite(end)&&end>=nowMs;
+      }):null;
     const coverFeature='<div class="pn-hero-feature" aria-label="今日の注目タスク">'+
-      '<span class="pn-hero-feature-index">TODAY’S PICK <i aria-hidden="true">✳</i></span>'+
+      '<span class="pn-hero-feature-index">NOW IN FOCUS / 次に進める仕事</span>'+
       '<strong>'+escape(featured?.title||
-        (searching?'一致する優先タスクはありません':'次の仕事を選んでみましょう'))+'</strong>'+
-      (featured?'<small>'+escape(featured.category||'優先タスク')+
+        (searching?'一致する優先タスクはありません':'まずは、優先する仕事を選びましょう'))+'</strong>'+
+      (featured?'<small>'+escape(featured.category||'業務タスク')+
+        ' · '+escape(featured.assignee||'担当未設定')+
         (featured.dueDate?' · 期限 '+escape(dateParts(featured.dueDate)):'')+'</small>':
-        '<small>大切なことから少しずつ。</small>')+
+        '<small>タスク画面から今日の優先事項を設定できます。</small>')+
+      (featuredChecks.length?'<div class="pn-studio-progress"><span>チェックリスト '+
+        finishedChecks+'/'+featuredChecks.length+'</span>'+
+        '<span role="progressbar" aria-label="作業進捗 '+progress+'%" aria-valuemin="0" '+
+        'aria-valuemax="100" aria-valuenow="'+progress+'"><i style="width:'+progress+'%"></i></span></div>':'')+
+      '<div class="pn-studio-focus-actions">'+
+      (featured?'<button class="pn-studio-cta" type="button" data-pn-detail="task" '+
+        'data-id="'+escape(featured.id)+'">この仕事を進める <span aria-hidden="true">↗</span></button>':'')+
+      '<button class="pn-studio-text-link" type="button" data-pn-route="tasks">'+
+      'タスクを見渡す <span aria-hidden="true">→</span></button></div>'+
+      (relatedPlan?'<button class="pn-studio-related" type="button" data-pn-detail="schedule" '+
+        'data-id="'+escape(relatedPlan.id)+'"><span>関連する次の予定</span><strong>'+
+        escape(relatedPlan.title||'予定')+'</strong><span aria-hidden="true">↗</span></button>':'')+
       '</div>';
     const attention=alertTasks.length?
       '<aside class="pn-today-attention" aria-label="期限の確認">'+
@@ -428,46 +454,55 @@
         previousPreview.map(scheduleRow).join(''):'')+
       previewMore('schedule',remainingSchedules):
       '<div class="pn-empty">'+(state.query?'一致する予定はありません':'今日は予定がありません')+'</div>';
-    return '<section class="pn-hero"><div class="pn-hero-copy"><span class="pn-kicker">'+
-      '<span class="pn-kicker-dot" aria-hidden="true"></span> MY DAILY PALETTE <span class="pn-hero-date">'+escape(dateLabel)+'</span></span>'+
-      '<h1>今日の仕事に、<em>いいリズムを。</em></h1>'+
+
+    // Distinctive work-first composition: one actionable focus, a live time rail,
+    // then secondary queues. Do not repeat the primary task in the queue.
+    const focusQueue=focusPreview.slice(1);
+    return '<div class="pn-studio-today">'+
+      '<header class="pn-studio-dayline"><div><span class="pn-kicker">'+
+      '<span class="pn-kicker-dot" aria-hidden="true"></span> PALETTE STUDIO / TODAY</span>'+
+      '<strong>今日のワークスペース</strong></div><span class="pn-studio-daydate">'+
+      escape(dateLabel)+'</span></header>'+
+      '<div class="pn-studio-top-grid">'+
+      '<section class="pn-hero pn-studio-focus-stage" aria-label="現在の注目タスク">'+
+      '<div class="pn-hero-copy"><span class="pn-studio-overline">FOCUS CANVAS / 01</span>'+
+      '<h1>次の一手を、<em>ここから。</em></h1>'+coverFeature+
       '<div class="pn-chiprow"><span class="pn-chip pn-chip-focus">優先 '+focus.length+'件</span>'+
       '<span class="pn-chip pn-chip-todo">未完了ToDo '+todoMatches.length+'件</span>'+
       '<span class="pn-chip pn-chip-plan">今日の予定 '+schedulesAll.length+'件</span>'+
       (overdue?'<span class="pn-chip warn">期限超過 '+overdue+'件</span>':'')+
-      '</div>'+coverFeature+'</div>'+
-      '<div class="pn-hero-art" aria-hidden="true"><span class="pn-art pn-art-one"></span>'+
-      '<span class="pn-art pn-art-two"></span><span class="pn-art pn-art-three"></span>'+
-      '<span class="pn-art pn-art-four"></span><span class="pn-art-label">make<br>space.</span></div></section>'+
+      '</div></div><div class="pn-studio-stage-lines" aria-hidden="true"><i></i><i></i><i></i></div>'+
+      '</section>'+
+      '<section class="pn-sheet pn-surface-schedule pn-studio-time-rail">'+
+      '<header class="pn-sheethead"><div><span class="pn-section-eyebrow">TIME RAIL / TODAY</span>'+
+      '<h2>今日の時間</h2></div>'+
+      '<button class="pn-button flat" type="button" data-pn-today-schedule>予定を見る <span aria-hidden="true">↗</span></button></header>'+
+      '<div class="pn-sheetbody">'+scheduleMarkup+'</div></section></div>'+
       attention+
-      '<div class="pn-maincols pn-home-grid"><div class="pn-stack">'+
+      '<div class="pn-maincols pn-home-grid pn-studio-bottom-grid">'+
       '<section class="pn-sheet pn-surface-focus"><header class="pn-sheethead"><div>'+
-      '<span class="pn-section-eyebrow">01 / PRIORITIES</span><h2>今、向き合うこと</h2></div>'+
-      '<button class="pn-button flat" type="button" data-pn-route="tasks">タスク一覧 <span aria-hidden="true">↗</span></button></header>'+
+      '<span class="pn-section-eyebrow">UP NEXT / PRIORITIES</span><h2>この後に進める仕事</h2></div>'+
+      '<button class="pn-button flat" type="button" data-pn-route="tasks">すべて見る <span aria-hidden="true">↗</span></button></header>'+
       '<div class="pn-sheetbody" id="pnTodayFocusList">'+
-      (focusPreview.length?focusPreview.map(taskRow).join(''):'<div class="pn-empty">'+
-      (state.query?'検索に一致する優先タスクはありません':'いま優先するタスクはありません')+'</div>')+
+      (focusQueue.length?focusQueue.map((task,index)=>taskRow(task,index+1)).join(''):'<div class="pn-empty">'+
+      (state.query?'検索に一致する優先タスクはありません':'この後の優先タスクはありません')+'</div>')+
       (focusExpandable?'<button class="pn-today-more" type="button" data-pn-today-focus-toggle '+
         'aria-expanded="'+state.todayFocusExpanded+'" aria-controls="pnTodayFocusList">'+
         (state.todayFocusExpanded?'少なく表示':'残り '+(focus.length-4)+'件を表示')+
         '<span aria-hidden="true">'+(state.todayFocusExpanded?'⌃':'⌄')+'</span></button>':'')+
       '</div></section>'+
       '<section class="pn-sheet pn-surface-todo"><header class="pn-sheethead"><div>'+
-      '<span class="pn-section-eyebrow">02 / LITTLE STEPS</span><h2>小さなやること</h2></div>'+
+      '<span class="pn-section-eyebrow">QUICK STEPS / TODO</span><h2>小さなやること</h2></div>'+
       '<button class="pn-button flat" type="button" data-pn-route="todos">ToDo一覧 <span aria-hidden="true">↗</span></button></header>'+
       '<div class="pn-sheetbody"><ul class="pn-todolist">'+
       (todos.length?todos.map(t=>todoRow(t,false)).join(''):'<li class="pn-empty">'+
       (state.query?'一致するToDoはありません':'すべてチェックできています')+'</li>')+
-      '</ul>'+previewMore('todos',todoMatches.length-todos.length)+'</div></section></div>'+
-      '<div class="pn-stack">'+
-      '<section class="pn-sheet pn-surface-schedule"><header class="pn-sheethead"><div>'+
-      '<span class="pn-section-eyebrow">03 / TIMELINE</span><h2>今日の予定</h2></div>'+
-      '<button class="pn-button flat" type="button" data-pn-today-schedule>予定を開く <span aria-hidden="true">↗</span></button></header>'+
-      '<div class="pn-sheetbody">'+scheduleMarkup+'</div></section>'+
+      '</ul>'+previewMore('todos',todoMatches.length-todos.length)+'</div></section>'+
       '<section class="pn-sheet pn-surface-notice"><header class="pn-sheethead"><div>'+
-      '<span class="pn-section-eyebrow">04 / UPDATES</span><h2>最近の動き</h2></div></header>'+
+      '<span class="pn-section-eyebrow">SIGNALS / UPDATES</span><h2>最近の動き</h2></div></header>'+
       '<div class="pn-sheetbody">'+noticeList(state.snapshot.notices,4)+'</div></section>'+
       '</div></div>';
+
   }
   function pageHead(kicker,title) {
     return '<header class="pn-pagehead"><div class="pn-pagecopy"><span class="pn-kicker">'+
@@ -711,9 +746,11 @@
       ['DUE','期限超過・今日',atRisk,'due'],
       ['MINE','自分の担当',mine,'mine']
     ];
-    return pageHead('YOUR WORK INDEX','タスクを見渡す')+
-      '<div class="pn-workactions"><span class="pn-section-eyebrow">TASK COLLECTION</span>'+
-      '<button class="pn-button primary" type="button" data-pn-edit="task">＋ 新しいタスク</button></div>'+
+    return '<header class="pn-studio-task-head"><div><span class="pn-kicker">'+
+      '<span class="pn-kicker-dot" aria-hidden="true"></span> FLOW MAP / YOUR WORK</span>'+
+      '<h1>仕事の現在地を、ひと目で。</h1>'+
+      '<span class="pn-studio-task-hint">進行状態ごとに整理し、必要な仕事をすぐ開けます。</span></div>'+
+      '<button class="pn-button primary" type="button" data-pn-edit="task">＋ 新しいタスク</button></header>'+
       '<section class="pn-task-overview" aria-label="タスクの状況">'+
       stats.map(([eyebrow,label,total,tone])=>'<div class="pn-task-metric" data-metric="'+tone+'">'+
         '<div class="pn-task-metric-top"><small>'+eyebrow+'</small>'+
