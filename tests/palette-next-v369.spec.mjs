@@ -2865,6 +2865,93 @@ test('Palette shows a required-field error without removing the editor draft',as
 });
 
 
+
+for(const width of [320,390,1366]){
+  test('Palette Studio Flow Map selects work and saves one status through canonical CAS at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await boot(page,width);
+    const seeded=await page.evaluate(async()=>{
+      const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+      const day=(add)=>{const d=new Date();d.setDate(d.getDate()+add);return d.toLocaleDateString('sv-SE')};
+      const statuses=s.statuses.filter(x=>x!=='完了');
+      const initial=statuses[0];
+      const next=statuses.find(x=>x!==initial&&x!=='保留');
+      if(!initial||!next)return {error:'statuses'};
+      const base={type:'task.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+        assignee:s.currentUser,status:initial,priority:'中',
+        category:s.categories[0]||'その他',requester:'',tags:'',checklist:'',pinned:false};
+      const first=await bridge.dispatch({...base,title:'Flow Map 先行仕事',dueDate:day(1),
+        description:'現場の作業を確認'});
+      const second=await bridge.dispatch({...base,title:'Flow Map 関連予定のある仕事',
+        dueDate:day(2),description:'作業前の確認事項'});
+      if(!first?.ok||!second?.ok)return {error:'task'};
+      const plan=await bridge.dispatch({type:'schedule.create',revision:0,
+        ownerRoom:s.roomId,ownerUser:s.currentUser,
+        values:{title:'Flow Map 連携予定',startAt:day(2)+'T09:00',
+          endAt:day(2)+'T10:00',assignee:s.currentUser,
+          category:s.categories[0]||'その他',location:'',memo:'',relatedTaskId:second.id}});
+      return plan?.ok?{first:first.id,second:second.id,plan:plan.id,initial,next}:{error:'schedule'};
+    });
+    expect(seeded.error||'').toBe('');
+    await page.locator(width<=780?'.pn-mobile-nav [data-pn-route="tasks"]':
+      '.pn-rail-nav [data-pn-route="tasks"]').click();
+    await page.locator('#pnSearch').fill('Flow Map');
+    const board=page.locator('#paletteNextRoot .pn-task-board');
+    const workbench=page.locator('#paletteNextRoot .pn-flow-workbench');
+    await expect(board.locator('.pn-board-card')).toHaveCount(2);
+    await expect(workbench).toHaveAttribute('data-flow-id',seeded.first);
+    if(width<=780){
+      await expect(workbench).toHaveAttribute('data-flow-expanded','false');
+      await expect(workbench.locator('#pnFlowBody')).toBeHidden();
+    } else await expect(workbench.locator('#pnFlowBody')).toBeVisible();
+    const second=board.locator('.pn-board-card').filter({hasText:'Flow Map 関連予定のある仕事'});
+    await second.locator('[data-pn-flow-focus]').click();
+    await expect(second).toHaveAttribute('data-flow-active','true');
+    await expect(workbench).toHaveAttribute('data-flow-id',seeded.second);
+    if(width<=780){
+      await expect(workbench).toHaveAttribute('data-flow-expanded','true');
+      await expect(workbench.locator('#pnFlowBody')).toBeVisible();
+    }
+    await expect(workbench.locator('.pn-flow-linked [data-pn-detail="schedule"]'))
+      .toHaveAttribute('data-id',seeded.plan);
+    // Status is an explicit single-task CAS command, not a duplicate writer.
+    await second.locator('[data-pn-flow-status]').selectOption(seeded.next);
+    await expect.poll(()=>page.evaluate(id=>window.WorkBoardPaletteBridge
+      .readSnapshot().tasks.find(task=>task.id===id)?.status,seeded.second)).toBe(seeded.next);
+    await expect(workbench).toHaveAttribute('data-flow-id',seeded.second);
+    await expect(workbench.locator('[data-pn-flow-status]')).toHaveValue(seeded.next);
+    const unchanged=await page.evaluate(id=>{
+      const snapshot=window.WorkBoardPaletteBridge.readSnapshot();
+      const task=snapshot.tasks.find(t=>t.id===id);
+      return {description:task?.description,priority:task?.priority,
+        linked:snapshot.schedules.find(s=>s.relatedTaskId===id)?.id};
+    },seeded.second);
+    expect(unchanged).toEqual({description:'作業前の確認事項',priority:'中',linked:seeded.plan});
+    // Stale card revisions are rejected before a write. No incidental update.
+    const select=second.locator('[data-pn-flow-status]');
+    await select.evaluate(el=>el.dataset.revision=String(Number(el.dataset.revision)+7));
+    await select.selectOption(seeded.initial);
+    await expect(workbench.locator('[data-pn-flow-status]')).toHaveValue(seeded.next);
+    await expect(page.locator('#pnToast')).toContainText('最新の状態');
+    const metrics=await page.evaluate(()=>{
+      const a=document.querySelector('#paletteNextRoot .pn-flow-board-area');
+      const b=document.querySelector('#paletteNextRoot .pn-flow-workbench');
+      return {overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+        board:a.getBoundingClientRect().toJSON(),panel:b.getBoundingClientRect().toJSON()};
+    });
+    expect(metrics.overflow).toBeLessThanOrEqual(2);
+    if(width>1090)expect(metrics.board.right).toBeLessThanOrEqual(metrics.panel.left+2);
+    else expect(metrics.panel.bottom).toBeLessThanOrEqual(metrics.board.top+2);
+    await page.locator('[data-pn-task-view="list"]').click();
+    await expect(page.locator('.pn-flow-workspace')).toHaveCount(0);
+    await expect(page.locator('.pn-task-rows')).toContainText('Flow Map 関連予定のある仕事');
+    await page.locator('[data-pn-task-view="board"]').click();
+    await expect(workbench).toHaveAttribute('data-flow-id',seeded.second);
+    await workbench.locator('[data-pn-detail="task"]').click();
+    await expect(page.locator('#pnDetail')).toContainText('TASK DETAIL');
+  });
+}
+
 for(const width of [320,390,1366]){
  test('Palette editorial cover and visual board keep canonical tasks intact at '+width+'px',async({page})=>{
   test.setTimeout(90000);

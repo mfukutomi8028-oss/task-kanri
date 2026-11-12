@@ -37,10 +37,10 @@ test('Palette NEXT owns its independent DOM and uses only the canonical bridge',
 });
 
 
-test('Palette editorial Today and status board reuse canonical task identity and list actions',()=>{
+test('Palette Studio Flow Map reuses canonical task identity and list actions',()=>{
   assert.match(shell,/taskView:'board'/);
-  assert.match(shell,/function taskBoardCard\(task\)/);
-  assert.match(shell,/function taskBoardMarkup\(tasks\)/);
+  assert.match(shell,/function taskBoardCard\(task,focusedId\)/);
+  assert.match(shell,/function taskBoardMarkup\(tasks,focusedId\)/);
   assert.match(shell,/data-pn-task-view/);
   assert.match(shell,/state\.taskView='board'/);
   assert.match(shell,/data-pn-detail="task"/);
@@ -51,6 +51,17 @@ test('Palette editorial Today and status board reuse canonical task identity and
   assert.match(css,/#paletteNextRoot \.pn-task-board/);
   assert.match(css,/#paletteNextRoot \.pn-hero-feature/);
   assert.match(css,/@media\(max-width:780px\)/);
+});
+
+test('Palette Studio Flow Map keeps a single revision-safe status owner',()=>{
+  assert.match(shell,/function flowWorkbench\(task\)/);
+  assert.match(shell,/data-pn-flow-focus/);
+  assert.match(shell,/data-pn-flow-status/);
+  assert.match(shell,/type:'task\.bulk\.update',items:\[\{id,revision\}\]/);
+  assert.match(shell,/Number\(task\.revision\)!==revision/);
+  assert.match(shell,/state\.flowFocusId='';/);
+  assert.match(css,/#paletteNextRoot \.pn-flow-workbench/);
+  assert.doesNotMatch(shell,/runTransaction|initializeApp|getDatabase|onValue\(/);
 });
 
 test('Palette NEXT dispatch uses canonical business writers and exposes read-only snapshots',()=>{
