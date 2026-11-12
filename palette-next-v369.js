@@ -845,8 +845,8 @@
       ' '+(!tasks.length?'disabled':'')+'> 表示中のタスクをすべて選択</label>'+
       '<span>最大200件</span></div>'+bulkControls()+
       (state.taskView==='board'?'<div class="pn-flow-workspace">'+
-        '<div class="pn-flow-board-area">'+taskBoardMarkup(tasks,state.flowFocusId)+'</div>'+
-        flowWorkbench(focused)+'</div>':
+        flowWorkbench(focused)+
+        '<div class="pn-flow-board-area">'+taskBoardMarkup(tasks,state.flowFocusId)+'</div></div>':
         '<div class="pn-task-rows">'+(tasks.length?tasks.map(taskListRow).join(''):
         '<div class="pn-empty">該当タスクはありません</div>')+'</div>')+
       '</section><p class="pn-footnote">繰り返し設定の編集や削除範囲の指定は、対応する詳細機能から操作してください。</p>';
