@@ -1989,6 +1989,13 @@
       }
       recordPages.index.setAttribute('aria-orientation',compact.matches?'horizontal':'vertical');
       const tools=detailBody.querySelector('[data-tab-panel="tools"]');
+      if(tools && recordPages.tools!==tools) {
+        // Watch only section mounts/replacements, not typing or field attributes.
+        recordPages.observer.disconnect();
+        recordPages.observer.observe(recordPages.stack,{childList:true});
+        recordPages.observer.observe(tools,{childList:true});
+        recordPages.tools=tools;
+      }
       if(tools) {
         // Keep reading and keyboard order alike when shared sections mount
         // in separate frames. Reorder the live sections only when necessary.

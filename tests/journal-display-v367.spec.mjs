@@ -4101,6 +4101,9 @@ for(const width of [320,1366])test(`JOURNAL related settings and letters retain 
   await tools.locator('[data-reminder-preset-v152="30m"]').click();
   await tools.locator('[data-save-reminder-v152]').click();
   await expect.poll(()=>page.evaluate(()=>Number(window.WorkBoardWorkflowV152.reminderFor('paper-main')?.at||0))).toBeGreaterThan(0);
+  await expect.poll(()=>tools.evaluate(el=>[...el.children].filter(node=>node.matches('.workflow-dependencies-v149,.workflow-relations-v152,.workflow-reminder-v152,.workflow-organize-v153')).map(node=>node.classList.contains('workflow-dependencies-v149')?'dependency':node.classList.contains('workflow-relations-v152')?'related':node.classList.contains('workflow-reminder-v152')?'reminder':'organize'))).toEqual(['dependency','related','reminder','organize']);
+  const restoredFirst=await tools.locator('.workflow-dependencies-v149').boundingBox(),restoredLast=await tools.locator('.workflow-organize-v153').boundingBox();
+  expect(restoredFirst.y).toBeLessThan(restoredLast.y);
   await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-tools-'+width+'.png')});
   await detail.locator('[data-tab="comments"]').click();
   await expect(detail.locator('.activity-text').filter({hasText:'確認済みの記録です。'})).toBeVisible();
