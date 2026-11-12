@@ -3879,3 +3879,95 @@ for (const width of [390,1366]) {
       .toBeLessThanOrEqual(2);
   });
 }
+
+async function bootRecordShelf(page,width) {
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    const task=(id,title,status='未着手')=>({id,title,status,assignee:'JournalTester',priority:'高',category:'院内',description:'手帳の記録',createdAt:now,updatedAt:now,revision:1});
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester','別の利用者']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify([task('shelf-active','確認する案件'),task('shelf-archive','保管した案件','完了')]));
+    localStorage.setItem('system-task-knowledge:'+room,JSON.stringify([{id:'shelf-guide',title:'確認手順',action:'電源を確認する',summary:'院内の確認方法',symptom:'表示されない',checkpoint:'正常に表示',revision:1,createdAt:now}]));
+    localStorage.setItem('work-board-workflow-v152:'+room,JSON.stringify({inbox:{JournalTester:{'shelf-message':{taskId:'shelf-active',type:'mention',title:'確認の依頼',body:'内容を確認してください',actor:'担当者',createdAt:now,readAt:0}}},archives:{'shelf-archive':{archivedAt:now,archivedBy:'JournalTester',reason:'manual'}},duplicates:{}}));
+  },{room:ROOM});
+  await boot(page,width);await choose(page,'journal');
+}
+
+for(const width of [320,390,1366])test(`JOURNAL record shelf keeps notifications, archive restore and knowledge in the notebook at ${width}px`,async({page})=>{
+  test.setTimeout(90000);
+  await bootRecordShelf(page,width);
+  await expect(page.locator('.j-shelf-launch')).toContainText('1');
+  await page.locator('.j-shelf-launch').click();
+  const shelf=page.locator('#jRecordShelf');
+  await expect(shelf).toBeVisible();
+  await expect(shelf.locator('.is-unread')).toContainText('確認の依頼');
+  await shelf.locator('[data-j-shelf-unread-filter]').click();
+  await shelf.locator('[data-j-shelf-read]').click();
+  await expect(shelf.locator('.j-shelf-record')).toHaveCount(0);
+  await expect(page.locator('.j-shelf-launch [data-j-shelf-unread]')).toBeHidden();
+  await expect.poll(()=>page.evaluate(()=>Boolean(window.WorkBoardWorkflowV152.inboxFor()['shelf-message'].readAt))).toBe(true);
+  await shelf.locator('[data-j-shelf-page="archive"]').click();
+  await expect(shelf.locator('.j-shelf-record')).toContainText('保管した案件');
+  await shelf.locator('[data-j-shelf-restore]').click();
+  await expect(shelf.locator('.j-shelf-record')).toHaveCount(0);
+  expect(await page.evaluate(()=>window.WorkBoardWorkflowV152.isArchived('shelf-archive'))).toBe(false);
+  await shelf.locator('[data-j-shelf-page="knowledge"]').click();
+  await shelf.locator('[data-j-shelf-knowledge]').click();
+  await shelf.locator('[name="action"]').fill('電源と接続を確認する');
+  await expect(shelf.locator('[name="action"]')).toHaveValue('電源と接続を確認する');
+  await shelf.locator('[type="submit"]').click();
+  await expect(shelf.locator('.j-shelf-feedback')).toContainText('保存しました');
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().knowledge.find(x=>x.id==='shelf-guide').action)).toBe('電源と接続を確認する');
+  expect(await shelf.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(shelf).not.toBeVisible();
+  await expect(page.locator('.j-shelf-launch')).toBeFocused();
+  await page.locator('.j-shelf-launch').click();
+  await shelf.locator('[data-j-shelf-page="templates"]').click();
+  await shelf.locator('[data-j-shelf-template]').first().click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await expect(page.locator('#taskTitle')).not.toHaveValue('');
+  await page.locator('#closeTaskDialog').click();
+  await page.locator('.j-shelf-launch').click();
+  await shelf.locator('[data-j-shelf-page="manage"]').click();
+  await shelf.locator('[data-j-shelf-manager="manageCategories"]').click();
+  await expect(page.locator('#categoryManageDialog')).toBeVisible();
+  await page.locator('#closeCategoryManage').click();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+test('JOURNAL shelf opens tasks without clearing search, protects knowledge drafts and resets on user switch',async({page})=>{
+  await bootRecordShelf(page,1366);
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  await page.locator('#wbJournalSearchV393').fill('確認');
+  await page.locator('.j-shelf-launch').click();
+  await page.locator('#jRecordShelf [data-j-shelf-task]').click();
+  await expect(page.locator('.detail-panel')).toHaveClass(/open/);
+  await expect(page.locator('#wbJournalSearchV393')).toHaveValue('確認');
+  await page.locator('#closeDetail').click();
+  await page.locator('.j-shelf-launch').click();
+  await page.locator('[data-j-shelf-page="knowledge"]').click();
+  await page.locator('[data-j-shelf-knowledge]').click();
+  await page.locator('.j-shelf [name="action"]').fill('未保存の手順');
+  page.once('dialog',dialog=>dialog.dismiss());
+  await page.locator('[data-j-shelf-close]').click();
+  await expect(page.locator('.j-shelf [name="action"]')).toHaveValue('未保存の手順');
+  // Exercise the real owner switch boundary while a draft is open.
+  await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('別の利用者'));
+  await expect(page.locator('#jRecordShelf')).not.toBeVisible();
+  await page.locator('.j-shelf-launch').click();
+  await expect(page.locator('.j-shelf-knowledge-form')).toHaveCount(0);
+  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().knowledge.find(x=>x.id==='shelf-guide').action)).toBe('電源を確認する');
+});
+
+for(const width of [390,1366])test(`JOURNAL review is an independent ledger with canonical insights at ${width}px`,async({page})=>{
+  await bootRecordShelf(page,width);
+  await page.locator((width<=860?'.wb-journal-dock-v367':'.wb-journal-tabs-v367')+' [data-journal-route="tasks"]').click();
+  await page.locator('[data-j420-layout="dashboard"]').click();
+  await expect(page.locator('.j-review-book')).toBeVisible();
+  await expect(page.locator('.j-review-counts [data-review-count="open"] dd')).toContainText('1');
+  await expect(page.locator('#dashboardView .dashboard-kpis')).toHaveCount(0);
+  await expect(page.locator('#dashboardView .workflow-dashboard-panel-v148')).toHaveCount(2);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.locator('[data-j565-task-layout="board"]').click();
+  await expect(page.locator('.j420-atelier')).toBeVisible();
+});

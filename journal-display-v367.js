@@ -138,6 +138,197 @@
   const globalSearchScopeV393 = header.querySelector('.wb-journal-search-scope-v393');
   const pageButtons = Array.from(header.querySelectorAll('[data-journal-sheet]'));
 
+  // Record shelf: independent paper index over the canonical read/command
+  // boundary. No additional caches, Firebase subscriptions or write paths.
+  const shelfButton = document.createElement('button');
+  shelfButton.type = 'button';
+  shelfButton.className = 'j-shelf-launch';
+  shelfButton.setAttribute('aria-haspopup','dialog');
+  shelfButton.innerHTML = '記録棚 <small data-j-shelf-unread hidden></small>';
+  header.querySelector('.wb-journal-actions-v367').prepend(shelfButton);
+  const shelf = document.createElement('dialog');
+  shelf.id = 'jRecordShelf';
+  shelf.className = 'j-shelf';
+  shelf.setAttribute('aria-labelledby','jShelfTitle');
+  shelf.innerHTML = `<header class="j-shelf-head"><div><small>RECORD SHELF</small><h2 id="jShelfTitle">記録棚</h2></div><button type="button" data-j-shelf-close aria-label="記録棚を閉じる">×</button></header>
+    <div class="j-shelf-spread"><nav class="j-shelf-index" aria-label="記録棚の索引">${[['inbox','届いた連絡'],['archive','保管した案件'],['knowledge','手順と知識'],['templates','記入のひな形'],['manage','分類・利用者']].map(([key,label],i)=>`<button type="button" data-j-shelf-page="${key}"><small>0${i+1}</small>${label}</button>`).join('')}</nav>
+    <section class="j-shelf-leaf"><header class="j-shelf-leaf-head"><h3></h3><label>このページを検索<input type="search" data-j-shelf-search autocomplete="off"></label></header><div class="j-shelf-controls"></div><p class="j-shelf-summary"></p><p class="j-shelf-feedback" role="status"></p><div class="j-shelf-records"></div></section></div>`;
+  body.append(shelf);
+  const shelfRecords = shelf.querySelector('.j-shelf-records');
+  const shelfSearch = shelf.querySelector('[data-j-shelf-search]');
+  const shelfSummary = shelf.querySelector('.j-shelf-summary');
+  let shelfPage = 'inbox', shelfQuery = '', shelfUnreadOnly = false, shelfLimit = 40;
+  let shelfOwner = '', shelfBusy = false, shelfEditing = null, shelfQueued = false;
+  const shelfArchiveBases = new Map();
+  const shelfInboxBases = new Map();
+  const shelfEsc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+  const shelfSnapshot = () => window.WorkBoardPaletteBridge?.readSnapshot();
+  const shelfWorkflow = () => window.WorkBoardWorkflowV152;
+  const shelfOwnerKey = snapshot => JSON.stringify([snapshot?.roomId,snapshot?.currentUser]);
+  const shelfMatch = values => !shelfQuery || values.join(' ').normalize('NFKC').toLocaleLowerCase().includes(shelfQuery.normalize('NFKC').toLocaleLowerCase());
+  const shelfDate = value => Number(value) ? new Date(Number(value)).toLocaleString('ja-JP') : '';
+  function shelfMessage(message) { shelf.querySelector('.j-shelf-feedback').textContent = message; }
+  function openShelf(page = shelfPage) {
+    if (!isJournal() || !shelfSnapshot()) return;
+    closeMenu(); closePreferences(); closeDrawer();
+    shelfPage = page; shelfOwner = shelfOwnerKey(shelfSnapshot()); shelfMessage('');
+    renderShelf();
+    if (!shelf.open) shelf.showModal();
+    shelf.querySelector('[data-j-shelf-page="'+shelfPage+'"]').focus();
+  }
+  function closeShelf() {
+    shelfEditing = null;
+    if (shelf.open) shelf.close();
+  }
+  function renderShelf() {
+    if (shelfEditing || shelfBusy) return;
+    const snapshot = shelfSnapshot(), workflow = shelfWorkflow();
+    if (!snapshot) return;
+    shelfArchiveBases.clear(); shelfInboxBases.clear();
+    const selected = shelf.querySelector('[data-j-shelf-page="'+shelfPage+'"]');
+    shelf.querySelectorAll('[data-j-shelf-page]').forEach(button => {
+      if (button === selected) button.setAttribute('aria-current','page');
+      else button.removeAttribute('aria-current');
+    });
+    shelf.querySelector('.j-shelf-leaf-head h3').textContent = selected?.textContent.slice(2) || '';
+    shelfSearch.closest('label').hidden = shelfPage === 'manage';
+    const controls = shelf.querySelector('.j-shelf-controls');
+    controls.innerHTML = shelfPage === 'inbox' ? `<button type="button" data-j-shelf-unread-filter aria-pressed="${shelfUnreadOnly}">${shelfUnreadOnly?'すべて表示':'未読だけ表示'}</button><button type="button" data-j-shelf-read-all>表示中を既読にする</button>` : '';
+    let rows = [], html = '';
+    if (shelfPage === 'inbox') {
+      rows = Object.entries(workflow?.inboxFor() || {}).map(([id,x])=>({...x,id}))
+        .filter(x => (!shelfUnreadOnly || !Number(x.readAt)) && shelfMatch([x.title,x.body,x.actor]))
+        .sort((a,b) => Boolean(a.readAt)-Boolean(b.readAt) || Number(b.createdAt)-Number(a.createdAt));
+      html = rows.slice(0,shelfLimit).map(x => {
+        shelfInboxBases.set(x.id,{...x});
+        const exists = snapshot.tasks.some(t=>t.id===x.taskId);
+        return `<article class="j-shelf-record ${Number(x.readAt)?'':'is-unread'}" data-shelf-record="${shelfEsc(x.id)}"><div class="j-shelf-record-meta"><span>${Number(x.readAt)?'既読':'未読'} · ${shelfEsc({mention:'メンション',reply:'返信',comment:'コメント',assign:'担当依頼',reaction:'リアクション'}[x.type] || 'お知らせ')}</span><time>${shelfEsc(shelfDate(x.createdAt))}</time></div><h4>${shelfEsc(x.title)}</h4><p>${shelfEsc(x.body)}</p><small>${shelfEsc(x.actor)}</small><div class="j-shelf-record-actions">${exists?`<button type="button" data-j-shelf-task="${shelfEsc(x.taskId)}">案件ノートを開く</button>`:'<small>参照先の案件は現在ありません。</small>'}<button type="button" data-j-shelf-read="${shelfEsc(x.id)}">${Number(x.readAt)?'未読に戻す':'既読にする'}</button></div></article>`;
+      }).join('');
+      controls.querySelector('[data-j-shelf-read-all]').disabled = ![...shelfInboxBases.values()].some(x=>!Number(x.readAt));
+    } else if (shelfPage === 'archive') {
+      rows = snapshot.tasks.filter(t => (workflow?.isArchived(t.id) || workflow?.duplicateOf(t.id)) && shelfMatch([t.title,t.description,t.assignee,t.category]));
+      rows.sort((a,b)=>Number(workflow.archiveInfo(b.id)?.archivedAt||workflow.duplicateInfo(b.id)?.mergedAt||0)-Number(workflow.archiveInfo(a.id)?.archivedAt||workflow.duplicateInfo(a.id)?.mergedAt||0));
+      html = rows.slice(0,shelfLimit).map(t => {
+        const info=workflow.archiveInfo(t.id), duplicate=workflow.duplicateInfo(t.id);
+        shelfArchiveBases.set(t.id,info?{...info}:null);
+        return `<article class="j-shelf-record" data-shelf-record="${shelfEsc(t.id)}"><div class="j-shelf-record-meta"><span>${duplicate?'重複統合':'アーカイブ'}</span><time>${shelfEsc(shelfDate(info?.archivedAt||duplicate?.mergedAt))}</time></div><h4>${shelfEsc(t.title)}</h4><p>${shelfEsc(t.description)}</p><div class="j-shelf-record-actions"><button type="button" data-j-shelf-task="${shelfEsc(duplicate?.targetId || t.id)}">${duplicate?'統合先のノートを開く':'案件ノートを開く'}</button>${duplicate?'':`<button type="button" data-j-shelf-restore="${shelfEsc(t.id)}">一覧へ戻す</button>`}</div></article>`;
+      }).join('');
+    } else if (shelfPage === 'knowledge') {
+      rows = snapshot.knowledge.filter(x=>shelfMatch([x.title,x.summary,x.symptom,x.action,x.checkpoint]));
+      html = rows.slice(0,shelfLimit).map(x=>`<article class="j-shelf-record"><h4>${shelfEsc(x.title)}</h4><p>${shelfEsc(x.summary||x.action)}</p><div class="j-shelf-record-actions"><button type="button" data-j-shelf-knowledge="${shelfEsc(x.id)}">手順を読む・編集する</button></div></article>`).join('');
+    } else if (shelfPage === 'templates') {
+      controls.innerHTML = '<button type="button" data-j-shelf-manager="manageTemplates">ひな形を追加・編集</button>';
+      rows = snapshot.templates.filter(x=>shelfMatch([x.name,x.title,x.description,x.category]));
+      html = rows.slice(0,shelfLimit).map(x=>`<article class="j-shelf-record"><small>${shelfEsc(x.category)}</small><h4>${shelfEsc(x.name)}</h4><strong>${shelfEsc(x.title)}</strong><p>${shelfEsc(x.description)}</p><div class="j-shelf-record-actions"><button type="button" data-j-shelf-template="${shelfEsc(x.id)}">このひな形でタスクを作成</button></div></article>`).join('');
+    } else {
+      html = '<p>共有する分類、自分用の状態、利用者を管理します。</p><div class="j-shelf-management">'+[['manageCategories','分類','案件や予定の分類を整理'],['manageStatuses','自分の状態','進み具合と並び順を整理'],['manageUsers','利用者','担当者の追加・変更']].map(([id,label,hint])=>`<button type="button" data-j-shelf-manager="${id}"><strong>${label}</strong><small>${hint}</small><span aria-hidden="true">→</span></button>`).join('')+'</div>';
+    }
+    shelfRecords.innerHTML = html || `<p class="j-shelf-empty">${shelfQuery || shelfUnreadOnly?'この条件に合う記録はありません。条件を変えるとほかの記録を確認できます。':({inbox:'自分宛ての連絡が届くと、ここに並びます。',archive:'保管した案件はありません。完了案件の詳細からアーカイブできます。',knowledge:'手順はまだありません。案件の詳細からナレッジとして残せます。',templates:'ひな形はありません。'}[shelfPage])}</p>`;
+    if(rows.length>shelfLimit)shelfRecords.insertAdjacentHTML('beforeend','<button type="button" data-j-shelf-more>続きを表示</button>');
+    shelfSummary.textContent=shelfPage==='manage'?'':`${rows.length}件${rows.length>shelfLimit?' / '+shelfLimit+'件を表示':''}`;
+  }
+  function queueShelfUpdate() {
+    if(shelfQueued)return;
+    shelfQueued=true;
+    queueMicrotask(()=>{
+      shelfQueued=false;
+      const snapshot=shelfSnapshot(),owner=shelfOwnerKey(snapshot);
+      if(shelfOwner && shelfOwner!==owner){
+        closeShelf(); shelfOwner=owner; shelfQuery=''; shelfSearch.value=''; shelfUnreadOnly=false; shelfLimit=40;
+      }
+      const unread=shelfWorkflow()?.unreadCount() || 0;
+      const badge=shelfButton.querySelector('[data-j-shelf-unread]');
+      badge.textContent=String(unread);badge.hidden=!unread;
+      shelfButton.setAttribute('aria-label','記録棚'+(unread?'・未読'+unread+'件':''));
+      if(shelf.open)renderShelf();
+    });
+  }
+  async function shelfWrite(operation, sourceId) {
+    if(shelfBusy || shelfOwner!==shelfOwnerKey(shelfSnapshot()))return;
+    shelfBusy=true;
+    shelf.querySelectorAll('button').forEach(button=>button.disabled=true);
+    const top=shelfRecords.scrollTop;
+    try {
+      const result=await operation();
+      if(result?.ok===false || result===false)throw new Error('not-saved');
+      shelfBusy=false;renderShelf();
+      shelfRecords.scrollTop=top;
+      const target=[...shelfRecords.querySelectorAll('[data-shelf-record]')].find(x=>x.dataset.shelfRecord===sourceId);
+      (target?.querySelector('[data-j-shelf-read],button') || shelf.querySelector('[data-j-shelf-page="'+shelfPage+'"]')).focus({preventScroll:true});
+      shelfMessage('更新しました。');
+    } catch(error) { shelfBusy=false;renderShelf();shelfMessage('更新できませんでした。接続と最新の状態を確認して、やり直してください。'); }
+    finally { shelfBusy=false;shelf.querySelectorAll('button').forEach(button=>{if(!button.hasAttribute('data-j-shelf-read-all'))button.disabled=false;}); }
+  }
+  function readShelfKnowledge(id) {
+    const snapshot=shelfSnapshot(),record=snapshot.knowledge.find(x=>x.id===id);
+    if(!record)return;
+    shelfEditing={record:{...record},ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser};
+    shelfSearch.closest('label').hidden=true;
+    shelf.querySelector('.j-shelf-controls').innerHTML='';
+    shelfRecords.innerHTML=`<form class="j-shelf-knowledge-form"><button type="button" data-j-shelf-back>← 手順の索引へ</button><h4>${shelfEsc(record.title)}</h4>${[['title','件名'],['summary','概要'],['symptom','症状・背景'],['action','対応内容'],['checkpoint','確認事項']].map(([key,label])=>`<label>${label}${['title','action'].includes(key)?'（必須）':''}${key==='title'?`<input name="${key}" maxlength="80" required value="${shelfEsc(record[key])}">`:`<textarea name="${key}" rows="4" maxlength="6000" ${key==='action'?'required':''}>${shelfEsc(record[key])}</textarea>`}</label>`).join('')}<button type="submit">手順を保存</button></form>`;
+    shelfMessage('内容を確認し、必要な箇所を編集できます。');
+    shelfRecords.querySelector('form').addEventListener('submit',async event=>{
+      event.preventDefault();
+      const draft=shelfEditing;if(!draft || shelfBusy)return;
+      const form=event.currentTarget,button=form.querySelector('[type="submit"]');
+      shelfBusy=true;button.disabled=true;
+      const values=Object.fromEntries(new FormData(form));
+      try {
+        const result=await window.WorkBoardPaletteBridge.dispatch({type:'knowledge.save',id:draft.record.id,revision:draft.record.revision,values,ownerRoom:draft.ownerRoom,ownerUser:draft.ownerUser});
+        if(!result?.ok){shelfMessage('保存できませんでした。入力を残しています。最新の内容・接続状態を確認してください。');return;}
+        shelfEditing=null;shelfBusy=false;renderShelf();shelfMessage('手順を保存しました。');
+        shelf.querySelector('[data-j-shelf-page="knowledge"]').focus();
+      } catch(error) {shelfMessage('保存できませんでした。入力を残しています。接続状態を確認してください。');}
+      finally {shelfBusy=false;if(button.isConnected)button.disabled=false;}
+    });
+    shelfRecords.querySelector('input').focus();
+  }
+  shelfButton.addEventListener('click',()=>openShelf());
+  shelf.querySelector('[data-j-shelf-close]').addEventListener('click',()=>{
+    if(!shelfEditing || confirm('編集中の手順を保存せずに閉じますか？'))closeShelf();
+  });
+  shelf.addEventListener('cancel',event=>{
+    if(shelfBusy){event.preventDefault();return;}
+    if(shelfEditing && !confirm('編集中の手順を保存せずに閉じますか？'))event.preventDefault();
+  });
+  shelf.addEventListener('close',()=>{shelfEditing=null;if(isJournal())shelfButton.focus({preventScroll:true});});
+  shelfSearch.addEventListener('input',()=>{shelfQuery=shelfSearch.value;shelfLimit=40;renderShelf();});
+  shelf.addEventListener('click',event=>{
+    const button=event.target.closest('button');if(!button || shelfBusy)return;
+    if(button.hasAttribute('data-j-shelf-back')){if(confirm('編集中の手順を保存せずに索引へ戻りますか？')){shelfEditing=null;renderShelf();shelf.querySelector('[data-j-shelf-page="knowledge"]').focus();}return;}
+    if(button.dataset.jShelfPage){
+      if(shelfEditing && !confirm('編集中の手順を保存せずにページを移動しますか？'))return;
+      shelfEditing=null;shelfMessage('');shelfPage=button.dataset.jShelfPage;shelfQuery='';shelfSearch.value='';shelfLimit=40;renderShelf();return;
+    }
+    if(button.hasAttribute('data-j-shelf-more')){shelfLimit+=40;renderShelf();return;}
+    if(button.hasAttribute('data-j-shelf-unread-filter')){shelfUnreadOnly=!shelfUnreadOnly;renderShelf();shelf.querySelector('[data-j-shelf-unread-filter]').focus();return;}
+    const workflow=shelfWorkflow();
+    if(button.dataset.jShelfRead){const record=shelfInboxBases.get(button.dataset.jShelfRead);if(record)shelfWrite(()=>workflow.markInboxRead(record.id,!Number(record.readAt),workflow.currentUser(),Number(record.readAt)||0),record.id);return;}
+    if(button.hasAttribute('data-j-shelf-read-all')){
+      const records=[...shelfInboxBases.values()].filter(x=>!Number(x.readAt)),user=workflow.currentUser(),owner=shelfOwner;
+      shelfWrite(async()=>{for(const record of records){if(owner!==shelfOwnerKey(shelfSnapshot()))return false;const result=await workflow.markInboxRead(record.id,true,user,Number(record.readAt)||0);if(result===false||result?.ok===false)return false;}return true;});return;
+    }
+    if(button.dataset.jShelfRestore){const id=button.dataset.jShelfRestore,base=shelfArchiveBases.get(id);shelfWrite(()=>workflow.unarchiveTask(id,base),id);return;}
+    if(button.dataset.jShelfKnowledge){readShelfKnowledge(button.dataset.jShelfKnowledge);return;}
+    if(button.dataset.jShelfTask){closeShelf();window.WorkBoardJournalNavigation?.openTask(button.dataset.jShelfTask);return;}
+    if(button.dataset.jShelfTemplate){const id=button.dataset.jShelfTemplate;closeShelf();createItem('task');requestAnimationFrame(()=>{const select=document.getElementById('taskTemplate');if(select){select.value=id;select.dispatchEvent(new Event('change',{bubbles:true}));}});return;}
+    if(button.dataset.jShelfManager){
+      const target=document.getElementById(button.dataset.jShelfManager);if(!target)return;
+      closeShelf();target.click();return;
+    }
+  });
+  window.addEventListener('workflow-v152-update',queueShelfUpdate);
+  document.addEventListener('click',event=>{
+    if(!isJournal())return;
+    const target=event.target.closest('[data-open-personal-inbox-v153],[data-open-archive-v153]');
+    if(!target)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    openShelf(target.hasAttribute('data-open-archive-v153')?'archive':'inbox');
+  },true);
+  window.WorkBoardPaletteBridge?.subscribe(queueShelfUpdate);
+  new MutationObserver(()=>{if(!isJournal())closeShelf();else queueShelfUpdate();}).observe(root,{attributes:true,attributeFilter:['data-wb-display']});
+  queueShelfUpdate();
+
   // JOURNAL owns only the paper composition. Existing live DOM nodes are MOVED,
   // never cloned: all canonical event listeners, IDs, input state and write paths
   // remain the originals. Uncompose on display-mode exit to restore Classic.
@@ -1405,6 +1596,47 @@
     dialog.classList.add('j-entry-dialog-v385','j-entry-' + type + '-v385');
     form.classList.add('j-entry-form-v385');
     journalEntryHeaderV385(dialog, {number,kicker,lead}, record);
+    if (type === 'template') {
+      const layout = form.querySelector('.template-manage-layout');
+      const grid = form.querySelector('.template-editor-panel > .form-grid');
+      if (layout && grid) {
+        layout.classList.add('j-template-notebook');
+        record.listeners.push(()=>layout.classList.remove('j-template-notebook'));
+        const pages = document.createElement('div');
+        pages.className = 'j-template-writing-pages';
+        grid.after(pages);
+        record.extras.push(pages);
+        for (const [label,ids] of [['ひな形の見出し',['templateName','templateTitle','templatePriority','templateCategory','templateTags']],['作業の書き込み',['templateDescription','templateChecklist']]]) {
+          const leaf = document.createElement('section');
+          leaf.className = 'j-template-writing-leaf';
+          const title = document.createElement('h4');title.textContent=label;leaf.append(title);
+          for (const id of ids) {
+            const field=grid.querySelector('#'+id)?.closest('label');
+            if(field)journalEntryMoveV385(field,leaf,record);
+          }
+          pages.append(leaf);
+        }
+        // The emptied grid remains as an exact restoration anchor.
+        const wasHidden=grid.hidden;grid.hidden=true;
+        record.listeners.push(()=>{grid.hidden=wasHidden;});
+      }
+    }
+  }
+
+  function journalManagementDialog(dialog) {
+    if(journalEntryRecordsV385.has(dialog))return;
+    journalSimpleDialogV385(dialog,'management','07','NOTEBOOK INDEX','分類・状態・利用者の索引を整理します。');
+    const record=journalEntryRecordsV385.get(dialog),form=dialog.querySelector('form');
+    if(!record || !form)return;
+    const spread=document.createElement('div');spread.className='j-management-spread';
+    const index=document.createElement('aside');index.className='j-management-index';
+    index.innerHTML='<small>INDEX / 索引</small><strong>項目を整理する</strong><p>追加した項目は、この手帳とほかの画面で共通して使います。</p>';
+    const leaf=document.createElement('section');leaf.className='j-management-leaf';
+    spread.append(index,leaf);form.append(spread);record.extras.push(spread);
+    for(const node of [...form.children]) {
+      if(node===spread || node.classList.contains('dialog-head'))continue;
+      journalEntryMoveV385(node,leaf,record);
+    }
   }
 
   function restoreJournalEntriesV385() {
@@ -1418,7 +1650,7 @@
       record.form.classList.remove('j-entry-form-v385');
       dialog.classList.remove('j-entry-dialog-v385','j-entry-task-v385',
         'j-entry-schedule-v385','j-entry-memo-v385','j-entry-copy-v385',
-        'j-entry-recurring-v385','j-entry-template-v385');
+        'j-entry-recurring-v385','j-entry-template-v385','j-entry-management-v385');
       delete dialog.dataset.journalMemoPaper;
     }
     journalEntryRecordsV385.clear();
@@ -1431,7 +1663,8 @@
     }
     for (const dialog of document.querySelectorAll(
       '#taskDialog[open],#scheduleDialog[open],#workMemoDialogV167[open],'
-      + '#scheduleCopyDialog[open],#recurringDeleteDialog[open],#templateManageDialog[open]')) {
+      + '#scheduleCopyDialog[open],#recurringDeleteDialog[open],#templateManageDialog[open],'
+      + '#categoryManageDialog[open],#statusManageDialog[open],#userManageDialog[open]')) {
       if (journalEntryRecordsV385.has(dialog)) {
         journalEntryRecordsV385.get(dialog).refreshOutlineV393?.();
         if (dialog.id === 'workMemoDialogV167') {
@@ -1448,6 +1681,7 @@
         journalSimpleDialogV385(dialog,'recurring','05','RECURRING SERIES','削除範囲を選び、影響を確認してください。');
       else if (dialog.id === 'templateManageDialog')
         journalSimpleDialogV385(dialog,'template','06','REUSABLE NOTE','よく使う作業の記入例を整理します。');
+      else journalManagementDialog(dialog);
     }
   }
 
@@ -1456,7 +1690,7 @@
     const watchedDialogs = new WeakSet();
     function watchEntryDialogsV385() {
       for (const dialog of document.querySelectorAll(
-        '#taskDialog,#scheduleDialog,#workMemoDialogV167,#scheduleCopyDialog,#recurringDeleteDialog,#templateManageDialog')) {
+        '#taskDialog,#scheduleDialog,#workMemoDialogV167,#scheduleCopyDialog,#recurringDeleteDialog,#templateManageDialog,#categoryManageDialog,#statusManageDialog,#userManageDialog')) {
         if (watchedDialogs.has(dialog)) continue;
         watchedDialogs.add(dialog);
         new MutationObserver(syncJournalEntriesV385).observe(dialog, {
