@@ -3899,7 +3899,7 @@ for(const width of [320,390,1366])test(`JOURNAL record shelf keeps notifications
   await page.locator('.j-shelf-launch').click();
   const shelf=page.locator('#jRecordShelf');
   await expect(shelf).toBeVisible();
-  await page.screenshot({path:testInfo.outputPath('visual-compare-journal-shelf-'+width+'.png')});
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-shelf-'+width+'.png')});
   await expect(shelf.locator('.is-unread')).toContainText('確認の依頼');
   await shelf.locator('[data-j-shelf-unread-filter]').click();
   await shelf.locator('[data-j-shelf-read]').click();
@@ -3932,7 +3932,7 @@ for(const width of [320,390,1366])test(`JOURNAL record shelf keeps notifications
   await shelf.locator('[data-j-shelf-page="manage"]').click();
   await shelf.locator('[data-j-shelf-manager="manageCategories"]').click();
   await expect(page.locator('#categoryManageDialog')).toBeVisible();
-  await page.screenshot({path:testInfo.outputPath('visual-compare-journal-management-'+width+'.png')});
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-management-'+width+'.png')});
   await page.locator('#closeCategoryManage').click();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
@@ -3969,7 +3969,7 @@ for(const width of [390,1366])test(`JOURNAL review is an independent ledger with
   await expect(page.locator('.j-review-counts [data-review-count="open"] dd')).toContainText('1');
   await expect(page.locator('#dashboardView .dashboard-kpis')).toHaveCount(0);
   await expect(page.locator('#dashboardView .workflow-dashboard-panel-v148')).toHaveCount(2);
-  await page.screenshot({path:testInfo.outputPath('visual-compare-journal-review-'+width+'.png')});
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-review-'+width+'.png')});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await page.locator('[data-j565-task-layout="board"]').click();
   await expect(page.locator('.j420-atelier')).toBeVisible();
@@ -3986,7 +3986,7 @@ for(const width of [390,1366])test(`JOURNAL reserved folios group start days and
   await page.locator('[data-j565-reserved-open]').click();
   const reserved=page.locator('#reservedTaskDialogV167');
   await expect(reserved.locator('.j-reserved-day')).toHaveCount(2);
-  await page.screenshot({path:testInfo.outputPath('visual-compare-journal-reserved-'+width+'.png')});
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-reserved-'+width+'.png')});
   await expect(reserved.locator('.j-reserved-day').first().locator('[data-reserved-id]')).toHaveCount(2);
   await reserved.locator('[data-reserved-date="future-a"]').evaluate(input=>{input.value='2099-01-06';input.dispatchEvent(new Event('change',{bubbles:true}));});
   await reserved.locator('[data-reserved-save="future-a"]').click();
@@ -4007,6 +4007,10 @@ for(const width of [390,1366])test(`JOURNAL case notebook retains comments and r
   await page.locator('#jRecordShelf [data-j-shelf-task]').click();
   const detail=page.locator('#detailBody');
   await expect(detail.locator('.j-record-page-stack')).toBeVisible();
+  if(width===1366){
+    expect((await page.locator('.detail-panel').boundingBox()).width).toBeGreaterThanOrEqual(960);
+    expect((await detail.locator('.j-record-page-stack').boundingBox()).width).toBeGreaterThanOrEqual(600);
+  }
   await expect(detail.locator('.j-record-page-index')).toHaveAttribute('aria-orientation',width<=760?'horizontal':'vertical');
   await detail.locator('[data-tab="comments"]').click();
   await expect(detail.locator('.j-record-page-stack [data-tab-panel="comments"]')).toBeVisible();
@@ -4014,8 +4018,12 @@ for(const width of [390,1366])test(`JOURNAL case notebook retains comments and r
   await detail.locator('[data-tab="tools"]').click();
   await expect(detail.locator('.j-record-page-stack [data-tab-panel="tools"]')).toBeVisible();
   await expect(detail.locator('.workflow-relations-v152')).toBeVisible();
-  await page.screenshot({path:testInfo.outputPath('visual-compare-journal-detail-'+width+'.png')});
+  await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-detail-'+width+'.png')});
   if(width===1366){
+    await detail.locator('[data-tab="tools"]').focus();
+    await page.keyboard.press('ArrowUp');
+    await expect(detail.locator('[data-tab-panel="history"]')).toBeVisible();
+    await detail.locator('[data-tab="tools"]').click();
     await detail.locator('[data-j-record-knowledge]').click();
     const shelf=page.locator('#jRecordShelf');
     await expect(shelf.locator('[name="title"]')).toHaveValue('確認する案件');

@@ -1893,8 +1893,9 @@
       if(!isJournal()) {
         detailBody.querySelectorAll('[data-j-record-knowledge]').forEach(button=>button.remove());
         if(recordPages) {
-          const {stack,index,orientation,observer}=recordPages;
+          const {stack,index,orientation,observer,onKey}=recordPages;
           observer.disconnect();
+          index.removeEventListener('keydown',onKey,true);
           stack.replaceWith(...stack.children);
           index.classList.remove('j-record-page-index');
           if(orientation===null)index.removeAttribute('aria-orientation');
@@ -1914,7 +1915,17 @@
         index.after(stack);stack.append(...pages);
         const observer=new MutationObserver(enhance);
         observer.observe(stack,{childList:true});
-        recordPages={stack,index,observer,orientation:index.getAttribute('aria-orientation')};
+        const onKey=event=>{
+          if(!isJournal() || compact.matches || !['ArrowUp','ArrowDown'].includes(event.key))return;
+          const buttons=[...index.querySelectorAll('.task-detail-tab-v149')];
+          const current=buttons.indexOf(event.target.closest('.task-detail-tab-v149'));
+          if(current<0)return;
+          event.preventDefault();event.stopImmediatePropagation();
+          const next=buttons[(current+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length];
+          next.click();next.focus({preventScroll:true});
+        };
+        index.addEventListener('keydown',onKey,true);
+        recordPages={stack,index,observer,onKey,orientation:index.getAttribute('aria-orientation')};
         index.classList.add('j-record-page-index');
         detailBody.classList.add('j-record-detail');
       }
