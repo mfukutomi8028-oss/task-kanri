@@ -1839,27 +1839,11 @@ html[data-wb-display="journal"] #workMemoDialogV167 .work-memo-dialog-actions-v1
   word-break:keep-all !important;flex:0 0 auto !important;
 }
 
-/* Recurrence and copy are auxiliary folios, not Classic popup cards. */
-html[data-wb-display="journal"] dialog.j-entry-copy-v385,
-html[data-wb-display="journal"] dialog.j-entry-recurring-v385,
-html[data-wb-display="journal"] dialog.j-entry-template-v385 {
-  width:min(850px,calc(100vw - 40px)) !important;
-}
-html[data-wb-display="journal"] dialog.j-entry-copy-v385 > form > :not(.dialog-head):not(.dialog-actions),
-html[data-wb-display="journal"] dialog.j-entry-recurring-v385 > form > :not(.dialog-head):not(.dialog-actions),
+/* Shared template frame; copy and series forms own their paper leaves below. */
 html[data-wb-display="journal"] dialog.j-entry-template-v385 > form > :not(.dialog-head):not(.dialog-actions) {
-  margin-left:22px !important;margin-right:22px !important;
+  margin-left:22px!important;margin-right:22px!important;
 }
-html[data-wb-display="journal"] dialog.j-entry-dialog-v385 :is(.schedule-copy-method-section,.schedule-copy-settings,.schedule-copy-preview,.schedule-copy-source,.recurring-delete-options,.template-editor-panel) {
-  border:1px solid var(--j-border) !important;border-radius:1px !important;
-  background:var(--j-paper-alt) !important;box-shadow:none !important;
-}
-html[data-wb-display="journal"] dialog.j-entry-dialog-v385 :is(.schedule-copy-step-badge,.schedule-copy-method-guide,.recurring-delete-impact) {
-  border-radius:1px !important;box-shadow:none !important;
-}
-html[data-wb-display="journal"] dialog.j-entry-dialog-v385 :is(.recurrence-grid,.recurring-delete-options) :is(input[type="checkbox"],input[type="radio"]) {
-  accent-color:var(--j-accent);
-}
+html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .recurrence-grid :is(input[type="checkbox"],input[type="radio"]) {accent-color:var(--j-accent)}
 @media (max-width:820px) {
   html[data-wb-display="journal"] dialog.j-entry-dialog-v385 > form.j-entry-form-v385 {
     grid-template-columns:minmax(0,1fr) !important;
@@ -7063,3 +7047,96 @@ html[data-wb-display="journal"] .j-record-page-stack .field-card {border:0!impor
 html[data-wb-display="journal"] .j-reserved-records {grid-column:2;min-width:0}
 @media(max-width:760px) {html[data-wb-display="journal"] .j-reserved-records {grid-column:1}}
 html[data-wb-display="journal"] .j-record-knowledge {display:block;width:100%;min-height:46px;padding:10px 14px;margin:12px 0;border:1px solid var(--j-border);border-left:3px solid var(--j-accent);border-radius:2px;background:var(--j-paper-alt);color:var(--j-ink);font:700 14px var(--j-text);text-align:left;cursor:pointer}
+
+/* Auxiliary notebook leaves: settings opposite their result, not popup cards. */
+html[data-wb-display="journal"] :is(#scheduleCopyDialog,#recurringDeleteDialog,#timelineMoveDialog).j-entry-dialog-v385 {width:min(1040px,calc(100vw - 32px))!important}
+html[data-wb-display="journal"] dialog.j-entry-move-v385>form.j-entry-form-v385 {display:block!important}
+html[data-wb-display="journal"] dialog.j-entry-dialog-v385 .dialog-kicker {display:none!important}
+html[data-wb-display="journal"] .j-aux-book {display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0;margin:20px 22px 24px;border:1px solid var(--j-border);background:var(--j-paper)}
+html[data-wb-display="journal"] .j-aux-leaf {min-width:0;padding:22px;background:var(--j-paper);color:var(--j-ink)}
+html[data-wb-display="journal"] .j-aux-leaf+ .j-aux-leaf {border-left:1px solid var(--j-border)}
+html[data-wb-display="journal"] .j-aux-leaf>h3 {font:700 18px/1.6 var(--j-text);margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid var(--j-border);color:var(--j-ink)}
+html[data-wb-display="journal"] .j-aux-book>.schedule-copy-source,
+html[data-wb-display="journal"] .j-aux-book>.recurring-delete-subject {grid-column:1/-1;margin:0!important;padding:14px 22px!important;border:0!important;border-bottom:2px solid var(--j-accent)!important;border-radius:0!important;background:var(--j-paper-alt)!important;color:var(--j-ink)!important;box-shadow:none!important;overflow-wrap:anywhere}
+html[data-wb-display="journal"] .j-aux-book .schedule-copy-source strong {font-size:17px;line-height:1.7;color:var(--j-ink)}
+html[data-wb-display="journal"] .j-aux-book .schedule-copy-source :is(small,span) {font-size:12px;color:var(--j-muted)}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf :is(.schedule-copy-method-section,.schedule-copy-settings,.schedule-copy-preview) {margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-settings {margin-top:24px!important;padding-top:18px!important;border-top:1px solid var(--j-border)!important}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-section-heading {margin:0 0 14px;padding:0;background:transparent;color:var(--j-ink)}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-step-badge {border:1px solid var(--j-border)!important;border-radius:2px!important;background:var(--j-paper-alt)!important;color:var(--j-accent)!important;box-shadow:none!important}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-method-guide {border:0!important;border-left:3px solid var(--j-sage)!important;border-radius:0!important;background:transparent!important;padding:8px 0 8px 12px!important;margin-top:14px;box-shadow:none!important;color:var(--j-muted)!important}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-method-guide strong {color:var(--j-ink)!important;font-size:14px}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf :is(.schedule-copy-option,.schedule-copy-end,.schedule-copy-nth) {border:0!important;border-top:1px solid var(--j-line)!important;border-radius:0!important;background:transparent!important;padding:14px 0!important}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-preview-summary-row {border:0;border-bottom:1px solid var(--j-border);border-radius:0;background:transparent;padding:14px 0}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf :is(.schedule-copy-preview-all,.schedule-copy-conflict-details) {border:1px solid var(--j-border);border-radius:2px;background:var(--j-paper-alt);padding:10px;margin-top:16px}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-leaf .schedule-copy-preview-dates>* {border:1px solid var(--j-border);border-radius:2px;background:var(--j-paper-alt);color:var(--j-ink);padding:7px 9px;font-variant-numeric:tabular-nums}
+html[data-wb-display="journal"] :is(#scheduleCopyDialog,#timelineMoveDialog) .j-aux-book .form-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+html[data-wb-display="journal"] :is(#scheduleCopyDialog,#recurringDeleteDialog,#timelineMoveDialog) .j-aux-book label {color:var(--j-ink)!important;font:700 13px/1.7 var(--j-text)!important;min-width:0}
+html[data-wb-display="journal"] :is(#scheduleCopyDialog,#timelineMoveDialog) .j-aux-book :is(input:not([type="checkbox"]):not([type="radio"]):not(.date-native-source-v127):not(.date-segment-input-v127),select,textarea) {border:1px solid var(--j-border)!important;border-radius:3px!important;background:var(--j-paper)!important;color:var(--j-ink)!important;min-height:42px;padding:8px 9px;font:400 14px/1.6 var(--j-text)!important;min-width:0;max-width:100%;box-shadow:none!important}
+html[data-wb-display="journal"] :is(#scheduleCopyDialog,#timelineMoveDialog) .j-aux-book .date-segment-control-v127 {border-color:var(--j-border)!important;border-radius:3px!important;background:var(--j-paper)!important}
+html[data-wb-display="journal"] :is(#scheduleCopyDialog,#recurringDeleteDialog) .j-aux-book :is(input[type="checkbox"],input[type="radio"]) {accent-color:var(--j-accent)}
+html[data-wb-display="journal"] #scheduleCopyDialog .j-aux-book button {border:1px solid var(--j-border)!important;border-radius:3px!important;background:var(--j-paper-alt)!important;color:var(--j-ink)!important;min-height:40px;box-shadow:none!important}
+html[data-wb-display="journal"] #recurringDeleteDialog .j-aux-scope .recurring-delete-options {border:0!important;border-radius:0!important;background:transparent!important;margin:0;padding:0;min-width:0;box-shadow:none!important}
+html[data-wb-display="journal"] #recurringDeleteDialog .j-aux-scope legend {font-size:17px;padding-bottom:12px;color:var(--j-ink)}
+html[data-wb-display="journal"] #recurringDeleteDialog .j-aux-scope label {display:grid;grid-template-columns:24px minmax(0,1fr);align-items:start;gap:9px;border:0!important;border-bottom:1px solid var(--j-border)!important;border-radius:0!important;background:transparent!important;padding:15px 7px!important;box-shadow:none!important}
+html[data-wb-display="journal"] #recurringDeleteDialog .j-aux-scope label:has(input:checked) {border-left:3px solid var(--j-accent)!important;background:var(--j-paper-alt)!important}
+html[data-wb-display="journal"] #recurringDeleteDialog .j-aux-scope label small {color:var(--j-muted);font-weight:400;line-height:1.8}
+html[data-wb-display="journal"] #recurringDeleteDialog .j-aux-impact .recurring-delete-impact {border:0!important;border-bottom:2px solid var(--j-rose)!important;border-radius:0!important;background:transparent!important;color:var(--j-ink)!important;font-size:19px;line-height:1.8;padding:12px 0!important;margin:0 0 16px!important}
+html[data-wb-display="journal"] #recurringDeleteDialog .j-aux-impact .recurring-delete-note {color:var(--j-muted);font:400 14px/1.9 var(--j-text);margin:0}
+html[data-wb-display="journal"] #recurringDeleteDialog #confirmRecurringDelete {background:var(--j-rose)!important;border-color:var(--j-rose)!important;color:#fff!important}
+html[data-wb-display="journal"] #timelineMoveDialog .move-target-card {border:0!important;border-bottom:1px solid var(--j-border)!important;border-radius:0!important;background:transparent!important;padding:0 0 18px!important;box-shadow:none!important;color:var(--j-ink)}
+html[data-wb-display="journal"] #timelineMoveDialog .move-target-card strong {font-size:20px;line-height:1.7;overflow-wrap:anywhere}
+html[data-wb-display="journal"] #timelineMoveDialog .form-help {color:var(--j-muted);font-size:13px;line-height:1.9}
+/* Related settings are arranged as four working leaves, with the shared controls. */
+html[data-wb-display="journal"] #detailBody .j-record-page-stack>[data-tab-panel="tools"]:not([hidden]) {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"]>:is(.task-tools-intro-v154,.j-record-knowledge) {grid-column:1/-1}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"]>.detail-section::before {display:block;font-size:10px;letter-spacing:.13em;color:var(--j-muted);margin-bottom:10px}
+html[data-wb-display="journal"] #detailBody .workflow-dependencies-v149::before {content:'01 / 前提の記録'}
+html[data-wb-display="journal"] #detailBody .workflow-relations-v152::before {content:'02 / 案件をつなぐ'}
+html[data-wb-display="journal"] #detailBody .workflow-reminder-v152::before {content:'03 / 再確認のしおり'}
+html[data-wb-display="journal"] #detailBody .workflow-organize-v153::before {content:'04 / 記録の整理'}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"] :is(button,input:not([type="checkbox"]),select,textarea) {border:1px solid var(--j-border)!important;border-radius:3px!important;background:var(--j-paper)!important;color:var(--j-ink)!important;font:400 14px/1.6 var(--j-text)!important;min-height:42px;min-width:0;max-width:100%;box-shadow:none!important}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"] :is(button,select) {padding:8px 10px}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"] :is(.workflow-dependency-add-v149,.workflow-related-add-v152,.workflow-reminder-form-v152) {display:grid;grid-template-columns:minmax(0,1fr);gap:9px}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"] :is(.workflow-related-head-v152,.workflow-organize-head-v152) {display:block}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"] .workflow-followup-v152 {margin-top:8px}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="tools"] :is(.workflow-related-list-v152 li,.workflow-dependency-list-v149 li,.workflow-reminder-form-v152,.workflow-organize-v153) {background:transparent!important;border-radius:0!important;box-shadow:none!important}
+/* Comments and history read as dated letters on ruled paper. */
+html[data-wb-display="journal"] #detailBody .j-record-page-stack :is(.task-comment-compose-v149,.task-comment-feed-v149,.task-history-feed-v149) {border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:14px 0!important;color:var(--j-ink)}
+html[data-wb-display="journal"] #detailBody .task-comment-compose-v149 {border-bottom:1px solid var(--j-border)!important}
+html[data-wb-display="journal"] #detailBody .j-record-page-stack .comment-form {border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:8px 0!important}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="comments"] :is(select,textarea,button) {border:1px solid var(--j-border)!important;border-radius:3px!important;background:var(--j-paper)!important;color:var(--j-ink)!important;font:400 14px/1.7 var(--j-text)!important;min-height:38px;max-width:100%;box-shadow:none!important}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="comments"] textarea {width:100%;min-height:110px;background-image:var(--j-ruling)!important;padding:10px}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="comments"] .comment-form>button[type="submit"] {background:var(--j-accent)!important;color:#fff!important;justify-self:end;padding:8px 20px}
+html[data-wb-display="journal"] #detailBody .j-record-page-stack .history-list {border:0!important;border-radius:0!important;background:transparent!important;padding:0!important;box-shadow:none!important}
+html[data-wb-display="journal"] #detailBody .j-record-page-stack .history-item {border:0!important;border-bottom:1px solid var(--j-border)!important;border-radius:0!important;background:transparent!important;padding:18px 0!important;margin:0!important;box-shadow:none!important}
+html[data-wb-display="journal"] #detailBody .j-record-page-stack .comment-head {display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:center}
+html[data-wb-display="journal"] #detailBody .j-record-page-stack .activity-time {color:var(--j-muted);font-size:11px}
+html[data-wb-display="journal"] #detailBody .j-record-page-stack .activity-text {font-size:14px;line-height:1.9;color:var(--j-ink);white-space:pre-wrap;overflow-wrap:anywhere;padding:12px 0}
+html[data-wb-display="journal"] #detailBody .j-record-page-stack :is(.comment-reply-context-v215,.comment-reply-compose-v215) {border:0!important;border-left:3px solid var(--j-sage)!important;border-radius:0!important;background:var(--j-paper-alt)!important;box-shadow:none!important;padding:10px 13px!important}
+html[data-wb-display="journal"] #detailBody .j-record-page-stack :is(.comment-reaction-chip-v165,.comment-reaction-add-v165,.comment-reply-button-v215) {min-height:36px;padding:5px 9px}
+/* Shared-room notices have their own reading sheet, independent from the inbox. */
+html[data-wb-display="journal"] #activityDialog.j-entry-activity-v385 {width:min(980px,calc(100vw - 32px))!important}
+html[data-wb-display="journal"] #activityDialog .j-activity-leaf {padding:12px 24px 24px;background:var(--j-paper)}
+html[data-wb-display="journal"] #activityDialog .activity-dialog-body {padding:0;max-height:none;overflow:visible}
+html[data-wb-display="journal"] #activityDialog .activity-dialog-summary {display:flex;align-items:center;justify-content:space-between;gap:12px;border:0;border-bottom:2px solid var(--j-accent);border-radius:0;background:transparent;color:var(--j-ink);padding:15px 0}
+html[data-wb-display="journal"] #activityDialog .activity-dialog-section {border:0;border-radius:0;background:transparent;padding:20px 0}
+html[data-wb-display="journal"] #activityDialog .activity-dialog-section h3 {font-size:17px;color:var(--j-ink);margin-bottom:12px}
+html[data-wb-display="journal"] #activityDialog .activity-dialog-list {display:block}
+html[data-wb-display="journal"] #activityDialog .activity-item {display:block;width:100%;text-align:left;border:0!important;border-bottom:1px solid var(--j-border)!important;border-radius:0!important;background:transparent!important;color:var(--j-ink)!important;box-shadow:none!important;padding:16px 3px!important;min-height:60px}
+html[data-wb-display="journal"] #activityDialog .activity-item :is(.activity-kind,.activity-meta,.activity-change,time) {color:var(--j-muted)!important;background:transparent!important;border-radius:0!important;line-height:1.8}
+html[data-wb-display="journal"] #activityDialog .activity-item strong {font-size:16px;line-height:1.8;overflow-wrap:anywhere}
+@media(max-width:820px) {
+  html[data-wb-display="journal"] .j-aux-book {grid-template-columns:minmax(0,1fr);margin:14px 13px 18px}
+  html[data-wb-display="journal"] .j-aux-leaf {padding:16px 13px}
+  html[data-wb-display="journal"] .j-aux-leaf+.j-aux-leaf {border-left:0;border-top:1px solid var(--j-border)}
+  html[data-wb-display="journal"] #detailBody .j-record-page-stack>[data-tab-panel="tools"]:not([hidden]) {grid-template-columns:minmax(0,1fr)}
+  html[data-wb-display="journal"] :is(#scheduleCopyDialog,#timelineMoveDialog) .j-aux-book .form-grid {grid-template-columns:minmax(0,1fr)}
+  html[data-wb-display="journal"] #activityDialog .j-activity-leaf {padding:10px 14px 18px}
+  html[data-wb-display="journal"] #activityDialog .activity-dialog-summary {display:block;font-size:13px}
+  html[data-wb-display="journal"] #detailBody [data-tab-panel="comments"] button {min-height:42px}
+}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="comments"] .comment-reaction-chip-v165[aria-pressed="true"] {background:var(--j-accent)!important;border-color:var(--j-accent)!important;color:#fff!important}
+html[data-wb-display="journal"] #detailBody [data-tab-panel="comments"] .comment-reaction-add-v165[aria-expanded="true"] {border-color:var(--j-accent)!important;background:var(--j-paper-alt)!important}
+html[data-wb-display="journal"] #detailBody .comment-reaction-picker-v165 {border:1px solid var(--j-border)!important;border-radius:3px!important;background:var(--j-paper)!important;box-shadow:0 6px 18px #26384420!important}
+html[data-wb-display="journal"] #detailBody .j-record-page-stack :is(.comment-thread-v215,.comment-reply-list-v215) {border-radius:0!important;background:transparent!important}

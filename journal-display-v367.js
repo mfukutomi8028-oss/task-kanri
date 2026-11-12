@@ -1614,6 +1614,7 @@
     dialog.classList.add('j-entry-dialog-v385','j-entry-' + type + '-v385');
     form.classList.add('j-entry-form-v385');
     journalEntryHeaderV385(dialog, {number,kicker,lead}, record);
+    if (['copy','recurring','move'].includes(type)) composeJournalAuxiliary(dialog,type,record);
     if (type === 'template') {
       const layout = form.querySelector('.template-manage-layout');
       const grid = form.querySelector('.template-editor-panel > .form-grid');
@@ -1639,6 +1640,58 @@
         record.listeners.push(()=>{grid.hidden=wasHidden;});
       }
     }
+  }
+
+  // Auxiliary forms use the same live inputs and confirmation buttons as the
+  // canonical owner. Only their paper leaves and reading order belong here.
+  function composeJournalAuxiliary(dialog,type,record) {
+    const book=document.createElement('div');
+    book.className='j-aux-book j-aux-'+type;
+    const form=record.form,footer=form.querySelector(':scope > .dialog-actions');
+    if(footer)footer.before(book);else form.append(book);
+    record.extras.push(book);
+    function leaf(name,label,selectors) {
+      const page=document.createElement('section');page.className='j-aux-leaf j-aux-'+name;
+      page.setAttribute('aria-label',label);
+      for(const selector of selectors) {
+        const node=form.querySelector(selector);
+        if(node)journalEntryMoveV385(node,page,record);
+      }
+      book.append(page);return page;
+    }
+    if(type==='copy') {
+      const source=form.querySelector('.schedule-copy-source');
+      if(source)journalEntryMoveV385(source,book,record);
+      leaf('writing','コピー方法と日程',['.schedule-copy-method-section','#scheduleCopySettings']);
+      leaf('proof','作成される予定の確認',['.schedule-copy-preview']);
+    } else if(type==='recurring') {
+      const subject=form.querySelector('#recurringDeleteSubject');
+      if(subject)journalEntryMoveV385(subject,book,record);
+      leaf('scope','削除する範囲',['.recurring-delete-options']);
+      const proof=leaf('impact','削除の影響',['#recurringDeleteImpact','#recurringDeleteNote']);
+      const heading=document.createElement('h3');heading.textContent='削除前の確認';proof.prepend(heading);
+    } else {
+      leaf('context','移す案件',['.move-target-card','.form-help']);
+      const writing=leaf('date','日付と状態',['.form-grid']);
+      const heading=document.createElement('h3');heading.textContent='記入する日と状態';writing.prepend(heading);
+      for(const [node,text] of [[dialog.querySelector('.dialog-head h2'),'日付日誌へ移す'],[dialog.querySelector('#confirmTimelineMove'),'日誌に記入']]) {
+        if(!node)continue;
+        const before=node.textContent;node.textContent=text;
+        record.listeners.push(()=>{node.textContent=before;});
+      }
+    }
+  }
+
+  function composeJournalActivity(dialog) {
+    if(journalEntryRecordsV385.has(dialog))return;
+    const records=dialog.querySelector('#activityDialogBody');if(!records)return;
+    const record={moves:[],extras:[],listeners:[],dialog,form:dialog,grid:null};
+    journalEntryRecordsV385.set(dialog,record);
+    dialog.classList.add('j-entry-dialog-v385','j-entry-activity-v385');
+    journalEntryHeaderV385(dialog,{number:'09',kicker:'ROOM LOG',lead:'共有ルームの追加・更新を確認します。'},record);
+    const leaf=document.createElement('section');leaf.className='j-activity-leaf';
+    leaf.setAttribute('aria-label','共有ルームの更新記録');dialog.append(leaf);
+    journalEntryMoveV385(records,leaf,record);record.extras.push(leaf);
   }
 
   function journalManagementDialog(dialog) {
@@ -1701,7 +1754,8 @@
       record.form.classList.remove('j-entry-form-v385');
       dialog.classList.remove('j-entry-dialog-v385','j-entry-task-v385',
         'j-entry-schedule-v385','j-entry-memo-v385','j-entry-copy-v385',
-        'j-entry-recurring-v385','j-entry-template-v385','j-entry-management-v385');
+        'j-entry-recurring-v385','j-entry-template-v385','j-entry-management-v385',
+        'j-entry-move-v385','j-entry-activity-v385');
       delete dialog.dataset.journalMemoPaper;
     }
     journalEntryRecordsV385.clear();
@@ -1717,7 +1771,8 @@
     for (const dialog of document.querySelectorAll(
       '#taskDialog[open],#scheduleDialog[open],#workMemoDialogV167[open],'
       + '#scheduleCopyDialog[open],#recurringDeleteDialog[open],#templateManageDialog[open],'
-      + '#categoryManageDialog[open],#statusManageDialog[open],#userManageDialog[open]')) {
+      + '#categoryManageDialog[open],#statusManageDialog[open],#userManageDialog[open],'
+      + '#timelineMoveDialog[open],#activityDialog[open]')) {
       if (journalEntryRecordsV385.has(dialog)) {
         journalEntryRecordsV385.get(dialog).refreshOutlineV393?.();
         if (dialog.id === 'workMemoDialogV167') {
@@ -1734,6 +1789,9 @@
         journalSimpleDialogV385(dialog,'recurring','05','RECURRING SERIES','削除範囲を選び、影響を確認してください。');
       else if (dialog.id === 'templateManageDialog')
         journalSimpleDialogV385(dialog,'template','06','REUSABLE NOTE','よく使う作業の記入例を整理します。');
+      else if (dialog.id === 'timelineMoveDialog')
+        journalSimpleDialogV385(dialog,'move','08','DAILY CHRONICLE','案件を記入する日と状態を指定します。');
+      else if (dialog.id === 'activityDialog') composeJournalActivity(dialog);
       else journalManagementDialog(dialog);
     }
   }
@@ -1743,7 +1801,7 @@
     const watchedDialogs = new WeakSet();
     function watchEntryDialogsV385() {
       for (const dialog of document.querySelectorAll(
-        '#taskDialog,#scheduleDialog,#workMemoDialogV167,#scheduleCopyDialog,#recurringDeleteDialog,#templateManageDialog,#categoryManageDialog,#statusManageDialog,#userManageDialog,#reservedTaskDialogV167')) {
+        '#taskDialog,#scheduleDialog,#workMemoDialogV167,#scheduleCopyDialog,#recurringDeleteDialog,#templateManageDialog,#categoryManageDialog,#statusManageDialog,#userManageDialog,#reservedTaskDialogV167,#timelineMoveDialog,#activityDialog')) {
         if (watchedDialogs.has(dialog)) continue;
         watchedDialogs.add(dialog);
         new MutationObserver(syncJournalEntriesV385).observe(dialog, {

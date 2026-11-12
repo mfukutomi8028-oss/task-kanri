@@ -2142,7 +2142,9 @@ function renderCore() {
     renderTodayView();
   }
 
-  if (state.layout === "tasks") renderDetail();
+  // JOURNAL can open its live case notebook from the record shelf on any page.
+  // Refresh that existing notebook after canonical saves as well.
+  if (state.layout === "tasks" || (journalTaskV411() && state.selectedId && elements.detailPanel.classList.contains("open"))) renderDetail();
   notifyPaletteNextSubscribers();
 }
 
