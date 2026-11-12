@@ -89,6 +89,68 @@ test('Palette NEXT owns independent DOM and shares canonical state without Class
   expect(info.room).toBe(room);
 });
 
+// Focus Canvas is not a renamed dashboard: its primary task is actionable,
+// appears exactly once, and can open a real related schedule from the same view.
+for(const width of [320,390,1366]){
+  test('Palette Studio Focus Canvas opens a real focus task and its linked plan at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await boot(page,width);
+    const seeded=await page.evaluate(async()=>{
+      const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+      const today=new Date().toLocaleDateString('sv-SE');
+      const nextDate=new Date();nextDate.setDate(nextDate.getDate()+1);
+      const tomorrow=nextDate.toLocaleDateString('sv-SE');
+      const base={revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+        assignee:s.currentUser,status:s.statuses.find(v=>v!=='完了')||'未着手',
+        category:s.categories[0]||'その他',requester:'',description:'',
+        tags:'',checklist:'',pinned:false};
+      const first=await bridge.dispatch({type:'task.create',...base,
+        title:'Focus Canvas 優先タスク',priority:'緊急',dueDate:today});
+      const second=await bridge.dispatch({type:'task.create',...base,
+        title:'Focus Canvas 次のタスク',priority:'中',dueDate:tomorrow});
+      if(!first?.ok||!second?.ok)return {error:'task'};
+      const plan=await bridge.dispatch({type:'schedule.create',revision:0,
+        ownerRoom:s.roomId,ownerUser:s.currentUser,
+        values:{title:'Focus Canvas 関連予定',startAt:tomorrow+'T09:00',
+          endAt:tomorrow+'T10:00',assignee:s.currentUser,
+          category:s.categories[0]||'その他',location:'',memo:'',relatedTaskId:first.id}});
+      return plan?.ok?{first:first.id,second:second.id,plan:plan.id}:{error:'schedule'};
+    });
+    expect(seeded.error||'').toBe('');
+    const canvas=page.locator('#paletteNextRoot .pn-studio-today');
+    await expect(canvas.locator('.pn-studio-focus-stage [data-pn-detail="task"]'))
+      .toHaveAttribute('data-id',seeded.first);
+    await expect(canvas.locator('.pn-hero-feature')).toContainText('Focus Canvas 優先タスク');
+    await expect(canvas.locator('.pn-surface-focus [data-pn-detail="task"]'))
+      .toHaveCount(1);
+    await expect(canvas.locator('.pn-surface-focus [data-pn-detail="task"]'))
+      .toHaveAttribute('data-id',seeded.second);
+    const related=canvas.locator('.pn-studio-related');
+    await expect(related).toContainText('Focus Canvas 関連予定');
+    await expect(related).toHaveAttribute('data-id',seeded.plan);
+    const layout=await page.evaluate(()=>{
+      const stage=document.querySelector('#paletteNextRoot .pn-studio-focus-stage');
+      const rail=document.querySelector('#paletteNextRoot .pn-studio-time-rail');
+      const cta=document.querySelector('#paletteNextRoot .pn-studio-cta');
+      return {overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+        stage:stage.getBoundingClientRect().toJSON(),rail:rail.getBoundingClientRect().toJSON(),
+        ctaHeight:cta.getBoundingClientRect().height};
+    });
+    expect(layout.overflow).toBeLessThanOrEqual(2);
+    expect(layout.ctaHeight).toBeGreaterThanOrEqual(43);
+    if(width>780){
+      expect(layout.stage.right).toBeLessThanOrEqual(layout.rail.left+1);
+    }else{
+      expect(layout.stage.bottom).toBeLessThanOrEqual(layout.rail.top+1);
+    }
+    await related.click();
+    await expect(page.locator('#pnDetail')).toContainText('SCHEDULE DETAIL');
+    await page.locator('#pnDetail [data-pn-close]').click();
+    await canvas.locator('.pn-studio-cta').click();
+    await expect(page.locator('#pnDetail')).toContainText('TASK DETAIL');
+  });
+}
+
 test('Palette NEXT ToDo create, edit, toggle and persistence use canonical commands',async({page})=>{
   test.setTimeout(90000);
   await boot(page,390);
@@ -809,8 +871,9 @@ test('Palette visual system stays distinctive, legible and responsive without al
   await boot(page,1366);
   await expect(page.locator('#paletteNextRoot .pn-top-logo i')).toHaveCount(4);
   await expect(page.locator('#paletteNextRoot .pn-rail-nav svg')).toHaveCount(5);
-  await expect(page.locator('#paletteNextRoot .pn-hero-art .pn-art')).toHaveCount(4);
-  await expect(page.locator('#paletteNextRoot .pn-home-grid .pn-sheet')).toHaveCount(4);
+  await expect(page.locator('#paletteNextRoot .pn-studio-stage-lines i')).toHaveCount(3);
+  await expect(page.locator('#paletteNextRoot .pn-home-grid .pn-sheet')).toHaveCount(3);
+  await expect(page.locator('#paletteNextRoot .pn-studio-top-grid .pn-studio-time-rail')).toBeVisible();
   const desktop=await page.evaluate(()=>{
     const hero=document.querySelector('#paletteNextRoot .pn-hero');
     const shell=document.querySelector('#paletteNextRoot .pn-sheet');
@@ -2805,7 +2868,7 @@ for(const width of [320,390,1366]){
   test.setTimeout(90000);
   await boot(page,width);
   await expect(page.locator('#paletteNextRoot .pn-hero-feature')).toBeVisible();
-  await expect(page.locator('#paletteNextRoot .pn-hero h1')).toContainText('いいリズム');
+  await expect(page.locator('#paletteNextRoot .pn-hero h1')).toContainText('次の一手');
   const nav=width<=780?'.pn-mobile-nav':'.pn-rail-nav';
   await page.locator(nav+' [data-pn-route="tasks"]').click();
   const boardToggle=page.locator('#paletteNextRoot [data-pn-task-view="board"]');
