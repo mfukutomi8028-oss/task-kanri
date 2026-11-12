@@ -34,7 +34,7 @@
   ];
   const state = {
     route:'today', query:'', queries:Object.fromEntries(nav.map(([id])=>[id,''])),
-    scrollPositions:Object.fromEntries(nav.map(([id])=>[id,0])), todayFocusExpanded:false, taskFilter:'all', taskSort:'due', taskView:'board', flowFocusId:'', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', seriesSort:'upcoming', expandedSeriesGroups:new Set(), doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
+    scrollPositions:Object.fromEntries(nav.map(([id])=>[id,0])), todayFocusExpanded:false, taskFilter:'all', taskSort:'due', taskView:'board', flowFocusId:'', flowPanelExpanded:false, memoColorFilter:'all', memoSort:'manual', scheduleView:'day', seriesSort:'upcoming', expandedSeriesGroups:new Set(), doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     // Unsaved local composer draft; never a second source of persisted ToDo data.
     todoDraft:{text:'',memo:''},
@@ -684,10 +684,16 @@
     const visiblePlan=nextPlan||plans[plans.length-1]||null;
     const tone=taskVisualTone(task);
     return '<aside class="pn-flow-workbench" id="pnFlowWorkbench" aria-label="選択中の仕事" '+
-      'data-task-tone="'+tone+'" data-flow-id="'+escape(task.id)+'">'+
+      'data-task-tone="'+tone+'" data-flow-id="'+escape(task.id)+'" '+
+      'data-flow-expanded="'+String(state.flowPanelExpanded)+'">'+
       '<div class="pn-flow-workbench-top"><span class="pn-section-eyebrow">FOCUS WORKBENCH</span>'+
       '<span class="pn-flow-live-indicator">選択中の仕事</span></div>'+
       '<h3>'+escape(task.title)+'</h3>'+
+      '<button type="button" class="pn-flow-expand" data-pn-flow-expand '+
+      'aria-expanded="'+String(state.flowPanelExpanded)+'" aria-controls="pnFlowBody">'+
+      (state.flowPanelExpanded?'操作を閉じる':'状態変更・詳細を見る')+
+      '<span aria-hidden="true">'+(state.flowPanelExpanded?'⌃':'⌄')+'</span></button>'+
+      '<div id="pnFlowBody" class="pn-flow-body">'+
       '<div class="pn-flow-workbench-meta"><span>'+escape(task.category||'未分類')+'</span>'+
       '<span>'+escape(task.assignee||'担当未設定')+'</span>'+
       '<span>'+escape(task.dueDate?'期限 '+dateParts(task.dueDate):'期限なし')+'</span>'+
@@ -715,7 +721,7 @@
       '<button type="button" class="pn-flow-primary" data-pn-detail="task" data-id="'+escape(task.id)+'">'+
       '詳細を開く <span aria-hidden="true">↗</span></button>'+
       '<button type="button" class="pn-flow-secondary" data-pn-edit="task" data-id="'+escape(task.id)+'">'+
-      '編集する</button></div></aside>';
+      '編集する</button></div></div></aside>';
   }
   function taskBoardCard(task,focusedId) {
     const tone=taskVisualTone(task);
@@ -2875,6 +2881,7 @@
     state.taskSort='due';
     state.taskView='board';
     state.flowFocusId='';
+    state.flowPanelExpanded=false;
     state.memoColorFilter='all';
     state.memoSort='manual';
     state.seriesSort='upcoming';
@@ -3733,10 +3740,25 @@
       const id=target.dataset.id||'';
       if(!visibleSortedTasks().some(task=>task.id===id))return;
       state.flowFocusId=id;
+      const mobile=window.matchMedia('(max-width:780px)').matches;
+      if(mobile)state.flowPanelExpanded=true;
       render();
-      const control=[...workspace.querySelectorAll('[data-pn-flow-focus]')]
-        .find(button=>button.dataset.id===id);
-      control?.focus({preventScroll:true});
+      if(mobile){
+        const panel=workspace.querySelector('#pnFlowWorkbench');
+        panel?.scrollIntoView({block:'start',behavior:'instant'});
+        panel?.querySelector('[data-pn-flow-expand]')?.focus({preventScroll:true});
+      }else{
+        const control=[...workspace.querySelectorAll('[data-pn-flow-focus]')]
+          .find(button=>button.dataset.id===id);
+        control?.focus({preventScroll:true});
+      }
+      return;
+    }
+    if(target.hasAttribute('data-pn-flow-expand')){
+      if(state.route!=='tasks'||state.taskView!=='board')return;
+      state.flowPanelExpanded=!state.flowPanelExpanded;
+      render();
+      workspace.querySelector('[data-pn-flow-expand]')?.focus({preventScroll:true});
       return;
     }
     if(target.dataset.pnRoute) {
