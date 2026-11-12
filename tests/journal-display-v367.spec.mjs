@@ -4147,7 +4147,7 @@ for(const width of [390,1366])test(`JOURNAL auxiliary paper forms keep copying, 
   expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.some(x=>x.id==='paper-series-a'))).toBe(false);
   expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.some(x=>x.id==='paper-series-b'))).toBe(true);
   await paperRoute(page,width,'tasks');
-  await page.locator('[data-j420-layout="timeline"]').click();
+  await page.locator('[data-j420-layout="timeline"]').first().click();
   await page.locator('[data-move-to-timeline="paper-main"]').click();
   const move=page.locator('#timelineMoveDialog');
   await expect(move.locator('.j-aux-date')).toBeVisible();
