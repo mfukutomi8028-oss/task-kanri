@@ -34,7 +34,7 @@
   ];
   const state = {
     route:'today', query:'', queries:Object.fromEntries(nav.map(([id])=>[id,''])),
-    scrollPositions:Object.fromEntries(nav.map(([id])=>[id,0])), todayFocusExpanded:false, taskFilter:'all', taskSort:'due', taskView:'board', flowFocusId:'', flowPanelExpanded:false, memoColorFilter:'all', memoSort:'manual', scheduleView:'day', seriesSort:'upcoming', expandedSeriesGroups:new Set(), doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
+    scrollPositions:Object.fromEntries(nav.map(([id])=>[id,0])), todayFocusExpanded:false, taskFilter:'all', taskSort:'due', taskView:'board', flowFocusId:'', flowPanelExpanded:false, todoFocusId:'', scheduleFocusId:'', memoFocusId:'', memoColorFilter:'all', memoSort:'manual', scheduleView:'day', seriesSort:'upcoming', expandedSeriesGroups:new Set(), doneExpanded:false, expandedAgendaDays:new Set(), todoMemoExpanded:false, detail:null, detailReturn:null, editor:null,
     selectedDay:new Date().toLocaleDateString('sv-SE'), busy:false,
     // Unsaved local composer draft; never a second source of persisted ToDo data.
     todoDraft:{text:'',memo:''},
@@ -338,8 +338,37 @@
         '" data-pn-detail="todo" data-id="'+escape(todo.id)+'" aria-label="'+
         escape(todo.text)+'の詳細を表示">'+escape(todo.text)+'</button>'+
       (actions?'<div class="pn-actions">'+
+         '<button type="button" class="pn-smallbtn pn-todo-pick" data-pn-todo-focus="'+escape(todo.id)+'" aria-pressed="'+(state.todoFocusId===todo.id)+'">ここで進める</button>'+
         '<button type="button" class="pn-smallbtn" data-pn-cmd="todo.move" data-direction="up" data-segment="'+(done?'completed':'open')+'" data-id="'+escape(todo.id)+'" aria-label="上へ">↑</button>'+
         '<button type="button" class="pn-smallbtn" data-pn-cmd="todo.move" data-direction="down" data-segment="'+(done?'completed':'open')+'" data-id="'+escape(todo.id)+'" aria-label="下へ">↓</button></div>':'')+'</li>';
+  }
+  // Studio focus state is presentation-only. Reuse canonical commands for edits.
+  function studioFocusPanel(kind,rows) {
+    const id=state[kind+'FocusId'];
+    const item=rows.find(row=>row.id===id);
+    if(!item)return '';
+    const isTodo=kind==='todo',isSchedule=kind==='schedule';
+    const title=isTodo?item.text:item.title||'無題';
+    const related=isSchedule?state.snapshot.tasks.find(task=>task.id===item.relatedTaskId):null;
+    const detailKind=isTodo?'todo':isSchedule?'schedule':'memo';
+    const note=isTodo?item.memo:isSchedule
+      ?dateParts(item.startAt)+' '+localTime(item.startAt)+' 〜 '+localTime(item.endAt)+
+        (item.location?' · '+item.location:''):item.body;
+    return '<aside class="pn-studio-insight pn-studio-insight-'+kind+'" aria-label="選択中の'+
+      (isTodo?'ToDo':isSchedule?'予定':'メモ')+'">'+
+      '<div class="pn-studio-insight-heading"><span>'+
+      (isTodo?'QUICK ACTION':isSchedule?'TIME WORKBENCH':'IDEA DESK')+
+      '</span><strong>選択した項目をここで確認</strong></div>'+
+      '<h3>'+escape(title)+'</h3><p>'+escape(note||'補足情報はありません')+'</p>'+
+      '<div class="pn-studio-insight-actions">'+
+      (isTodo?'<button type="button" class="pn-studio-insight-primary" data-pn-cmd="todo.toggle" data-id="'+escape(item.id)+'">'+
+        (item.completed?'未完了に戻す':'完了にする')+'</button>':'')+
+      '<button type="button" class="pn-studio-insight-primary" data-pn-detail="'+detailKind+'" data-id="'+escape(item.id)+'">詳細を開く ↗</button>'+
+      (isSchedule?'<button type="button" data-pn-edit="schedule" data-id="'+escape(item.id)+'">編集する</button>':'')+
+      (related?'<button type="button" data-pn-linked-task="'+escape(related.id)+'" data-schedule-id="'+escape(item.id)+'">関連タスク ↗</button>':'')+
+      (kind==='memo'?'<button type="button" data-pn-cmd="memo.pin" data-id="'+escape(item.id)+'" data-revision="'+Number(item.revision||0)+'">'+
+        (item.pinned?'固定解除':'固定する')+'</button>':'')+
+      '<button type="button" data-pn-focus-clear="'+kind+'">閉じる</button></div></aside>';
   }
   function taskRow(task,index) {
     const risk=taskRisk(task);
@@ -538,7 +567,7 @@
       '<div class="pn-compose-memo" id="pnTodoMemoField"'+(state.todoMemoExpanded?'':' hidden')+'>'+
       '<label class="pn-compose-label" for="pnTodoMemo">補足メモ <span>任意</span></label>'+
       '<textarea id="pnTodoMemo" name="memo" maxlength="4000" rows="2" placeholder="必要なときだけ入力">'+escape(state.todoDraft.memo)+'</textarea></div>'+
-      '</form></section>'+
+      '</form></section>'+studioFocusPanel('todo',todos)+
       '<div class="pn-maincols pn-todo-columns"><section class="pn-sheet"><header class="pn-sheethead"><div>'+
       '<span class="pn-section-eyebrow">TO DO</span><h2>これから</h2></div><span class="pn-chip">'+open.length+'件</span></header>'+
       '<div class="pn-sheetbody"><ul class="pn-todolist">'+
@@ -976,6 +1005,7 @@
       (item.assignee?' · '+escape(item.assignee):'')+
       '</small></button>'+
       '<div class="pn-schedule-actions">'+
+      (!inToday&&state.scheduleView==='day'?'<button type="button" class="pn-schedule-link pn-schedule-pick" data-pn-schedule-focus="'+escape(item.id)+'" aria-pressed="'+(state.scheduleFocusId===item.id)+'">ここで確認</button>':'')+
       (task?'<button class="pn-schedule-link pn-schedule-related" type="button" data-pn-linked-task="'+escape(task.id)+
         '" data-schedule-id="'+escape(item.id)+'" aria-label="関連タスク「'+escape(task.title)+'」を開く">'+
         '<span aria-hidden="true">↗</span>'+(inToday?'関連 · ':'')+escape(task.title)+(task.completed?' · 完了':'')+'</button>':'')+
@@ -1185,6 +1215,7 @@
         '<button type="button" class="pn-button flat" data-pn-day-step="1" aria-label="翌日へ">翌日 ›</button>'+
         '<button type="button" class="pn-button primary" data-pn-edit="schedule">＋ この日に予定</button>'+
         '<span class="pn-chip">'+schedules.length+'件</span></div></header>'+
+        studioFocusPanel('schedule',schedules)+
         '<div class="pn-sheetbody">'+(schedules.length?scheduleDayGroups(schedules):
         '<div class="pn-empty">この日の予定はありません</div>')+'</div></section>');
   }
@@ -1263,9 +1294,13 @@
         .map(([value,label])=>'<option value="'+value+'"'+
           (state.memoSort===value?' selected':'')+'>'+label+'</option>').join('')+
       '</select></label>'+
+      '<label class="pn-memo-pick-label">選んで確認 <select data-pn-memo-pick aria-label="プレビューするメモ">'+
+      '<option value="">メモを選択</option>'+items.map(item=>'<option value="'+escape(item.id)+'"'+
+      (state.memoFocusId===item.id?' selected':'')+'>'+escape(item.title||'無題')+'</option>').join('')+'</select></label>'+
       (state.memoColorFilter!=='all'
         ?'<button type="button" class="pn-memo-filter-clear" data-pn-memo-clear-filter>色の絞り込みを解除</button>':'')+
       '</div>'+
+      studioFocusPanel('memo',items)+
       '<div class="pn-memogrid">'+(items.length?items.map((memo,index)=>{
         const color=memoPaperColor(memo.paperColor);
         // First visible item receives editorial emphasis, never a new sort key.
@@ -2882,6 +2917,7 @@
     state.taskView='board';
     state.flowFocusId='';
     state.flowPanelExpanded=false;
+    state.todoFocusId='';state.scheduleFocusId='';state.memoFocusId='';
     state.memoColorFilter='all';
     state.memoSort='manual';
     state.seriesSort='upcoming';
@@ -3735,6 +3771,26 @@
       block.querySelector('.pn-timehead h3')?.focus({preventScroll:true});
       return;
     }
+    if(target.hasAttribute('data-pn-todo-focus')&&state.route==='todos'&&!state.busy){
+      const id=target.dataset.pnTodoFocus;
+      if(!state.snapshot.todos.some(item=>item.id===id&&match(item.text+' '+item.memo)))return;
+      state.todoFocusId=id;render();
+      workspace.querySelector('.pn-studio-insight-todo [data-pn-detail]')?.focus({preventScroll:true});return;
+    }
+    if(target.hasAttribute('data-pn-schedule-focus')&&state.route==='schedule'&&state.scheduleView==='day'){
+      const id=target.dataset.pnScheduleFocus;
+      const item=state.snapshot.schedules.find(row=>row.id===id);
+      if(!item||localDate(item.startAt)!==state.selectedDay||!scheduleMatches(item))return;
+      state.scheduleFocusId=id;render();
+      workspace.querySelector('.pn-studio-insight-schedule [data-pn-detail]')?.focus({preventScroll:true});return;
+    }
+    if(target.hasAttribute('data-pn-focus-clear')){
+      const kind=target.dataset.pnFocusClear;
+      if(!['todo','schedule','memo'].includes(kind))return;
+      state[kind+'FocusId']='';render();
+      workspace.querySelector(kind==='memo'?'[data-pn-memo-pick]':
+        kind==='todo'?'[data-pn-todo-focus]':'[data-pn-schedule-focus]')?.focus({preventScroll:true});return;
+    }
     if(target.hasAttribute('data-pn-flow-focus')){
       if(state.route!=='tasks'||state.taskView!=='board'||state.busy)return;
       const id=target.dataset.id||'';
@@ -3984,6 +4040,13 @@
       seriesIndexState.reviewedReturnId=null;
       refreshSeriesIndexResults();
       return;
+    }
+    if(el.hasAttribute('data-pn-memo-pick')){
+      if(state.route!=='memos')return;
+      const id=String(el.value||'');
+      if(id&&!visibleSortedMemos().some(item=>item.id===id))return;
+      state.memoFocusId=id;render();
+      workspace.querySelector('[data-pn-memo-pick]')?.focus({preventScroll:true});return;
     }
     if(el.hasAttribute('data-pn-memo-sort')){
       if(!['manual','updated','title','category'].includes(el.value))return;
