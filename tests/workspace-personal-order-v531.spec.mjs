@@ -4,8 +4,8 @@ import { test, expect } from '@playwright/test';
 // Wait for the currently shipped canonical owners, not retired V550/V555 APIs.
 async function waitForSeededMemos(page, ids) {
   await page.waitForFunction(expected => {
-    const board = window.WorkBoardPaletteBridge?.readSnapshot?.();
-    const memos = window.WorkBoardPaletteMemoBridgeV369?.readSnapshot?.();
+    const board = window.WorkBoardSharedBridge?.readSnapshot?.();
+    const memos = window.WorkBoardSharedMemoBridge?.readSnapshot?.();
     return board?.connectionMode === 'local-only'
       && Array.isArray(memos)
       && expected.every(id => memos.some(memo => memo.id === id));
@@ -692,7 +692,7 @@ for (const width of [320, 390]) {
 
     await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]').click());
     page.once('dialog', dialog => dialog.accept());
-    const removed = await page.evaluate(id => window.WorkBoardPaletteBridge.dispatch({
+    const removed = await page.evaluate(id => window.WorkBoardSharedBridge.dispatch({
       type: 'todo.delete', id
     }), anchor.id);
     expect(removed?.ok).toBe(true);
