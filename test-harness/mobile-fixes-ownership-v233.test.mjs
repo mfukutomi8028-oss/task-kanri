@@ -111,6 +111,7 @@ test('Ver.187+ keeps mixed ui-v157 retired while preserving each mobile correcti
   const hasModernDisplay = release >= 356 && styles.includes('modern-display-v356.css');
   const hasJournalDisplay = release >= 367 && styles.includes('journal-display-v367.css');
   const maxStyles = (release >= 234 ? (hasReviewedMotion ? 26 : 25) : release >= 232 ? 24 : 23)
+    + (hasReviewedTheme ? 1 : 0) + (hasModernDisplay ? 1 : 0) + (hasJournalDisplay ? 1 : 0);
   if (hasModernDisplay) {
     assert.equal(styles.filter(name => name === 'modern-display-v356.css').length, 1);
     assert.ok(styles.indexOf('color-themes-v329.css') < styles.indexOf('modern-display-v356.css'));
