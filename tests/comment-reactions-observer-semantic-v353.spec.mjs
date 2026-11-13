@@ -80,9 +80,9 @@ test('Ver.354 product adopts a canonical activity-comment addition', async ({ pa
     localStorage.setItem(key, JSON.stringify(tasks));
     // The real product reads the subscribed canonical task rather than localStorage.
     // Model the incoming canonical revision as well as the new comment node.
-    const bridge = window.WorkBoardPaletteBridge;
+    const bridge = window.WorkBoardSharedBridge;
     const readCanonical = bridge.readCommentTask.bind(bridge);
-    window.WorkBoardPaletteBridge = Object.freeze({
+    window.WorkBoardSharedBridge = Object.freeze({
       ...bridge,
       readCommentTask(id) {
         const snapshot = readCanonical(id);
