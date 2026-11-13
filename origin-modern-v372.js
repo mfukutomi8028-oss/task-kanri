@@ -1275,6 +1275,11 @@ function originInboxDisplay(row){
   'コメントにリアクションがありました','@メンションされました',
   '担当になりました','状態が変更されました','更新があります','お知らせ']);
  const templated=generic.has(title);
+ const removeActor=text=>{
+  const actor=String(row.actor||'').trim();
+  return actor&&(text.startsWith(actor+'：')||text.startsWith(actor+':'))
+   ?text.slice(actor.length+1).trim():text;
+ };
  let subject=String(row.targetTitle||'').trim(),detail=body;
  if(row.type==='status'&&body.includes('｜')){
   const [change,...rest]=body.split('｜');
@@ -1282,22 +1287,16 @@ function originInboxDisplay(row){
   detail=change.trim();
  }
  if(!subject&&body){
-  // Older/deleted targets have no accessible task title. Use the useful
-  // excerpt instead of restoring a redundant "comment added" heading.
-  subject=['mention','reply','comment','reaction'].includes(row.type)
-   ?body.replace(new RegExp('^'+String(row.actor||'').replace(/[.*+?^${}()|[\]\\]/g,'\\function originInboxData(){')+'[：:]\\s*'), '').trim()||body
-   :body;
+  // A deleted or inaccessible target has no available title. Prefer useful
+  // content to repeating a generic event phrase.
+  subject=['mention','reply','comment','reaction'].includes(row.type)?removeActor(body)||body:body;
   detail='';
  }
  if(!subject&&!templated)subject=title;
  if(!subject)subject=row.notification?'対象のタスクを確認できません':'対象名がありません';
  if(!row.notification||detail===subject)detail='';
- // Actor already appears beside the timestamp; avoid a second "author:".
- if(detail&&row.actor){
-  const prefix=String(row.actor).trim();
-  if(detail.startsWith(prefix+'：')||detail.startsWith(prefix+':'))
-   detail=detail.slice(prefix.length+1).trim();
- }
+ // The actor is already shown in the metadata next to the timestamp.
+ detail=removeActor(detail);
  if(title&&!templated&&title!==subject)
   detail=[title,detail].filter(Boolean).join(' · ');
  return {subject,detail};
