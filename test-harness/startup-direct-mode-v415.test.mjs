@@ -23,12 +23,10 @@ test('startup: reveal requires app, assets, and selected display', () => {
   assert.match(manifest, /!assetsReady \|\| !coreReady \|\| !selectedDisplayReady\(\)/);
   assert.match(manifest, /document.getElementById\('wbJournalHeaderV367'\)/);
   assert.match(manifest, /root.dataset.modernOriginReady === 'true'/);
-  assert.match(manifest, /document.getElementById\('paletteNextRoot'\)/);
   assert.doesNotMatch(manifest, /setTimeout\(revealCurrentUi,\s*4000\)/);
   assert.match(index, /id="wbBootScreen"/);
   assert.match(manifest, /retry.hidden = false/);
   assert.match(app, /WORK_BOARD_CORE_READY = true/);
-  for (const file of ['origin-modern-v372.js','journal-display-v367.js','palette-next-v369.js'])
     assert.match(read(file), /new Event\('workboard:display-ready'\)/);
 });
 
@@ -66,27 +64,13 @@ test('startup: load only the active screen bundle; keep cascade slots across lat
   assert.match(config, /if \(document\.documentElement\.dataset\.wbDisplay !== INITIAL_MODE\) handleDisplayChange\(\)/);
 });
 
-test('startup: Palette fallback assets are deferred without losing shared display styling', () => {
-  const palette = read('palette-display-v358.css');
-  const common = read('modern-display-v356.css');
-  assert.match(manifest, /palette:\s*\{ styles: \["palette-display-v358\.css"\], scripts: \["palette-display-v358\.js"\] \}/);
-  assert.match(manifest, /dynamicStyles:\s*\[[^\]]*"palette-display-v358\.css"/);
-  assert.match(manifest, /dynamicScripts:\s*\[[^\]]*"palette-display-v358\.js"/);
-  assert.match(common, /\.wb-display-segments-v356\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important\}/);
-  assert.doesNotMatch(palette, /^\.wb-display-segments-v356\{/m);
-  assert.doesNotMatch(palette, /#roomCacheHelp|#clearRoomCache/);
-  assert.match(config, /deferredStyleModes\.get\(marker\) === mode/);
-  assert.match(config, /deferredScriptModes\.get\(marker\) === mode/);
-});
-
-test('startup: Palette NEXT preloads JS without reordering execution before CSS', () => {
-  assert.match(modern, /scriptPreload\.rel = 'preload'/);
-  assert.match(modern, /scriptPreload\.as = 'script'/);
-  assert.match(modern, /scriptPreload\.href = script\.src/);
-  assert.match(modern, /script\.addEventListener\('load', releasePreload, \{ once: true \}\)/);
-  assert.match(modern, /script\.addEventListener\('error', releasePreload, \{ once: true \}\)/);
-  assert.match(modern, /css\.onload = \(\) => document\.body\.appendChild\(script\)/);
-  assert.ok(modern.indexOf('document.head.appendChild(scriptPreload)') < modern.indexOf('document.head.appendChild(css)'));
+test('startup: retired screen bundles cannot block or modify the three-mode startup', () => {
+  const common=read('modern-display-v356.css');
+  assert.doesNotMatch(manifest,/palette-display-v358|palette-next-v369|palette:\\s*\\{/);
+  assert.doesNotMatch(modern,/loadPaletteNext|wbPaletteNextPreview/);
+  assert.match(common,/\\.wb-display-segments-v356\\{grid-template-columns:repeat\\(3,minmax\\(0,1fr\\)\\)!important\\}/);
+  assert.match(config,/deferredStyleModes\\.get\\(marker\\) === mode/);
+  assert.match(config,/deferredScriptModes\\.get\\(marker\\) === mode/);
 });
 
 test('mode switch: failed assets are retried and the old selected view remains recoverable', () => {
@@ -101,8 +85,6 @@ test('mode switch: failed assets are retried and the old selected view remains r
   assert.match(modern, /data-wb-display-classic/);
   assert.match(modern, /workboard:display-ready/);
   assert.match(css, /#wbDisplaySwitchV459\[hidden\]/);
-  assert.match(manifest, /data-workboard-style="palette-display-v358\.css"\]\[data-loaded="true"\]/);
-  assert.match(manifest, /data-workboard-stable="palette-display-v358\.js"\]\[data-loaded="true"\]/);
   assert.match(manifest, /journal-display-v367\.css"\]\[data-loaded="true"\]/);
   assert.match(modern, /journal-display-v367\.css"\]\[data-loaded="true"\]/);
 });
