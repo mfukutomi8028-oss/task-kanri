@@ -36,7 +36,7 @@ for(const width of [320,390,1366])test(`Origin batch previews, invalidates revie
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
  await root.locator('[form="editForm"]').click();
  await expect(form).toHaveCount(0);
- const records=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.filter(x=>x.title==='確定した複数日登録'));
+ const records=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().schedules.filter(x=>x.title==='確定した複数日登録'));
  expect(records.map(x=>x.startAt.slice(0,10)).sort()).toEqual(['2027-03-02','2027-03-04']);
  await expect(page.locator('html')).toHaveAttribute('data-wb-display','modern');
 });
@@ -56,7 +56,7 @@ test('Origin comments use canonical data, reject stale writes, and protect draft
  await comment.locator('button').click();
  await expect(root.locator('.origin-comment-list')).toContainText('申し送りを保持');
  await expect(comment.locator('[name="text"]')).toHaveValue('');
- const stored=await page.evaluate(()=>{const b=window.WorkBoardPaletteBridge,s=b.readSnapshot(),t=s.tasks.find(x=>x.title==='コメント対象');return b.readCommentTask(t.id).comments});
+ const stored=await page.evaluate(()=>{const b=window.WorkBoardSharedBridge,s=b.readSnapshot(),t=s.tasks.find(x=>x.title==='コメント対象');return b.readCommentTask(t.id).comments});
  expect(stored).toHaveLength(1);expect(stored[0].type).toBe('申し送り');
  await comment.locator('[name="text"]').fill('競合後の入力');
  await comment.evaluate(el=>el.dataset.revision='0');
@@ -77,7 +77,7 @@ test('Origin duplicates a schedule with unsaved edits and saves memo tags',async
  page.on('dialog',d=>d.accept());
  await root.locator('[form="editForm"]').click();
  await expect(root.locator('#editForm')).toHaveCount(0);
- const titles=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.map(x=>x.title));
+ const titles=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().schedules.map(x=>x.title));
  expect(titles).toContain('複製元');expect(titles).toContain('複製先');
  const memo=await createPanel(root,'memos');
  await memo.locator('[name="title"]').fill('タグ付きメモ');
@@ -85,7 +85,7 @@ test('Origin duplicates a schedule with unsaved edits and saves memo tags',async
  await memo.locator('[name="tags"]').fill('運用, 引継ぎ');
  await root.locator('[form="editForm"]').click();
  await expect(root.locator('#editForm')).toHaveCount(0);
- const tags=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot().find(x=>x.title==='タグ付きメモ').tags);
+ const tags=await page.evaluate(()=>window.WorkBoardSharedMemoBridge.readSnapshot().find(x=>x.title==='タグ付きメモ').tags);
  expect(tags).toEqual(['運用','引継ぎ']);
 });
 
@@ -95,7 +95,7 @@ test('Origin prerequisites, relations and reminders share Classic workflow data 
   const form=await createPanel(root,'tasks');await form.locator('[name="title"]').fill(title);
   await root.locator('[form="editForm"]').click();await expect(form).toHaveCount(0);
  }
- const ids=await page.evaluate(()=>Object.fromEntries(window.WorkBoardPaletteBridge.readSnapshot().tasks.map(t=>[t.title,t.id])));
+ const ids=await page.evaluate(()=>Object.fromEntries(window.WorkBoardSharedBridge.readSnapshot().tasks.map(t=>[t.title,t.id])));
  await root.locator('#mobileNav [data-route="tasks"]').click();
  await root.locator('.item-name',{hasText:'後続作業'}).click();
  await root.locator('#originWorkflow>summary').click();
@@ -131,7 +131,7 @@ test('Origin favorites and ToDo ordering use the existing canonical operations',
  await expect(root.locator('[data-action="task-star"]')).toHaveAttribute('aria-pressed','true');
  await root.locator('[data-action="task-copy"]').click();
  await expect(root.locator('#overlay')).toBeHidden();
- const copied=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.title==='コピー：お気に入り対象'));
+ const copied=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().tasks.find(t=>t.title==='コピー：お気に入り対象'));
  expect(copied).toBeTruthy();expect(copied.revision).toBe(1);expect(copied.completed).toBe(false);
  await root.locator('[data-action="task-filter"][data-value="starred"]').click();
  await expect(root.locator('.item-name')).toHaveCount(1);
@@ -144,6 +144,6 @@ test('Origin favorites and ToDo ordering use the existing canonical operations',
  await root.locator('.todo-text',{hasText:'ToDo B'}).click();
  await root.locator('[data-action="todo-move"][data-value="down"]').click();
  await expect(root.locator('[data-action="todo-move"][data-value="down"]')).toBeDisabled();
- const titles=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.filter(t=>!t.completed).map(t=>t.text));
+ const titles=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos.filter(t=>!t.completed).map(t=>t.text));
  expect(titles.slice(-2)).toEqual(['ToDo A','ToDo B']);
 });
