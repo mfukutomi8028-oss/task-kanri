@@ -16,7 +16,7 @@ test('Origin creates a linked schedule from a task and restores inspector after 
  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
  const host=page.locator('#modernOriginRoot'),sheet=host.locator('#sheet');
  const created=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot();
    const title='起点タスク：設備点検';
    const result=await bridge.dispatch({
      type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
@@ -71,7 +71,7 @@ test('Origin creates a linked schedule from a task and restores inspector after 
  await sheet.locator('.sheet-close').click();
  await expect(original).toBeFocused();
  const state=await page.evaluate(({id})=>{
-   const s=window.WorkBoardPaletteBridge.readSnapshot();
+   const s=window.WorkBoardSharedBridge.readSnapshot();
    return {taskRevision:s.tasks.find(t=>t.id===id)?.revision,
      events:s.schedules.filter(x=>x.relatedTaskId===id).map(x=>x.title)};
  },created);
