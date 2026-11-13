@@ -15,7 +15,7 @@ test('Modern retains canonical Classic forms, writers, and data ownership', () =
   assert.doesNotMatch(js, /\b(?:initializeApp|getDatabase|onValue|runTransaction|deleteTask|saveTask)\s*\(/);
   assert.doesNotMatch(js, /iframe|contentWindow|document\.write|innerHTML/i);
   assert.match(js, /root\.dataset\.wbDisplay = next/);
-  assert.match(js, /new Set\(\['classic', 'modern', 'palette', 'journal'\]\)/);
+  assert.match(js, /new Set\(\['classic', 'modern', 'journal'\]\)/);
   assert.match(js, /workBoardDisplayV356:/);
   assert.match(js, /localStorage\.setItem\(storageKey\(\), mode\)/);
   assert.match(js, /roomNameInput/);
@@ -142,6 +142,8 @@ test('Modern preference switches and restores per room/user without modifying wo
   assert.equal(root.dataset.wbDisplay,'classic');
   const chooser=room.inserted?.node;
   assert.equal(chooser?.id,'wbDisplayChoiceV356');
+  assert.equal(chooser.children[1].children.length,3);
+  assert.deepEqual(chooser.children[1].children.map(button=>button.dataset.wbDisplayChoice),['classic','modern','journal']);
   const [classic,modern]=chooser.children[1].children;
   modern.click();
   assert.equal(root.dataset.wbDisplay,'modern');
