@@ -4087,6 +4087,9 @@ for(const width of [320,1366])test(`JOURNAL related settings and letters retain 
   await detail.locator('[data-tab="tools"]').click();
   const tools=detail.locator('[data-tab-panel="tools"]');
   await expect(tools.locator('[data-dependency-select-v149]')).toBeVisible();
+  await expect.poll(()=>tools.evaluate(el=>[...el.children].filter(node=>node.matches('.workflow-dependencies-v149,.workflow-relations-v152,.workflow-reminder-v152,.workflow-organize-v153')).map(node=>node.classList.contains('workflow-dependencies-v149')?'dependency':node.classList.contains('workflow-relations-v152')?'related':node.classList.contains('workflow-reminder-v152')?'reminder':'organize'))).toEqual(['dependency','related','reminder','organize']);
+  const firstLeaf=await tools.locator('.workflow-dependencies-v149').boundingBox(),lastLeaf=await tools.locator('.workflow-organize-v153').boundingBox();
+  expect(firstLeaf.y).toBeLessThan(lastLeaf.y);
   const style=await tools.locator('[data-add-related-v152]').evaluate(el=>({radius:parseFloat(getComputedStyle(el).borderRadius),font:parseFloat(getComputedStyle(el).fontSize)}));
   expect(style.radius).toBeLessThanOrEqual(3);expect(style.font).toBeGreaterThanOrEqual(13);
   await tools.locator('[data-dependency-select-v149]').selectOption('paper-peer');
@@ -4098,6 +4101,9 @@ for(const width of [320,1366])test(`JOURNAL related settings and letters retain 
   await tools.locator('[data-reminder-preset-v152="30m"]').click();
   await tools.locator('[data-save-reminder-v152]').click();
   await expect.poll(()=>page.evaluate(()=>Number(window.WorkBoardWorkflowV152.reminderFor('paper-main')?.at||0))).toBeGreaterThan(0);
+  await expect.poll(()=>tools.evaluate(el=>[...el.children].filter(node=>node.matches('.workflow-dependencies-v149,.workflow-relations-v152,.workflow-reminder-v152,.workflow-organize-v153')).map(node=>node.classList.contains('workflow-dependencies-v149')?'dependency':node.classList.contains('workflow-relations-v152')?'related':node.classList.contains('workflow-reminder-v152')?'reminder':'organize'))).toEqual(['dependency','related','reminder','organize']);
+  const restoredFirst=await tools.locator('.workflow-dependencies-v149').boundingBox(),restoredLast=await tools.locator('.workflow-organize-v153').boundingBox();
+  expect(restoredFirst.y).toBeLessThan(restoredLast.y);
   await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-tools-'+width+'.png')});
   await detail.locator('[data-tab="comments"]').click();
   await expect(detail.locator('.activity-text').filter({hasText:'確認済みの記録です。'})).toBeVisible();
@@ -4124,6 +4130,13 @@ for(const width of [390,1366])test(`JOURNAL auxiliary paper forms keep copying, 
   await expect(copy.locator('.j-aux-writing #scheduleCopyMethod')).toBeVisible();
   await expect(copy.locator('.j-aux-proof #scheduleCopyPreviewSummary')).toBeVisible();
   await copy.locator('#scheduleCopyMethod').selectOption('weekly');
+  await expect(copy.locator('#scheduleCopyEndDateRow')).toBeHidden();
+  await expect(copy.locator('#scheduleCopyCountRow')).toBeVisible();
+  await copy.locator('#scheduleCopyEndMode').selectOption('date');
+  await expect(copy.locator('#scheduleCopyEndDateRow')).toBeVisible();
+  await expect(copy.locator('#scheduleCopyCountRow')).toBeHidden();
+  await copy.locator('#scheduleCopyEndMode').selectOption('count');
+  expect(await copy.locator('#scheduleCopyStartRow').evaluate(el=>parseFloat(getComputedStyle(el).borderRadius))).toBeLessThanOrEqual(3);
   await copy.locator('[data-copy-weekday][value="1"]').check();
   await expect(copy.locator('#scheduleCopyPreviewSummary')).toContainText('4');
   await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-copy-'+width+'.png')});
@@ -4162,6 +4175,7 @@ for(const width of [390,1366])test(`JOURNAL auxiliary paper forms keep copying, 
   await paperRoute(page,width,'today');
   await page.locator('[data-j420-show-activity]').click();
   await expect(page.locator('#activityDialog .j-activity-leaf')).toBeVisible();
+  expect(await page.locator('#activityDialog .activity-dialog-summary').evaluate(el=>parseFloat(getComputedStyle(el).borderRadius))).toBeLessThanOrEqual(3);
   await page.screenshot({animations:'disabled',path:testInfo.outputPath('visual-compare-journal-paper-activity-'+width+'.png')});
   await page.locator('#closeActivityDialog').click();
   await choose(page,'classic');
