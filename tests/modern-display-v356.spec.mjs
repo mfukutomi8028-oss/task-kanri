@@ -83,3 +83,35 @@ test('Origin dark mode does not replace Classic theme ownership',async ({page})=
   await root.locator('#originDisplaySelect').selectOption('classic');
   await expect(page.locator('#todayView')).toBeVisible();
 });
+test('Palette retirement: previous saved Palette preference boots Classic without retired bundles',async({page})=>{
+  test.setTimeout(90000);
+  await page.setViewportSize({width:390,height:860});
+  const loads=[];
+  await page.route('**/*',route=>{
+    const url=new URL(route.request().url());
+    if(/palette-(?:display-v358|next-v369)\.(?:css|js)$/.test(url.pathname))
+      loads.push(url.pathname);
+    return url.origin==='http://127.0.0.1:4173'?route.continue():route.abort('blockedbyclient');
+  });
+  await page.addInitScript(()=>{
+    Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
+    localStorage.setItem('systemTaskUser','RetiredPaletteTester');
+    localStorage.setItem('systemTaskRoomId','palette-retirement');
+    localStorage.setItem('workBoardDisplayV356:palette-retirement:RetiredPaletteTester','palette');
+  });
+  await page.goto('/?room=palette-retirement',{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
+  await expect(page.locator('.app-shell')).toBeVisible();
+  await expect(page.locator('#wbDisplayChoiceV356 [data-wb-display-choice]')).toHaveCount(3);
+  await expect(page.locator('[data-wb-display-choice="palette"]')).toHaveCount(0);
+  await expect(page.locator('#paletteNextRoot')).toHaveCount(0);
+  expect(loads).toEqual([]);
+  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
+  await expect(page.locator('#modernOriginRoot')).toBeVisible();
+  await page.locator('#originSettingsToggle').click();
+  await page.locator('#originDisplaySelect').selectOption('journal');
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','journal');
+  await expect(page.locator('#wbJournalHeaderV367')).toBeVisible();
+  expect(loads).toEqual([]);
+});
