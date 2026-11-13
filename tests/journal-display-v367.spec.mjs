@@ -586,7 +586,7 @@ test('JOURNAL memo and schedule search preserve Japanese IME composition',async(
   await expect(memo).toHaveValue('きょう');
   await expect(page.locator('#workMemoViewV167 [data-memo-search]')).toHaveValue('きょう');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
-  const schedule=page.locator('#scheduleView [data-j425-schedule-query]');
+  const schedule=page.locator('#wbJournalSearchV393');
   await expect(schedule).toBeVisible();
   expect(await schedule.evaluate(el=>{el.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));el.value='よてい';el.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true}));return el.isConnected})).toBe(true);
   await schedule.evaluate(el=>el.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})));
@@ -595,12 +595,12 @@ test('JOURNAL memo and schedule search preserve Japanese IME composition',async(
   await expect(page.locator('#wbJournalSearchV393')).toHaveValue('よてい');
   await expect(page.locator('#searchInput')).toHaveValue('よてい');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="todos"]').click();
-  const todoSearch=page.locator('#todoView [data-j425-todo-search]');
+  const todoSearch=page.locator('#wbJournalSearchV393');
   await todoSearch.fill('個人のチェック');
   await expect(page.locator('#wbJournalSearchV393')).toHaveValue('個人のチェック');
   await expect(page.locator('#todoView [data-j425-todo-search]')).toHaveValue('個人のチェック');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  const taskSearch=page.locator('#boardView [data-j420-search]');
+  const taskSearch=page.locator('#wbJournalSearchV393');
   await taskSearch.fill('設備点検');
   await expect(page.locator('#wbJournalSearchV393')).toHaveValue('設備点検');
   await expect(page.locator('#searchInput')).toHaveValue('設備点検');
@@ -770,10 +770,10 @@ test('JOURNAL Atelier toolbar can create a task and search without covering othe
   test.setTimeout(90000);await boot(page,1440);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
   const create=page.locator('#boardView [data-j420-new-task]');
-  const search=page.locator('#boardView [data-j420-search]');
+  const search=page.locator('#wbJournalSearchV393');
   await expect(create).toBeVisible();await expect(search).toBeVisible();
   const a=await create.boundingBox(),b=await search.boundingBox();
-  expect(a.x+a.width<=b.x+1 || b.x+b.width<=a.x+1 || a.y+a.height<=b.y+1).toBeTruthy();
+  expect(a.x+a.width<=b.x+1 || b.x+b.width<=a.x+1 || a.y+a.height<=b.y+1 || b.y+b.height<=a.y+1).toBeTruthy();
   await search.fill('案件を探す');
   await expect(page.locator('#searchInput')).toHaveValue('案件を探す');
   await expect(page.locator('#boardView [data-j420-search]')).toHaveValue('案件を探す');
@@ -879,11 +879,12 @@ test('JOURNAL 320px dock opens Memo and Settings without overflow',async({page})
   await choose(page,'journal');
   const dock=page.locator('#wbJournalDockV367');
   await expect(dock.locator('[data-journal-route]')).toHaveCount(5);
-  await expect(dock.locator('.wb-journal-more-v367')).toBeVisible();
+  await expect(dock.locator('button')).toHaveCount(5);
   await dock.locator('[data-journal-route="memo"]').click();
   await expect(page.locator('#workMemoViewV167 .j425-memo-spread')).toBeVisible();
   await expect(dock.locator('[data-journal-route="memo"]')).toHaveAttribute('aria-current','page');
-  await dock.locator('.wb-journal-more-v367').click();
+  await page.locator('[data-journal-settings]').click();
+  await page.locator('[data-journal-open-drawer]').click();
   await expect(page.locator('body')).toHaveAttribute('data-journal-settings-open','true');
   await page.keyboard.press('Escape');
   await expect(page.locator('body')).toHaveAttribute('data-journal-settings-open','false');
@@ -903,7 +904,8 @@ test('JOURNAL desktop memo index follows the paper; phone ToDo filters are compa
   await expect(index).toHaveCSS('position','static');
   await page.locator('#wbJournalDockV367 [data-journal-route="todos"]').click();
   const filterRail=page.locator('#todoView .j425-todo-layout>.j425-index-rail');
-  await expect(filterRail).toHaveCSS('display','flex');
+  await expect(filterRail).toHaveCSS('display','block');
+  await page.locator('[data-journal-todo-index] > summary').click();
   await expect(filterRail.locator('[data-j425-todo-filter]')).toHaveCount(4);
   await expect(page.locator('#todoView .j425-todo-trays')).toBeVisible();
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
@@ -933,6 +935,7 @@ test('JOURNAL Ver.450 memo index lookup does not hide canonical memo cards',asyn
   await page.locator('#workMemoFormV167 button[type="submit"]').click();
   const card=page.locator('#workMemoViewV167 .work-memo-card-v167').filter({hasText:'JOURNAL索引内検索'});
   await expect(card).toBeVisible();
+  await openJournalMemoIndex(page);
   const lookup=page.locator('[data-j450-memo-find]');
   await lookup.fill('見つからない文字');
   await expect(card).toBeVisible();
@@ -962,6 +965,7 @@ test('JOURNAL phone memo search explains no matches and resets without hiding sa
   const card=page.locator('#workMemoViewV167 .work-memo-card-v167')
     .filter({hasText:'JOURNAL検索復旧サンプル'});
   await expect(card).toBeVisible();
+  await openJournalMemoIndex(page);
   const finder=page.locator('#workMemoViewV167 [data-j450-memo-find]');
   await finder.fill('存在しない検索語');
   const notice=page.locator('#workMemoViewV167 .j558-memo-index-empty');
@@ -1013,6 +1017,7 @@ test('JOURNAL compact memo selection opens the reading folio and returns to its 
   await page.locator('#workMemoFormV167 button[type="submit"]').click();
   const card=page.locator('#workMemoViewV167 .work-memo-card-v167').filter({hasText:'JOURNAL手帳本文の往復'});
   await expect(card).toBeVisible();
+  await page.locator('[data-journal-memo-index] > summary').click();
   await page.locator('.j-memo-index-link-v383').filter({hasText:'JOURNAL手帳本文の往復'}).click();
   const reader=page.locator('#workMemoViewV167 .j425-memo-reader');
   await expect(reader).toBeFocused();
@@ -1792,7 +1797,7 @@ test('JOURNAL V495 mobile task folio keeps primary actions short and returns fro
   expect(fit.inner).toBeLessThanOrEqual(2);
   await page.setViewportSize({width:1366,height:900});
   await expect(folio.locator('.detail-head strong')).toHaveText('タスク詳細');
-  await expect(folio.locator('.j495-detail-more')).toHaveCount(0);
+  await expect(folio.locator('.j495-detail-more')).toBeVisible();
   await expect(folio.locator('.j495-detail-footer')).toHaveCount(0);
   await expect(actions.locator('.sub-actions [data-action="delete"]')).toBeVisible();
   await page.setViewportSize({width:390,height:900});
@@ -2178,6 +2183,7 @@ test('JOURNAL V515 phone index keeps sorting and filter focus after list redraws
   await expect(sort).toBeFocused();
   const after=await sort.evaluate(el=>el.getBoundingClientRect().top);
   expect(Math.abs(after-before)).toBeLessThanOrEqual(14);
+  await openJournalIndexRefinement(page);
   const query=list.locator('[data-j425-query]');
   await query.fill('JOURNAL V515');
   await expect(query).toBeFocused();
@@ -2287,6 +2293,7 @@ test('JOURNAL V518 phone diary compacts empty dates and empty task results recov
   await dialog.locator('#taskTitle').fill(title);
   await dialog.locator('#taskForm button[type="submit"]').click();
   await expect(dialog).toBeHidden();
+  await openJournalIndexRefinement(page);
   const query=list.locator('[data-j425-query]');
   await query.fill('J518_NOT_FOUND_NEVER_MATCH');
   const notice=list.locator('.j518-index-empty');
@@ -2374,10 +2381,10 @@ test('JOURNAL V520 mobile desk hides unused shelves and recovers from zero resul
   await board.locator('[data-j502-toggle-index]').click();
   await expect(board.locator('.j520-index-filter-count')).toHaveText('1条件適用中');
   await empty.locator('[data-j520-empty-reset]').click();
-  await expect(board.locator('[data-j420-search]')).toBeFocused();
+  await expect(page.locator('#wbJournalSearchV393')).toBeFocused();
   await expect(board.locator('[data-j420-task-id]').filter({hasText:title})).toBeVisible();
 
-  const search=board.locator('[data-j420-search]');
+  const search=page.locator('#wbJournalSearchV393');
   await search.fill('J520_NEVER_MATCH');
   await expect(board.locator('.j520-atelier-empty [data-j520-empty-reset]')).toBeVisible();
   await board.locator('[data-j520-empty-reset]').click();
@@ -2611,6 +2618,7 @@ test('JOURNAL V530 remote snapshots preserve desk and list focus and IME text at
 
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView');
+  await openJournalIndexRefinement(page);
   const query=list.locator('[data-j425-query]');
   await query.fill(title);
   await expect(query).toBeFocused();
@@ -2742,6 +2750,7 @@ test('JOURNAL V534 carries explicitly selected cases across diary, list and desk
 
   // A destination's own query takes precedence over an incompatible handoff.
   await diary.locator('[data-j509-layout="list"]').evaluate(el=>el.click());
+  await openJournalIndexRefinement(page);
   const query=list.locator('[data-j425-query]');
   await query.fill('JOURNAL V534 B');
   await expect(list.locator('[data-j425-row]')).toHaveCount(1);
@@ -2885,6 +2894,7 @@ test('JOURNAL V540 phone index browses filtered cases without returning to a lon
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView');
   await list.locator('[data-j425-sort]').selectOption('title');
+  await openJournalIndexRefinement(page);
   const query=list.locator('[data-j425-query]');
   await query.fill('JOURNAL V540');
   const rows=list.locator('[data-j425-row]');
@@ -2935,6 +2945,7 @@ test('JOURNAL V544 phone reader stays open after an edit leaves the filter and a
     await dismissSavedTaskDetailForTest(page);
   }
   await board.locator('[data-j420-layout="list"]').click();
+  await openJournalIndexRefinement(page);
   const list=page.locator('#listView'),query=list.locator('[data-j425-query]');
   await list.locator('[data-j425-sort]').selectOption('title');
   await query.fill('JOURNAL V544');
@@ -3008,6 +3019,7 @@ test('JOURNAL V546 remote removals keep the active phone reader and recover an e
     await dismissSavedTaskDetailForTest(page);
   }
   await board.locator('[data-j420-layout="list"]').click();
+  await openJournalIndexRefinement(page);
   const list=page.locator('#listView'),query=list.locator('[data-j425-query]');
   await list.locator('[data-j425-sort]').selectOption('title');
   await query.fill('JOURNAL V546');
@@ -3076,6 +3088,7 @@ test('JOURNAL V548 mobile case reader survives sort, search, facets and Japanese
   }
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView'),sort=list.locator('[data-j425-sort]');
+  await openJournalIndexRefinement(page);
   const query=list.locator('[data-j425-query]'),rows=list.locator('[data-j425-row]');
   await sort.selectOption('title');
   await query.fill('JOURNAL V548');
@@ -3168,6 +3181,7 @@ test('JOURNAL V549 latest focus wins across filtering, Firebase repaint and IME 
   }
   await board.locator('[data-j420-layout="list"]').click();
   const list=page.locator('#listView'),rows=list.locator('[data-j425-row]');
+  await openJournalIndexRefinement(page);
   const query=list.locator('[data-j425-query]'),sort=list.locator('[data-j425-sort]');
   await sort.selectOption('title');
   await query.fill('JOURNAL V549');
@@ -3264,7 +3278,7 @@ test('JOURNAL V552 phone desk note survives remote removals and offers empty rec
     await expect(editor).toBeHidden();
     await dismissSavedTaskDetailForTest(page);
   }
-  const query=board.locator('[data-j420-search]');
+  const query=page.locator('#wbJournalSearchV393');
   await query.fill('JOURNAL V552');
   const cards=board.locator('[data-j420-task-id]');
   await expect(cards).toHaveCount(3);
@@ -3343,7 +3357,7 @@ test('JOURNAL V553 phone desk browses real shelf order and restores focus after 
     await expect(editor).toBeHidden();
     await dismissSavedTaskDetailForTest(page);
   }
-  const query=board.locator('[data-j420-search]');
+  const query=page.locator('#wbJournalSearchV393');
   await query.fill('JOURNAL V553');
   const cards=board.locator('[data-j420-task-id]');
   await expect(cards).toHaveCount(3);
@@ -3437,7 +3451,7 @@ test('JOURNAL V554 latest focused control wins over card/pager frames and remote
     await expect(editor).toBeHidden();
     await dismissSavedTaskDetailForTest(page);
   }
-  const search=board.locator('[data-j420-search]');
+  const search=page.locator('#wbJournalSearchV393');
   await search.fill('JOURNAL V554');
   const cards=board.locator('[data-j420-task-id]');
   await expect(cards).toHaveCount(3);
@@ -3447,7 +3461,7 @@ test('JOURNAL V554 latest focused control wins over card/pager frames and remote
   await cards.first().evaluate(el=>{
     el.focus();
     el.click();
-    el.closest('#boardView').querySelector('[data-j420-search]').focus();
+    document.querySelector('#wbJournalSearchV393').focus();
   });
   const note=board.locator('#j494AtelierNote.j494-inline-note');
   await expect(note).toBeVisible();
@@ -3472,7 +3486,7 @@ test('JOURNAL V554 latest focused control wins over card/pager frames and remote
     const previous=current.querySelector('[data-j553-case-step="-1"]');
     previous.focus();
     previous.click();
-    document.querySelector('#boardView [data-j420-search]').focus();
+    document.querySelector('#wbJournalSearchV393').focus();
     window.__journalV554TriggerSync();
   });
   await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>
@@ -3519,7 +3533,7 @@ test('JOURNAL V556 long phone note stays at its reading section after sync and w
     await expect(dialog).toBeHidden();
     await dismissSavedTaskDetailForTest(page);
   }
-  const search=board.locator('[data-j420-search]');
+  const search=page.locator('#wbJournalSearchV393');
   await search.fill('JOURNAL V556');
   const cards=board.locator('[data-j420-task-id]');
   await expect(cards).toHaveCount(2);
@@ -3591,7 +3605,7 @@ test('JOURNAL V558 detail and editor return to the phone note after width change
     await expect(dialog).toBeHidden();
     await dismissSavedTaskDetailForTest(page);
   }
-  const search=board.locator('[data-j420-search]');
+  const search=page.locator('#wbJournalSearchV393');
   await search.fill('JOURNAL V558');
   const cards=board.locator('[data-j420-task-id]');
   await expect(cards).toHaveCount(3);
@@ -3633,7 +3647,7 @@ test('JOURNAL V558 detail and editor return to the phone note after width change
   await expect(panel).toHaveClass(/open/);
   await page.locator('#closeDetail').evaluate(el=>{
     el.click();
-    document.querySelector('#boardView [data-j420-search]').focus();
+    document.querySelector('#wbJournalSearchV393').focus();
   });
   await page.evaluate(()=>new Promise(resolve=>
     requestAnimationFrame(()=>requestAnimationFrame(resolve))));
@@ -4185,4 +4199,133 @@ for(const width of [390,1366])test(`JOURNAL auxiliary paper forms keep copying, 
   await expect(page.locator('#timelineMoveForm>.form-grid')).toBeAttached();
   await expect(page.locator('#timelineMoveDialog .dialog-head h2')).toHaveText('タイムラインへ移動');
   await expect(page.locator('#activityDialog>#activityDialogBody')).toBeAttached();
+});
+
+for (const width of [320,390,1366]) {
+  test(`JOURNAL UX review: one search, scoped actions and five main pages at ${width}px`,async({page})=>{
+    await bootPaperAuxiliary(page,width);
+    await expect(page.locator('#wbJournalDockV367 > button')).toHaveCount(5);
+    for(const route of ['tasks','schedule','memo','todos']) {
+      await paperRoute(page,width,route);
+      await expect(page.locator('input[type="search"]:visible')).toHaveCount(1);
+      await expect(page.locator('#wbJournalSearchV393')).toHaveAttribute('aria-label',/検索.*共通キーワード/);
+      if(route==='memo') {
+        await expect(page.locator('#newTask')).toBeHidden();
+        await expect(page.locator('#workMemoViewV167 [data-memo-new]').first()).toBeVisible();
+      }
+    }
+    await page.locator('#wbJournalSearchV393').fill('見つからない検証文字');
+    await paperRoute(page,width,'memo');
+    await expect(page.locator('#wbJournalSearchV393')).toHaveValue('見つからない検証文字');
+    await page.locator('[data-journal-search-clear]').click();
+    await expect(page.locator('#wbJournalSearchV393')).toHaveValue('');
+    await page.locator('[data-journal-settings]').click();
+    await expect(page.locator('[data-journal-open-drawer]')).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  });
+}
+for (const width of [320,390]) {
+  test(`JOURNAL UX review: phone index disclosure keeps filters reversible at ${width}px`,async({page})=>{
+    await bootPaperAuxiliary(page,width);
+    await paperRoute(page,width,'todos');
+    const todo=page.locator('#todoView');
+    await todo.locator('#todayTodoInput').fill('使いやすさの検証ToDo');
+    await todo.locator('[data-j425-todo-create] button[type="submit"]').click();
+    const index=todo.locator('[data-journal-todo-index]');
+    await expect(index).not.toHaveAttribute('open','');
+    await index.locator('summary').click();
+    await todo.locator('[data-j425-todo-filter="done"]').click();
+    await expect(todo.locator('[data-journal-todo-index]')).toHaveAttribute('open','');
+    await todo.locator('[data-journal-todo-index] > summary').click();
+    await expect(todo.locator('[data-journal-todo-filter-state]')).toContainText('完了');
+    await todo.locator('[data-journal-todo-clear]').click();
+    await expect(todo.locator('.j425-todo-record').first()).toBeVisible();
+    await expect(todo.locator('[data-journal-todo-index]')).not.toHaveAttribute('open','');
+    await paperRoute(page,width,'memo');
+    await page.locator('#workMemoViewV167 [data-memo-new]').first().click();
+    await page.locator('#workMemoTitleV167').fill('索引の復帰確認');
+    await page.locator('#workMemoBodyV167').fill('条件解除後も内容を保持する');
+    await page.locator('#workMemoFormV167 button[type="submit"]').click();
+    const memoIndex=page.locator('[data-journal-memo-index]');
+    await expect(memoIndex).not.toHaveAttribute('open','');
+    await memoIndex.locator(':scope > summary').click();
+    await page.locator('[data-journal-memo-color="mint"]').click();
+    await expect(page.locator('[data-journal-memo-index]')).toHaveAttribute('open','');
+    await page.locator('[data-j558-memo-index-reset]').click();
+    await expect(page.locator('[data-journal-memo-color="all"]')).toBeFocused();
+    await expect(page.locator('.j-memo-index-refinement')).not.toHaveAttribute('open','');
+    await page.locator('[data-journal-memo-color="mint"]').click();
+    await page.locator('[data-journal-memo-index] > summary').click();
+    await expect(page.locator('[data-journal-memo-filter-state]')).toContainText('1');
+    await page.locator('[data-journal-memo-clear]').click();
+    await expect(page.locator('[data-journal-memo-index]')).not.toHaveAttribute('open','');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  });
+}
+test('JOURNAL UX review: readable metadata and compact full-record actions on desktop',async({page})=>{
+  await bootPaperAuxiliary(page,1366);
+  await paperRoute(page,1366,'tasks');
+  await page.locator('[data-j420-task-id="paper-main"]').click();
+  const note=page.locator('#j494AtelierNote');
+  await expect(note.locator('[data-j420-note-detail]')).toHaveText('全文・コメントを開く');
+  await note.locator('[data-j420-note-detail]').click();
+  const actions=page.locator('#detailBody .detail-actions');
+  await expect(actions.locator('.j495-detail-more')).toBeVisible();
+  await expect(actions.locator('.sub-actions')).toBeHidden();
+  expect(await actions.evaluate(el=>el.getBoundingClientRect().height)).toBeLessThanOrEqual(80);
+  await actions.locator('.j495-detail-more summary').click();
+  await expect(actions.locator('.sub-actions')).toBeVisible();
+  await page.locator('#closeDetail').click();
+  await paperRoute(page,1366,'schedule');
+  expect(await page.locator('.j425-mini-grid button').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(12);
+});
+
+async function openJournalIndexRefinement(page) {
+  const disclosure=page.locator('#listView .j-index-query-refinement');
+  if(!await disclosure.evaluate(el=>el.open))await disclosure.locator('summary').click();
+}
+async function openJournalMemoIndex(page) {
+  const index=page.locator('[data-journal-memo-index]');
+  if(!await index.evaluate(el=>el.open))await index.locator(':scope > summary').click();
+  const refinement=page.locator('.j-memo-index-refinement');
+  if(!await refinement.evaluate(el=>el.open))await refinement.locator('summary').click();
+}
+
+test('JOURNAL UX review: Today prioritizes three cases and finds an expanded case',async({page})=>{
+  await bootPaperAuxiliary(page,1366);
+  await page.addInitScript(({room})=>{
+    const tasks=JSON.parse(localStorage.getItem('system-task-tasks:'+room));
+    for(let i=0;i<4;i++)tasks.push({...tasks[0],id:'review-extra-'+i,title:'追加の検証案件 '+i,comments:[],checklist:[{id:'review-check-'+i,text:'確認する',done:false}]});
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify(tasks));
+  },{room:ROOM});
+  await page.reload();await choose(page,'journal');
+  await paperRoute(page,1366,'today');
+  const today=page.locator('#todayView'),more=today.locator('[data-journal-today-more]');
+  await expect(today.locator('.j420-work-note:visible')).toHaveCount(3);
+  const focusBox=await today.locator('.j420-focus').boundingBox(),pocketsBox=await today.locator('.j420-pockets').boundingBox();
+  expect(Math.abs(pocketsBox.y-focusBox.y)).toBeLessThanOrEqual(12);
+  const countBox=await today.locator('.j420-note-count').first().boundingBox(),starBox=await today.locator('.j420-work-note:has(.j420-note-count) .j420-note-favorite').first().boundingBox();
+  expect(countBox.x+countBox.width).toBeLessThanOrEqual(starBox.x);
+  await more.locator('summary').click();
+  await expect(today.locator('.j420-work-note:visible')).toHaveCount(6);
+  const title=await more.locator('.j420-work-note strong').first().textContent();
+  await more.locator('summary').click();
+  await page.locator('#wbJournalSearchV393').fill(title);
+  await expect(today.locator('.j420-work-note:visible')).toHaveCount(1);
+  await expect(more).toHaveAttribute('open','');
+  await page.locator('[data-journal-search-clear]').click();
+  for(const selector of ['.j420-note-count','.j420-note-category','.j420-note-tags'])expect(await today.locator(selector).first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(12);
+  expect(await today.locator('.j420-note-due').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(13);
+});
+
+test('JOURNAL UX review: desktop condition clearing focuses a visible filter',async({page})=>{
+  await bootPaperAuxiliary(page,1366);
+  await paperRoute(page,1366,'todos');
+  await page.locator('[data-j425-todo-filter="done"]').click();
+  await page.locator('[data-journal-todo-clear]').click();
+  await expect(page.locator('[data-j425-todo-filter="all"]')).toBeFocused();
+  await paperRoute(page,1366,'memo');
+  await page.locator('[data-journal-memo-color="mint"]').click();
+  await page.locator('[data-journal-memo-clear]').click();
+  await expect(page.locator('[data-journal-memo-color="all"]')).toBeFocused();
 });

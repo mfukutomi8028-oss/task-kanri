@@ -355,8 +355,8 @@ test('Ver.443 JOURNAL condensed folios preserve meaningful details and allow tou
 
 test('JOURNAL mobile dock lists five workspaces and keeps settings',()=>{
   assert.match(js,/\['today', 'todos', 'tasks', 'schedule', 'memo'\]\.includes\(entry\.id\)/);
-  assert.match(js,/more\.addEventListener\('click', openDrawer\)/);
-  assert.match(css,/grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
+  assert.match(js,/preferencesDrawerButton\.addEventListener\('click'/);
+  assert.match(css,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
   assert.match(css,/#workMemoViewV167 \.j425-memo-gallery \.work-memo-body-v167/);
 });
 
@@ -1136,7 +1136,7 @@ test('JOURNAL V511 diary keeps one sticky navigator and one shared list-return o
   assert.match(preview,/class="j491-task-return j511-task-return-end" data-j491-task-return/);
   const index=app.slice(app.indexOf('function journalIndexV425('),app.indexOf('function journalNavigateChronicleV504('));
   assert.match(index,/root\.querySelectorAll\('\[data-j491-task-return\]'\)\.forEach/);
-  assert.match(index,/const target=row\|\|root\.querySelector\('\[data-j425-query\]'\)/);
+  assert.match(index,/const target=row\|\|document\.getElementById\('wbJournalSearchV393'\)/);
   assert.match(index,/target\.focus\(\{preventScroll:true\}\)/);
   const diary=app.slice(app.indexOf('function journalChronicleV411('),app.indexOf('function journalDayItemV411('));
   assert.match(diary,/class="j511-chronicle-travel"/);
@@ -1190,7 +1190,7 @@ test('JOURNAL V515 list rerenders restore the exact filter, sorting or search co
   assert.match(index,/filters\.due=due/);
   assert.match(index,/filters\.sort=e\.target\.value/);
   assert.match(css,/JOURNAL V515/);
-  assert.match(css,/\.j425-workbench-toolbar label:first-child/);
+  assert.match(css,/\.j425-workbench-toolbar>\.j-index-query-refinement/);
   assert.match(css,/\.j425-workbench-toolbar \.j425-index-counter/);
   // V430 desktop columns must not overrule V515's one-column mobile index.
   assert.match(css,/#listView \.j425-task-index-layout\s*\{\s*grid-template-columns:minmax\(0,1fr\)!important;/);

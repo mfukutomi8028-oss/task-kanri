@@ -2569,7 +2569,8 @@ function journalTodayV420() {
         </section>
         <section class="j420-focus" aria-label="進行中の案件">
           <div class="j420-paper-head"><div><span>FOCUS / THE WORK IN PROGRESS</span><h3>進行中の案件</h3></div><button type="button" data-j420-to-tasks>すべて見る →</button></div>
-          <div class="j420-note-grid">${top.map(journalTodayTaskCardV420).join('')||'<div class="j420-empty">進行中の案件はありません。新しいタスクから登録できます。</div>'}</div>
+          <div class="j420-note-grid">${top.slice(0,3).map(journalTodayTaskCardV420).join('')||'<div class="j420-empty">進行中の案件はありません。新しいタスクから登録できます。</div>'}</div>
+          ${top.length>3?`<details class="j-today-more" data-journal-today-more ${journalTodayMoreOpen?'open':''}><summary>ほかの進行中の案件（${top.length-3}件）</summary><div class="j420-note-grid">${top.slice(3).map((task,index)=>journalTodayTaskCardV420(task,index+3)).join('')}</div></details>`:''}
           <button type="button" class="j420-add-task" data-j420-create-task>＋ 新しい案件を書き込む</button>
           <div class="j420-stationery j425-today-stationery" aria-hidden="true"><img class="j440-today-bookmark" src="./assets/journal-bookmark-seal-v440.svg" alt="" decoding="async"></div>
         </section>
@@ -2581,6 +2582,8 @@ function journalTodayV420() {
       </div>
     </div>`;
   const root=elements.todayView;
+  const more=root.querySelector('[data-journal-today-more]');
+  more?.addEventListener('toggle',()=>{if(more.isConnected)journalTodayMoreOpen=more.open;});
   bindTaskCards(root);
   bindScheduleCardsInRoot(root);
   root.querySelectorAll('.j420-agenda-item').forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();const s=state.schedules.find(x=>x.id===el.dataset.scheduleId);if(s)openScheduleDialog(s)}}));
@@ -2746,6 +2749,9 @@ let journalTodoFilterV425 = 'all';
 let journalTodoSortV425 = 'manual';
 let journalTodoQueryV425 = '';
 let journalTodoSelectedV425 = '';
+let journalIndexSearchOpen = false;
+let journalTodoIndexOpen = false;
+let journalTodayMoreOpen = false;
 const journalTodoCollapsedV430 = new Set(); // Presentation only; no changes to stored ToDo records.
 
 // JOURNAL V491: one existing detail reader moves alongside its selected row on
@@ -2774,6 +2780,8 @@ function journalPositionSelectedReaderV491(kind){
 journalInlineDetailMediaV491.addEventListener('change',()=>{
   journalPositionSelectedReaderV491('todo');
   journalPositionSelectedReaderV491('task');
+  const index=elements.todoView?.querySelector('[data-journal-todo-index]');
+  if(index)index.open=!journalInlineDetailMediaV491.matches||journalTodoIndexOpen;
 });
 
 
@@ -2832,9 +2840,9 @@ function journalTodoV425() {
       <form data-j425-todo-create class="j425-todo-create"><input id="todayTodoInput" type="text" required maxlength="${TODO_MAX_LENGTH}" placeholder="新しいToDoを記入"><button type="submit" class="j425-action-primary">＋ 追加</button><details><summary>メモを添える</summary><textarea id="todayTodoMemo" rows="2" maxlength="${TODO_MEMO_MAX_LENGTH}" placeholder="補足メモ"></textarea></details></form>
     </header>
     <div class="j425-editorial-layout j425-todo-layout">
-      <nav class="j425-index-rail" aria-label="ToDoの分類"><h3>ToDo索引</h3><small>PERSONAL INDEX</small><h4>作業のしおり</h4>
+      <nav class="j425-index-rail" aria-label="ToDoの分類"><div class="j-index-filter-state"><span data-journal-todo-filter-state>分類：${({all:"すべて",open:"未完了",memo:"メモあり",done:"完了"})[filter]}${filter!=="all"?"（1件適用）":""}</span><button type="button" data-journal-todo-clear ${filter==="all"?"hidden":""}>分類を解除</button></div><details class="j-index-disclosure" data-journal-todo-index ${!journalInlineDetailMediaV491.matches||journalTodoIndexOpen?"open":""}><summary>索引・絞り込み</summary><div class="j-todo-index-options"><h3>ToDo索引</h3><small>PERSONAL INDEX</small><h4>作業のしおり</h4>
         ${[{id:'all',label:'すべて',n:todos.length},{id:'open',label:'未完了',n:open.length},{id:'memo',label:'メモあり',n:todos.filter(t=>t.memo).length},{id:'done',label:'完了',n:completed.length}].map(v=>`<button type="button" class="j425-index-option" data-j425-todo-filter="${v.id}" aria-pressed="${filter===v.id}">${v.label}<span>${v.n}</span></button>`).join('')}
-        
+        </div></details>
       </nav>
       <section class="j425-todo-trays" aria-label="ToDoの作業トレイ"><div class="j425-workbench-toolbar">
         <label>検索<input type="search" data-j425-todo-search value="${escapeHtml(journalTodoQueryV425)}" placeholder="ToDo・メモを検索"></label>
@@ -2867,7 +2875,18 @@ function journalTodoV425() {
     b.textContent=journalTodoCollapsedV430.has(id)?'開く':'閉じる';
     journalPositionSelectedReaderV491('todo');
   }));
-  root.querySelectorAll('[data-j425-todo-filter]').forEach(b=>b.addEventListener('click',()=>{journalTodoFilterV425=b.dataset.j425TodoFilter;journalTodoV425()}));
+  const todoIndex=root.querySelector('[data-journal-todo-index]');
+  todoIndex?.addEventListener('toggle',()=>{
+    if(todoIndex.isConnected&&journalInlineDetailMediaV491.matches)journalTodoIndexOpen=todoIndex.open;
+  });
+  root.querySelector('[data-journal-todo-clear]')?.addEventListener('click',()=>{
+    journalTodoFilterV425='all';journalTodoV425();
+    elements.todoView.querySelector(journalInlineDetailMediaV491.matches?'[data-journal-todo-index] > summary':'[data-j425-todo-filter="all"]')?.focus({preventScroll:true});
+  });
+  root.querySelectorAll('[data-j425-todo-filter]').forEach(b=>b.addEventListener('click',()=>{
+    journalTodoFilterV425=b.dataset.j425TodoFilter;journalTodoV425();
+    elements.todoView.querySelector('[data-j425-todo-filter="'+journalTodoFilterV425+'"]')?.focus({preventScroll:true});
+  }));
   root.querySelector('[data-j425-todo-sort]')?.addEventListener('change',e=>{journalTodoSortV425=e.target.value;journalTodoV425()});
   root.querySelectorAll('[data-j425-todo-toggle]').forEach(b=>b.addEventListener('change',()=>toggleTodo(b.dataset.j425TodoToggle)));
   root.querySelectorAll('[data-j425-todo-select]').forEach(b=>b.addEventListener('click',()=>{journalTodoSelectedV425=b.dataset.j425TodoSelect;journalTodoInlineSelectedV491=journalTodoSelectedV425;journalTodoV425();journalTodoFocusV450(journalTodoSelectedV425)}));
@@ -7080,14 +7099,14 @@ function journalRestoreTaskNoteV519(){
   const changedHeading=continuedReader&&selected!==origin.id
     ?continuedReader.querySelector('.j425-index-preview h3'):null;
   const target=(button?.getClientRects().length?button:null)||changedHeading||row||nearRow||
-    view.querySelector(board?'[data-j420-search]':'[data-j425-query]')||
+    document.getElementById('wbJournalSearchV393')||
     view.querySelector(board?'[data-j420-new-task]':'[data-j425-new-task]');
   if(!target)return;
   // V558: closing a panel may defer this restoration by a frame. If the
   // person has already focused another visible control in the task page,
   // that newer action wins instead of restoring the old detail action.
   const current=document.activeElement;
-  if(current&&current!==target&&view.contains(current)&&current.isConnected
+  if(current&&current!==target&&(view.contains(current)||document.getElementById('wbJournalHeaderV367')?.contains(current))&&current.isConnected
     &&current.getClientRects().length
     &&current.matches('button,input,select,textarea,a,[tabindex]')){
     if(board&&journalAtelierInlineOpenV494)
@@ -7260,8 +7279,8 @@ function journalAtelierNoteV420(t){
   const lines=t.checklist.slice(0,4).map(x=>`<li class="${x.done?'is-done':''}"><span aria-hidden="true">${x.done?'☑':'□'}</span>${escapeHtml(x.text)}</li>`).join('')
     ||'<li>チェック項目はまだありません。</li>';
   return `<div class="j420-note-card">
-    <div class="j420-note-lead"><span>選択中の案件</span><h4>${escapeHtml(t.title)}</h4><small>${escapeHtml(t.category||'未分類')}　/　${escapeHtml(t.status)}　/　${escapeHtml(t.assignee||'未割当')}</small>
-      <div class="j420-note-actions"><button type="button" data-j420-note-detail>詳細を開く</button><button type="button" data-j420-note-edit>編集</button></div>
+    <div class="j420-note-lead"><span>案件の概要</span><h4>${escapeHtml(t.title)}</h4><small>${escapeHtml(t.category||'未分類')}　/　${escapeHtml(t.status)}　/　${escapeHtml(t.assignee||'未割当')}</small>
+      <div class="j420-note-actions"><button type="button" data-j420-note-detail>全文・コメントを開く</button><button type="button" data-j420-note-edit>編集</button></div>
     </div>
     <div class="j420-note-description"><strong>案件の要約</strong><p>${escapeHtml(t.description||'詳しい内容はまだ登録されていません。')}</p></div>
     <div class="j420-note-checks"><strong>チェック項目 ${p.done}/${p.total}</strong><ul>${lines}</ul></div>
@@ -7796,7 +7815,7 @@ function journalAtelierV420(tasks){
     journalAtelierCategoryV420='';
     // Capture the explicit reset, not the previous input value, in the
     // subscribed-render focus snapshot.
-    const visibleSearch=root.querySelector('[data-j420-search]');
+    const visibleSearch=document.getElementById('wbJournalSearchV393');
     if(visibleSearch){
       const hadQuery=Boolean(elements.searchInput.value);
       visibleSearch.value='';
@@ -7809,8 +7828,8 @@ function journalAtelierV420(tasks){
     }else journalAtelierV420(tasks);
     requestAnimationFrame(()=>{
       if(token!==journalAtelierRefreshTokenV516||!journalTaskV411()||elements.boardView.hidden)return;
-      const target=[...elements.boardView.querySelectorAll(focusSearch?'[data-j420-search]':'[data-j420-reset-view]')]
-        .find(el=>el.getClientRects().length>0)
+      const target=(focusSearch?document.getElementById('wbJournalSearchV393'):null)
+        ||[...elements.boardView.querySelectorAll('[data-j420-reset-view]')].find(el=>el.getClientRects().length>0)
         ||elements.boardView.querySelector('[data-j420-new-task]');
       if(!target)return;
       const current=document.activeElement;
@@ -8128,7 +8147,7 @@ function journalIndexV425(tasks){
        <button type="button" class="j425-clear-filters" data-j425-reset>絞り込みを解除</button></div>
       </aside>
       <main class="j425-index-workpaper" aria-label="案件の記録一覧">
-       <div class="j425-workbench-toolbar"><label>検索<input type="search" data-j425-query value="${escapeHtml(filters.query)}" placeholder="タイトル・内容・分類で検索"></label>
+       <div class="j425-workbench-toolbar"><details class="j-index-query-refinement" ${journalIndexSearchOpen?"open":""}><summary>一覧だけをさらに絞る${filters.query?"（適用中）":""}</summary><label>一覧内のキーワード<input type="search" data-j425-query value="${escapeHtml(filters.query)}" placeholder="タイトル・内容・分類をさらに絞る"></label></details>
 
        <span class="j425-index-counter">${ordered.length} 件</span></div>
        <div class="bulk-bar j425-index-bulk" data-bulk-bar hidden><strong><span data-bulk-count>0</span>件選択中</strong><select data-bulk-action><option value="">操作を選択</option><option value="status">状態を変更</option><option value="assignee">担当者を変更</option><option value="category">分類を変更</option><option value="complete">完了にする</option><option value="delete">削除</option></select><select data-bulk-target hidden></select><button type="button" data-bulk-apply>適用</button></div>
@@ -8197,7 +8216,7 @@ function journalIndexV425(tasks){
       requestAnimationFrame(()=>{
         if(!journalTaskV411()||elements.listView.hidden)return;
         const row=[...root.querySelectorAll('[data-j425-row]')].find(node=>node.dataset.j425Row===id);
-        const target=row||root.querySelector('[data-j425-query]')||root.querySelector('[data-j425-new-task]');
+        const target=row||document.getElementById('wbJournalSearchV393')||root.querySelector('[data-j425-new-task]');
         if(!target)return;
         target.focus({preventScroll:true});
         if(row&&anchor?.id===id&&anchor.width===window.innerWidth
@@ -8280,12 +8299,15 @@ function journalIndexV425(tasks){
     resetIndexFiltersV518();
     // The empty-state action disappears after the list redraw. Return to the
     // persistent search field so another query can begin immediately.
+    journalIndexSearchOpen=true;
     journalRefreshIndexV515(tasks,event.currentTarget,()=>root.querySelector('[data-j425-query]'));
   });
   root.querySelector('[data-bulk-all]')?.addEventListener('change',e=>{root.querySelectorAll('[data-bulk-id]').forEach(input=>input.checked=e.target.checked);updateBulkBar()});
   root.querySelectorAll('[data-bulk-id]').forEach(x=>x.addEventListener('change',updateBulkBar));
   root.querySelector('[data-bulk-action]')?.addEventListener('change',updateBulkTarget);
   root.querySelector('[data-bulk-apply]')?.addEventListener('click',applyBulkAction);
+  const refinement=root.querySelector('.j-index-query-refinement');
+  refinement?.addEventListener('toggle',()=>{if(refinement.isConnected)journalIndexSearchOpen=refinement.open;});
   const input=root.querySelector('[data-j425-query]');
   if(input){let composing=false;const apply=()=>{
     filters.query=input.value;
