@@ -162,7 +162,7 @@
   const shelfArchiveBases = new Map();
   const shelfInboxBases = new Map();
   const shelfEsc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
-  const shelfSnapshot = () => window.WorkBoardPaletteBridge?.readSnapshot();
+  const shelfSnapshot = () => window.WorkBoardSharedBridge?.readSnapshot();
   const shelfWorkflow = () => window.WorkBoardWorkflowV152;
   const shelfOwnerKey = snapshot => JSON.stringify([snapshot?.roomId,snapshot?.currentUser]);
   const shelfMatch = values => !shelfQuery || values.join(' ').normalize('NFKC').toLocaleLowerCase().includes(shelfQuery.normalize('NFKC').toLocaleLowerCase());
@@ -280,7 +280,7 @@
       shelfBusy=true;button.disabled=true;
       const values=Object.fromEntries(new FormData(form));
       try {
-        const result=await window.WorkBoardPaletteBridge.dispatch({type:'knowledge.save',id:draft.record.id,revision:draft.record.revision,taskId:draft.taskId,taskRevision:draft.taskRevision,values,ownerRoom:draft.ownerRoom,ownerUser:draft.ownerUser});
+        const result=await window.WorkBoardSharedBridge.dispatch({type:'knowledge.save',id:draft.record.id,revision:draft.record.revision,taskId:draft.taskId,taskRevision:draft.taskRevision,values,ownerRoom:draft.ownerRoom,ownerUser:draft.ownerUser});
         if(!result?.ok){shelfMessage('保存できませんでした。入力を残しています。最新の内容・接続状態を確認してください。');return;}
         shelfEditing=null;shelfBusy=false;renderShelf();shelfMessage('手順を保存しました。');
         shelf.querySelector('[data-j-shelf-page="knowledge"]').focus();
@@ -343,7 +343,7 @@
     event.preventDefault();event.stopImmediatePropagation();
     openShelf(target.hasAttribute('data-open-archive-v153')?'archive':'inbox');
   },true);
-  window.WorkBoardPaletteBridge?.subscribe(queueShelfUpdate);
+  window.WorkBoardSharedBridge?.subscribe(queueShelfUpdate);
   new MutationObserver(()=>{if(!isJournal())closeShelf();else queueShelfUpdate();}).observe(root,{attributes:true,attributeFilter:['data-wb-display']});
   queueShelfUpdate();
 
@@ -955,7 +955,7 @@
     return selected?.hasAttribute('data-work-memo-layout') ? 'memo' : (selected?.dataset.layout || 'today');
   }
 
-  // One visible search per JOURNAL, matching the Palette interaction model.
+  // One visible search per JOURNAL, with independent search.
   // The current page's *original* filter owner does the actual filtering.
   // That keeps search behaviour, permissions and persistence in one place.
   const globalSearchDefaultsV393 = Object.freeze({
@@ -1193,7 +1193,7 @@
 
   // A real settings notebook: move the ORIGINAL controls into categorized leaves.
   // All controls keep their listeners and IDs, and return to their exact
-  // original positions before Classic, Modern or Palette is displayed.
+  // original positions before Classic or Origin is displayed.
   let journalSettingsRecordV393 = null;
   function composeJournalSettingsV393() {
     if (journalSettingsRecordV393 || !isJournal()) return;
