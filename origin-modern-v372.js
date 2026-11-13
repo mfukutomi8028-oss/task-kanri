@@ -2620,6 +2620,47 @@ function originSearchMatches(term){
    ||a.title.localeCompare(b.title,'ja')||String(a.id).localeCompare(String(b.id)));
  return {types,counts,matches};
 }
+function originFullSearchResults(){
+ const collected=originSearchMatches(originFullSearchQuery.trim().toLocaleLowerCase());
+ const filtered=searchKind==='all'?collected.matches:collected.matches.filter(item=>item.kind===searchKind);
+ if(originFullSearchSort==='title')filtered.sort((a,b)=>a.title.localeCompare(b.title,'ja')||a.order-b.order||String(a.id).localeCompare(String(b.id)));
+ return {...collected,filtered};
+}
+function renderOriginFullSearch(){
+ const {types,counts,matches,filtered}=originFullSearchResults();
+ const total=matches.length,visible=filtered.slice(0,originFullSearchLimit);
+ const facets=[['all','すべて'],...types].map(([id,label])=>
+  `<button type="button" data-action="full-search-kind" data-value="${id}" aria-pressed="${searchKind===id}">${esc(label)} <small>${id==='all'?total:counts[id]}</small></button>`).join('');
+ const rows=visible.map(item=>`<button type="button" class="origin-full-search-hit" data-action="open" data-kind="${item.kind}" data-id="${esc(item.id)}">
+  <span class="origin-full-search-kind">${esc(item.label)}</span>
+  <span class="origin-full-search-hit-body"><strong>${esc(item.title)}</strong><small>${esc(item.details||'詳細を開いて確認')}</small></span>
+  <span class="origin-full-search-chevron">${icon('right',16)}</span>
+ </button>`).join('');
+ const more=filtered.length>visible.length
+  ?`<div class="origin-full-search-more"><span>${visible.length} / ${filtered.length}件表示</span>
+   <button type="button" data-action="full-search-more">さらに${Math.min(30,filtered.length-visible.length)}件</button>
+   <button type="button" data-action="full-search-show-all">残りすべて表示</button></div>`:'';
+ return `${head('SEARCH · ALL RESULTS','詳細検索','仕事・予定・ToDo・メモをまとめて探せます。')}
+ <div class="origin-full-search">
+  <button type="button" class="origin-full-search-back" data-action="full-search-back">${icon('left',16)} 元の画面に戻る</button>
+  <section class="surface origin-full-search-shell" aria-label="横断検索の全結果">
+   <div class="origin-full-search-controls">
+    <label class="origin-full-search-field" for="originFullSearchInput">${icon('search',18)}
+     <input type="search" id="originFullSearchInput" value="${esc(originFullSearchQuery)}"
+       placeholder="件名・担当・説明などで検索" aria-label="すべての記録を検索" autocomplete="off"/>
+    </label>
+    <label class="origin-full-search-order">並び順
+     <select id="originFullSearchSort" aria-label="検索結果の並び順">
+      <option value="relevance" ${originFullSearchSort==='relevance'?'selected':''}>関連度順</option>
+      <option value="title" ${originFullSearchSort==='title'?'selected':''}>件名順</option>
+     </select></label>
+   </div>
+   <div class="origin-full-search-facets" role="group" aria-label="検索対象の種類">${facets}</div>
+   <p class="origin-full-search-summary" role="status">${originFullSearchQuery.trim()?filtered.length+'件の結果（全種類 '+total+'件）':'検索キーワードを入力してください'}${filtered.length>visible.length?' · 上位'+visible.length+'件を表示':''}</p>
+   <div class="origin-full-search-list">${rows||(originFullSearchQuery.trim()?'<p class="origin-full-search-empty">一致する項目はありません。検索語や種類を変更してください。</p>':'<p class="origin-full-search-empty">検索語を入力すると、全データから探せます。</p>')}${more}</div>
+  </section>
+ </div>`;
+}
 function renderSearch(q){
  const sr=$('#searchResults'),input=$('#originSearchInput');
  const oldQuery=searchQuery;
