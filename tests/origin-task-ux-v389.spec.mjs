@@ -59,7 +59,7 @@ test('Origin task edit keeps the unsaved draft when revision changed',async({pag
  await root.locator('#sheet [data-action="edit"][data-kind="tasks"]').click();
  await form.locator('[name="title"]').fill('入力中の更新内容');
  const result=await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot(),t=s.tasks.find(x=>x.title==='競合検証タスク');
+  const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot(),t=s.tasks.find(x=>x.title==='競合検証タスク');
   return bridge.dispatch({type:'task.update',id:t.id,revision:t.revision,ownerRoom:s.roomId,ownerUser:s.currentUser,
    title:'別端末相当の更新',status:t.status,priority:t.priority,category:t.category,assignee:t.assignee,
    dueDate:t.dueDate,dueTime:t.dueTime,description:t.description,requester:t.requester,
