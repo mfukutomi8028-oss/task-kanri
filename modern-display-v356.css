@@ -776,24 +776,10 @@ html[data-wb-display="modern"][data-wb-color-mode="dark"][data-wb-color-theme] b
   }
 }
 
-/* Explicit opt-in for the unfinished independent Palette NEXT. The four saved
-   display choices and their colors remain unchanged. */
-#wbPaletteNextPreviewV369.wb-palette-preview-link-v369{
-  display:flex;align-items:center;justify-content:center;min-height:39px;
-  margin-top:9px;padding:8px 12px;border-radius:11px;
-  border:1px dashed var(--wb-theme-accent,#7b64d6);
-  background:color-mix(in srgb,var(--wb-theme-accent,#7b64d6) 8%,transparent);
-  color:var(--wb-ui-text,#313342);font-size:12px;font-weight:750;
-  text-align:center;text-decoration:none;
-}
-#wbPaletteNextPreviewV369.wb-palette-preview-link-v369:focus-visible{
-  outline:3px solid var(--wb-theme-accent,#7b64d6);outline-offset:2px
-}
-
 /* origin. suppresses the old Modern DOM only after canonical data-backed
    initialization. Earlier Modern rules with !important have a more specific
    desktop sidebar selector, so a generic body > .app-shell selector lost.
-   Do not affect Classic, Palette, JOURNAL, or the Palette NEXT preview. */
+   Do not affect Classic or JOURNAL. */
 html[data-wb-display="modern"][data-modern-origin-ready="true"] body > .app-shell,
 html[data-wb-display="modern"][data-modern-origin-ready="true"][data-wb-color-theme] body.desktop-sidebar-v158 > .app-shell,
 html[data-wb-display="modern"][data-modern-origin-ready="true"][data-wb-color-theme] body.desktop-sidebar-v158 > .app-shell.detail-open,
@@ -804,10 +790,9 @@ html[data-wb-display="modern"][data-modern-origin-ready="true"] body > .wb-moder
 html[data-wb-display="modern"][data-modern-origin-ready="true"] body {padding:0 !important;margin:0 !important;overflow-x:clip !important;background:#f5f5f3 !important;}
 /* An uninitialized origin must never replace the working Classic shell. */
 #modernOriginRoot {display:none !important;}
-html[data-wb-display="modern"][data-modern-origin-ready="true"]:not([data-wb-palette-next-preview="true"]) #modernOriginRoot {display:block !important;}
+html[data-wb-display="modern"][data-modern-origin-ready="true"] #modernOriginRoot {display:block !important;}
 
-/* Shared mode selector: retain its original four-choice layout even if Palette
-   presentation CSS has not yet loaded. */
+/* Keep the three supported display choices aligned. */
 .wb-display-segments-v356{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 
 /* Shared, mode-neutral loading/retry layer for screen changes.

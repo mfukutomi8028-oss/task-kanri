@@ -13,7 +13,7 @@ permissions:
 # Keep a deployment and its live-verification job running to completion.
 # GitHub Actions retains one pending run per concurrency group, replacing
 # an older pending run with the newest push. This avoids starvation when
-# Classic, Origin, Palette and JOURNAL land frequent main commits.
+# Classic, Origin and JOURNAL land frequent main commits.
 concurrency:
   group: "pages"
   cancel-in-progress: false
