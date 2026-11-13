@@ -348,7 +348,7 @@
 
   function renderMemoView() {
     const root = document.getElementById('workMemoViewV167');
-    notifyPaletteMemoPreview();
+    notifySharedMemoSubscribers();
     if (!root) return;
     const items = memoList();
     root.innerHTML = `
@@ -571,7 +571,7 @@
     };
   }
 
-  // Normalize memo input once for Classic and the independent Palette NEXT editor.
+  // Normalize memo input once for Classic and the independent Origin editor.
   // Revision/identity checks and the canonical repository remain the only writers.
   async function saveMemoValuesV370(values) {
     const expectedRoom = String(values.ownerRoom || '');
@@ -596,7 +596,7 @@
       return { ok: false, error: 'revision-or-state-mismatch' };
     }
     const now = Date.now();
-    // Palette NEXT/Classic edits may omit paperColor: preserve the existing choice.
+    // Origin/Classic edits may omit paperColor: preserve the existing choice.
     const proposedPaperColor = values.paperColor ?? existing?.paperColor ?? 'ivory';
     const paperColor = MEMO_PAPER_COLORS.includes(proposedPaperColor) ? proposedPaperColor : 'ivory';
     // A stationery color is presentation metadata, not a new content edit.
@@ -903,7 +903,7 @@
     async save(command={}) {
       if(command.ownerRoom!==featureState.roomId||command.ownerUser!==currentUser())
         return {ok:false,error:'owner-mismatch'};
-      const task=window.WorkBoardPaletteBridge?.readSnapshot().tasks.find(x=>x.id===command.id);
+      const task=window.WorkBoardSharedBridge?.readSnapshot().tasks.find(x=>x.id===command.id);
       const date=String(command.date||'');
       const parsed=new Date(date+'T12:00:00');
       if(!task||!Number.isSafeInteger(command.revision)||command.revision<0
@@ -1155,12 +1155,12 @@
     if (error) alert(message);
   }
 
-  // Palette NEXT reads the canonical memo collection without scraping the
+  // Origin reads the canonical memo collection without scraping the
   // Classic DOM or introducing another Firebase subscription / write route.
-  const paletteMemoSubscribersV369 = new Set();
-  let paletteMemoNotifyQueuedV369 = false;
+  const sharedMemoSubscribers = new Set();
+  let sharedMemoNotifyQueued = false;
 
-  function paletteMemoSnapshotV369() {
+  function sharedMemoSnapshot() {
     return memoList({ ignoreFilters: true }).map(memo => ({
       id: memo.id, title: memo.title || '', body: memo.body || '',
       category: memo.category || '', tags: Array.isArray(memo.tags) ? [...memo.tags] : [],
@@ -1171,28 +1171,28 @@
     }));
   }
 
-  function notifyPaletteMemoPreview() {
-    if (!paletteMemoSubscribersV369.size || paletteMemoNotifyQueuedV369) return;
-    paletteMemoNotifyQueuedV369 = true;
+  function notifySharedMemoSubscribers() {
+    if (!sharedMemoSubscribers.size || sharedMemoNotifyQueued) return;
+    sharedMemoNotifyQueued = true;
     queueMicrotask(() => {
-      paletteMemoNotifyQueuedV369 = false;
-      if (!paletteMemoSubscribersV369.size) return;
-      const snapshot = paletteMemoSnapshotV369();
-      for (const listener of paletteMemoSubscribersV369) {
+      sharedMemoNotifyQueued = false;
+      if (!sharedMemoSubscribers.size) return;
+      const snapshot = sharedMemoSnapshot();
+      for (const listener of sharedMemoSubscribers) {
         try { listener(snapshot); }
-        catch (error) { console.error('Palette NEXT memo subscriber failed', error); }
+        catch (error) { console.error('Origin memo subscriber failed', error); }
       }
     });
   }
 
-  window.WorkBoardPaletteMemoBridgeV369 = Object.freeze({
+  window.WorkBoardSharedMemoBridge = Object.freeze({
     categories: Object.freeze([...MEMO_CATEGORIES]),
-    readSnapshot: paletteMemoSnapshotV369,
+    readSnapshot: sharedMemoSnapshot,
     subscribe(listener) {
       if (typeof listener !== 'function') throw new TypeError('memo subscriber must be a function');
-      paletteMemoSubscribersV369.add(listener);
-      listener(paletteMemoSnapshotV369());
-      return () => paletteMemoSubscribersV369.delete(listener);
+      sharedMemoSubscribers.add(listener);
+      listener(sharedMemoSnapshot());
+      return () => sharedMemoSubscribers.delete(listener);
     },
     async dispatch(command = {}) {
       const expectedRoom = String(command.ownerRoom || '');

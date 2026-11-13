@@ -12,7 +12,6 @@ const TODO = ['tests/mobile-regression-v187.spec.mjs', 'tests/todo-history-bound
 const SCHEDULE = ['tests/mobile-schedule-label-v203.spec.mjs', 'tests/mobile-regression-v187.spec.mjs'];
 const THEME = ['tests/classic-dark-themes-v330.spec.mjs', 'tests/classic-color-theme-v329.spec.mjs'];
 const ORIGIN = ['tests/origin-modern-v372.spec.mjs'];
-const PALETTE = ['tests/palette-next-v369.spec.mjs'];
 const JOURNAL = ['tests/journal-display-v367.spec.mjs'];
 
 function isFullInfrastructure(file) {
@@ -57,9 +56,6 @@ export function classifyPaths(changedFiles, eventName = 'pull_request') {
     }
     if (/^(origin-|modern-)/.test(file) || file.startsWith('ui-origin-')) {
       add(...ORIGIN); continue;
-    }
-    if (/^palette-/.test(file) || file.startsWith('ui-palette-')) {
-      add(...PALETTE); continue;
     }
     if (/^journal-/.test(file) || file.startsWith('ui-journal-')) {
       add(...JOURNAL); continue;

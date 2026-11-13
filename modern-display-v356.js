@@ -7,7 +7,7 @@
 
   const root = document.documentElement;
   const prefix = 'workBoardDisplayV356:';
-  const valid = new Set(['classic', 'modern', 'palette', 'journal']);
+  const valid = new Set(['classic', 'modern', 'journal']);
   const cards = document.querySelector('.sidebar .user-card');
   const sidebar = document.querySelector('.sidebar');
   if (!cards || !sidebar) return;
@@ -51,7 +51,6 @@
   for (const [id, name, description] of [
     ['classic', 'Classic', '従来の画面デザイン'],
     ['modern', 'Origin', '独立したOrigin画面'],
-    ['palette', 'Palette', 'ポップで使いやすい業務管理画面'],
     ['journal', 'Journal', '手帳型のLinen・Marginを切り替えられます']
   ]) {
     const button = document.createElement('button');
@@ -67,7 +66,7 @@
   }
   const help = document.createElement('small');
   help.className = 'wb-display-help-v356';
-  help.textContent = '4つの画面で同じ業務データ・機能を使います。';
+  help.textContent = '3つの画面で同じ業務データ・機能を使います。';
   help.id = 'wbDisplayHelpV356';
   help.setAttribute('role', 'status');
   field.append(title, group, help);
@@ -117,7 +116,7 @@
   // A minimal DOM used by existing protocol tests intentionally lacks body
   // attachment methods; the real browser always supplies appendChild.
   document.body.appendChild?.(switchPanel);
-  const switchNames = { modern: 'Origin', palette: 'Palette', journal: 'JOURNAL' };
+  const switchNames = { modern: 'Origin', journal: 'JOURNAL' };
   let switchMode = '';
   let switchTimer = 0;
   let switchAttempt = 0;
@@ -130,12 +129,6 @@
       && Boolean(document.getElementById('modernOriginRoot'));
     if (mode === 'journal') return Boolean(document.getElementById('wbJournalHeaderV367'))
       && Boolean(document.querySelector('link[data-workboard-style="journal-display-v367.css"][data-loaded="true"]'));
-    if (mode === 'palette') {
-      if (document.getElementById('paletteNextRoot')) return true;
-      if (root.dataset.wbPaletteNextFallback !== 'true') return false;
-      return Boolean(document.querySelector('link[data-workboard-style="palette-display-v358.css"][data-loaded="true"]'))
-        && Boolean(document.querySelector('script[data-workboard-stable="palette-display-v358.js"][data-loaded="true"]'));
-    }
     return false;
   }
 
@@ -226,67 +219,6 @@
   window.addEventListener('workboard:display-ready', () => {
     if (switchMode && root.dataset.wbDisplay === switchMode && displayReady(switchMode)) closeSwitch();
   });
-
-  // Palette now opens the independent NEXT canvas. Keep the former Palette
-  // runtime present for safe fallback if the new assets fail to load.
-  let paletteNextLoading = false;
-  function loadPaletteNext() {
-    if (root.dataset.wbDisplay !== 'palette'
-      || !window.WORK_BOARD_ASSETS_READY
-      || document.getElementById('paletteNextRoot')
-      || paletteNextLoading) return;
-    paletteNextLoading = true;
-    root.removeAttribute('data-wb-palette-next-fallback');
-    help.textContent = 'Paletteを準備しています。';
-    const version = String(window.WORK_BOARD_RELEASE?.version || '369');
-    const css = document.createElement('link');
-    css.rel = 'stylesheet';
-    css.href = 'palette-next-v369.css?v=' + encodeURIComponent(version);
-    css.dataset.paletteNextStyleV369 = 'true';
-    const script = document.createElement('script');
-    script.src = 'palette-next-v369.js?v=' + encodeURIComponent(version);
-    script.dataset.paletteNextScriptV369 = 'true';
-    // Begin downloading the Palette canvas while its stylesheet is in flight.
-    // Script execution still waits for css.onload as before.
-    const scriptPreload = document.createElement('link');
-    scriptPreload.rel = 'preload';
-    scriptPreload.as = 'script';
-    scriptPreload.href = script.src;
-    scriptPreload.dataset.paletteNextPreloadV369 = 'true';
-    const releasePreload = () => scriptPreload.remove();
-    script.addEventListener('load', releasePreload, { once: true });
-    script.addEventListener('load', () => {
-      paletteNextLoading = false;
-      if (document.getElementById('paletteNextRoot'))
-        help.textContent = '4つの画面で同じ業務データ・機能を使います。';
-    }, { once: true });
-    script.addEventListener('error', releasePreload, { once: true });
-    script.onerror = () => {
-      paletteNextLoading = false;
-      css.remove();
-      script.remove();
-      root.removeAttribute('data-wb-palette-next-preview');
-      root.dataset.wbPaletteNextFallback = 'true';
-      help.textContent = 'Paletteの新しい画面を読み込めませんでした。Paletteを再選択すると再試行できます。';
-      window.dispatchEvent(new Event('workboard:display-ready'));
-      console.error('Palette NEXT could not load; original Palette remains available.');
-    };
-    css.onerror = () => {
-      paletteNextLoading = false;
-      css.remove();
-      releasePreload();
-      root.dataset.wbPaletteNextFallback = 'true';
-      help.textContent = 'Paletteの新しい画面を読み込めませんでした。Paletteを再選択すると再試行できます。';
-      window.dispatchEvent(new Event('workboard:display-ready'));
-      console.error('Palette NEXT stylesheet could not load; original Palette remains available.');
-    };
-    css.onload = () => document.body.appendChild(script);
-    document.head.appendChild(scriptPreload);
-    document.head.appendChild(css);
-  }
-  if (window.WORK_BOARD_ASSETS_READY) loadPaletteNext();
-  else window.addEventListener('workboard:assets-ready', loadPaletteNext, {once:true});
-  window.addEventListener('workboard:canonical-bridge-ready', loadPaletteNext, {once:true});
 
   // On small screens, the original filter controls are still accessible
   // under an explicit toggle rather than occupying the whole first screen.
@@ -499,10 +431,9 @@
       toggle.setAttribute('aria-expanded', 'false');
       toggle.textContent = '絞り込み条件を表示';
     }
-    help.textContent = '4つの画面で同じ業務データ・機能を使います。';
+    help.textContent = '3つの画面で同じ業務データ・機能を使います。';
     syncContext();
     syncNavigation();
-    if (next === 'palette') loadPaletteNext();
     if (switchMode === next) watchSwitchAssets(next);
   }
 

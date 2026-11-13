@@ -2145,7 +2145,7 @@ function renderCore() {
   // JOURNAL can open its live case notebook from the record shelf on any page.
   // Refresh that existing notebook after canonical saves as well.
   if (state.layout === "tasks" || (journalTaskV411() && state.selectedId && elements.detailPanel.classList.contains("open"))) renderDetail();
-  notifyPaletteNextSubscribers();
+  notifySharedSubscribers();
 }
 
 function showRenderError(error) {
@@ -5878,7 +5878,7 @@ async function submitScheduleCopy() {
 }
 
 // The canonical schedule draft construction is shared between the existing form
-// and the independent Palette NEXT editor. Never build a second schedule schema.
+// and the independent Origin editor. Never build a second schedule schema.
 function buildScheduleDraftFromValuesV372(values, id, existing = null, revision = 0) {
   const start = new Date(values.startAt);
   const end = new Date(values.endAt);
@@ -12369,13 +12369,12 @@ function toast(message, error = false) {
   toast._timer = setTimeout(() => elements.toast.hidden = true, 3200);
 }
 
-/* Palette NEXT Phase 1 — narrow public boundary over canonical in-module state.
-   The independent Palette DOM never scrapes Classic markup or writes to Firebase.
-   Only existing business functions below own validation, revisions and persistence. */
-const paletteNextSubscribers = new Set();
-let paletteNextNotifyPending = false;
+/* Shared read/write boundary for Origin, JOURNAL and comment reactions.
+   Canonical state and existing writers own validation, revisions and persistence. */
+const sharedSubscribers = new Set();
+let sharedNotifyPending = false;
 
-function paletteNextSnapshot() {
+function sharedSnapshot() {
   const currentUser = getCurrentUser();
   const todos = visibleTodos();
   const openTasks = state.tasks.filter(task => !isCompletedStatus(task.status)
@@ -12432,24 +12431,24 @@ function paletteNextSnapshot() {
   };
 }
 
-function notifyPaletteNextSubscribers() {
-  if (!paletteNextSubscribers.size || paletteNextNotifyPending) return;
-  paletteNextNotifyPending = true;
+function notifySharedSubscribers() {
+  if (!sharedSubscribers.size || sharedNotifyPending) return;
+  sharedNotifyPending = true;
   queueMicrotask(() => {
-    paletteNextNotifyPending = false;
-    if (!paletteNextSubscribers.size) return;
-    const snapshot = paletteNextSnapshot();
-    for (const listener of paletteNextSubscribers) {
+    sharedNotifyPending = false;
+    if (!sharedSubscribers.size) return;
+    const snapshot = sharedSnapshot();
+    for (const listener of sharedSubscribers) {
       try { listener(snapshot); }
-      catch (error) { console.error('Palette NEXT subscriber failed', error); }
+      catch (error) { console.error('Shared work subscriber failed', error); }
     }
   });
 }
 
-// Palette NEXT schedule adapter: existing state and business functions remain
+// Shared schedule adapter: existing state and business functions remain
 // the single source of truth for dates, recurrence generation, CAS writes and
 // linked-task safety. No Classic form nodes or second Firebase client.
-function paletteScheduleOwnerV372(command) {
+function sharedScheduleOwner(command) {
   return String(command.ownerRoom || "") === ROOM_ID
     && String(command.ownerUser || "") === getCurrentUser();
 }
@@ -12472,7 +12471,7 @@ function originTaskRecurrence(command, existing = null) {
   return {recurrence,rule:taskRecurrenceRuleFromValues(recurrence,rule,existing,existing?.id||'')};
 }
 
-function paletteScheduleCopyConfigV372(raw = {}) {
+function sharedScheduleCopyConfig(raw = {}) {
   const method = String(raw.method || "once");
   const permitted = ["once","dates","daily","weekdays","weekly",
     "monthlyDay","monthlyNth","monthEnd","lastWeekday","yearly"];
@@ -12512,7 +12511,7 @@ function paletteScheduleCopyConfigV372(raw = {}) {
   };
 }
 
-function validatePaletteScheduleValuesV372(values, existing = null) {
+function validateSharedScheduleValues(values, existing = null) {
   const title=String(values.title || "").trim();
   const assignee=String(values.assignee || "");
   const category=String(values.category || "");
@@ -12528,8 +12527,8 @@ function validatePaletteScheduleValuesV372(values, existing = null) {
   return {ok:true};
 }
 
-function paletteScheduleSourceV372(command) {
-  if (!paletteScheduleOwnerV372(command))
+function sharedScheduleSource(command) {
+  if (!sharedScheduleOwner(command))
     return { error: "owner-mismatch" };
   const type = String(command.type || "");
   const copying = type === "schedule.copy" || type === "schedule.preview-copy";
@@ -12543,7 +12542,7 @@ function paletteScheduleSourceV372(command) {
     return { source: existing, sourceIsDraft: false };
   }
   if (id) return { error: "invalid-id" };
-  const validation=validatePaletteScheduleValuesV372(command.values || {});
+  const validation=validateSharedScheduleValues(command.values || {});
   if (!validation.ok) return {error:validation.error};
   const build = buildScheduleDraftFromValuesV372(command.values || {},
     "preview-" + generateScheduleId(), null, 0);
@@ -12551,10 +12550,10 @@ function paletteScheduleSourceV372(command) {
   return { source: build.schedule, sourceIsDraft: true };
 }
 
-function previewPaletteScheduleCopyV372(command) {
-  const parsed = paletteScheduleSourceV372(command);
+function previewSharedScheduleCopy(command) {
+  const parsed = sharedScheduleSource(command);
   if (parsed.error) return { ok: false, error: parsed.error, detail: parsed.detail };
-  const config = paletteScheduleCopyConfigV372(command.copyConfig || {});
+  const config = sharedScheduleCopyConfig(command.copyConfig || {});
   if (config.error) return { ok: false, error: config.error };
   const result = buildScheduleCopyDates(parsed.source, config.config);
   if (result.error || result.truncated || result.dates.length > SCHEDULE_COPY_MAX)
@@ -12569,8 +12568,8 @@ function previewPaletteScheduleCopyV372(command) {
   };
 }
 
-async function writePaletteScheduleV372(command) {
-  if (!paletteScheduleOwnerV372(command))
+async function writeSharedSchedule(command) {
+  if (!sharedScheduleOwner(command))
     return { ok:false, error:"owner-mismatch" };
   const editing = command.type === "schedule.update";
   const id = editing ? String(command.id || "") : generateScheduleId();
@@ -12583,7 +12582,7 @@ async function writePaletteScheduleV372(command) {
     || (!editing && revision !== 0))
     return { ok:false, error:"revision-or-relation-mismatch" };
   const values = command.values || {};
-  const validation=validatePaletteScheduleValuesV372(values,existing);
+  const validation=validateSharedScheduleValues(values,existing);
   if (!validation.ok) return validation;
   const built = buildScheduleDraftFromValuesV372(values, id, existing, revision);
   if (built.error) return { ok:false, error:"invalid-input",detail:built.error };
@@ -12597,7 +12596,7 @@ async function writePaletteScheduleV372(command) {
       + conflictsText + "\n\nこのまま保存しますか？"))
       return { ok:false, error:"cancelled" };
   }
-  if (!paletteScheduleOwnerV372(command)
+  if (!sharedScheduleOwner(command)
     || (editing && normalizeRevision(state.schedules.find(item=>item.id===id)?.revision) !== revision))
     return { ok:false, error:"revision-or-relation-mismatch" };
   schedule.lastChange = makeScheduleChangeInfo(existing, schedule);
@@ -12605,8 +12604,8 @@ async function writePaletteScheduleV372(command) {
   return result.ok ? { ok:true, id } : result;
 }
 
-async function copyPaletteScheduleV372(command) {
-  const preview = previewPaletteScheduleCopyV372({
+async function copySharedSchedule(command) {
+  const preview = previewSharedScheduleCopy({
     ...command,
     type: command.type === "schedule.copy" ? "schedule.preview-copy" : "schedule.preview-batch"
   });
@@ -12620,19 +12619,19 @@ async function copyPaletteScheduleV372(command) {
     if (!confirm(preview.count+"件の予定をまとめて登録します。"+warning+"\n実行しますか？"))
       return { ok:false, error:"cancelled" };
   }
-  const parsed = paletteScheduleSourceV372({
+  const parsed = sharedScheduleSource({
     ...command,
     type:command.type === "schedule.copy" ? "schedule.preview-copy" : "schedule.preview-batch"
   });
   if (parsed.error) return {ok:false,error:parsed.error};
-  if (!paletteScheduleOwnerV372(command)) return {ok:false,error:"owner-mismatch"};
+  if (!sharedScheduleOwner(command)) return {ok:false,error:"owner-mismatch"};
   const result = await copyScheduleOccurrences(parsed.source, preview.dates, parsed.sourceIsDraft);
   return result.ok ? {ok:true,count:preview.count} : result;
 }
 
-// Palette NEXT shares the canonical business writers, including optimistic
+// This adapter shares canonical business writers, including optimistic
 // revisions, history and recurring-task idempotency; no second data owner.
-async function savePaletteNextTaskV370(command) {
+async function saveSharedTask(command) {
   const editing = command.type === 'task.update';
   if (String(command.ownerRoom || '') !== ROOM_ID
     || String(command.ownerUser || '') !== getCurrentUser())
@@ -12717,8 +12716,8 @@ window.WorkBoardJournalNavigation = Object.freeze({
   }
 });
 
-window.WorkBoardPaletteBridge = Object.freeze({
-  readSnapshot: paletteNextSnapshot,
+window.WorkBoardSharedBridge = Object.freeze({
+  readSnapshot: sharedSnapshot,
   // Comment UI reads the canonical subscribed task, not an optional browser
   // cache. Return only the needed fields as a copy; Classic owns all writes.
   readCommentTask(taskId) {
@@ -12730,7 +12729,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
       comments: JSON.parse(JSON.stringify(task.comments || []))
     };
   },
-  // Delegate Palette's user selector to the existing Classic user lifecycle.
+  // Delegate user selection to the existing Classic user lifecycle.
   // This selects an application user, not an authentication identity.
   selectUser(value) {
     const next = String(value || '');
@@ -12741,9 +12740,9 @@ window.WorkBoardPaletteBridge = Object.freeze({
   },
   subscribe(listener) {
     if (typeof listener !== 'function') throw new TypeError('onChange must be a function');
-    paletteNextSubscribers.add(listener);
-    listener(paletteNextSnapshot());
-    return () => { paletteNextSubscribers.delete(listener); };
+    sharedSubscribers.add(listener);
+    listener(sharedSnapshot());
+    return () => { sharedSubscribers.delete(listener); };
   },
   async dispatch(command = {}) {
     const id = String(command.id || '');
@@ -12767,10 +12766,10 @@ window.WorkBoardPaletteBridge = Object.freeze({
         break;
       case 'task.create':
       case 'task.update':
-        result = await savePaletteNextTaskV370(command);
+        result = await saveSharedTask(command);
         break;
       case 'task.preview-recurrence': {
-        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        if (!sharedScheduleOwner(command)) return {ok:false,error:'owner-mismatch'};
         const existing = id ? state.tasks.find(item=>item.id===id) : null;
         if (id && (!existing || normalizeRevision(existing.revision)!==command.revision))
           return {ok:false,error:'revision-or-relation-mismatch'};
@@ -12781,7 +12780,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
           description:describeRecurrence({recurrence:config.recurrence,recurrenceRule:config.rule})};
       }
       case 'series.preview-delete': {
-        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        if (!sharedScheduleOwner(command)) return {ok:false,error:'owner-mismatch'};
         const kind=command.kind==='events'?'schedule':'task';
         const selection=captureRecurringDelete(kind,rawRecurringDeleteRoot(),id);
         if(!selection||selection.fingerprints[id]?.revision!==command.revision)
@@ -12793,7 +12792,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
       }
       case 'series.delete': {
         const pending=originRecurringDeleteSelections.get(command.token);
-        if(!paletteScheduleOwnerV372(command)||!pending||pending.user!==getCurrentUser()||pending.room!==ROOM_ID)
+        if(!sharedScheduleOwner(command)||!pending||pending.user!==getCurrentUser()||pending.room!==ROOM_ID)
           return {ok:false,error:'owner-mismatch'};
         if(!['one','following','all'].includes(command.scope))return {ok:false,error:'invalid-input'};
         result=await commitRecurringDelete(pending.selection,command.scope);
@@ -12802,7 +12801,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
       }
       case 'template.save':
       case 'template.delete': {
-        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        if (!sharedScheduleOwner(command)) return {ok:false,error:'owner-mismatch'};
         if (!Number.isSafeInteger(command.revision)
           || command.revision!==normalizeRevision(state.metaRevisions.taskTemplates))
           return {ok:false,error:'revision-or-relation-mismatch'};
@@ -12822,7 +12821,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
         break;
       }
       case 'knowledge.save': {
-        if(!paletteScheduleOwnerV372(command))return {ok:false,error:'owner-mismatch'};
+        if(!sharedScheduleOwner(command))return {ok:false,error:'owner-mismatch'};
         const raw=command.values||{},v=Object.fromEntries(['title','summary','symptom','action','checkpoint'].map(k=>[k,String(raw[k]||'')])),existing=state.knowledge.find(x=>x.id===id);
         if(!String(v.title||'').trim()||!String(v.action||'').trim()
           ||String(v.title).length>80||['summary','symptom','action','checkpoint'].some(k=>String(v[k]||'').length>6000))return {ok:false,error:'invalid-input'};
@@ -12837,7 +12836,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
         break;
       }
       case 'knowledge.delete': {
-        if(!paletteScheduleOwnerV372(command))return {ok:false,error:'owner-mismatch'};
+        if(!sharedScheduleOwner(command))return {ok:false,error:'owner-mismatch'};
         const record=state.knowledge.find(x=>x.id===id),task=state.tasks.find(x=>x.knowledgeId===id);
         if(!record||record.revision!==command.revision)return {ok:false,error:'revision-or-relation-mismatch'};
         if(task)result=await unlinkKnowledgeFromTask(task.id);
@@ -12845,7 +12844,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
         break;
       }
       case 'management.write': {
-        if(!paletteScheduleOwnerV372(command))return {ok:false,error:'owner-mismatch'};
+        if(!sharedScheduleOwner(command))return {ok:false,error:'owner-mismatch'};
         const group=command.group,action=command.action;
         const values=group==='users'?state.users:group==='categories'?state.categories:group==='statuses'?getStatusList({includeTaskOnly:false}):null;
         if(!values||JSON.stringify(values)!==command.base)return {ok:false,error:'revision-or-relation-mismatch'};
@@ -12865,17 +12864,17 @@ window.WorkBoardPaletteBridge = Object.freeze({
       }
       case 'schedule.create':
       case 'schedule.update':
-        result = await writePaletteScheduleV372(command);
+        result = await writeSharedSchedule(command);
         break;
       case 'schedule.preview-copy':
       case 'schedule.preview-batch':
-        return previewPaletteScheduleCopyV372(command);
+        return previewSharedScheduleCopy(command);
       case 'schedule.copy':
       case 'schedule.batch':
-        result = await copyPaletteScheduleV372(command);
+        result = await copySharedSchedule(command);
         break;
       case 'schedule.delete': {
-        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        if (!sharedScheduleOwner(command)) return {ok:false,error:'owner-mismatch'};
         const existing = state.schedules.find(item=>item.id === id);
         if (!existing) return {ok:false,error:'not-found'};
         const revision = Number(command.revision);
@@ -12897,7 +12896,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
         result = { ok: true };
         break;
       case 'task.duplicate': {
-        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        if (!sharedScheduleOwner(command)) return {ok:false,error:'owner-mismatch'};
         const task = state.tasks.find(item => item.id === id);
         if (!task || !Number.isSafeInteger(command.revision)
           || normalizeRevision(task.revision) !== command.revision)
@@ -12907,7 +12906,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
       }
       case 'task.comment': {
         // Origin owns presentation; the existing comment writer owns persistence.
-        if (!paletteScheduleOwnerV372(command)) return {ok:false,error:'owner-mismatch'};
+        if (!sharedScheduleOwner(command)) return {ok:false,error:'owner-mismatch'};
         const task = state.tasks.find(item => item.id === id);
         if (!task || !Number.isSafeInteger(command.revision)
           || normalizeRevision(task.revision) !== command.revision)
@@ -12966,7 +12965,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
       default:
         return { ok: false, error: 'unsupported-action' };
     }
-    if (result?.ok) notifyPaletteNextSubscribers();
+    if (result?.ok) notifySharedSubscribers();
     return result || { ok: false, error: 'write-failed' };
   }
 });
