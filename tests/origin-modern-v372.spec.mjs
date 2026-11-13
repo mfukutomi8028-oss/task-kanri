@@ -3500,7 +3500,8 @@ test('Origin independent inbox separates important messages and categorized acti
  await dialog.locator('[data-action="origin-inbox-section"][data-value="activity"]').click();
  await expect(dialog.locator('[data-action="origin-inbox-genre"][data-value="task"]')).toBeVisible();
  await dialog.locator('[data-action="origin-inbox-genre"][data-value="task"]').click();
- await expect(dialog.locator('#originInboxList')).toContainText('タスクを作成');
+ await expect(dialog.locator('#originInboxList .origin-inbox-subject')).toContainText('独立受信箱の検証タスク');
+ await expect(dialog.locator('#originInboxList')).not.toContainText('タスクを作成');
  await expect(dialog.locator('#originInboxList')).toContainText('独立受信箱の検証タスク');
  await dialog.locator('[data-action="origin-inbox-genre"][data-value="status"]').click();
  await expect(dialog.locator('#originInboxList')).toContainText('検証用の状態変更');
@@ -3761,6 +3762,85 @@ for(const width of [1366,390,320]){
   await expect(host.locator('#originInboxBadge')).toHaveText('1');
   const viewport=await page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth}));
   expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.width+3);
+  await dialog.locator('[data-action="origin-inbox-close"]').click();
+ });
+}
+
+for(const width of [1366,390,320]){
+ test('Origin inbox centers subjects instead of generic event phrases ('+width+'px)',async({page})=>{
+  test.setTimeout(90000);
+  const host=await launchOriginV415(page,'origin-inbox-subject-v575-'+width,width);
+  const fixtures=await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,s=bridge.readSnapshot();
+   const task=await bridge.dispatch({type:'task.create',revision:0,ownerRoom:s.roomId,
+    ownerUser:s.currentUser,title:'病棟PC点検',description:'',assignee:s.currentUser,
+    status:s.statuses[0],category:s.categories[0],priority:'中',tags:'',requester:'',
+    checklist:'',checklistDone:[],dueDate:'',dueTime:'',pinned:false});
+   if(!task?.ok)throw Error('fixture task failed');
+   const id=bridge.readSnapshot().tasks.find(t=>t.title==='病棟PC点検')?.id;
+   if(!id)throw Error('task ID missing');
+   const start=new Date();start.setHours(10,0,0,0);
+   const appointment=await bridge.dispatch({type:'schedule.create',revision:0,
+    ownerRoom:s.roomId,ownerUser:s.currentUser,
+    values:{title:'PC貸出',startAt:start.toISOString(),
+     endAt:new Date(start.getTime()+3600000).toISOString(),
+     assignee:s.currentUser,category:s.categories[0],relatedTaskId:'',
+     location:'',memo:''}});
+   if(!appointment?.ok)throw Error('fixture schedule failed');
+   const eventId=bridge.readSnapshot().schedules.find(e=>e.title==='PC貸出')?.id;
+   if(!eventId)throw Error('schedule ID missing');
+   for(const [key,type,title,body,taskId] of [
+    ['subject-comment','comment','コメントが追加されました','土屋：テストコメントです',id],
+    ['subject-mention','mention','@メンションされました','土屋：@福冨 対応をお願いします',id],
+    ['subject-reply','reply','コメントに返信がありました','土屋：確認しました',id],
+    ['subject-reaction','reaction','コメントにリアクションがありました','土屋：👍「了解です」',id],
+    ['subject-assign','assign','担当になりました','病棟PC点検',id],
+    ['subject-status','status','状態が変更されました','未着手 → 対応中｜病棟PC点検',id],
+    ['subject-custom','mention','独自の重要連絡','土屋：特記事項',id],
+    ['subject-orphan','comment','コメントが追加されました','土屋：対象削除後のコメント','missing-target']
+   ]){
+    const result=await flow.writeInboxEvent(s.currentUser,key,{taskId,type,title,body,actor:'土屋',createdAt:Date.now()});
+    if(!result?.ok)throw Error('notification '+key+' write failed');
+   }
+   return {id,eventId};
+  });
+  const dialog=host.locator('#originInboxDialog');
+  const row=id=>dialog.locator('[data-inbox-id="'+id+'"]');
+  await host.locator('#originInboxButton').click();
+  await expect(row('subject-comment').locator('.origin-inbox-subject')).toHaveText('病棟PC点検');
+  await expect(row('subject-comment').locator('.origin-inbox-detail')).toHaveText('テストコメントです');
+  await expect(row('subject-mention').locator('.origin-inbox-subject')).toHaveText('病棟PC点検');
+  await expect(row('subject-mention').locator('.origin-inbox-detail')).toHaveText('@福冨 対応をお願いします');
+  await expect(row('subject-reply').locator('.origin-inbox-detail')).toHaveText('確認しました');
+  await expect(row('subject-reaction').locator('.origin-inbox-detail')).toContainText('了解です');
+  await expect(row('subject-assign').locator('.origin-inbox-subject')).toHaveText('病棟PC点検');
+  await expect(row('subject-assign').locator('.origin-inbox-detail')).toHaveCount(0);
+  await expect(row('subject-custom').locator('.origin-inbox-subject')).toHaveText('病棟PC点検');
+  await expect(row('subject-custom').locator('.origin-inbox-detail')).toContainText('独自の重要連絡');
+  await expect(row('subject-orphan').locator('.origin-inbox-subject')).toHaveText('対象削除後のコメント');
+  await expect(row('subject-orphan').locator('.origin-inbox-detail')).toHaveCount(0);
+  await dialog.locator('#originInboxSearch').fill('病棟PC点検');
+  await expect(row('subject-comment')).toBeVisible();
+  await expect(row('subject-orphan')).toHaveCount(0);
+  await dialog.locator('#originInboxSearch').fill('コメントが追加されました');
+  await expect(row('subject-comment')).toBeVisible();
+  await expect(row('subject-orphan')).toBeVisible();
+  await dialog.locator('#originInboxSearch').fill('');
+  await dialog.locator('[data-action="origin-inbox-section"][data-value="activity"]').click();
+  await dialog.locator('[data-action="origin-inbox-genre"][data-value="schedule"]').click();
+  const appointmentRow=row('events:created:'+fixtures.eventId);
+  await expect(appointmentRow.locator('.origin-inbox-subject')).toHaveText('PC貸出');
+  await expect(appointmentRow.locator('.origin-inbox-detail')).toHaveCount(0);
+  await expect(appointmentRow).not.toContainText('予定を作成');
+  await dialog.locator('[data-action="origin-inbox-genre"][data-value="task"]').click();
+  const taskRow=row('tasks:created:'+fixtures.id);
+  await expect(taskRow.locator('.origin-inbox-subject')).toHaveText('病棟PC点検');
+  await expect(taskRow).not.toContainText('タスクを作成');
+  await dialog.locator('[data-action="origin-inbox-genre"][data-value="status"]').click();
+  await expect(row('subject-status').locator('.origin-inbox-subject')).toHaveText('病棟PC点検');
+  await expect(row('subject-status').locator('.origin-inbox-detail')).toHaveText('未着手 → 対応中');
+  const bodyWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
+  expect(bodyWidth).toBeLessThanOrEqual(width+3);
   await dialog.locator('[data-action="origin-inbox-close"]').click();
  });
 }
