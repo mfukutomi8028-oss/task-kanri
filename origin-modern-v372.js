@@ -2707,10 +2707,10 @@ function renderSearch(q){
  sr.innerHTML='<div class="origin-search-filters" role="group" aria-label="検索結果の種類">'
    +buttons+'</div><div class="origin-search-summary" role="status">'
    +filtered.length+'件の結果'+(filtered.length>visible.length?'（上位'+visible.length+'件を表示）':'')
-   +'</div><div class="origin-search-list">'
-   +(results||'<p class="origin-search-empty">一致する項目がありません。別の種類やキーワードをお試しください。</p>')
    +'</div><button type="button" class="origin-search-all" data-action="search-all">すべての結果を確認（'
-   +filtered.length+'件） →</button>';
+   +filtered.length+'件） →</button><div class="origin-search-list">'
+   +(results||'<p class="origin-search-empty">一致する項目がありません。別の種類やキーワードをお試しください。</p>')
+   +'</div>';
  sr.hidden=false;input?.setAttribute('aria-expanded','true');
  const filterRail=sr.querySelector('.origin-search-filters');
  if(filterRail)filterRail.scrollLeft=oldRailScroll;
