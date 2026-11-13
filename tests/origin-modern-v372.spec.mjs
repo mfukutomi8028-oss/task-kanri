@@ -92,7 +92,7 @@ test('Origin schedule creates and edits in the Modern drawer, using the canonica
   await root.locator('button[form="editForm"]').click();
   await expect(root.locator('#workspace')).toContainText('Modern予定を更新しました');
   await expect.poll(async()=>page.evaluate(()=>
-    window.WorkBoardPaletteBridge.readSnapshot().schedules.some(item=>item.title==='Modern予定を更新しました')
+    window.WorkBoardSharedBridge.readSnapshot().schedules.some(item=>item.title==='Modern予定を更新しました')
   )).toBe(true);
   await expect(page.locator('#scheduleDialog')).toBeHidden();
   await root.locator('#originSettingsToggle').click();
@@ -153,7 +153,7 @@ test('Origin desktop task statuses fit on one line at standard work width',async
  await expect(host).toBeVisible();
  await host.locator('#desktopNav [data-route="tasks"]').click();
  const markers=host.locator('.status-rail .status-marker');
- const statuses=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().statuses);
+ const statuses=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().statuses);
  await expect(markers).toHaveCount(statuses.length);
  const positions=await markers.evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().top));
  if(positions.length===5)expect(Math.max(...positions)-Math.min(...positions)).toBeLessThan(2);
@@ -209,8 +209,8 @@ test('Origin color-only memo updates preserve gallery order and content-modified
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v415-memo-color-room');
  const original=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteMemoBridgeV369;
-   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   const bridge=window.WorkBoardSharedMemoBridge;
+   const {roomId,currentUser}=window.WorkBoardSharedBridge.readSnapshot();
    for(const title of ['色変更対象','別の業務メモ']){
      const out=await bridge.dispatch({type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
        title,body:'メモの本文',category:'手順',tags:['院内'],pinned:false,paperColor:'ivory'});
@@ -226,14 +226,14 @@ test('Origin color-only memo updates preserve gallery order and content-modified
  await tile.locator('[data-action="memo-color"][data-value="mint"]').click();
  await expect(tile).toHaveAttribute('data-paper-color','mint');
  expect(await titles.allTextContents()).toEqual(beforeOrder);
- const after=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot().find(m=>m.title==='色変更対象'));
+ const after=await page.evaluate(()=>window.WorkBoardSharedMemoBridge.readSnapshot().find(m=>m.title==='色変更対象'));
  expect(after.updatedAt).toBe(original.updatedAt);
  expect(after.updatedBy).toBe(original.updatedBy);
  expect(after.revision).toBeGreaterThan(original.revision);
  const edited=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteMemoBridgeV369;
+   const bridge=window.WorkBoardSharedMemoBridge;
    const memo=bridge.readSnapshot().find(m=>m.title==='色変更対象');
-   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   const {roomId,currentUser}=window.WorkBoardSharedBridge.readSnapshot();
    const out=await bridge.dispatch({type:'memo.update',id:memo.id,revision:memo.revision,ownerRoom:roomId,
      ownerUser:currentUser,title:memo.title,body:memo.body+' 追記',category:memo.category,
      tags:memo.tags,pinned:memo.pinned,paperColor:memo.paperColor});
@@ -250,7 +250,7 @@ test('Origin retains unsaved ToDo text on updates and confirms a user change',as
  await host.locator('#desktopNav [data-route="todos"]').click();
  const input=host.locator('[data-form="quick-todo"] [name="title"]');
  await input.fill('作業途中のメモ');
- const result=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text:'他の更新'}));
+ const result=await page.evaluate(()=>window.WorkBoardSharedBridge.dispatch({type:'todo.create',text:'他の更新'}));
  expect(result?.ok).toBe(true);
  await expect(input).toHaveValue('作業途中のメモ');
  await host.locator('#originSettingsToggle').click();
@@ -264,7 +264,7 @@ test('Origin retains unsaved ToDo text on updates and confirms a user change',as
  await picker.selectOption('森井');
  await expect(picker).toHaveValue('森井');
  await expect(input).toHaveValue('');
- expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().currentUser)).toBe('森井');
+ expect(await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().currentUser)).toBe('森井');
 });
 
 test('Origin mobile header and schedule search fit at 320px',async({page})=>{
@@ -318,8 +318,8 @@ test('Origin memo library searches and sorts without altering the canonical reco
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v420-memo-library-room',1366);
  const originalIds=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteMemoBridgeV369;
-   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   const bridge=window.WorkBoardSharedMemoBridge;
+   const {roomId,currentUser}=window.WorkBoardSharedBridge.readSnapshot();
    for(const title of ['アルファ連絡先','ブラボー手順書','ゼータ連絡先']){
      const result=await bridge.dispatch({type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
        title,body:'業務用',category:'手順',pinned:false,tags:['試験'],paperColor:'ivory'});
@@ -338,7 +338,7 @@ test('Origin memo library searches and sorts without altering the canonical reco
  await expect(host.locator('#originMemoQuery')).toHaveValue('');
  await expect(host.locator('.origin-memo-shell')).toHaveCount(3);
  await expect(host.locator('#originMemoSort')).toHaveValue('title');
- const after=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot().map(m=>({id:m.id,revision:m.revision,updatedAt:m.updatedAt})));
+ const after=await page.evaluate(()=>window.WorkBoardSharedMemoBridge.readSnapshot().map(m=>({id:m.id,revision:m.revision,updatedAt:m.updatedAt})));
  expect(after).toEqual(originalIds);
 });
 
@@ -346,8 +346,8 @@ test('Origin detail browsing follows the filtered memo card order and restores f
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v423-memo-pager-room',1366);
  await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteMemoBridgeV369;
-   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   const bridge=window.WorkBoardSharedMemoBridge;
+   const {roomId,currentUser}=window.WorkBoardSharedBridge.readSnapshot();
    for(const title of ['閲覧確認A','閲覧確認B','その他のメモ']){
      const result=await bridge.dispatch({type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
        title,body:'詳細ページの移動確認',category:'手順',tags:['確認'],pinned:false,paperColor:'ivory'});
@@ -381,10 +381,10 @@ test('Origin ToDo detail browsing uses visible items and never changes their dat
  const host=await launchOriginV415(page,'origin-v423-todo-pager-room',390);
  const original=await page.evaluate(async()=>{
    for(const title of ['閲覧ToDo一件目','閲覧ToDo二件目']){
-     const result=await window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text:title});
+     const result=await window.WorkBoardSharedBridge.dispatch({type:'todo.create',text:title});
      if(!result?.ok)throw new Error('todo.create: '+result?.error);
    }
-   return window.WorkBoardPaletteBridge.readSnapshot().todos.map(x=>({id:x.id,revision:x.revision,completed:x.completed}));
+   return window.WorkBoardSharedBridge.readSnapshot().todos.map(x=>({id:x.id,revision:x.revision,completed:x.completed}));
  });
  await host.locator('#mobileNav [data-route="todos"]').click();
  await expect(host.locator('.todo-entry .todo-text')).toHaveCount(2);
@@ -394,7 +394,7 @@ test('Origin ToDo detail browsing uses visible items and never changes their dat
  await host.locator('#sheet [data-action="detail-next"]').click();
  await expect(host.locator('#sheet #panelHeading')).toHaveText(visibleOrder[1]);
  await host.locator('#sheet .sheet-close').click();
- expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.map(x=>({id:x.id,revision:x.revision,completed:x.completed})))).toEqual(original);
+ expect(await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos.map(x=>({id:x.id,revision:x.revision,completed:x.completed})))).toEqual(original);
 });
 
 
@@ -403,7 +403,7 @@ test('Origin compact ToDo workflow does not invent due dates and can reopen fini
  const host=await launchOriginV415(page,'origin-v425-todo-compact-room',1366);
  await page.evaluate(async()=>{
    for(const title of ['未完了の確認A','未完了の確認B']){
-     const out=await window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text:title,memo:'編集可能な補足'});
+     const out=await window.WorkBoardSharedBridge.dispatch({type:'todo.create',text:title,memo:'編集可能な補足'});
      if(!out?.ok)throw new Error('todo.create: '+out?.error);
    }
  });
@@ -420,7 +420,7 @@ test('Origin compact ToDo workflow does not invent due dates and can reopen fini
  await host.locator('#originCompletedTodos .todo-check').first().click();
  await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(2);
  await expect(host.locator('#originCompletedTodos .todo-entry')).toHaveCount(0);
- const state=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ const state=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos);
  expect(state.filter(item=>item.completed)).toHaveLength(0);
  await host.locator('.origin-todo-list .todo-text').first().click();
  await expect(host.locator('#sheet')).toContainText('編集可能な補足');
@@ -429,7 +429,7 @@ test('Origin compact ToDo workflow does not invent due dates and can reopen fini
  await form.locator('[name="memo"]').fill('新しい補足メモ');
  await host.locator('button[form="editForm"]').click();
  await expect(form).toHaveCount(0);
- const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ const after=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos);
  expect(after.some(item=>item.memo==='新しい補足メモ')).toBe(true);
 });
 
@@ -437,7 +437,7 @@ test('Origin 390px task list shows due time and filters without writing source d
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v425-task-density-room',390);
  const original=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,snapshot=bridge.readSnapshot();
    const now=new Date(),iso=(days)=>{
      const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+days);
      return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
@@ -472,7 +472,7 @@ test('Origin 390px task list shows due time and filters without writing source d
  await host.locator('[data-action="task-density"]').click();
  await expect(host.locator('.origin-task-collection')).not.toHaveClass(/origin-tasks-compact/);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
- const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.map(t=>({id:t.id,revision:t.revision,dueDate:t.dueDate})));
+ const after=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().tasks.map(t=>({id:t.id,revision:t.revision,dueDate:t.dueDate})));
  expect(after).toEqual(original);
 });
 
@@ -488,7 +488,7 @@ test('Origin day schedule focuses selected date and preserves canonical event',a
  await form.locator('[name="endAt"]').fill(day+'T10:00');
  await host.locator('button[form="editForm"]').click();
  await expect(form).toHaveCount(0);
- const before=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.map(item=>({id:item.id,revision:item.revision})));
+ const before=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().schedules.map(item=>({id:item.id,revision:item.revision})));
  // Day chip is an in-week scroll jump, never an edit or a change of view.
  const weekChip=host.locator('.origin-week-jump [data-action="schedule-week-focus"][data-date="'+day+'"]');
  await expect(weekChip).toHaveCount(1);
@@ -513,7 +513,7 @@ test('Origin day schedule focuses selected date and preserves canonical event',a
  await host.locator('.origin-day-entry').click();
  await expect(host.locator('#sheet')).toContainText('日別で確認する予定');
  await host.locator('#sheet .sheet-close').click();
- expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.map(item=>({id:item.id,revision:item.revision})))).toEqual(before);
+ expect(await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().schedules.map(item=>({id:item.id,revision:item.revision})))).toEqual(before);
 });
 
 test('Origin preserves search focus during shared data refresh',async({page})=>{
@@ -523,7 +523,7 @@ test('Origin preserves search focus during shared data refresh',async({page})=>{
  const input=host.locator('#originTaskQuery');
  await input.fill('入力途中の検索');
  await expect(input).toHaveValue('入力途中の検索');
- const done=await page.evaluate(async()=>window.WorkBoardPaletteBridge.dispatch({
+ const done=await page.evaluate(async()=>window.WorkBoardSharedBridge.dispatch({
    type:'todo.create',text:'タスク検索中に届いた別データ'
  }));
  expect(done?.ok).toBe(true);
@@ -532,7 +532,7 @@ test('Origin preserves search focus during shared data refresh',async({page})=>{
  await host.locator('#desktopNav [data-route="notes"]').click();
  const memo=host.locator('#originMemoQuery');
  await memo.fill('日本語の検索語');
- const next=await page.evaluate(async()=>window.WorkBoardPaletteBridge.dispatch({
+ const next=await page.evaluate(async()=>window.WorkBoardSharedBridge.dispatch({
    type:'todo.create',text:'メモ検索中に届いた別データ'
  }));
  expect(next?.ok).toBe(true);
@@ -577,7 +577,7 @@ test('Origin remembers each tab scroll position but resets it on account change'
 test('Origin Today quick ToDo is above preview and opens details without changing completion',async({page})=>{
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v431-today-quick-todo-room',1366);
- const result=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+ const result=await page.evaluate(()=>window.WorkBoardSharedBridge.dispatch({
    type:'todo.create',text:'今日のプレビューから確認',memo:'詳細から読める補足'
  }));
  expect(result?.ok).toBe(true);
@@ -588,12 +588,12 @@ test('Origin Today quick ToDo is above preview and opens details without changin
  await expect(title).toBeVisible();
  const addRect=await add.boundingBox(),titleRect=await title.boundingBox();
  expect(addRect.y).toBeLessThan(titleRect.y);
- const before=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.map(x=>({id:x.id,completed:x.completed,revision:x.revision})));
+ const before=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos.map(x=>({id:x.id,completed:x.completed,revision:x.revision})));
  await title.click();
  await expect(host.locator('#sheet')).toContainText('今日のプレビューから確認');
  await expect(host.locator('#sheet')).toContainText('詳細から読める補足');
  await host.locator('#sheet .sheet-close').click();
- const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.map(x=>({id:x.id,completed:x.completed,revision:x.revision})));
+ const after=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos.map(x=>({id:x.id,completed:x.completed,revision:x.revision})));
  expect(after).toEqual(before);
  await expect(host.locator('.origin-today-shortcuts button[data-kind="tasks"]')).toBeVisible();
  await expect(host.locator('.origin-today-shortcuts button[data-kind="todos"]')).toBeVisible();
@@ -619,7 +619,7 @@ test('Origin Today changes the schedule label with selected day at 320px',async(
 test('Origin inspector keeps actions distinct on a 320px screen',async({page})=>{
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v434-inspector-actions-room',320);
- const response=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+ const response=await page.evaluate(()=>window.WorkBoardSharedBridge.dispatch({
    type:'todo.create',text:'詳細パネルの操作確認',memo:'変更前のメモ'
  }));
  expect(response?.ok).toBe(true);
@@ -645,7 +645,7 @@ test('Origin inspector keeps actions distinct on a 320px screen',async({page})=>
  expect(deleteRect.y).toBeGreaterThan(saveRect.y+saveRect.height);
  await sheet.locator('.origin-sheet-primary [data-action="close"]').click();
  await expect(host.locator('#overlay')).toBeHidden();
- const data=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(t=>t.text==='詳細パネルの操作確認'));
+ const data=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos.find(t=>t.text==='詳細パネルの操作確認'));
  expect(data?.memo).toBe('変更前のメモ');
 });
 
@@ -653,8 +653,8 @@ test('Origin memo inspector keeps paper color and exposes all swatches',async({p
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v434-memo-inspector-room',390);
  await page.evaluate(async()=>{
-   const memo=window.WorkBoardPaletteMemoBridgeV369;
-   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   const memo=window.WorkBoardSharedMemoBridge;
+   const {roomId,currentUser}=window.WorkBoardSharedBridge.readSnapshot();
    const result=await memo.dispatch({
      type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,title:'色を引き継ぐメモ',
      body:'詳細でもピーチ色を維持する',category:'手順',tags:[],pinned:false,paperColor:'peach'
@@ -682,7 +682,7 @@ test('Origin keyboard inspector keeps focus inside the drawer and protects unsav
  const host=await launchOriginV415(page,'origin-v438-keyboard-inspector-room',1366);
  await page.evaluate(async()=>{
    for(const text of ['鍵盤操作の確認A','鍵盤操作の確認B']){
-     const result=await window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text,memo:'元の補足'});
+     const result=await window.WorkBoardSharedBridge.dispatch({type:'todo.create',text,memo:'元の補足'});
      if(!result?.ok)throw Error('todo.create: '+result?.error);
    }
  });
@@ -715,7 +715,7 @@ test('Origin keyboard inspector keeps focus inside the drawer and protects unsav
  page.once('dialog',dialog=>dialog.accept());
  await page.keyboard.press('Escape');
  await expect(host.locator('#overlay')).toBeHidden();
- const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ const saved=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos);
  expect(saved.every(x=>x.memo==='元の補足')).toBe(true);
 });
 
@@ -723,7 +723,7 @@ test('Origin keyboard inspector keeps focus inside the drawer and protects unsav
 test('Origin status changes update open ToDo details without having to reopen them',async({page})=>{
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-inspector-status-refresh-room',390);
- const result=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+ const result=await page.evaluate(()=>window.WorkBoardSharedBridge.dispatch({
    type:'todo.create',text:'状態更新の表示確認',memo:'操作前からある補足'
  }));
  expect(result?.ok).toBe(true);
@@ -740,7 +740,7 @@ test('Origin status changes update open ToDo details without having to reopen th
  await toggle.click();
  await expect(toggle).toHaveText('完了にする');
  await expect(toggle).toBeFocused();
- const canonical=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(t=>t.text==='状態更新の表示確認'));
+ const canonical=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos.find(t=>t.text==='状態更新の表示確認'));
  expect(canonical?.completed).toBe(false);
  await sheet.locator('.sheet-close').click();
  await expect(host.locator('.origin-todo-list .todo-text',{hasText:'状態更新の表示確認'})).toBeVisible();
@@ -751,7 +751,7 @@ test('Origin mobile swipe navigates detail without hijacking vertical scroll or 
  const host=await launchOriginV415(page,'origin-mobile-swipe-v442-room',390);
  await page.evaluate(async()=>{
    for(const text of ['スワイプ項目A','スワイプ項目B']){
-     const result=await window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text,memo:'編集しても保持'});
+     const result=await window.WorkBoardSharedBridge.dispatch({type:'todo.create',text,memo:'編集しても保持'});
      if(!result?.ok)throw Error('Failed to create test ToDo: '+result?.error);
    }
  });
@@ -796,7 +796,7 @@ test('Origin mobile swipe navigates detail without hijacking vertical scroll or 
  await expect(sheet.locator('#editForm [name="memo"]')).toHaveValue('下書きの内容');
  page.once('dialog',dialog=>dialog.accept());
  await sheet.locator('.sheet-close').click();
- const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ const saved=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos);
  expect(saved.every(x=>x.memo==='編集しても保持')).toBe(true);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
@@ -806,12 +806,12 @@ test('Origin global search ranks results, filters types and supports keyboard an
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-global-search-v443-room',1366);
  const fixture=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge;
+   const bridge=window.WorkBoardSharedBridge;
    for(const text of ['統合検索検証 A','設備の統合検索検証 B']){
      const result=await bridge.dispatch({type:'todo.create',text,memo:'入力確認'});
      if(!result?.ok)throw Error('Unable to create search fixture: '+result?.error);
    }
-   const memo=window.WorkBoardPaletteMemoBridgeV369;
+   const memo=window.WorkBoardSharedMemoBridge;
    const {roomId,currentUser}=bridge.readSnapshot();
    const saved=await memo.dispatch({type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
      title:'統合検索検証メモ',body:'検索対象の内容',category:'手順',tags:[],pinned:false,paperColor:'ivory'});
@@ -861,8 +861,8 @@ test('Origin global search ranks results, filters types and supports keyboard an
  expect(popup.width).toBeGreaterThan(250);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
  const after=await page.evaluate(()=>({
-   todoCount:window.WorkBoardPaletteBridge.readSnapshot().todos.length,
-   memoCount:window.WorkBoardPaletteMemoBridgeV369.readSnapshot().length
+   todoCount:window.WorkBoardSharedBridge.readSnapshot().todos.length,
+   memoCount:window.WorkBoardSharedMemoBridge.readSnapshot().length
  }));
  expect(after).toEqual(fixture);
 });
@@ -872,7 +872,7 @@ test('Origin task groups collapse without changing data or resetting mobile stat
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v445-task-groups-room',390);
  const original=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,snapshot=bridge.readSnapshot();
    for(const title of ['定期点検A','定期点検B']){
      const saved=await bridge.dispatch({
        type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
@@ -917,7 +917,7 @@ test('Origin task groups collapse without changing data or resetting mobile stat
  await expect(host.locator('.origin-filter-current')).toContainText('定期点検A');
  await host.locator('[data-action="task-reset"]').click();
  await expect(rows).toHaveCount(2);
- const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks
+ const after=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().tasks
    .map(t=>({id:t.id,revision:t.revision,dueDate:t.dueDate})));
  expect(after).toEqual(original);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
@@ -927,8 +927,8 @@ test('Origin memo compact list preserves card workflow and filtered position at 
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v445-memo-list-room',1366);
  const original=await page.evaluate(async()=>{
-   const memo=window.WorkBoardPaletteMemoBridgeV369;
-   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   const memo=window.WorkBoardSharedMemoBridge;
+   const {roomId,currentUser}=window.WorkBoardSharedBridge.readSnapshot();
    for(const title of ['手順書A','手順書B','別のメモ']){
      const saved=await memo.dispatch({
        type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
@@ -977,7 +977,7 @@ test('Origin memo compact list preserves card workflow and filtered position at 
  await expect(cards).toHaveCount(2);
  await host.locator('[data-action="memo-reset"]').click();
  await expect(cards).toHaveCount(3);
- const after=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+ const after=await page.evaluate(()=>window.WorkBoardSharedMemoBridge.readSnapshot()
    .map(x=>({id:x.id,revision:x.revision,updatedAt:x.updatedAt})));
  expect(after).toEqual(original);
 });
@@ -987,8 +987,8 @@ test('Origin memo consecutive saves restore the updated card focus and the list 
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-memo-focus-return-v446-room',1366);
  const original=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteMemoBridgeV369;
-   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   const bridge=window.WorkBoardSharedMemoBridge;
+   const {roomId,currentUser}=window.WorkBoardSharedBridge.readSnapshot();
    for(const title of ['連続編集A','連続編集B']){
      const response=await bridge.dispatch({
        type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,title,
@@ -1028,7 +1028,7 @@ test('Origin memo consecutive saves restore the updated card focus and the list 
  await expect(card).toBeFocused();
  await expect(card.locator('p')).toContainText('連続編集の2回目の内容');
  expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThanOrEqual(initialScroll-2);
- const saved=await page.evaluate(id=>window.WorkBoardPaletteMemoBridgeV369
+ const saved=await page.evaluate(id=>window.WorkBoardSharedMemoBridge
    .readSnapshot().find(item=>item.id===id),original.id);
  expect(saved.title).toBe('連続編集A・更新済み');
  expect(saved.body).toBe('連続編集の2回目の内容');
@@ -1039,8 +1039,8 @@ test('Origin search result detail returns to the same query and type filter',asy
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-search-return-v446-room',1366);
  await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteMemoBridgeV369;
-   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   const bridge=window.WorkBoardSharedMemoBridge;
+   const {roomId,currentUser}=window.WorkBoardSharedBridge.readSnapshot();
    const created=await bridge.dispatch({
      type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
      title:'戻り先検索テスト',body:'検索の続き',category:'手順',
@@ -1068,8 +1068,8 @@ test('Origin filtered memo recolor keeps keyboard focus on a visible item or col
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-color-filter-focus-room',390);
  const fixtures=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteMemoBridgeV369;
-   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   const bridge=window.WorkBoardSharedMemoBridge;
+   const {roomId,currentUser}=window.WorkBoardSharedBridge.readSnapshot();
    for(const title of ['移動するメモ','残るメモ']){
      const saved=await bridge.dispatch({
        type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,title,
@@ -1095,7 +1095,7 @@ test('Origin filtered memo recolor keeps keyboard focus on a visible item or col
  await expect(cards).toHaveCount(0);
  await expect(mintFilter).toBeFocused();
  await expect(host.locator('.origin-memo-result')).toContainText('表示 0件');
- const after=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+ const after=await page.evaluate(()=>window.WorkBoardSharedMemoBridge.readSnapshot()
    .map(({id,updatedAt})=>({id,updatedAt})));
  expect(after).toEqual(fixtures);
 });
@@ -1104,7 +1104,7 @@ test('Origin removes remotely completed tasks from bulk selection before acting'
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-bulk-filter-sync-room',390);
  const ids=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot();
    for(const title of ['端末確認A','端末確認B']){
      const added=await bridge.dispatch({
        type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
@@ -1128,7 +1128,7 @@ test('Origin removes remotely completed tasks from bulk selection before acting'
  // The completion action normally requests a completion memo. Simulate a remote
  // state transition through the existing non-interactive canonical writer.
  const result=await page.evaluate(id=>{
-   const bridge=window.WorkBoardPaletteBridge;
+   const bridge=window.WorkBoardSharedBridge;
    const status=bridge.readSnapshot().statuses.find(value=>value==='完了');
    if(!status)throw Error('Canonical completed status is unavailable');
    return bridge.dispatch({type:'task.status',id,status});
@@ -1137,7 +1137,7 @@ test('Origin removes remotely completed tasks from bulk selection before acting'
  await expect(rows).toHaveCount(1);
  await expect(host.locator('.bulkbar')).toHaveCount(0);
  await expect(rows.first().locator('[data-action="bulk-toggle"]')).toBeFocused();
- const saved=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot()
+ const saved=await page.evaluate(id=>window.WorkBoardSharedBridge.readSnapshot()
    .tasks.find(t=>t.id===id),targetId);
  expect(saved?.completed).toBe(true);
 });
@@ -1147,7 +1147,7 @@ test('Origin task and memo lists keep readable typography with compact touch tar
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-list-legibility-v447-room',1366);
  await page.evaluate(async()=>{
-   const work=window.WorkBoardPaletteBridge, user=work.readSnapshot();
+   const work=window.WorkBoardSharedBridge, user=work.readSnapshot();
    const task=await work.dispatch({
      type:'task.create',ownerRoom:user.roomId,ownerUser:user.currentUser,
      assignee:user.currentUser,status:user.statuses.includes('未着手')?'未着手':user.statuses[0],
@@ -1156,7 +1156,7 @@ test('Origin task and memo lists keep readable typography with compact touch tar
      dueDate:'',dueTime:'',pinned:false,revision:0
    });
    if(!task?.ok)throw Error('test task not created: '+task?.error);
-   const memos=window.WorkBoardPaletteMemoBridgeV369;
+   const memos=window.WorkBoardSharedMemoBridge;
    const memo=await memos.dispatch({
      type:'memo.create',ownerRoom:user.roomId,ownerUser:user.currentUser,
      title:'カード情報密度の確認',body:'重要な文章が読みやすいことを確認する。',
@@ -1198,7 +1198,7 @@ test('Origin long titles and theme contrast fit at 320, 390 and desktop widths',
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-responsive-long-content-v450-room',320);
  await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,snapshot=bridge.readSnapshot();
    const long='設備点検の依頼と詳細確認'.repeat(5);
    const task=await bridge.dispatch({
      type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
@@ -1210,7 +1210,7 @@ test('Origin long titles and theme contrast fit at 320, 390 and desktop widths',
    if(!task?.ok)throw Error('task fixture failed: '+task?.error);
    const todo=await bridge.dispatch({type:'todo.create',text:long,memo:''});
    if(!todo?.ok)throw Error('todo fixture failed: '+todo?.error);
-   const memo=await window.WorkBoardPaletteMemoBridgeV369.dispatch({
+   const memo=await window.WorkBoardSharedMemoBridge.dispatch({
      type:'memo.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
      title:long,body:long.repeat(2),category:'手順',tags:[],pinned:false,paperColor:'mint'
    });
@@ -1274,7 +1274,7 @@ test('Origin 320px search keeps arrow-key results visible and remembers category
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-mobile-search-rail-v456-room',320);
  await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge;
+   const bridge=window.WorkBoardSharedBridge;
    for(let index=0;index<12;index++){
      const result=await bridge.dispatch({
        type:'todo.create',text:'検索移動検査 '+String(index+1).padStart(2,'0'),memo:''
@@ -1325,8 +1325,8 @@ test('Origin mobile returns to the inspected search hit and continues with the n
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-search-continue-mobile-room',320);
  await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteMemoBridgeV369;
-   const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+   const bridge=window.WorkBoardSharedMemoBridge;
+   const {roomId,currentUser}=window.WorkBoardSharedBridge.readSnapshot();
    for(const title of ['連続確認メモA','連続確認メモB']){
      const result=await bridge.dispatch({
        type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
@@ -1372,7 +1372,7 @@ test('Origin 320px and 390px inspectors keep long headings scrollable and footer
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-small-inspector-v459-room',320);
  const titles=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,snapshot=bridge.readSnapshot();
    const longTask='システム担当の点検手順'.repeat(6);
    // Keep the heading long enough for layout checks, but within the canonical 100-character ToDo limit.
    const longTodo='電子カルテ端末の点検予定と未完了項目'.repeat(5);
@@ -1389,7 +1389,7 @@ test('Origin 320px and 390px inspectors keep long headings scrollable and footer
    if(!task?.ok)throw Error('task.create failed: '+task?.error);
    const todo=await bridge.dispatch({type:'todo.create',text:longTodo,memo:'補足'});
    if(!todo?.ok)throw Error('todo.create failed: '+todo?.error);
-   const memos=window.WorkBoardPaletteMemoBridgeV369;
+   const memos=window.WorkBoardSharedMemoBridge;
    const memo=await memos.dispatch({
      type:'memo.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
      title:longMemo,body:'必要事項をここに記録します。',
@@ -1461,7 +1461,7 @@ test('Origin 320px and 390px inspectors keep long headings scrollable and footer
 test('Origin mobile edit survives keyboard-sized viewport changes and protects an unsaved draft',async({page})=>{
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-mobile-editor-viewport-v586-room',320);
- const created=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+ const created=await page.evaluate(()=>window.WorkBoardSharedBridge.dispatch({
   type:'todo.create',text:'スマホ入力と未保存表示の確認',memo:'以前の内容'
  }));
  expect(created?.ok).toBe(true);
@@ -1509,7 +1509,7 @@ test('Origin mobile edit survives keyboard-sized viewport changes and protects a
  page.once('dialog',dialog=>dialog.accept());
  await sheet.locator('.sheet-close').click();
  await expect(host.locator('#overlay')).toBeHidden();
- const original=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+ const original=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos
   .find(t=>t.text==='スマホ入力と未保存表示の確認')?.memo);
  expect(original).toBe('以前の内容');
 });
@@ -1517,7 +1517,7 @@ test('Origin mobile edit survives keyboard-sized viewport changes and protects a
 test('Origin rejects closing while a save is in flight',async({page})=>{
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-mobile-save-lock-v586-room',390);
- const created=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+ const created=await page.evaluate(()=>window.WorkBoardSharedBridge.dispatch({
   type:'todo.create',text:'保存中の操作制限',memo:'最初の内容'
  }));
  expect(created?.ok).toBe(true);
@@ -1542,7 +1542,7 @@ test('Origin rejects closing while a save is in flight',async({page})=>{
  expect(during.stillOpen).toBe(true);
  expect(during.message).toContain('保存処理中');
  await expect(host.locator('#overlay')).toBeHidden();
- const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+ const saved=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos
   .find(t=>t.text==='保存中の操作制限')?.memo);
  expect(saved).toBe('保存後の内容');
 });
@@ -1552,7 +1552,7 @@ test('Origin Today routes status counts into matching tasks and opens the select
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v587-status-calendar-room',390);
  await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+  const bridge=window.WorkBoardSharedBridge,snapshot=bridge.readSnapshot();
   if(!snapshot.statuses.includes('確認待ち'))throw Error('Expected status unavailable');
   const past=new Date();past.setDate(past.getDate()-3);
   const dueDate=[past.getFullYear(),String(past.getMonth()+1).padStart(2,'0'),String(past.getDate()).padStart(2,'0')].join('-');
@@ -1606,7 +1606,7 @@ test('Origin mobile ToDo search opens on demand and finds pending title or memo'
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-search-first-todo-v588',320);
  await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge;
+  const bridge=window.WorkBoardSharedBridge;
   for(const [text,memo] of [
    ['ネットワーク確認','作業手順をまとめる'],
    ['端末メンテナンス','ネットワーク機器も確認'],
@@ -1646,7 +1646,7 @@ test('Origin mobile ToDo search opens on demand and finds pending title or memo'
  await host.locator('[data-action="todo-search-toggle"]').click();
  await expect(searchPanel).toBeHidden();
  await expect(host.locator('.origin-todo-list .todo-entry')).toHaveCount(3);
- const before=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.map(
+ const before=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos.map(
   t=>({text:t.text,memo:t.memo,completed:t.completed})
  ));
  expect(before).toHaveLength(3);
@@ -1658,7 +1658,7 @@ test('Origin mobile task and memo search remain first and jump to visible record
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-search-first-task-memo-v588',390);
  await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+  const bridge=window.WorkBoardSharedBridge,snapshot=bridge.readSnapshot();
   const saved=await bridge.dispatch({
    type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
    assignee:snapshot.currentUser,
@@ -1668,7 +1668,7 @@ test('Origin mobile task and memo search remain first and jump to visible record
    priority:'中',dueDate:'',dueTime:'',pinned:false,revision:0
   });
   if(!saved?.ok)throw Error('task fixture '+saved?.error);
-  const memo=await window.WorkBoardPaletteMemoBridgeV369.dispatch({
+  const memo=await window.WorkBoardSharedMemoBridge.dispatch({
    type:'memo.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
    title:'ネットワーク手順書',body:'通信設定の確認',
    category:'手順',tags:[],pinned:false,paperColor:'mint'
@@ -1714,7 +1714,7 @@ test('Origin 320px advanced filter drawers reduce unused controls without changi
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v589-compact-filters',320);
  await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+  const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot();
   const task=await bridge.dispatch({
     type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
     revision:0,assignee:s.currentUser,status:s.statuses.includes('未着手')?'未着手':s.statuses[0],
@@ -1722,15 +1722,15 @@ test('Origin 320px advanced filter drawers reduce unused controls without changi
     requester:'',tags:'',checklist:'',checklistDone:[],priority:'中',dueDate:'',dueTime:'',pinned:false
   });
   if(!task?.ok)throw Error('task.create: '+task?.error);
-  const m=await window.WorkBoardPaletteMemoBridgeV369.dispatch({
+  const m=await window.WorkBoardSharedMemoBridge.dispatch({
     type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
     title:'メモの色分け',body:'モバイルの検索欄',category:'手順',tags:[],pinned:false,paperColor:'mint'
   });
   if(!m?.ok)throw Error('memo.create: '+m?.error);
  });
  const saved=await page.evaluate(()=>{
-  const s=window.WorkBoardPaletteBridge.readSnapshot();
-  return {tasks:s.tasks.map(x=>x.id),memos:window.WorkBoardPaletteMemoBridgeV369.readSnapshot().map(x=>x.id)};
+  const s=window.WorkBoardSharedBridge.readSnapshot();
+  return {tasks:s.tasks.map(x=>x.id),memos:window.WorkBoardSharedMemoBridge.readSnapshot().map(x=>x.id)};
  });
  await host.locator('#mobileNav [data-route="tasks"]').click();
  const toggler=host.locator('[data-action="task-advanced-toggle"]');
@@ -1743,7 +1743,7 @@ test('Origin 320px advanced filter drawers reduce unused controls without changi
  await expect(toggler).toHaveAttribute('aria-expanded','true');
  await expect(host.locator('.status-rail')).toBeVisible();
  await expect(host.locator('#originTaskSort')).toBeVisible();
- const statuses=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().statuses);
+ const statuses=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().statuses);
  const chosen=statuses.includes('未着手')?'未着手':statuses[0];
  await host.locator('.status-marker[data-status="'+chosen+'"]').click();
  await expect(toggler).toContainText('適用中');
@@ -1768,8 +1768,8 @@ test('Origin 320px advanced filter drawers reduce unused controls without changi
  await expect(host.locator('.origin-memo-result')).toContainText('色：ミント');
  await expect(host.locator('.memo-grid .memo-card')).toHaveCount(1);
  const after=await page.evaluate(()=>{
-  const s=window.WorkBoardPaletteBridge.readSnapshot();
-  return {tasks:s.tasks.map(x=>x.id),memos:window.WorkBoardPaletteMemoBridgeV369.readSnapshot().map(x=>x.id)};
+  const s=window.WorkBoardSharedBridge.readSnapshot();
+  return {tasks:s.tasks.map(x=>x.id),memos:window.WorkBoardSharedMemoBridge.readSnapshot().map(x=>x.id)};
  });
  expect(after).toEqual(saved);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
@@ -1779,7 +1779,7 @@ test('Origin progressively displays large task groups and never changes canonica
  test.setTimeout(120000);
  const host=await launchOriginV415(page,'origin-progressive-tasks-v590-room',390);
  const before=await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+  const bridge=window.WorkBoardSharedBridge,snapshot=bridge.readSnapshot();
   for(let i=1;i<=55;i++){
    const result=await bridge.dispatch({
     type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
@@ -1831,7 +1831,7 @@ test('Origin progressively displays large task groups and never changes canonica
  await expect(group.locator('.origin-task-more')).toHaveCount(0);
  await host.locator('#originTaskQuery').fill('');
  await expect(rows).toHaveCount(24);
- const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks
+ const after=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().tasks
   .map(t=>({id:t.id,revision:t.revision,completed:t.completed})));
  expect(after).toEqual(before);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
@@ -1841,7 +1841,7 @@ test('Origin ToDo input and bridge use the same canonical title and memo lengths
   test.setTimeout(90000);
   const host=await launchOriginV415(page,'origin-todo-length-boundary-room');
   const limits=await page.evaluate(()=>{
-    const snapshot=window.WorkBoardPaletteBridge.readSnapshot();
+    const snapshot=window.WorkBoardSharedBridge.readSnapshot();
     return {title:snapshot.todoTitleMaxLength,memo:snapshot.todoMemoMaxLength};
   });
   expect(limits).toEqual({title:100,memo:1000});
@@ -1850,7 +1850,7 @@ test('Origin ToDo input and bridge use the same canonical title and memo lengths
     .toHaveAttribute('maxlength',String(limits.title));
   // A direct call cannot bypass the canonical length guard or mutate the ToDo list.
   const rejected=await page.evaluate(async limit=>{
-    const bridge=window.WorkBoardPaletteBridge;
+    const bridge=window.WorkBoardSharedBridge;
     const before=bridge.readSnapshot().todos.length;
     const result=await bridge.dispatch({type:'todo.create',text:'超'.repeat(limit+1)});
     const after=bridge.readSnapshot().todos.length;
@@ -1862,7 +1862,7 @@ test('Origin ToDo input and bridge use the same canonical title and memo lengths
   expect(rejected.after).toBe(rejected.before);
   const exact='点検作業'.repeat(20); // 80 Japanese characters, enough for a wrap test.
   const result=await page.evaluate(async title=>
-    window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text:title}),exact);
+    window.WorkBoardSharedBridge.dispatch({type:'todo.create',text:title}),exact);
   expect(result?.ok).toBe(true);
   const row=host.locator('.origin-todo-main .todo-entry .todo-text').filter({hasText:exact});
   await expect(row).toBeVisible();
@@ -1879,8 +1879,8 @@ test('Origin 390px memo library progressively shows 29 notes without modifying t
  test.setTimeout(120000);
  const host=await launchOriginV415(page,'origin-progressive-memos-v591-room',390);
  const before=await page.evaluate(async()=>{
-  const memo=window.WorkBoardPaletteMemoBridgeV369;
-  const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+  const memo=window.WorkBoardSharedMemoBridge;
+  const {roomId,currentUser}=window.WorkBoardSharedBridge.readSnapshot();
   for(let i=1;i<=29;i++){
    const result=await memo.dispatch({
     type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
@@ -1926,7 +1926,7 @@ test('Origin 390px memo library progressively shows 29 notes without modifying t
  await expect(summary).toContainText('色：ミント');
  await expect(cards.first().locator('.memo-bottom')).toContainText('手順');
  await expect(host.locator('.origin-memo-colors').first().locator('[data-action="memo-color"]')).toHaveCount(6);
- const after=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+ const after=await page.evaluate(()=>window.WorkBoardSharedMemoBridge.readSnapshot()
   .map(({id,revision,updatedAt,paperColor})=>({id,revision,updatedAt,paperColor})));
  expect(after).toEqual(before);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
@@ -1937,8 +1937,8 @@ test('Origin returns to the edited memo after it moves beyond the initial 24 car
  test.setTimeout(120000);
  const host=await launchOriginV415(page,'origin-detail-anchor-v592-room',390);
  const selected=await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteMemoBridgeV369;
-  const {roomId,currentUser}=window.WorkBoardPaletteBridge.readSnapshot();
+  const bridge=window.WorkBoardSharedMemoBridge;
+  const {roomId,currentUser}=window.WorkBoardSharedBridge.readSnapshot();
   for(let i=1;i<=29;i++){
    const title='復帰位置テスト '+String(i).padStart(3,'0');
    const result=await bridge.dispatch({
@@ -1985,7 +1985,7 @@ test('Origin returns to the edited memo after it moves beyond the initial 24 car
  await sheet.locator('.sheet-close').click();
  await expect(returned).toBeFocused();
  await expect(cards).toHaveCount(29);
- const data=await page.evaluate(id=>window.WorkBoardPaletteMemoBridgeV369
+ const data=await page.evaluate(id=>window.WorkBoardSharedMemoBridge
   .readSnapshot().find(m=>m.id===id),selected);
  expect(data.title).toBe('復帰位置テスト 999');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
@@ -1996,8 +1996,8 @@ test('Origin detail next/previous crosses the first 24 tasks and memos without m
  test.setTimeout(150000);
  const host=await launchOriginV415(page,'origin-paged-detail-v593-room',390);
  const ids=await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge;
-  const memo=window.WorkBoardPaletteMemoBridgeV369;
+  const bridge=window.WorkBoardSharedBridge;
+  const memo=window.WorkBoardSharedMemoBridge;
   const {roomId,currentUser,statuses,categories}=bridge.readSnapshot();
   for(let i=1;i<=26;i++){
    const task=await bridge.dispatch({
@@ -2054,8 +2054,8 @@ test('Origin detail next/previous crosses the first 24 tasks and memos without m
  await expect(cards.filter({hasText:targetMemo})).toBeFocused();
  // The records themselves must not have been modified by opening details.
  const after=await page.evaluate(()=>({
-  tasks:window.WorkBoardPaletteBridge.readSnapshot().tasks.length,
-  memos:window.WorkBoardPaletteMemoBridgeV369.readSnapshot().length
+  tasks:window.WorkBoardSharedBridge.readSnapshot().tasks.length,
+  memos:window.WorkBoardSharedMemoBridge.readSnapshot().length
  }));
  expect(after).toEqual(ids);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
@@ -2067,7 +2067,7 @@ test('Origin mobile details share a readable hierarchy for tasks, ToDo, appointm
  const host=await launchOriginV415(page,'origin-detail-reader-v594-room',390);
  await page.setViewportSize({width:390,height:568});
  await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+  const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot();
   const task=await bridge.dispatch({
    type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,
    title:'詳細の要点表示',assignee:s.currentUser,
@@ -2088,7 +2088,7 @@ test('Origin mobile details share a readable hierarchy for tasks, ToDo, appointm
     location:'会議室A',memo:'議題の説明\n次の行'}
   });
   if(!event?.ok)throw Error('schedule fixture '+event?.error);
-  const memo=await window.WorkBoardPaletteMemoBridgeV369.dispatch({
+  const memo=await window.WorkBoardSharedMemoBridge.dispatch({
    type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
    title:'詳細のメモ表示',body:'メモ本文の1行目\n2行目',category:'手順',
    tags:[],pinned:true,paperColor:'mint'
@@ -2151,7 +2151,7 @@ test('Origin linked task and schedule details navigate both ways and restore par
  const host=await launchOriginV415(page,'origin-related-links-v595-room',390);
  await page.setViewportSize({width:390,height:568});
  const recordIds=await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge;
+  const bridge=window.WorkBoardSharedBridge;
   const snapshot=bridge.readSnapshot();
   const task=await bridge.dispatch({
    type:'task.create',ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
@@ -2210,7 +2210,7 @@ test('Origin linked task and schedule details navigate both ways and restore par
  await expect(host.locator('#overlay')).toBeHidden();
  await expect(original).toBeFocused();
  const unchanged=await page.evaluate(({task,schedule})=>{
-  const snap=window.WorkBoardPaletteBridge.readSnapshot();
+  const snap=window.WorkBoardSharedBridge.readSnapshot();
   return {task:snap.tasks.find(t=>t.id===task),schedule:snap.schedules.find(e=>e.id===schedule)};
  },recordIds);
  expect(unchanged.task?.revision).toBe(recordIds.taskRevision);
@@ -2223,7 +2223,7 @@ test('Origin searches appointments across weeks and returns to the matching week
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-global-schedule-search-v492-room',390);
  const fixture=await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+  const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot();
   const dates=[];
   const firstCategory=s.categories[0];
   const secondCategory=s.categories.find(c=>c!==firstCategory)||firstCategory;
@@ -2320,7 +2320,7 @@ test('Origin searches appointments across weeks and returns to the matching week
  await expect(host.locator('.origin-schedule-global-results')).toHaveCount(0);
  await expect(host.locator('[data-action="schedule-filter-reset"]')).toHaveCount(0);
  await expect(host.locator('#originScheduleFrom')).toHaveCount(0);
- const after=await page.evaluate(ids=>window.WorkBoardPaletteBridge.readSnapshot().schedules
+ const after=await page.evaluate(ids=>window.WorkBoardSharedBridge.readSnapshot().schedules
   .filter(x=>ids.includes(x.id)).map(x=>({id:x.id,revision:x.revision})),
   [fixture.future.id,fixture.past.id]);
  expect(after).toEqual(fixture.revision);
@@ -2332,7 +2332,7 @@ test('Origin busy week days preview four entries, expand, browse hidden records,
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-v497-calendar-busy-days-room',390);
  const fixture=await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge,initial=bridge.readSnapshot();
+  const bridge=window.WorkBoardSharedBridge,initial=bridge.readSnapshot();
   const base=new Date();base.setHours(9,0,0,0);
   const day=[base.getFullYear(),String(base.getMonth()+1).padStart(2,'0'),String(base.getDate()).padStart(2,'0')].join('-');
   const ids=[];
@@ -2387,7 +2387,7 @@ test('Origin busy week days preview four entries, expand, browse hidden records,
  await expect(host.locator('.mobile-agenda .agenda-day')).toHaveCount(7);
  await expect(host.locator('.week-board')).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
- const after=await page.evaluate(ids=>window.WorkBoardPaletteBridge.readSnapshot().schedules
+ const after=await page.evaluate(ids=>window.WorkBoardSharedBridge.readSnapshot().schedules
   .filter(x=>ids.includes(x.id)).map(x=>({id:x.id,revision:x.revision})),fixture.ids);
  expect(after).toEqual(fixture.original);
 });
@@ -2397,7 +2397,7 @@ test('Origin ToDo progressively renders pending and archived rows with continuou
  test.setTimeout(120000);
  const host=await launchOriginV415(page,'origin-todo-progressive-v498-room',390);
  const ids=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,created=[];
+   const bridge=window.WorkBoardSharedBridge,created=[];
    for(let i=0;i<28;i++){
      const text='段階表示ToDo '+String(i+1).padStart(2,'0');
      const response=await bridge.dispatch({type:'todo.create',text});
@@ -2425,10 +2425,10 @@ test('Origin ToDo progressively renders pending and archived rows with continuou
  await expect(pending).toHaveCount(1);
  await host.locator('[data-action="todo-search-toggle"]').click();
  await expect(pending).toHaveCount(24);
- const afterCreation=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+ const afterCreation=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos
    .map(todo=>({id:todo.id,revision:todo.revision,completed:todo.completed})));
  const completed=await page.evaluate(async ids=>{
-   const bridge=window.WorkBoardPaletteBridge;
+   const bridge=window.WorkBoardSharedBridge;
    for(const id of ids.slice(0,26)){
      const changed=await bridge.dispatch({type:'todo.toggle',id});
      if(!changed?.ok)throw Error('todo.toggle: '+changed?.error);
@@ -2451,7 +2451,7 @@ test('Origin ToDo progressively renders pending and archived rows with continuou
  await expect(archivedRows.nth(24).locator('.todo-text')).toBeFocused();
  await host.locator('[data-action="todo-completed-toggle"]').click();
  await expect(archive.locator('.todo-entry')).toHaveCount(0);
- const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+ const after=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos
    .map(todo=>({id:todo.id,revision:todo.revision,completed:todo.completed})));
  expect(after).toEqual(completed);
  expect(afterCreation.filter(todo=>todo.completed)).toHaveLength(0);
@@ -2463,7 +2463,7 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-list-quick-edit-v499-room',320);
  const ids=await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge,memoBridge=window.WorkBoardPaletteMemoBridgeV369,s=bridge.readSnapshot();
+  const bridge=window.WorkBoardSharedBridge,memoBridge=window.WorkBoardSharedMemoBridge,s=bridge.readSnapshot();
   const task=await bridge.dispatch({
    type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,
    title:'直接編集するタスク',description:'編集前の説明',assignee:s.currentUser,
@@ -2574,9 +2574,9 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
  await expect(sheet).toContainText('一覧から本文を更新');
  await sheet.locator('.sheet-close').click();
  const state=await page.evaluate(ids=>{
-  const task=window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.id===ids.task);
-  const todo=window.WorkBoardPaletteBridge.readSnapshot().todos.find(x=>x.id===ids.todo);
-  const memo=window.WorkBoardPaletteMemoBridgeV369.readSnapshot().find(x=>x.id===ids.memo);
+  const task=window.WorkBoardSharedBridge.readSnapshot().tasks.find(x=>x.id===ids.task);
+  const todo=window.WorkBoardSharedBridge.readSnapshot().todos.find(x=>x.id===ids.todo);
+  const memo=window.WorkBoardSharedMemoBridge.readSnapshot().find(x=>x.id===ids.memo);
   return {task:task?.title,todo:todo?.memo,memo:memo?.body};
  },ids);
  expect(state).toEqual({task:'直接編集するタスク・更新',todo:'一覧から補足を更新',memo:'一覧から本文を更新'});
@@ -2587,7 +2587,7 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
 test('Origin mobile editor identifies an empty required title and keeps the unsaved memo',async({page})=>{
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-editor-invalid-required-20261107-room',320);
- const created=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({
+ const created=await page.evaluate(()=>window.WorkBoardSharedBridge.dispatch({
   type:'todo.create',text:'未入力エラーの確認',memo:'もとのメモ'
  }));
  expect(created?.ok).toBe(true);
@@ -2610,7 +2610,7 @@ test('Origin mobile editor identifies an empty required title and keeps the unsa
  await expect(title).not.toHaveAttribute('aria-invalid','true');
  await sheet.locator('button[form="editForm"]').click();
  await expect(host.locator('#overlay')).toBeHidden();
- const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(
+ const saved=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos.find(
   todo=>todo.text==='未入力エラーを修正しました'
  ));
  expect(saved).toMatchObject({text:'未入力エラーを修正しました',memo:'編集中に保持する補足'});
@@ -2650,7 +2650,7 @@ test('Origin memo revision conflict retains the draft and exposes safe copying',
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-memo-conflict-recovery-20261107',320);
  await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteMemoBridgeV369,s=window.WorkBoardPaletteBridge.readSnapshot();
+   const b=window.WorkBoardSharedMemoBridge,s=window.WorkBoardSharedBridge.readSnapshot();
    const result=await b.dispatch({type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
      title:'更新競合の確認',body:'編集前の本文',category:'手順',tags:[],pinned:false,paperColor:'ivory'});
    if(!result?.ok)throw Error('memo.create '+result?.error);
@@ -2661,7 +2661,7 @@ test('Origin memo revision conflict retains the draft and exposes safe copying',
  await expect(form).toBeVisible();
  await form.locator('[name="body"]').fill('編集中の本文は退避したい');
  await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteMemoBridgeV369,s=window.WorkBoardPaletteBridge.readSnapshot();
+   const b=window.WorkBoardSharedMemoBridge,s=window.WorkBoardSharedBridge.readSnapshot();
    const memo=b.readSnapshot().find(item=>item.title==='更新競合の確認');
    const result=await b.dispatch({type:'memo.update',id:memo.id,revision:memo.revision,
      ownerRoom:s.roomId,ownerUser:s.currentUser,title:memo.title,
@@ -2683,7 +2683,7 @@ test('Origin memo revision conflict retains the draft and exposes safe copying',
  await expect(form.locator('#originDraftCopyFallback')).toBeVisible();
  await expect(form.locator('#originDraftCopyFallback')).toHaveValue(/編集中の本文は退避したい/);
  await expect(form.locator('[name="body"]')).toHaveValue('編集中の本文は退避したい');
- const saved=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+ const saved=await page.evaluate(()=>window.WorkBoardSharedMemoBridge.readSnapshot()
    .find(item=>item.title==='更新競合の確認')?.body);
  expect(saved).toBe('別端末からの更新');
 });
@@ -2694,7 +2694,7 @@ test('Origin offers a guarded explicit retry after a failed existing memo update
   // Reject one update, then let the explicit retry use the real canonical writer.
   await page.addInitScript(()=>{
     let installed;
-    Object.defineProperty(window,'WorkBoardPaletteMemoBridgeV369',{
+    Object.defineProperty(window,'WorkBoardSharedMemoBridge',{
       configurable:true,
       get(){return installed},
       set(canonical){
@@ -2711,7 +2711,7 @@ test('Origin offers a guarded explicit retry after a failed existing memo update
   });
   const host=await launchOriginV415(page,'origin-memo-retry-recovery-20261107',320);
  await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteMemoBridgeV369,s=window.WorkBoardPaletteBridge.readSnapshot();
+   const b=window.WorkBoardSharedMemoBridge,s=window.WorkBoardSharedBridge.readSnapshot();
    const result=await b.dispatch({type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
      title:'通信失敗の確認',body:'元の本文',category:'手順',tags:[],pinned:false,paperColor:'mint'});
    if(!result?.ok)throw Error('memo.create '+result?.error);
@@ -2728,7 +2728,7 @@ test('Origin offers a guarded explicit retry after a failed existing memo update
  await expect(form.locator('[name="body"]')).toHaveValue('通信回復後に保存する本文');
  await form.locator('[data-action="origin-save-again"]').click();
  await expect(form).toHaveCount(0);
- const saved=await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()
+ const saved=await page.evaluate(()=>window.WorkBoardSharedMemoBridge.readSnapshot()
    .find(item=>item.title==='通信失敗の確認')?.body);
  expect(saved).toBe('通信回復後に保存する本文');
 });
@@ -2738,7 +2738,7 @@ test('Origin ToDo edit commits title, memo and completion as a single revision',
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-todo-atomic-20261107',320);
  const before=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge;
+   const bridge=window.WorkBoardSharedBridge;
    const result=await bridge.dispatch({type:'todo.create',text:'原子更新するToDo',memo:'古い補足'});
    if(!result?.ok)throw Error('create: '+result?.error);
    const item=bridge.readSnapshot().todos.find(todo=>todo.text==='原子更新するToDo');
@@ -2755,14 +2755,14 @@ test('Origin ToDo edit commits title, memo and completion as a single revision',
  await form.locator('[name="done"]').selectOption('true');
  await host.locator('button[form="editForm"]').click();
  await expect(form).toHaveCount(0);
- const after=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot()
+ const after=await page.evaluate(id=>window.WorkBoardSharedBridge.readSnapshot()
    .todos.find(todo=>todo.id===id),before.id);
  expect(after).toMatchObject({text:'原子更新ToDo・完了',memo:'補足も同時に更新',completed:true});
  expect(after.completedAt).toBeGreaterThan(0);
  expect(after.revision).toBe(before.revision+1);
  // An existing Classic/Palette call without 'completed' must preserve the status.
  const unchanged=await page.evaluate(async id=>{
-   const bridge=window.WorkBoardPaletteBridge;
+   const bridge=window.WorkBoardSharedBridge;
    const r=await bridge.dispatch({type:'todo.update',id,text:'既存画面から追記',memo:'状態は維持'});
    if(!r?.ok)throw Error('update: '+r?.error);
    return bridge.readSnapshot().todos.find(todo=>todo.id===id);
@@ -2777,7 +2777,7 @@ test('Origin ToDo edit detects a newer revision without losing changes or toggli
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-todo-conflict-20261107',320);
  await page.evaluate(async()=>{
-   const result=await window.WorkBoardPaletteBridge.dispatch({
+   const result=await window.WorkBoardSharedBridge.dispatch({
      type:'todo.create',text:'他端末更新を検出するToDo',memo:'最初の補足'});
    if(!result?.ok)throw Error('create: '+result?.error);
  });
@@ -2789,7 +2789,7 @@ test('Origin ToDo edit detects a newer revision without losing changes or toggli
  await form.locator('[name="memo"]').fill('編集中の補足は残す');
  await form.locator('[name="done"]').selectOption('true');
  await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge;
+   const bridge=window.WorkBoardSharedBridge;
    const todo=bridge.readSnapshot().todos.find(t=>t.text==='他端末更新を検出するToDo');
    const result=await bridge.dispatch({type:'todo.update',id:todo.id,
      text:'他端末による更新',memo:'他端末の補足'});
@@ -2803,7 +2803,7 @@ test('Origin ToDo edit detects a newer revision without losing changes or toggli
  await expect(form.locator('[name="title"]')).toHaveValue('編集中の件名は残す');
  await expect(form.locator('[name="memo"]')).toHaveValue('編集中の補足は残す');
  await expect(form.locator('[name="done"]')).toHaveValue('true');
- const canonical=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+ const canonical=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos
    .find(t=>t.text==='他端末による更新'));
  expect(canonical).toMatchObject({text:'他端末による更新',memo:'他端末の補足',completed:false});
 });
@@ -2820,7 +2820,7 @@ test('Origin new ToDo honors its initial completed status in one create',async({
  await form.locator('[name="done"]').selectOption('true');
  await host.locator('button[form="editForm"]').click();
  await expect(form).toHaveCount(0);
- const created=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos
+ const created=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos
    .find(todo=>todo.text==='作成時から完了のToDo'));
  expect(created).toMatchObject({memo:'登録時に状態を指定',completed:true,revision:1});
  expect(created.completedAt).toBeGreaterThan(0);
@@ -2831,7 +2831,7 @@ test('Origin ToDo focus follows the next virtualized row after completion',async
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-todo-position-25th-v511',390);
  await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteBridge;
+   const b=window.WorkBoardSharedBridge;
    for(let i=0;i<25;i++){
      const result=await b.dispatch({type:'todo.create',text:'位置復元ToDo '+String(i).padStart(2,'0')});
      if(!result?.ok)throw Error('create: '+result?.error);
@@ -2843,7 +2843,7 @@ test('Origin ToDo focus follows the next virtualized row after completion',async
  await expect(host.locator('.origin-todo-list .origin-todo-more')).toContainText('24 / 25件');
  const lastVisible=pending.nth(23).locator('[data-action="todo-check"]');
  const removedId=await lastVisible.getAttribute('data-id');
- const incomingId=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos[24].id);
+ const incomingId=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos[24].id);
  await lastVisible.scrollIntoViewIfNeeded();
  const top=await lastVisible.evaluate(el=>el.closest('.todo-entry').getBoundingClientRect().top);
  await lastVisible.click();
@@ -2853,7 +2853,7 @@ test('Origin ToDo focus follows the next virtualized row after completion',async
  const afterTop=await pending.nth(23).evaluate(el=>el.getBoundingClientRect().top);
  expect(Math.abs(afterTop-top)).toBeLessThanOrEqual(120);
  await expect(host.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','false');
- const updated=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(x=>x.id===id),removedId);
+ const updated=await page.evaluate(id=>window.WorkBoardSharedBridge.readSnapshot().todos.find(x=>x.id===id),removedId);
  expect(updated.completed).toBe(true);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
@@ -2862,7 +2862,7 @@ test('Origin ToDo reopen returns focus to remaining history without jumping to p
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-todo-history-focus-v511',320);
  await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteBridge;
+   const b=window.WorkBoardSharedBridge;
    for(const title of ['履歴の操作A','履歴の操作B','履歴の操作C']){
      const r=await b.dispatch({type:'todo.create',text:title});
      if(!r?.ok)throw Error('create: '+r?.error);
@@ -2884,7 +2884,7 @@ test('Origin ToDo reopen returns focus to remaining history without jumping to p
  await expect(archive.locator('[data-action="todo-check"][data-id="'+nextId+'"]')).toBeFocused();
  await expect(host.locator('#originCompletedTodos')).toBeVisible();
  await expect(host.locator('.origin-todo-list [data-action="todo-check"][data-id="'+reopenedId+'"]')).toHaveCount(1);
- const reopened=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(x=>x.id===id),reopenedId);
+ const reopened=await page.evaluate(id=>window.WorkBoardSharedBridge.readSnapshot().todos.find(x=>x.id===id),reopenedId);
  expect(reopened.completed).toBe(false);
 });
 
@@ -2892,7 +2892,7 @@ test('Origin ToDo editing completion returns to neighboring list row rather than
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-todo-edited-status-focus-v511',320);
  await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteBridge;
+   const b=window.WorkBoardSharedBridge;
    for(const title of ['編集移動A','編集移動B','編集移動C']){
      const r=await b.dispatch({type:'todo.create',text:title});
      if(!r?.ok)throw Error('create: '+r?.error);
@@ -2916,7 +2916,7 @@ test('Origin searches completed ToDos by explicit opt-in without changing progre
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-completed-search-v513',320);
  await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteBridge;
+   const b=window.WorkBoardSharedBridge;
    for(const [text,memo,done] of [
      ['照合待ち・候補','検索対象',false],
      ['完了済み・対象','照合待ち・履歴検索',true],
@@ -2970,7 +2970,7 @@ test('Origin keeps search and focuses the next matching edit after a ToDo leaves
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-query-edit-continuity-v513',390);
  await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteBridge;
+   const b=window.WorkBoardSharedBridge;
    for(const title of ['検索候補A','検索候補B','検索候補C','別のToDo']){
      const r=await b.dispatch({type:'todo.create',text:title,memo:'確認メモ'});
      if(!r?.ok)throw Error('create: '+r?.error);
@@ -3003,7 +3003,7 @@ test('Origin preserves completed history filters and edit position after saving'
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-history-continuous-editor-v513',320);
  await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteBridge;
+   const b=window.WorkBoardSharedBridge;
    for(const title of ['履歴対象A','履歴対象B','履歴対象C']){
      const r=await b.dispatch({type:'todo.create',text:title,memo:'記録確認',completed:true});
      if(!r?.ok)throw Error('create: '+r?.error);
@@ -3039,7 +3039,7 @@ test('Origin deletion keeps the filtered ToDo list and confirms only once',async
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-todo-delete-search-v558',320);
  const initial=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,ids=[];
+   const bridge=window.WorkBoardSharedBridge,ids=[];
    for(const text of ['削除検索候補A','削除検索候補B','削除検索外C']){
      const result=await bridge.dispatch({type:'todo.create',text,memo:'編集対象'});
      if(!result?.ok)throw Error('create: '+result?.error);
@@ -3076,7 +3076,7 @@ test('Origin deletion keeps the filtered ToDo list and confirms only once',async
  await expect(rows.first().locator('[data-action="list-quick-edit"][data-id="'+nextId+'"]')).toBeFocused();
  await rows.first().locator('[data-action="list-quick-edit"]').click();
  await expect(host.locator('#editForm [name="title"]')).toHaveValue(nextTitle);
- const state=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ const state=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos);
  expect(initial).toContain(deletedId);
  expect(state.some(x=>x.id===deletedId)).toBe(false);
  expect(state).toHaveLength(2);
@@ -3087,7 +3087,7 @@ test('Origin completed-history deletion of last search match returns to the sear
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-todo-last-history-delete-v558',390);
  await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteBridge;
+   const b=window.WorkBoardSharedBridge;
    for(const [text,completed] of [['最後の履歴検索対象',true],['別の履歴',true],['未完了の別件',false]]){
      const result=await b.dispatch({type:'todo.create',text,completed});
      if(!result?.ok)throw Error('create: '+result?.error);
@@ -3113,7 +3113,7 @@ test('Origin completed-history deletion of last search match returns to the sear
  await expect(host.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','true');
  await expect(history).toContainText('一致する完了ToDoはありません');
  await expect(host.locator('.origin-todo-metrics')).toContainText('完了 1件');
- const stillExists=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ const stillExists=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos);
  expect(stillExists).toHaveLength(2);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
@@ -3122,7 +3122,7 @@ test('Origin stale ToDo deletion rejects without a confirmation or data loss',as
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-stale-todo-delete-v558',320);
  const created=await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteBridge;
+   const b=window.WorkBoardSharedBridge;
    const r=await b.dispatch({type:'todo.create',text:'競合削除の対象',memo:'元のメモ'});
    if(!r?.ok)throw Error('create: '+r?.error);
    const t=b.readSnapshot().todos.find(item=>item.text==='競合削除の対象');
@@ -3135,7 +3135,7 @@ test('Origin stale ToDo deletion rejects without a confirmation or data loss',as
  await expect(form).toHaveAttribute('data-revision',String(created.revision));
  await form.locator('[name="memo"]').fill('削除前に編集中の下書き');
  await page.evaluate(async id=>{
-   const b=window.WorkBoardPaletteBridge;
+   const b=window.WorkBoardSharedBridge;
    const result=await b.dispatch({type:'todo.update',id,text:'遠隔側の最新変更',memo:'遠隔側の内容'});
    if(!result?.ok)throw Error('remote change: '+result?.error);
  },created.id);
@@ -3147,7 +3147,7 @@ test('Origin stale ToDo deletion rejects without a confirmation or data loss',as
  await expect(form.locator('#originSaveRecoveryText')).toContainText('自動で上書きしません');
  await expect(form.locator('[name="memo"]')).toHaveValue('削除前に編集中の下書き');
  expect(dialogs).toBe(0);
- const state=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot()
+ const state=await page.evaluate(id=>window.WorkBoardSharedBridge.readSnapshot()
    .todos.find(item=>item.id===id),created.id);
  expect(state).toMatchObject({text:'遠隔側の最新変更',memo:'遠隔側の内容'});
  expect(state.revision).toBe(created.revision+1);
@@ -3158,7 +3158,7 @@ test('Origin last pending search result can be completed and reopened without lo
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-last-result-complete-reopen-v558',320);
  const id=await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteBridge;
+   const b=window.WorkBoardSharedBridge;
    for(const text of ['最後の完了復帰候補','別の未完了']){
      const result=await b.dispatch({type:'todo.create',text});
      if(!result?.ok)throw Error('create: '+result?.error);
@@ -3184,7 +3184,7 @@ test('Origin last pending search result can be completed and reopened without lo
  await expect(query).toBeFocused();
  await expect(query).toHaveValue('最後の完了復帰候補');
  await expect(host.locator('.origin-todo-search-result')).toContainText('表示 1件');
- const todo=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(item=>item.id===id),id);
+ const todo=await page.evaluate(id=>window.WorkBoardSharedBridge.readSnapshot().todos.find(item=>item.id===id),id);
  expect(todo.completed).toBe(false);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
 });
@@ -3194,7 +3194,7 @@ test('Origin returns to quick-add or archive after deleting the last unfiltered 
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-todo-empty-list-focus-v559',320);
  await page.evaluate(async()=>{
-   const b=window.WorkBoardPaletteBridge;
+   const b=window.WorkBoardSharedBridge;
    for(const [text,completed] of [['未完了最後の一件',false],['完了履歴最後の一件',true]]){
      const r=await b.dispatch({type:'todo.create',text,completed});
      if(!r?.ok)throw Error('create: '+r?.error);
@@ -3221,7 +3221,7 @@ test('Origin returns to quick-add or archive after deleting the last unfiltered 
  await expect(history).toHaveCount(0);
  await expect(host.locator('.origin-todo-archive-toggle')).toBeFocused();
  await expect(host.locator('.origin-todo-archive-toggle')).toHaveAttribute('aria-expanded','true');
- const remaining=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos);
+ const remaining=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().todos);
  expect(remaining).toHaveLength(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
 });
@@ -3231,7 +3231,7 @@ test('Origin task deletion from a filtered list keeps the next edit reachable',a
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-task-neighbor-return-v560',390);
  await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot();
    for(const title of ['復帰確認タスク A','復帰確認タスク B','対象外タスク']){
      const result=await bridge.dispatch({
        type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
@@ -3268,7 +3268,7 @@ test('Origin task deletion from a filtered list keeps the next edit reachable',a
  await expect(rows).toHaveCount(0);
  await expect(query).toBeFocused();
  await expect(query).toHaveValue('復帰確認タスク');
- const remaining=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks);
+ const remaining=await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().tasks);
  expect(remaining.some(task=>task.id===removedId||task.id===nextId)).toBe(false);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(393);
 });
@@ -3277,7 +3277,7 @@ test('Origin memo filter preserves the nearest quick edit after a title change a
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-memo-neighbor-return-v560',320);
  await page.evaluate(async()=>{
-   const memo=window.WorkBoardPaletteMemoBridgeV369,s=window.WorkBoardPaletteBridge.readSnapshot();
+   const memo=window.WorkBoardSharedMemoBridge,s=window.WorkBoardSharedBridge.readSnapshot();
    for(const title of ['検索継続メモ A','検索継続メモ B']){
      const result=await memo.dispatch({type:'memo.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
        title,body:'手順を確認',category:'手順',tags:[],pinned:false,paperColor:'mint'});
@@ -3315,7 +3315,7 @@ test('Origin mobile weekly schedule returns to the next event then the filter co
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-calendar-neighbor-return-v560',390);
  const date=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot();
    const morning=new Date();morning.setHours(9,0,0,0);
    for(let i=0;i<2;i++){
      const start=new Date(morning.getTime()+i*3600000);
@@ -3364,7 +3364,7 @@ for(const width of [320,390]){
   const label='全期間末尾復帰'+width;
   const host=await launchOriginV415(page,'origin-global-final-focus-v562-'+width,width);
   await page.evaluate(async title=>{
-   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot();
    const start=new Date();start.setDate(start.getDate()+21);start.setHours(10,0,0,0);
    const end=new Date(start.getTime()+60*60000);
    const created=await bridge.dispatch({
@@ -3458,7 +3458,7 @@ test('Origin independent inbox separates important messages and categorized acti
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-inbox-v562-priority-room',1366);
  const fixture=await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
+  const bridge=window.WorkBoardSharedBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
   const created=await bridge.dispatch({type:'task.create',revision:0,ownerRoom:state.roomId,ownerUser:state.currentUser,
    title:'独立受信箱の検証タスク',description:'活動の一覧に表示する',assignee:state.currentUser,
    status:state.statuses[0],priority:'中',category:state.categories[0],requester:'',
@@ -3552,7 +3552,7 @@ test('Origin inbox uses the selected user and canonical read-all without leaking
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-inbox-v562-user-room',1366);
  await page.evaluate(async()=>{
-  const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
+  const bridge=window.WorkBoardSharedBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
   const created=await bridge.dispatch({type:'task.create',ownerRoom:state.roomId,ownerUser:state.currentUser,revision:0,
    title:'利用者別受信の検証',description:'',assignee:state.currentUser,status:state.statuses[0],
    category:state.categories[0],priority:'中',tags:'',requester:'',checklist:'',checklistDone:[],
@@ -3584,7 +3584,7 @@ for(const width of [1366,390,320]){
   test.setTimeout(90000);
   const host=await launchOriginV415(page,'origin-inbox-unread-v565-'+width,width);
   await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
    const created=await bridge.dispatch({type:'task.create',revision:0,ownerRoom:state.roomId,ownerUser:state.currentUser,
     title:'未読バッジの検証',description:'',assignee:state.currentUser,status:state.statuses[0],
     category:state.categories[0],priority:'中',tags:'',requester:'',checklist:'',checklistDone:[],
@@ -3664,7 +3664,7 @@ for(const width of [1366,390,320]){
   test.setTimeout(90000);
   const host=await launchOriginV415(page,'origin-inbox-return-v566-'+width,width);
   const taskId=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,flow=window.WorkBoardWorkflowV152,state=bridge.readSnapshot();
    const result=await bridge.dispatch({type:'task.create',revision:0,ownerRoom:state.roomId,
     ownerUser:state.currentUser,title:'受信箱往復検査のタスク',description:'',
     assignee:state.currentUser,status:state.statuses[0],category:state.categories[0],
@@ -3714,7 +3714,7 @@ for(const width of [1366,390,320]){
   test.setTimeout(90000);
   const host=await launchOriginV415(page,'origin-inbox-reading-cursor-'+width,width);
   await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,s=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,flow=window.WorkBoardWorkflowV152,s=bridge.readSnapshot();
    const result=await bridge.dispatch({type:'task.create',revision:0,ownerRoom:s.roomId,
     ownerUser:s.currentUser,title:'受信箱の連続確認',description:'',assignee:s.currentUser,
     status:s.statuses[0],category:s.categories[0],priority:'中',tags:'',requester:'',
@@ -3771,7 +3771,7 @@ for(const width of [1366,390,320]){
   test.setTimeout(90000);
   const host=await launchOriginV415(page,'origin-inbox-subject-v575-'+width,width);
   const fixtures=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,s=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,flow=window.WorkBoardWorkflowV152,s=bridge.readSnapshot();
    const task=await bridge.dispatch({type:'task.create',revision:0,ownerRoom:s.roomId,
     ownerUser:s.currentUser,title:'病棟PC点検',description:'',assignee:s.currentUser,
     status:s.statuses[0],category:s.categories[0],priority:'中',tags:'',requester:'',
@@ -3859,7 +3859,7 @@ for(const width of [1366,390,320]){
   expect(geometry.dx).toBeLessThanOrEqual(1);
   expect(geometry.dy).toBeLessThanOrEqual(1);
   await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot();
    const created=await bridge.dispatch({
     type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,
     title:'貸出端末の点検',description:'機器管理台帳とシリアル番号を照合してください。\n返却日の確認も必要です。',
@@ -3893,7 +3893,7 @@ for(const width of [1366,390,320]){
   test.setTimeout(150000);
   const host=await launchOriginV415(page,'origin-full-search-v576-'+width,width);
   await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot();
    for(let i=0;i<34;i++){
     const result=await bridge.dispatch({
      type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,
