@@ -34,6 +34,7 @@ test('Origin is a separate live Modern workspace with safe Classic return',async
   await root.locator('#originSettingsToggle').click();
   await expect(root.locator('#originSettingsPanel')).toBeVisible();
   await expect(root.locator('#originDisplaySelect')).toBeVisible();
+  await expect(root.locator('#originDisplaySelect option[value="palette"]')).toHaveCount(0);
   await expect(root.locator('#workspace')).toBeVisible();
   await root.locator('#desktopNav [data-route="tasks"]').click();
   await expect(root.locator('#workspace')).toContainText('タスク');
