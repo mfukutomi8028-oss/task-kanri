@@ -2661,6 +2661,28 @@ function renderOriginFullSearch(){
   </section>
  </div>`;
 }
+function openOriginFullSearch(){
+ const input=$('#originSearchInput'),query=String(input?.value||'').trim();
+ if(!query)return;
+ if(view!=='search'){originFullSearchReturn=view;viewScrollPositions[view]=window.scrollY;}
+ originFullSearchQuery=query;originFullSearchLimit=30;originFullSearchSort='relevance';
+ view='search';closeSearch();render();
+ window.scrollTo({top:0,behavior:'instant'});
+ $('#originFullSearchInput')?.focus({preventScroll:true});
+}
+function backOriginFullSearch(){
+ if(view!=='search')return;
+ view=originFullSearchReturn;
+ render();window.scrollTo({top:Number(viewScrollPositions[view]||0),behavior:'instant'});
+ const input=$('#originSearchInput');
+ if(input){input.value=originFullSearchQuery;renderSearch(input.value);input.focus({preventScroll:true});}
+}
+function updateOriginFullSearchQuery(input){
+ const start=input.selectionStart,end=input.selectionEnd;
+ originFullSearchQuery=input.value;originFullSearchLimit=30;render();
+ const next=$('#originFullSearchInput');
+ if(next){next.focus({preventScroll:true});if(start!==null)next.setSelectionRange(start,end);}
+}
 function renderSearch(q){
  const sr=$('#searchResults'),input=$('#originSearchInput');
  const oldQuery=searchQuery;
@@ -3043,6 +3065,20 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
   $('#searchResults [data-action="search-kind"][data-value="'+searchKind+'"]')?.focus({preventScroll:true});
   return;
  }
+ if(a==='search-all')return openOriginFullSearch();
+ if(a==='full-search-back')return backOriginFullSearch();
+ if(a==='full-search-kind'){
+  searchKind=['all','tasks','todos','events','memos'].includes(value)?value:'all';
+  originFullSearchLimit=30;render();
+  $('#workspace [data-action="full-search-kind"][data-value="'+searchKind+'"]')?.focus({preventScroll:true});return;
+ }
+ if(a==='full-search-more'||a==='full-search-show-all'){
+  const previous=$('#workspace .origin-full-search-hit').parentElement?.querySelectorAll('.origin-full-search-hit').length||0;
+  originFullSearchLimit=a==='full-search-show-all'?Infinity:originFullSearchLimit+30;render();
+  const first=$('#workspace .origin-full-search-list')?.querySelectorAll('.origin-full-search-hit')[previous];
+  if(first){first.focus({preventScroll:true});first.scrollIntoView({block:'nearest',behavior:'instant'});}
+  return;
+ }
  if(a==='inbox-shortcut')return openOriginInbox();
  if(a==='origin-inbox-close')return closeOriginInbox();
  if(a==='origin-inbox-section'){originInboxSection=value==='activity'?'activity':'important';originInboxGenre='all';originInboxLimit=40;renderOriginInbox();return}
@@ -3397,6 +3433,8 @@ mount.addEventListener('change',e=>{
    if(!result?.ok){quickTodoDraft=draft;t.value=old;render();notify('利用者を切り替えられませんでした。');return}
    selectedBulk.clear();taskCollapsedGroups.clear();taskVisibleLimits.clear();memoVisibleLimit=MEMO_RENDER_BATCH;taskAdvancedOpen=false;memoAdvancedOpen=false;taskQuery='';todoQuery='';todoSearchOpen=false;todoSearchHistory=false;todoCompletedOpen=false;todoPendingLimit=TODO_RENDER_BATCH;todoCompletedLimit=TODO_RENDER_BATCH;taskFilter='active';taskStatusChoice='';memoFilter='all';memoColorFilter='all';memoQuery='';scheduleAssignee='all';scheduleQuery='';scheduleFiltersOpen=false;scheduleSearchScope='week';scheduleSearchLimit=30;scheduleCategory='all';scheduleDateFrom='';scheduleDateTo='';scheduleSearchSort='upcoming';scheduleGlobalReturn=null;scheduleGlobalResultIds=[];scheduleWeekResultIds=[];scheduleExpandedDays.clear();
    Object.keys(viewScrollPositions).forEach(key=>delete viewScrollPositions[key]);
+   if(view==='search')view='today';
+   originFullSearchQuery='';originFullSearchReturn='today';originFullSearchLimit=30;originFullSearchSort='relevance';
    closeSearch(true);syncSnapshot();render();window.scrollTo({top:0,behavior:'instant'});notify('利用者を切り替えました。');
    return;
  }
@@ -3412,6 +3450,7 @@ mount.addEventListener('change',e=>{
   if(!['upcoming','newest','oldest'].includes(t.value))return;
   scheduleSearchSort=t.value;scheduleSearchLimit=30;render();return;
  }
+ if(t.id==='originFullSearchSort'){originFullSearchSort=['relevance','title'].includes(t.value)?t.value:'relevance';originFullSearchLimit=30;render();$('#originFullSearchSort')?.focus({preventScroll:true});return}
  if(t.id==='originMemoSort'){memoSort=['updated','title','category'].includes(t.value)?t.value:'updated';memoVisibleLimit=MEMO_RENDER_BATCH;render();return}
  if(t.id==='groupSelect'){taskGrouping=t.value;taskVisibleLimits.clear();selectedBulk.clear();render();return}
  if(t.id==='originTaskSort'){taskSortMode=['due','priority','updated'].includes(t.value)?t.value:'due';taskVisibleLimits.clear();selectedBulk.clear();render();return}
@@ -3430,6 +3469,7 @@ mount.addEventListener('compositionstart',e=>{
  if(e.target.id==='originMemoQuery')memoComposing=true;
  if(e.target.id==='originTaskQuery')taskComposing=true;
  if(e.target.id==='originTodoQuery')todoComposing=true;
+ if(e.target.id==='originFullSearchInput')originFullSearchComposing=true;
 });
 mount.addEventListener('compositionend',e=>{
  if(e.target.id==='originInboxSearch'){originInboxQuery=e.target.value;originInboxLimit=40;renderOriginInbox();return}
@@ -3438,6 +3478,7 @@ mount.addEventListener('compositionend',e=>{
  if(e.target.id==='originMemoQuery'){memoComposing=false;updateMemoQuery(e.target)}
  if(e.target.id==='originTaskQuery'){taskComposing=false;updateTaskQuery(e.target)}
  if(e.target.id==='originTodoQuery'){todoComposing=false;updateTodoQuery(e.target)}
+ if(e.target.id==='originFullSearchInput'){originFullSearchComposing=false;updateOriginFullSearchQuery(e.target)}
 });
 function updateScheduleSearch(input){
  const start=input.selectionStart,end=input.selectionEnd;
@@ -3495,6 +3536,10 @@ mount.addEventListener('input',e=>{
  if(e.target.id==='originRelatedTaskSearch'){if(!e.isComposing&&!relatedTaskComposing)filterOriginRelatedTasks();return;}
  if(e.target.id==='originTodoQuery'){
    if(!e.isComposing&&!todoComposing)updateTodoQuery(e.target);
+   return;
+ }
+ if(e.target.id==='originFullSearchInput'){
+   if(!e.isComposing&&!originFullSearchComposing)updateOriginFullSearchQuery(e.target);
    return;
  }
  if(e.target.id==='originTaskQuery'){
