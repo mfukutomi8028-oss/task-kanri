@@ -592,6 +592,8 @@ async function send(command,label,{close=false,returnToTask=false}={}){
 }
 let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleAdvancedOpen=false,scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoSearchHistory=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
+// Detailed search is an Origin-only route that preserves the six main tabs.
+let originFullSearchQuery='',originFullSearchReturn='today',originFullSearchLimit=30,originFullSearchSort='relevance',originFullSearchComposing=false;
 let theme='light',relatedTaskComposing=false;
 const viewDefs=[['today','今日','home'],['tasks','タスク','tasks'],['todos','ToDo','todo'],['calendar','予定','calendar'],['notes','メモ','notes'],['tools','その他','more']];
 function nav(){
@@ -709,7 +711,7 @@ function render(){
  nav();
  originInboxUpdateBadge();
  if($('#originInboxDialog')?.open)renderOriginInbox();
- const m={today:renderToday,tasks:renderTasks,todos:renderTodos,calendar:renderCalendar,notes:renderNotes,tools:renderOriginTools};
+ const m={today:renderToday,tasks:renderTasks,todos:renderTodos,calendar:renderCalendar,notes:renderNotes,tools:renderOriginTools,search:renderOriginFullSearch};
  $('#workspace').innerHTML=m[view]();
  for(const el of $('#workspace').querySelectorAll('[data-origin-scroll-key]')){
    if(horizontalScroll.has(el.dataset.originScrollKey))
@@ -2591,17 +2593,11 @@ function handleRoute(route){
  const saved=Number(viewScrollPositions[route]||0);
  window.scrollTo({top:Math.max(0,saved),behavior:'instant'});
 }
-function renderSearch(q){
- const sr=$('#searchResults'),input=$('#originSearchInput');
- const oldQuery=searchQuery;
- const oldKind=sr.querySelector('.origin-search-filters [aria-pressed="true"]')?.dataset.value;
- const oldRailScroll=sr.querySelector('.origin-search-filters')?.scrollLeft||0;
- const oldResultScroll=sr.scrollTop;
- const term=String(q||'').trim().toLocaleLowerCase();searchQuery=term;
- if(!term){closeSearch();return}
+function originSearchMatches(term){
  const tokens=term.split(/\s+/);
  const types=[['tasks','タスク'],['todos','ToDo'],['events','予定'],['memos','メモ']];
  const matches=[],counts=Object.fromEntries(types.map(([kind])=>[kind,0]));
+ if(!term)return {types,counts,matches};
  for(const [order,[kind,label]] of types.entries()){
    for(const item of data[kind]||[]){
      const title=String(item.title||''),lower=title.toLocaleLowerCase();
@@ -2622,6 +2618,17 @@ function renderSearch(q){
  }
  matches.sort((a,b)=>a.score-b.score||a.order-b.order
    ||a.title.localeCompare(b.title,'ja')||String(a.id).localeCompare(String(b.id)));
+ return {types,counts,matches};
+}
+function renderSearch(q){
+ const sr=$('#searchResults'),input=$('#originSearchInput');
+ const oldQuery=searchQuery;
+ const oldKind=sr.querySelector('.origin-search-filters [aria-pressed="true"]')?.dataset.value;
+ const oldRailScroll=sr.querySelector('.origin-search-filters')?.scrollLeft||0;
+ const oldResultScroll=sr.scrollTop;
+ const term=String(q||'').trim().toLocaleLowerCase();searchQuery=term;
+ if(!term){closeSearch();return}
+ const {types,counts,matches}=originSearchMatches(term);
  const total=matches.length;
  const filtered=searchKind==='all'?matches:matches.filter(item=>item.kind===searchKind);
  const visible=filtered.slice(0,10);
@@ -2639,7 +2646,8 @@ function renderSearch(q){
    +filtered.length+'件の結果'+(filtered.length>visible.length?'（上位'+visible.length+'件を表示）':'')
    +'</div><div class="origin-search-list">'
    +(results||'<p class="origin-search-empty">一致する項目がありません。別の種類やキーワードをお試しください。</p>')
-   +'</div>';
+   +'</div><button type="button" class="origin-search-all" data-action="search-all">すべての結果を確認（'
+   +filtered.length+'件） →</button>';
  sr.hidden=false;input?.setAttribute('aria-expanded','true');
  const filterRail=sr.querySelector('.origin-search-filters');
  if(filterRail)filterRail.scrollLeft=oldRailScroll;
