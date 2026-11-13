@@ -15,7 +15,7 @@ test('Origin related task search keeps selection, and unlink changes only the sc
   await page.locator('[data-wb-display-choice="modern"]').evaluate(el => el.click());
   const host=page.locator('#modernOriginRoot');
   const ids=await page.evaluate(async () => {
-    const bridge=window.WorkBoardPaletteBridge;
+    const bridge=window.WorkBoardSharedBridge;
     const s=bridge.readSnapshot();
     for(const title of ['検索対象：月次点検','無関係：テスト会議']) {
       const res=await bridge.dispatch({type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
@@ -46,7 +46,7 @@ test('Origin related task search keeps selection, and unlink changes only the sc
   await host.locator('button[form="editForm"]').click();
   await expect(form).toHaveCount(0);
   const saved=await page.evaluate(() => {
-    const s=window.WorkBoardPaletteBridge.readSnapshot();
+    const s=window.WorkBoardSharedBridge.readSnapshot();
     return s.schedules.find(x=>x.title==='関連する予定のテスト')?.id;
   });
   expect(saved).toBeTruthy();
@@ -62,7 +62,7 @@ test('Origin related task search keeps selection, and unlink changes only the sc
   await expect(host.locator('#editForm [name="relatedTaskId"]')).toHaveValue('');
   await host.locator('button[form="editForm"]').click();
   const result=await page.evaluate(({wanted,unrelated,saved})=>{
-    const s=window.WorkBoardPaletteBridge.readSnapshot();
+    const s=window.WorkBoardSharedBridge.readSnapshot();
     return {related:s.schedules.find(x=>x.id===saved)?.relatedTaskId,
       exists:s.tasks.some(t=>t.id===wanted),other:s.tasks.some(t=>t.id===unrelated)};
   },{...ids,saved});
