@@ -22,7 +22,7 @@ async function boot(page, width = 1366) {
   }, { room: ROOM });
   await page.goto('/?room=' + ROOM, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WORK_BOARD_ASSETS_READY === true, undefined, {timeout:30000});
-  await expect(page.locator('#wbDisplayChoiceV356 [data-wb-display-choice]')).toHaveCount(4);
+  await expect(page.locator('#wbDisplayChoiceV356 [data-wb-display-choice]')).toHaveCount(3);
 }
 async function choose(page, mode) {
   await page.locator('[data-wb-display-choice="' + mode + '"]').evaluate(el => el.click());
@@ -668,7 +668,7 @@ test('JOURNAL mode settings is a categorized paper booklet with original setting
   await page.locator('[data-journal-open-drawer]').click();
   const book=page.locator('#jSettingsBookV393');
   await expect(book).toBeVisible();
-  await expect(book.locator('#wbDisplayChoiceV356 [data-wb-display-choice]')).toHaveCount(4);
+  await expect(book.locator('#wbDisplayChoiceV356 [data-wb-display-choice]')).toHaveCount(3);
   await book.locator('[data-journal-book-theme="margin"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-wb-journal-theme','margin');
   await book.locator('[data-journal-settings-tab="personal"]').click();
