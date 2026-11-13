@@ -91,7 +91,7 @@ async function boot(page, user, initialTasks) {
   // A task in localStorage alone is not an authoritative read barrier.
   // Use the existing public snapshot; WorkBoardReadV550 is not shipped.
   await page.waitForFunction(expected => {
-    const snapshot = window.WorkBoardPaletteBridge?.readSnapshot?.();
+    const snapshot = window.WorkBoardSharedBridge?.readSnapshot?.();
     return snapshot?.connectionMode === 'remote-online'
       && Array.isArray(snapshot.tasks)
       && expected.every(task => snapshot.tasks.some(row =>
