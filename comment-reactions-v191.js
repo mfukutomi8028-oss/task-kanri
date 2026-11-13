@@ -58,7 +58,7 @@
     // The subscribed Classic task remains authoritative. A just-acknowledged
     // write may briefly be newer than that subscription; paint only the exact
     // confirmed revision already saved in the existing local cache.
-    const canonical = window.WorkBoardPaletteBridge?.readCommentTask;
+    const canonical = window.WorkBoardSharedBridge?.readCommentTask;
     if (typeof canonical !== "function") {
       return readCachedTasks().find(item => String(item?.id || "") === taskId) || null;
     }
@@ -859,7 +859,7 @@
   // Do not create a second data store or subscribe to Firebase here.
   let detachCanonicalTaskListener = null;
   function listenForCanonicalTaskChanges() {
-    const bridge = window.WorkBoardPaletteBridge;
+    const bridge = window.WorkBoardSharedBridge;
     if (detachCanonicalTaskListener || typeof bridge?.subscribe !== 'function') return;
     let lastTaskSignature = '';
     detachCanonicalTaskListener = bridge.subscribe(snapshot => {
@@ -911,7 +911,7 @@
         return await toggleReaction(command.id,command.commentId,command.emoji,command.expectedPressed)||{ok:false,error:'unavailable'};
       if(command.type!=='comment.reply'||!String(command.text||'').trim()||String(command.text).length>6000
         ||!['作業メモ','業者回答','確認依頼','申し送り'].includes(command.commentType))return {ok:false,error:'invalid-input'};
-      if(!window.firebaseConfig)return window.WorkBoardPaletteBridge.dispatch({type:'task.comment',id:command.id,
+      if(!window.firebaseConfig)return window.WorkBoardSharedBridge.dispatch({type:'task.comment',id:command.id,
         revision:task.revision,text:command.text,commentType:command.commentType,replyTo:command.commentId,
         ownerRoom:command.ownerRoom,ownerUser:command.ownerUser});
       if(!isRemoteOnline())return {ok:false,error:'unavailable'};
