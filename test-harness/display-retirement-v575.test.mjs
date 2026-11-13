@@ -30,7 +30,7 @@ test('only Classic, Origin and JOURNAL can be selected or booted',()=>{
   assert.doesNotMatch(manifest,/palette-display-v358|palette-next-v369|palette:\s*\{/);
   assert.doesNotMatch(css,/wbPaletteNextPreview|wb-palette-preview-link|data-wb-palette-next-preview/);
   assert.match(controller,/3つの画面/);
-  assert.match(manifest,/return validModes\.has\(mode\) \? mode : 'classic'/);
+  assert.match(manifest,/if \(validModes\.has\(mode\)\) return mode/);
 });
 
 test('shared canonical task and memo adapters survive removal under neutral names',()=>{
