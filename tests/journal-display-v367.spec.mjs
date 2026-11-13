@@ -3917,7 +3917,7 @@ for(const width of [320,390,1366])test(`JOURNAL record shelf keeps notifications
   await expect(shelf.locator('[name="action"]')).toHaveValue('電源と接続を確認する');
   await shelf.locator('[type="submit"]').click();
   await expect(shelf.locator('.j-shelf-feedback')).toContainText('保存しました');
-  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().knowledge.find(x=>x.id==='shelf-guide').action)).toBe('電源と接続を確認する');
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().knowledge.find(x=>x.id==='shelf-guide').action)).toBe('電源と接続を確認する');
   expect(await shelf.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
   await page.keyboard.press('Escape');
   await expect(shelf).not.toBeVisible();
@@ -3954,11 +3954,11 @@ test('JOURNAL shelf opens tasks without clearing search, protects knowledge draf
   await page.locator('[data-j-shelf-close]').click();
   await expect(page.locator('.j-shelf [name="action"]')).toHaveValue('未保存の手順');
   // Exercise the real owner switch boundary while a draft is open.
-  await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('別の利用者'));
+  await page.evaluate(()=>window.WorkBoardSharedBridge.selectUser('別の利用者'));
   await expect(page.locator('#jRecordShelf')).not.toBeVisible();
   await page.locator('.j-shelf-launch').click();
   await expect(page.locator('.j-shelf-knowledge-form')).toHaveCount(0);
-  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().knowledge.find(x=>x.id==='shelf-guide').action)).toBe('電源を確認する');
+  expect(await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().knowledge.find(x=>x.id==='shelf-guide').action)).toBe('電源を確認する');
 });
 
 for(const width of [390,1366])test(`JOURNAL review is an independent ledger with canonical insights at ${width}px`,async({page},testInfo)=>{
@@ -4029,7 +4029,7 @@ for(const width of [390,1366])test(`JOURNAL case notebook retains comments and r
     await expect(shelf.locator('[name="title"]')).toHaveValue('確認する案件');
     await shelf.locator('[name="action"]').fill('案件から残した対応手順');
     await shelf.locator('[type="submit"]').click();
-    await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.id==='shelf-active').knowledgeId)).not.toBe('');
+    await expect.poll(()=>page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().tasks.find(x=>x.id==='shelf-active').knowledgeId)).not.toBe('');
     await shelf.locator('[data-j-shelf-close]').click();
     await expect(detail.locator('.j-record-page-stack')).toBeVisible();
   }
@@ -4049,14 +4049,14 @@ test('JOURNAL knowledge conflicts preserve the unsaved draft and never overwrite
   await page.locator('[data-j-shelf-knowledge]').click();
   await page.locator('.j-shelf [name="action"]').fill('未保存の自分の手順');
   const result=await page.evaluate(async()=>{
-    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot(),record=s.knowledge.find(x=>x.id==='shelf-guide');
+    const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot(),record=s.knowledge.find(x=>x.id==='shelf-guide');
     return bridge.dispatch({type:'knowledge.save',id:record.id,revision:record.revision,values:{...record,action:'別の更新で保存済み'},ownerRoom:s.roomId,ownerUser:s.currentUser});
   });
   expect(result.ok).toBe(true);
   await page.locator('.j-shelf [type="submit"]').click();
   await expect(page.locator('.j-shelf-feedback')).toContainText('入力を残しています');
   await expect(page.locator('.j-shelf [name="action"]')).toHaveValue('未保存の自分の手順');
-  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().knowledge.find(x=>x.id==='shelf-guide').action)).toBe('別の更新で保存済み');
+  expect(await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().knowledge.find(x=>x.id==='shelf-guide').action)).toBe('別の更新で保存済み');
 });
 
 async function bootPaperAuxiliary(page,width) {
@@ -4072,7 +4072,7 @@ async function bootPaperAuxiliary(page,width) {
     localStorage.setItem('system-task-schedules:'+room,JSON.stringify([schedule('paper-plan',iso(day),'コピーする予定','10'),schedule('paper-series-a',iso(day),'繰り返しの確認','12','paper-series'),schedule('paper-series-b',iso(next),'繰り返しの確認','12','paper-series')]));
   },{room:ROOM});
   await boot(page,width);
-  await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('JournalQA'));
+  await page.evaluate(()=>window.WorkBoardSharedBridge.selectUser('JournalQA'));
   await choose(page,'journal');
 }
 async function paperRoute(page,width,route) {
@@ -4131,7 +4131,7 @@ for(const width of [390,1366])test(`JOURNAL auxiliary paper forms keep copying, 
   await copy.locator('#scheduleCopyMethod').selectOption('once');
   await copy.locator('#scheduleCopySubmit').click();
   await expect(copy).toBeHidden();
-  await expect.poll(()=>page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.length)).toBe(4);
+  await expect.poll(()=>page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().schedules.length)).toBe(4);
   await page.locator('#j459SchedulePreview [data-j459-back]').click();
   await page.locator('[data-j459-review="paper-series-a"]').click();
   await page.locator('#j459SchedulePreview [data-j459-edit]').click();
@@ -4144,8 +4144,8 @@ for(const width of [390,1366])test(`JOURNAL auxiliary paper forms keep copying, 
   await series.locator('[name="recurringDeleteScope"][value="one"]').check();
   await series.locator('#confirmRecurringDelete').click();
   await expect(series).toBeHidden();
-  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.some(x=>x.id==='paper-series-a'))).toBe(false);
-  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.some(x=>x.id==='paper-series-b'))).toBe(true);
+  expect(await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().schedules.some(x=>x.id==='paper-series-a'))).toBe(false);
+  expect(await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().schedules.some(x=>x.id==='paper-series-b'))).toBe(true);
   await paperRoute(page,width,'tasks');
   await page.locator('[data-j420-layout="timeline"]').first().click();
   await page.locator('[data-move-to-timeline="paper-main"]').click();
@@ -4158,7 +4158,7 @@ for(const width of [390,1366])test(`JOURNAL auxiliary paper forms keep copying, 
   await move.locator('#timelineMoveDueDate').evaluate((input,date)=>{input.value=date;input.dispatchEvent(new Event('change',{bubbles:true}));},tomorrow);
   await move.locator('#confirmTimelineMove').click();
   await expect(move).toBeHidden();
-  expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.id==='paper-main').dueDate)).toBe(tomorrow);
+  expect(await page.evaluate(()=>window.WorkBoardSharedBridge.readSnapshot().tasks.find(x=>x.id==='paper-main').dueDate)).toBe(tomorrow);
   await paperRoute(page,width,'today');
   await page.locator('[data-j420-show-activity]').click();
   await expect(page.locator('#activityDialog .j-activity-leaf')).toBeVisible();
