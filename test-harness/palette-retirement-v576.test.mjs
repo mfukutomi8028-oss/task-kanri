@@ -34,7 +34,7 @@ test('Origin and JOURNAL still share the canonical business adapters',()=>{
   const origin=read('origin-modern-v372.js');
   const journal=read('journal-display-v367.js');
   assert.match(app,/window\.WorkBoardPaletteBridge = Object\.freeze/);
-  assert.match(app,/window\.WorkBoardPaletteMemoBridgeV369/);
+  assert.match(origin,/WorkBoardPaletteMemoBridgeV369/);
   assert.match(origin,/WorkBoardPaletteBridge/);
   assert.match(journal,/WorkBoardPaletteBridge/);
 });
