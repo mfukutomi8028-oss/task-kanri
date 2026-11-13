@@ -1,7 +1,7 @@
 /* origin. Modern workspace: separate Shadow DOM presentation over canonical data. */
 (function(){
   'use strict';
-  const bridgeReady=()=>Boolean(window.WorkBoardPaletteBridge?.readSnapshot && window.WorkBoardPaletteMemoBridgeV369?.readSnapshot);
+  const bridgeReady=()=>Boolean(window.WorkBoardSharedBridge?.readSnapshot && window.WorkBoardSharedMemoBridge?.readSnapshot);
   const activate=()=>{
     if(document.getElementById('modernOriginRoot')||!bridgeReady())return;
     const host=document.createElement('div');host.id='modernOriginRoot';
@@ -360,7 +360,7 @@
     
 'use strict';
 (function(){
-if(!window.WorkBoardPaletteBridge?.readSnapshot)return;
+if(!window.WorkBoardSharedBridge?.readSnapshot)return;
 
 const SVG={
  file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/>',
@@ -402,8 +402,8 @@ function parseDay(s){const [y,m,d]=String(s||'').split('-').map(Number);return n
 const days=['日','月','火','水','木','金','土'];function dateLabel(k){if(!k)return '未設定';const d=parseDay(k);return `${d.getMonth()+1}月${d.getDate()}日（${days[d.getDay()]}）`}function rangeLabel(d){const a=monday(parseDay(d)),b=addDay(a,6);return `${a.getMonth()+1}月${a.getDate()}日 〜 ${b.getMonth()+1}月${b.getDate()}日`}
 function monday(d){const x=dayStart(d);x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
 function newId(){return (crypto?.randomUUID?.()||`${Date.now()}${Math.random()}`)}
-const bridge=window.WorkBoardPaletteBridge;
-const memoBridge=window.WorkBoardPaletteMemoBridgeV369;
+const bridge=window.WorkBoardSharedBridge;
+const memoBridge=window.WorkBoardSharedMemoBridge;
 let snapshot=bridge.readSnapshot();
 let memoItems=memoBridge?.readSnapshot?.()||[];
 let data={tasks:[],todos:[],events:[],memos:[],templates:[],knowledge:[]};
