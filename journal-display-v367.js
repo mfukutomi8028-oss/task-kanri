@@ -110,13 +110,6 @@
   routes.forEach(entry => tabs.appendChild(routeButton(entry, false)));
   routes.filter(entry => ['today', 'todos', 'tasks', 'schedule', 'memo'].includes(entry.id))
     .forEach(entry => dock.appendChild(routeButton(entry, true)));
-  const more = document.createElement('button');
-  more.type = 'button';
-  more.className = 'wb-journal-more-v367';
-  more.textContent = 'その他';
-  more.setAttribute('aria-label', 'その他のページと設定');
-  more.addEventListener('click', openDrawer);
-  dock.appendChild(more);
   body.appendChild(dock);
 
   const shade = document.createElement('button');
@@ -445,6 +438,13 @@
   let journalMemoSort = 'manual';
   let journalMemoColorV396 = 'all';
   let journalMemoIndexQueryV450 = '';
+  let journalMemoIndexOpen = false;
+  let journalMemoRefineOpen = false;
+  const journalIndexMedia = window.matchMedia('(max-width:760px)');
+  journalIndexMedia.addEventListener('change', () => {
+    const disclosure = document.querySelector('[data-journal-memo-index]');
+    if (disclosure) disclosure.open = !journalIndexMedia.matches || journalMemoIndexOpen;
+  });
   const journalMemoClosedGroupsV450 = new Set();
   const memoSortOptions = [
     ['manual', '手動順'], ['updated', '更新順'], ['category', '分類順'], ['title', 'タイトル順']
@@ -479,7 +479,31 @@
 
   function composeMemoIndex(index, memo) {
     const lastScroll = index.scrollTop;
-    index.querySelector('.j-memo-index-v383')?.remove();
+    index.replaceChildren();
+    const state = document.createElement('div');
+    state.className = 'j-index-filter-state';
+    const status = document.createElement('span');
+    status.dataset.journalMemoFilterState = '';
+    const clear = document.createElement('button');
+    clear.type = 'button'; clear.dataset.journalMemoClear = '';
+    clear.textContent = '索引条件を解除';
+    clear.addEventListener('click', () => {
+      journalMemoIndexQueryV450 = ''; journalMemoColorV396 = 'all';
+      composeMemoIndex(index, memo);
+      index.querySelector(journalIndexMedia.matches?'[data-journal-memo-index] > summary':'[data-journal-memo-color="all"]')?.focus({preventScroll:true});
+    });
+    state.append(status, clear);
+    const disclosure = document.createElement('details');
+    disclosure.dataset.journalMemoIndex = '';
+    disclosure.className = 'j-index-disclosure';
+    disclosure.open = !journalIndexMedia.matches || journalMemoIndexOpen;
+    const summary = document.createElement('summary');
+    summary.textContent = '索引・絞り込み';
+    disclosure.append(summary);
+    disclosure.addEventListener('toggle', () => {
+      if (disclosure.isConnected && journalIndexMedia.matches) journalMemoIndexOpen = disclosure.open;
+    });
+    index.append(state, disclosure);
     const panel = document.createElement('div');
     panel.className = 'j-memo-index-v383';
     const heading = document.createElement('div');
@@ -504,7 +528,16 @@
     finder.setAttribute('aria-label','メモ索引内を検索');
     finder.placeholder = '索引内のタイトル・分類を検索';
     finder.value = journalMemoIndexQueryV450;
-    panel.append(finder);
+    const refinement = document.createElement('details');
+    refinement.className = 'j-memo-index-refinement';
+    refinement.open = journalMemoRefineOpen;
+    const refineSummary = document.createElement('summary');
+    refineSummary.textContent = '索引だけをさらに絞る';
+    refinement.append(refineSummary, finder);
+    refinement.addEventListener('toggle', () => {
+      if (refinement.isConnected) journalMemoRefineOpen = refinement.open;
+    });
+    panel.append(refinement);
     const label = document.createElement('label');
     label.className = 'j-memo-index-sort-v383';
     label.textContent = '表示順';
@@ -580,7 +613,7 @@
       journalMemoIndexQueryV450 = '';
       journalMemoColorV396 = 'all';
       composeMemoIndex(index, memo);
-      index.querySelector('[data-j450-memo-find]')?.focus({preventScroll:true});
+      index.querySelector(journalMemoRefineOpen?'[data-j450-memo-find]':'[data-journal-memo-color="all"]')?.focus({preventScroll:true});
     });
     empty.append(emptyMessage, resetIndex);
     panel.append(empty);
@@ -635,6 +668,9 @@
         if (query && matching) group.open = true;
       }
       count.textContent = query ? matched + ' / ' + cards.length + ' 件' : cards.length + ' 件';
+      const conditions = Number(journalMemoColorV396 !== 'all') + Number(Boolean(query));
+      status.textContent = conditions ? '索引の条件：' + conditions + '件適用' : '索引の条件：なし';
+      clear.hidden = conditions === 0;
       empty.hidden = matched > 0;
       emptyMessage.textContent = !allCards.length ? '登録されたメモはありません'
         : !cards.length ? '選択した色のメモはありません'
@@ -645,7 +681,7 @@
     finder.addEventListener('compositionstart',()=>{composing=true;});
     finder.addEventListener('compositionend',()=>{composing=false;applyIndexQuery();});
     finder.addEventListener('input',event=>{if(!composing&&!event.isComposing)applyIndexQuery();});
-    index.append(panel);
+    disclosure.append(panel);
     applyIndexQuery();
     index.scrollTop = lastScroll;
     const spread=index.closest('.j425-memo-spread');
@@ -955,7 +991,7 @@
     return selected?.hasAttribute('data-work-memo-layout') ? 'memo' : (selected?.dataset.layout || 'today');
   }
 
-  // One visible search per JOURNAL, matching the Palette interaction model.
+  // One visible search per JOURNAL, with the current page as its scope.
   // The current page's *original* filter owner does the actual filtering.
   // That keeps search behaviour, permissions and persistence in one place.
   const globalSearchDefaultsV393 = Object.freeze({
@@ -1014,10 +1050,15 @@
     if (!view) return;
     const query = journalSearchQueryV393.normalize('NFKC').trim().toLocaleLowerCase('ja');
     for (const card of view.querySelectorAll(
-      '.task-card,.schedule-card,.todo-preview-item,.activity-item')) {
+      '.j420-work-note,.j420-agenda-item,.j420-todo-item,.j420-update-item,.j420-waiting-item')) {
       const text = (card.textContent || '').normalize('NFKC').toLocaleLowerCase('ja');
       card.classList.toggle('j-search-excluded-v393', Boolean(query) && !text.includes(query));
     }
+    // A matching record must stay reachable even when it is in the folded
+    // second half of today's cases. Keep it expanded after clearing, so the
+    // record the person just found does not disappear again.
+    const more = view.querySelector('[data-journal-today-more]');
+    if (query && more?.querySelector('.j420-work-note:not(.j-search-excluded-v393)')) more.open = true;
   }
   function activateJournalSearchV393() {
     if (journalSearchActiveV393) return;
@@ -1033,9 +1074,10 @@
     if (!isJournal()) return;
     activateJournalSearchV393();
     const route = currentRoute || canonicalRoute();
-    globalSearchScopeV393.textContent = globalSearchDefaultsV393[route] || '手帳';
-    globalSearchInputV393.placeholder = route === 'today'
-      ? '今日の記録を探す（タブ共通）' : '手帳全体のキーワードを入力';
+    const scope = globalSearchDefaultsV393[route] || '手帳';
+    globalSearchScopeV393.textContent = scope;
+    globalSearchInputV393.setAttribute('aria-label', scope + 'を検索（タブ共通キーワード）');
+    globalSearchInputV393.placeholder = scope + 'を検索（タブ共通）';
     globalSearchClearV393.hidden = !journalSearchQueryV393;
     if (route === 'today') {
       applyJournalTodaySearchV393();
@@ -2038,7 +2080,7 @@
       const actions=detailBody.querySelector('.detail-actions');
       const wrapper=actions?.querySelector('.j495-detail-more');
       const footer=detailBody.querySelector('.j495-detail-footer');
-      if(!active()||!compact.matches){
+      if(!active()){
         if(wrapper){
           const original=wrapper.querySelector('.sub-actions');
           if(original)actions.append(original);
@@ -2065,7 +2107,8 @@
           });
         }
       }
-      if(!footer){
+      if(!compact.matches)footer?.remove();
+      if(compact.matches&&!footer){
         const nav=document.createElement('nav');
         nav.className='j495-detail-footer';
         nav.setAttribute('aria-label','タスク詳細の末尾操作');
