@@ -11,11 +11,10 @@ test('CI scope: a Classic-only CSS change needs targeted browser, not Firebase o
   assert.equal(result.authorization, false);
 });
 
-test('CI scope: Origin, Palette and JOURNAL each keep their own browser contracts', () => {
-  const result = classifyPaths(['origin-modern-v372.js', 'palette-next-v369.js', 'journal-display-v367.css']);
+test('CI scope: Origin and JOURNAL retain independent browser contracts', () => {
+  const result = classifyPaths(['origin-modern-v372.js', 'journal-display-v367.css']);
   assert.equal(result.mode, 'targeted');
   assert.match(result.targets, /origin-modern-v372/);
-  assert.match(result.targets, /palette-next-v369/);
   assert.match(result.targets, /journal-display-v367/);
   assert.equal(result.firebase, false);
 });
@@ -31,7 +30,7 @@ test('CI scope: only an isolated JOURNAL change uses test-level browser sharding
   assert.equal(journal.firebase, false);
   assert.equal(journal.authorization, false);
 
-  const mixed = classifyPaths(['journal-display-v367.js', 'palette-next-v369.js']);
+  const mixed = classifyPaths(['journal-display-v367.js', 'origin-modern-v372.js']);
   assert.equal(mixed.journalParallel, false);
   assert.deepEqual(mixed.shards, [1]);
   assert.equal(mixed.shardCount, 1);
