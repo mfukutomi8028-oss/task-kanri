@@ -4,8 +4,8 @@ import { test, expect } from '@playwright/test';
 // Wait for the currently shipped canonical owners, not retired V550/V555 APIs.
 async function waitForSeededMemos(page, ids) {
   await page.waitForFunction(expected => {
-    const board = window.WorkBoardPaletteBridge?.readSnapshot?.();
-    const memos = window.WorkBoardPaletteMemoBridgeV369?.readSnapshot?.();
+    const board = window.WorkBoardSharedBridge?.readSnapshot?.();
+    const memos = window.WorkBoardSharedMemoBridge?.readSnapshot?.();
     return board?.connectionMode === 'local-only'
       && Array.isArray(memos)
       && expected.every(id => memos.some(memo => memo.id === id));
