@@ -27,6 +27,7 @@ test('startup: reveal requires app, assets, and selected display', () => {
   assert.match(index, /id="wbBootScreen"/);
   assert.match(manifest, /retry.hidden = false/);
   assert.match(app, /WORK_BOARD_CORE_READY = true/);
+  for (const file of ['origin-modern-v372.js','journal-display-v367.js'])
     assert.match(read(file), /new Event\('workboard:display-ready'\)/);
 });
 
@@ -66,11 +67,11 @@ test('startup: load only the active screen bundle; keep cascade slots across lat
 
 test('startup: retired screen bundles cannot block or modify the three-mode startup', () => {
   const common=read('modern-display-v356.css');
-  assert.doesNotMatch(manifest,/palette-display-v358|palette-next-v369|palette:\\s*\\{/);
+  assert.doesNotMatch(manifest,/palette-display-v358|palette-next-v369|palette:\s*\{/);
   assert.doesNotMatch(modern,/loadPaletteNext|wbPaletteNextPreview/);
-  assert.match(common,/\\.wb-display-segments-v356\\{grid-template-columns:repeat\\(3,minmax\\(0,1fr\\)\\)!important\\}/);
-  assert.match(config,/deferredStyleModes\\.get\\(marker\\) === mode/);
-  assert.match(config,/deferredScriptModes\\.get\\(marker\\) === mode/);
+  assert.match(common,/\.wb-display-segments-v356\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important\}/);
+  assert.match(config,/deferredStyleModes\.get\(marker\) === mode/);
+  assert.match(config,/deferredScriptModes\.get\(marker\) === mode/);
 });
 
 test('mode switch: failed assets are retried and the old selected view remains recoverable', () => {
