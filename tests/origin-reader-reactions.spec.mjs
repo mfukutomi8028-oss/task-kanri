@@ -9,7 +9,7 @@ async function boot(page,width=390,mode='local-only'){
    window.__readerRemote=structuredClone(record);window.__readerConfig=null;window.__readerTransactions=0;window.__readerFail=false;
    Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return window.__readerConfig},set(){}});
    let wrapped;const listeners=[];window.__readerMode=mode;
-   Object.defineProperty(window,'WorkBoardPaletteBridge',{configurable:true,get(){return wrapped},set(value){wrapped={...value,readSnapshot:()=>({...value.readSnapshot(),connectionMode:window.__readerMode}),subscribe(listener){listeners.push(listener);return value.subscribe(s=>listener({...s,connectionMode:window.__readerMode}));}};}});
+   Object.defineProperty(window,'WorkBoardSharedBridge',{configurable:true,get(){return wrapped},set(value){wrapped={...value,readSnapshot:()=>({...value.readSnapshot(),connectionMode:window.__readerMode}),subscribe(listener){listeners.push(listener);return value.subscribe(s=>listener({...s,connectionMode:window.__readerMode}));}};}});
    window.__readerSetMode=next=>{window.__readerMode=next;for(const fn of listeners)fn(wrapped.readSnapshot());};
  },{room:ROOM,task:TASK,parent:PARENT,mode});
  await page.route('**/*',async route=>{
