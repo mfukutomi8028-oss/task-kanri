@@ -3073,7 +3073,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
   $('#workspace [data-action="full-search-kind"][data-value="'+searchKind+'"]')?.focus({preventScroll:true});return;
  }
  if(a==='full-search-more'||a==='full-search-show-all'){
-  const previous=$('#workspace .origin-full-search-hit').parentElement?.querySelectorAll('.origin-full-search-hit').length||0;
+  const previous=$('#workspace .origin-full-search-list')?.querySelectorAll('.origin-full-search-hit').length||0;
   originFullSearchLimit=a==='full-search-show-all'?Infinity:originFullSearchLimit+30;render();
   const first=$('#workspace .origin-full-search-list')?.querySelectorAll('.origin-full-search-hit')[previous];
   if(first){first.focus({preventScroll:true});first.scrollIntoView({block:'nearest',behavior:'instant'});}
