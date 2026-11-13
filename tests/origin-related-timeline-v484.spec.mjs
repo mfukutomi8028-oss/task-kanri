@@ -16,7 +16,7 @@ test('Origin orders upcoming and past linked schedules and restores expanded his
  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
  const host=page.locator('#modernOriginRoot'),sheet=host.locator('#sheet');
  const created=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot();
    const task=await bridge.dispatch({
      type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,assignee:s.currentUser,revision:0,
      status:s.statuses[0],category:s.categories[0],title:'関連予定を並べるタスク',description:'',
@@ -93,7 +93,7 @@ test('Origin orders upcoming and past linked schedules and restores expanded his
  await expect(sheet.locator('#panelHeading')).toHaveText('関連予定を並べるタスク');
  await sheet.locator('.sheet-close').click();
  expect(await page.evaluate(id=>{
-   const s=window.WorkBoardPaletteBridge.readSnapshot();
+   const s=window.WorkBoardSharedBridge.readSnapshot();
    return {revision:s.tasks.find(t=>t.id===id)?.revision,
      eventCount:s.schedules.filter(t=>t.relatedTaskId===id).length};
  },created.id)).toEqual({revision:created.revision,eventCount:4});
@@ -116,7 +116,7 @@ test('Origin changes and unlinks task associations without deleting scheduled re
  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
  const host=page.locator('#modernOriginRoot'),sheet=host.locator('#sheet');
  const ids=await page.evaluate(async()=>{
-   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const bridge=window.WorkBoardSharedBridge,s=bridge.readSnapshot();
    const createTask=async title=>{
      const response=await bridge.dispatch({type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,
        assignee:s.currentUser,revision:0,status:s.statuses[0],category:s.categories[0],
@@ -165,7 +165,7 @@ test('Origin changes and unlinks task associations without deleting scheduled re
  await expect(sheet.locator('#panelHeading')).toHaveText('関連操作の元タスク');
  await expect(sheet.locator('.origin-related-entry')).toHaveCount(0);
  await expect.poll(async()=>page.evaluate(id=>
-   window.WorkBoardPaletteBridge.readSnapshot().schedules.find(x=>x.id===id)?.relatedTaskId,
+   window.WorkBoardSharedBridge.readSnapshot().schedules.find(x=>x.id===id)?.relatedTaskId,
    ids.scheduleId)).toBe(ids.next.id);
  await sheet.locator('.sheet-close').click();
  await host.locator('.origin-task-collection .item-name[data-kind="tasks"][data-id="'+ids.next.id+'"]').click();
@@ -187,7 +187,7 @@ test('Origin changes and unlinks task associations without deleting scheduled re
  await expect(sheet.locator('#panelHeading')).toHaveText('関連操作の先タスク');
  await expect(sheet.locator('.origin-related-entry')).toHaveCount(0);
  const state=await page.evaluate(({original,next,scheduleId})=>{
-   const data=window.WorkBoardPaletteBridge.readSnapshot();
+   const data=window.WorkBoardSharedBridge.readSnapshot();
    return {relatedTaskId:data.schedules.find(x=>x.id===scheduleId)?.relatedTaskId,
      scheduleStillExists:data.schedules.some(x=>x.id===scheduleId),
      originalRevision:data.tasks.find(x=>x.id===original.id)?.revision,
