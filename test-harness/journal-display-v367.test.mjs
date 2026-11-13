@@ -12,7 +12,7 @@ const manifest = read('release-manifest.js');
 const ownership = JSON.parse(read('patch-responsibilities.json'));
 
 test('Journal remains an opt-in view with a single canonical data and write owner', () => {
-  assert.match(selector, /new Set\(\['classic', 'modern', 'palette', 'journal'\]\)/);
+  assert.match(selector, /new Set\(\['classic', 'modern', 'journal'\]\)/);
   assert.match(js, /target\.click\(\)/);
   assert.match(js, /data-journal-create/);
   assert.match(js, /data-journal-sheet/);
