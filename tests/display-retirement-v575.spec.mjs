@@ -12,7 +12,7 @@ for (const width of [320,390,1366]) {
       Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
       localStorage.setItem('systemTaskRoomId',room);
       localStorage.setItem('systemTaskUser','福冨');
-      localStorage.setItem('workBoardDisplayV356:'+room+':福冨','palette');
+      localStorage.setItem('workBoardDisplayV356:'+encodeURIComponent(room)+':'+encodeURIComponent('福冨'),'palette');
     },{room});
     await page.goto('/?room='+room,{waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true&&window.WORK_BOARD_CORE_READY===true,
@@ -23,7 +23,7 @@ for (const width of [320,390,1366]) {
     await expect(page.locator('#wbDisplayChoiceV356 [data-wb-display-choice="palette"]')).toHaveCount(0);
     await expect(page.locator('#paletteNextRoot,#wbPaletteMobileDockV358')).toHaveCount(0);
     const state=await page.evaluate(({room})=>({
-      saved:localStorage.getItem('workBoardDisplayV356:'+room+':福冨'),
+      saved:localStorage.getItem('workBoardDisplayV356:'+encodeURIComponent(room)+':'+encodeURIComponent('福冨')),
       shared:Boolean(window.WorkBoardSharedBridge?.readSnapshot),
       memo:Boolean(window.WorkBoardSharedMemoBridge?.readSnapshot),
       snapshot:window.WorkBoardSharedBridge?.readSnapshot()?.roomId
