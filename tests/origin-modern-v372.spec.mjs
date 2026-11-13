@@ -3875,6 +3875,7 @@ for(const width of [1366,390,320]){
   await expect(row).toContainText('貸出端末の点検');
   const insight=row.locator('.origin-task-insight');
   await expect(insight).toBeHidden();
+  if(width<=770)await host.locator('[data-action="task-advanced-toggle"]').click();
   await host.locator('[data-action="task-density"]').click();
   await expect(host.locator('.origin-task-collection')).not.toHaveClass(/origin-tasks-compact/);
   await expect(insight).toBeVisible();
