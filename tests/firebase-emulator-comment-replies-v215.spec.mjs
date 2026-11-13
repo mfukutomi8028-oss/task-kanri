@@ -107,7 +107,7 @@ async function boot(page) {
   // Confirm the seeded remote task revision, then assert its real comment DOM.
   await page.evaluate(() => document.querySelector('.nav-item[data-layout="tasks"]')?.click());
   await expect.poll(() => page.evaluate(() =>
-    window.WorkBoardPaletteBridge?.readSnapshot?.()
+    window.WorkBoardSharedBridge?.readSnapshot?.()
       ?.tasks?.find(task => task.id === 'task-reply-v215')?.revision ?? null
   ), { timeout: 30_000 }).toBe(7);
   await page.waitForSelector('[data-task-id="task-reply-v215"]', { timeout: 30_000 });
