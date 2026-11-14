@@ -27,7 +27,7 @@ test('Origin light theme secondary labels maintain 4.5:1 against paper and page 
 });
 
 test('Origin global and full search fields show focus on their visible containers', () => {
-  assert.match(source, /\\.searchbox:focus-within\\{[^}]*outline:2px solid var\\(--accent\\)/);
-  assert.match(source, /\\.origin-full-search-field:focus-within\\{[^}]*outline:2px solid var\\(--accent\\)/);
+  assert.match(source, /\.searchbox:focus-within\{[^}]*outline:2px solid var\(--accent\)/);
+  assert.match(source, /\.origin-full-search-field:focus-within\{[^}]*outline:2px solid var\(--accent\)/);
   assert.match(source, /button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible/);
 });
