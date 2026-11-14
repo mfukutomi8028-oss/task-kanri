@@ -1332,8 +1332,7 @@
   // storage or business handler is introduced.
   function journalMemoLinkEnhanceV594() {
     const containers=[
-      document.querySelector('#boardView #j494AtelierNote .j420-note-actions'),
-      document.querySelector('#detailBody .detail-actions .main-actions')
+      document.querySelector('#boardView #j494AtelierNote .j420-note-actions')
     ];
     for(const container of containers){
       const old=container?.querySelector('[data-j594-open-memo]');
@@ -1353,8 +1352,7 @@
     if(!isJournal())return;
     const open=event.target.closest('[data-j594-open-memo]');
     if(open){
-      const id=String(document.querySelector('#boardView [data-j420-task-id].is-selected')?.dataset.j420TaskId
-        ||shelfSnapshot()?.tasks?.find(t=>t.id===document.querySelector('#detailBody [data-action="edit"]')?.dataset.taskId)?.id||'');
+      const id=String(document.querySelector('#boardView [data-j420-task-id].is-selected')?.dataset.j420TaskId||'');
       // A detail-only entry can have no matching board card; do not bookmark
       // an unrelated case. The note reader always has an explicit selection.
       if(id)journalReturnCaptureV594('task',id);
@@ -1372,9 +1370,6 @@
   const journalReturnBoardV594=document.getElementById('boardView');
   if(journalReturnBoardV594)new MutationObserver(journalMemoLinkEnhanceV594)
     .observe(journalReturnBoardV594,{childList:true,subtree:true});
-  const journalReturnDetailV594=document.getElementById('detailBody');
-  if(journalReturnDetailV594)new MutationObserver(journalMemoLinkEnhanceV594)
-    .observe(journalReturnDetailV594,{childList:true,subtree:true});
   journalMemoLinkEnhanceV594();
 
   function syncNavigation() {
