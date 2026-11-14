@@ -56,6 +56,16 @@ for(const width of [320,390,1366]){
       return {y:r.y,height:r.height,borderRadius:parseFloat(getComputedStyle(el).borderTopLeftRadius),font:parseFloat(getComputedStyle(title).fontSize)};
     }));
     expect(geometry.every(x=>x.borderRadius>=10&&x.font>=14)).toBe(true);
+    if(width<768){
+      // Keep the task name readable: the action cluster must occupy the next row.
+      const placement=await rows.first().evaluate(el=>{
+        const main=el.querySelector('.origin-task-main').getBoundingClientRect();
+        const actions=el.querySelector('.row-last').getBoundingClientRect();
+        return {mainWidth:main.width,mainBottom:main.bottom,actionsTop:actions.top};
+      });
+      expect(placement.mainWidth).toBeGreaterThanOrEqual(205);
+      expect(placement.actionsTop).toBeGreaterThanOrEqual(placement.mainBottom-1);
+    }
     for(let i=1;i<geometry.length;i++)expect(geometry[i].y-(geometry[i-1].y+geometry[i-1].height)).toBeGreaterThanOrEqual(5);
     await expect(rows.first().locator('[data-action="open"][data-kind="tasks"]')).toBeVisible();
     await expect(rows.first().locator('[data-action="list-quick-edit"]')).toBeVisible();
