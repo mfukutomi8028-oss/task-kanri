@@ -857,7 +857,7 @@ test('JOURNAL V584 calendar editor returns through the same guarded page context
   assert.match(app,/journalPrepareCalendarReturnV584\(card,schedule\)/);
   assert.match(app,/action:'calendar'/);
   assert.match(app,/if\(context.action==='calendar'\)/);
-  assert.match(app,/context.room!==ROOM_ID\|\|context.user!==getCurrentUser\(\)/);
+  assert.match(app,/context.room!==ROOM_ID\s*\|\|\s*context.user!==getCurrentUser\(\)/);
   assert.match(app,/document.querySelector\('dialog\[open\]'\)/);
   assert.match(app,/\[data-j425-today\]/);
   const fn=app.slice(app.indexOf('function journalRestoreNoteV479(){'),
