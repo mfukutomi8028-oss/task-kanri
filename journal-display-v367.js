@@ -643,7 +643,7 @@
           (card.querySelector('h4')?.textContent?.trim() || '無題');
         button.addEventListener('click', () => {
           const spread=index.closest('.j425-memo-spread');
-          if(spread)selectMemoForReadingV451(spread,card,true);
+          if(spread)selectMemoForReadingV451(spread,card);
         });
         item.append(button);
         list.append(item);
@@ -726,7 +726,9 @@
 
   // The original memo cards remain canonical. This only moves focus between
   // a selected paper slip and its read-only reader on stacked layouts.
-  function selectMemoForReadingV451(spread, card, fromIndex=false) {
+  // Every entrypoint leads to the same folio, and one canonical card remains
+  // the owner of editing/copy/task operations and the return-focus target.
+  function selectMemoForReadingV451(spread, card) {
     if (!spread || !card) return;
     journalMemoSelectedV425 = card.dataset.memoSortId;
     const selectedLink=[...spread.querySelectorAll('.j-memo-index-link-v383')]
@@ -734,22 +736,15 @@
     const group=selectedLink?.closest('details.j-memo-index-group-v383');
     if(group&&!group.open)group.open=true;
     updateMemoReaderV425(spread);
-    if (window.matchMedia('(max-width:1190px)').matches) {
-      requestAnimationFrame(() => {
-        if (!isJournal() || !spread.isConnected) return;
-        const reader=spread.querySelector('.j425-memo-reader');
-        reader?.focus({preventScroll:true});
-        reader?.scrollIntoView({
-          behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
-          block:'start'
-        });
+    requestAnimationFrame(() => {
+      if (!isJournal() || !spread.isConnected) return;
+      const reader=spread.querySelector('.j425-memo-reader');
+      reader?.focus({preventScroll:true});
+      reader?.scrollIntoView({
+        behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
+        block:window.matchMedia('(max-width:1190px)').matches?'start':'nearest'
       });
-    } else if (fromIndex==='shortcut') {
-      spread.querySelector('.j425-memo-reader')?.focus({preventScroll:true});
-    } else if (fromIndex) {
-      card.focus({preventScroll:true});
-      card.scrollIntoView({behavior:'smooth',block:'center'});
-    }
+    });
   }
 
   function updateMemoReaderV425(spread) {
@@ -876,7 +871,7 @@
           const title=document.createElement('strong');
           title.textContent=card.querySelector('h4')?.textContent||'無題';
           button.append(category,title);
-          button.addEventListener('click',()=>selectMemoForReadingV451(spread,card,'shortcut'));
+          button.addEventListener('click',()=>selectMemoForReadingV451(spread,card));
           list.append(button);
         }
         group.append(list);
