@@ -4329,3 +4329,37 @@ test('JOURNAL UX review: desktop condition clearing focuses a visible filter',as
   await page.locator('[data-journal-memo-clear]').click();
   await expect(page.locator('[data-journal-memo-color="all"]')).toBeFocused();
 });
+
+
+test('JOURNAL settings book contains keyboard focus and returns to its trigger',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  const trigger=page.locator('[data-journal-settings]');
+  await trigger.click();
+  await page.locator('[data-journal-open-drawer]').click();
+  const book=page.locator('#jSettingsBookV393');
+  const sidebar=page.locator('.sidebar');
+  await expect(book).toBeVisible();
+  await expect(sidebar).toHaveAttribute('role','dialog');
+  await expect(sidebar).toHaveAttribute('aria-modal','true');
+  await expect(sidebar).toHaveAttribute('aria-label','JOURNAL 設定の手帳');
+  await expect(page.locator('[data-journal-settings-tab="display"]')).toBeFocused();
+  // A direct attempt to tab out must wrap within the open notebook.
+  const focusables=await sidebar.locator('button:not([disabled]), input:not([disabled]), select:not([disabled]), a[href]').all();
+  let last=null;
+  for(const item of focusables){if(await item.isVisible() && await item.isEnabled())last=item;}
+  expect(last).not.toBeNull();
+  await last.focus();
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(()=>document.activeElement?.closest('.sidebar')!==null)).toBe(true);
+  await page.locator('.j-settings-book-close-v393').click();
+  await expect(page.locator('body')).toHaveAttribute('data-journal-settings-open','false');
+  await expect(sidebar).not.toHaveAttribute('aria-modal','true');
+  await expect(trigger).toBeFocused();
+  // Reopening and pressing Escape preserves the exact same return location.
+  await trigger.click();
+  await page.locator('[data-journal-open-drawer]').click();
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
+});
