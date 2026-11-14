@@ -3929,7 +3929,7 @@ html[data-wb-display="journal"] .j425-index-rail select {
 }
 html[data-wb-display="journal"] .j425-index-option {
   display:flex;align-items:center;justify-content:space-between;gap:8px;
-  width:100%;min-height:38px;text-align:left;padding:7px 9px;
+  width:100%;min-height:44px;text-align:left;padding:9px 9px;
   background:transparent!important;border:0!important;border-radius:4px!important;
   color:#435243!important;font:750 12px/1.5 var(--j-text)!important;box-shadow:none!important;cursor:pointer;
 }
@@ -4253,7 +4253,7 @@ html[data-wb-display="journal"] .j425-schedule-actions label {flex:1 1 220px}
 html[data-wb-display="journal"] .j425-schedule-index {padding:16px 11px}
 html[data-wb-display="journal"] .j425-mini-month-head {display:flex;justify-content:space-between;gap:5px;align-items:center;margin:14px 0 9px}
 html[data-wb-display="journal"] .j425-mini-month-head button {
-  width:28px;min-height:32px;border:0;background:transparent;color:#547359;font-size:22px;cursor:pointer;
+  width:44px;min-height:44px;border:0;background:transparent;color:#547359;font-size:22px;cursor:pointer;
 }
 html[data-wb-display="journal"] .j425-mini-month-head strong {font:800 12px var(--j-serif);white-space:nowrap}
 html[data-wb-display="journal"] .j425-mini-grid {
@@ -4281,8 +4281,8 @@ html[data-wb-display="journal"] .j425-schedule-datebar strong {
   padding:0 8px;font:800 15px var(--j-serif);white-space:nowrap;
 }
 html[data-wb-display="journal"] .j425-schedule-datebar button {
-  min-height:37px;padding:6px 9px;border:1px solid #d6d1c4;
-  border-radius:4px;background:#fffefa;color:#507458;font:750 11px var(--j-text);cursor:pointer;
+  min-height:44px;padding:9px 10px;border:1px solid #d6d1c4;
+  border-radius:4px;background:#fffefa;color:#507458;font:750 12px var(--j-text);cursor:pointer;
 }
 /* Keyboard users must see the restored position after a page-turn action. */
 html[data-wb-display="journal"] #scheduleView :is(
@@ -4423,7 +4423,7 @@ html[data-wb-display="journal"] .j425-schedule-footnotes small {color:#8c9387;fo
 html[data-wb-display="journal"] .j425-schedule-footnotes button {
   width:100%;display:flex;gap:5px;align-items:center;
   border:0;border-bottom:1px dashed #e2dbd0;background:transparent;
-  min-height:34px;padding:6px 3px;text-align:left;color:#425746;font-size:11px;cursor:pointer;
+  min-height:44px;padding:9px 5px;text-align:left;color:#425746;font-size:12px;cursor:pointer;
 }
 html[data-wb-display="journal"] .j425-schedule-footnotes button small {margin-left:auto;white-space:nowrap}
 html[data-wb-display="journal"] .j425-schedule-footnotes p {
@@ -4434,9 +4434,9 @@ html[data-wb-display="journal"] .j425-schedule-sidebar {display:grid;align-conte
 html[data-wb-display="journal"] .j425-schedule-sidebar>small {color:#8b9887;font-size:11px}
 html[data-wb-display="journal"] .j425-schedule-sidebar button,
 html[data-wb-display="journal"] .j425-side-schedule-list button {
-  display:flex;gap:7px;align-items:start;width:100%;min-height:37px;
+  display:flex;gap:7px;align-items:start;width:100%;min-height:44px;
   padding:8px 2px;border:0;border-bottom:1px solid #ece3d9;
-  text-align:left;background:transparent;color:#39523e;cursor:pointer;font:650 11px/1.5 var(--j-text);
+  text-align:left;background:transparent;color:#39523e;cursor:pointer;font:650 12px/1.5 var(--j-text);
 }
 html[data-wb-display="journal"] .j425-schedule-sidebar time {color:var(--j-muted);font-size:13px;flex:0 0 auto}
 html[data-wb-display="journal"] .j425-schedule-sidebar strong {overflow-wrap:anywhere}
