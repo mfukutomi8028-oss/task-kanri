@@ -876,8 +876,8 @@ test('JOURNAL V586 moved calendar records expose a saved-only destination action
   assert.match(app,/journalNoteDialogReturnV479\.deleted=true/);
   assert.match(app,/data-j586-add-after-delete/);
   const fn=app.slice(app.indexOf('function journalDateInPeriodV586('),
-    app.indexOf('\\n// JOURNAL-only visible schedule summary'));
-  assert.doesNotMatch(fn,/(?:persistSchedule|requestDeleteWithSeries|runTransaction|setDatabase|updateDatabase)\\s*\\(/);
+    app.indexOf('\n// JOURNAL-only visible schedule summary'));
+  assert.doesNotMatch(fn,/(?:persistSchedule|requestDeleteWithSeries|runTransaction|setDatabase|updateDatabase)\s*\(/);
 });
 
 test('JOURNAL V481 memo preview is escaped, compact and expands long text without losing it',()=>{
