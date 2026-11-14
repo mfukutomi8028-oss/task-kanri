@@ -2213,10 +2213,22 @@
       if(!active()||document.querySelector('dialog[open]'))return;
       if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close.click();return}
       if(event.key!=='Tab')return;
-      const options=[...panel.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled])')].filter(el=>el.getClientRects().length&&!el.closest('[hidden]'));
+      // The full-record folio is modal. Include native disclosure summaries
+      // in keyboard order and recover if an external update moved focus behind it.
+      const options=[...panel.querySelectorAll(
+        'button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),summary,[tabindex]:not([tabindex="-1"])'
+      )].filter(el=>el.tabIndex>=0&&el.getClientRects().length
+        &&!el.closest('[hidden],[inert]')&&getComputedStyle(el).visibility!=='hidden');
       if(!options.length)return;
-      if(event.shiftKey&&document.activeElement===options[0]){event.preventDefault();options[options.length-1].focus()}
-      else if(!event.shiftKey&&document.activeElement===options[options.length-1]){event.preventDefault();options[0].focus()}
+      const first=options[0],last=options[options.length-1];
+      if(!panel.contains(document.activeElement)){
+        event.preventDefault();
+        (event.shiftKey?last:first).focus({preventScroll:true});
+      }else if(event.shiftKey&&document.activeElement===first){
+        event.preventDefault();last.focus({preventScroll:true});
+      }else if(!event.shiftKey&&document.activeElement===last){
+        event.preventDefault();first.focus({preventScroll:true});
+      }
     },true);
     // pointerdown (not click) prevents the opening task click from immediately closing the folio.
     document.addEventListener('pointerdown',event=>{if(active()&&!document.querySelector('dialog[open]')&&!panel.contains(event.target))close.click()});
