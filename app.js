@@ -7898,7 +7898,7 @@ function journalAtelierV420(tasks){
       </aside>
       <section class="j420-atelier-desk" aria-label="案件の作業机">
         <div class="j420-atelier-tools"><span class="j420-desk-flourish" aria-hidden="true">✦</span>
-          <button type="button" class="j420-create-task" data-j420-new-task${!viewTasks.length?' data-j520-empty-new':''}>＋ 新しいタスク</button>
+          <button type="button" class="j420-create-task" data-j420-new-task${!viewTasks.length&&!activeFilterCountV520?' data-j520-empty-new':''}>＋ 新しいタスク</button>
           <label class="j420-atelier-search"><span aria-hidden="true">⌕</span><input type="search" data-j420-search value="${escapeHtml(elements.searchInput.value)}" placeholder="案件・タスクを検索" aria-label="案件を検索"></label>
           <button type="button" data-j420-reset-view>絞り込み解除</button>
           <div class="j420-atelier-switch" role="group" aria-label="タスク表示形式">
