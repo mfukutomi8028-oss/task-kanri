@@ -89,7 +89,7 @@ test('An empty pending list offers an explicit create action without inventing T
 test('Completed history search uses matching items, not the total completed count',async({page})=>{
   const root=await openOrigin(page,'origin-todo-context-archive-count');
   await createTodos(page);
-  await root.locator('.origin-todo-list .todo-check').first().check();
+  await root.locator('.origin-todo-list .todo-check').first().click();
   await expect(root.locator('.origin-todo-list .todo-entry')).toHaveCount(2);
   await root.locator('[data-action="todo-search-toggle"]').click();
   await root.locator('[data-action="todo-search-history"]').click();
@@ -101,7 +101,7 @@ test('Completed history search uses matching items, not the total completed coun
   await expect(empty.locator('[data-action="jump-result"]')).toHaveCount(0);
   await search.fill('点検表を確認');
   await expect(empty).toContainText('完了履歴に1件の一致');
-  await empty.locator('[data-action="jump-result"]').click();
+  await root.locator('.origin-todo-search-row [data-action="jump-result"]').click();
   await expect(root.locator('#originCompletedTodos .todo-text',{hasText:'点検表を確認'})).toBeFocused();
 });
 
