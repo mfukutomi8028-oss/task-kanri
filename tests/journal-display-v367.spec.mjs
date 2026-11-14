@@ -179,6 +179,11 @@ test('JOURNAL Atelier, index and chronicle switch without task render errors',as
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
   const board=page.locator('#boardView');
   await expect(board.locator('.j420-atelier')).toBeVisible();
+  // V597: empty desktop ateliers begin with the index folded; open the
+  // canonical index before exercising its existing filters.
+  const indexToggle=board.locator('[data-j502-toggle-index]');
+  if(await indexToggle.isVisible() && await indexToggle.getAttribute('aria-expanded')==='false')
+    await indexToggle.click();
   await board.locator('[data-j420-view="focus"]').click();
   await expect(board.locator('[data-j420-view="focus"]')).toHaveAttribute('aria-pressed','true');
   await board.locator('[data-j420-reset-view]').first().click();
@@ -4952,5 +4957,7 @@ test('JOURNAL V596 mobile gap choice reads as optional time precision instead of
   await expect(summary).toHaveText(/時刻を細かく指定/);
   await expect(summary).not.toContainText('空き時間から追加');
   await summary.click();
-  await expect(weekly.first().locator('[data-j473-free-date]').first()).toBeVisible();
+  // The same attribute exists on the deliberately hidden desktop grid.
+  // Select the visible mobile disclosure instead of the first hidden grid node.
+  await expect(weekly.first().locator('.j473-mobile-gaps [data-j473-free-date]').first()).toBeVisible();
 });
