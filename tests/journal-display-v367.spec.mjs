@@ -4579,3 +4579,69 @@ for (const width of [390,1366]) {
     await editor.locator('#closeScheduleDialog').click();
   });
 }
+
+
+// Ver.590: verify actual hit-test geometry, not CSS declaration text.
+// All records are synthetic localhost fixtures in bootPaperAuxiliary.
+async function journalTouchGeometryV590(element){
+  return element.evaluate(el=>{
+    const rect=el.getBoundingClientRect();
+    return {width:rect.width,height:rect.height,visible:rect.width>0&&rect.height>0};
+  });
+}
+function expectJournalTouchTargetV590(size,label){
+  expect(size.visible,label+' must be rendered').toBe(true);
+  expect(size.width,label+' width').toBeGreaterThanOrEqual(43.5);
+  expect(size.height,label+' height').toBeGreaterThanOrEqual(43.5);
+}
+
+for(const width of [320,390,1366]){
+  test('JOURNAL V590 task, ToDo and memo touch actions fit at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await bootPaperAuxiliary(page,width);
+
+    await paperRoute(page,width,'tasks');
+    await page.locator('#boardView [data-j420-layout="list"]').click();
+    const star=page.locator('#listView .j425-index-record .j425-list-star').first();
+    await expect(star).toBeVisible();
+    expectJournalTouchTargetV590(await journalTouchGeometryV590(star),'task favorite');
+    const bounds=await star.evaluate(el=>{
+      const own=el.getBoundingClientRect(),row=el.closest('.j425-index-record').getBoundingClientRect();
+      return {left:own.left,right:own.right,parentLeft:row.left,parentRight:row.right};
+    });
+    expect(bounds.left).toBeGreaterThanOrEqual(bounds.parentLeft-1);
+    expect(bounds.right).toBeLessThanOrEqual(bounds.parentRight+1);
+    await star.focus();
+    await expect(star).toBeFocused();
+
+    await paperRoute(page,width,'todos');
+    await page.locator('#todoView #todayTodoInput').fill('画面幅確認用ToDo');
+    await page.locator('#todoView [data-j425-todo-create] button[type="submit"]').click();
+    const moves=page.locator('#todoView .j425-todo-record-move button');
+    await expect(moves.first()).toBeVisible();
+    const moveSizes=await moves.evaluateAll(elements=>elements
+      .filter(el=>el.getBoundingClientRect().width>0)
+      .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,visible:true})));
+    expect(moveSizes.length).toBeGreaterThan(0);
+    for(const size of moveSizes)expectJournalTouchTargetV590(size,'ToDo movement');
+
+    await paperRoute(page,width,'memo');
+    await page.locator('#workMemoViewV167 [data-memo-new]').first().click();
+    const dialog=page.locator('#workMemoDialogV167');
+    await expect(dialog).toBeVisible();
+    await dialog.locator('#workMemoTitleV167').fill('実測用の紙面メモ');
+    await dialog.locator('#workMemoBodyV167').fill('メモの文字と操作ボタンの領域を確認する');
+    await dialog.locator('#workMemoFormV167 button[type="submit"]').click();
+    await expect(dialog).toBeHidden();
+    const card=page.locator('#workMemoViewV167 .work-memo-card-v167').filter({hasText:'実測用の紙面メモ'});
+    await expect(card).toBeVisible();
+    const buttons=card.locator('.work-memo-actions-v167 button');
+    await expect(buttons.first()).toBeVisible();
+    const sizes=await buttons.evaluateAll(elements=>elements
+      .filter(el=>el.getBoundingClientRect().width>0)
+      .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,visible:true})));
+    expect(sizes.length).toBeGreaterThan(0);
+    for(const size of sizes)expectJournalTouchTargetV590(size,'memo card action');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  });
+}
