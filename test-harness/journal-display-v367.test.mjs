@@ -1876,7 +1876,7 @@ test('JOURNAL V594 cross-page context is transient and returns to its canonical 
   assert.match(js,/function journalReturnToSourceV594\(\)/);
   assert.match(js,/function syncJournalReturnV594\(\)/);
   assert.match(js,/data-j594-open-memo/);
-  assert.match(js,/data-j594-return/);
+  assert.match(js,/back\.dataset\.j594Return=''/);
   assert.match(js,/\[data-memo-task\]/);
   assert.match(js,/journalMemoSelectedV425=origin\.id/);
   assert.match(js,/journalReturnOwnerV594\(\)!==origin\.owner/);
