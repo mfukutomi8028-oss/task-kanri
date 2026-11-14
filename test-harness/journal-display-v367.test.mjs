@@ -884,6 +884,29 @@ test('JOURNAL planner touch targets preserve readable and tappable actions',()=>
   assert.match(css,/\.j425-side-schedule-list button\s*\{[^}]*font:650 12px/s);
 });
 
+test('JOURNAL task and memo controls meet the touch target and legibility baseline',()=>{
+  const css=read('journal-display-v367.css');
+  for(const selector of [
+    '.j425-action-primary',
+    '.j425-index-rail select',
+    '.j425-clear-filters',
+    '.j425-todo-detail-actions button',
+    '.j425-index-bulk button',
+    '.j425-preview-actions button',
+    '.j425-memo-gallery .work-memo-actions-v167 button',
+    '.j425-memo-reader-actions button'
+  ]){
+    const start=css.indexOf(selector+' {');
+    assert.ok(start>=0,'missing selector '+selector);
+    const rule=css.slice(start,css.indexOf('}',start));
+    const height=Number(rule.match(/min-height:\\s*(\\d+)px/)?.[1]);
+    assert.ok(height>=44,selector+' target too short: '+height);
+  }
+  assert.match(css,/#workMemoViewV167 \\.j425-memo-gallery \\.work-memo-body-v167 \\{[^}]*font:500 12px/s);
+  assert.match(css,/\\.j425-memo-gallery \\.work-memo-actions-v167 button\\s*\\{[^}]*font:750 12px/s);
+  assert.match(css,/#workMemoViewV167 \\.j425-memo-gallery \\.work-memo-actions-v167 button \\{\\s*min-height:44px!important;/);
+});
+
 test('JOURNAL V586 moved calendar records expose a saved-only destination action',()=>{
   const app=read('app.js');
   assert.match(app,/function journalDateInPeriodV586\(date,mode,anchor\)/);
