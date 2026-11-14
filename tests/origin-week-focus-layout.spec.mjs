@@ -56,10 +56,10 @@ for(const width of [960,1366]){
     await expect(layout.locator('.weekday-col')).toHaveCount(7);
     const day=layout.locator('.weekday-col[data-date="'+date+'"]');
     await expect(day.locator('.schedule-event')).toHaveCount(2);
-    await expect(day.locator('[data-action="schedule-week-day"]')).toContainText('4件');
-    await day.locator('[data-action="schedule-week-day"]').click();
-    await expect(day.locator('[data-action="schedule-week-day"]')).toHaveAttribute('aria-pressed','true');
-    await expect(day.locator('[data-action="schedule-week-day"]')).toBeFocused();
+    await expect(day.locator('.origin-weekday-focus')).toContainText('4件');
+    await day.locator('.origin-weekday-focus').click();
+    await expect(day.locator('.origin-weekday-focus')).toHaveAttribute('aria-pressed','true');
+    await expect(day.locator('.origin-weekday-focus')).toBeFocused();
     const focus=layout.locator('.origin-week-focus');
     await expect(focus).toContainText('4件');
     await expect(focus.locator('.origin-week-focus-entry')).toHaveCount(4);
