@@ -6,7 +6,7 @@ const source = readFileSync('origin-modern-v372.js', 'utf8');
 
 // Extract only the theme token; this stays independent of Classic and JOURNAL.
 const token = (name) => {
-  const match = source.match(new RegExp('\\-\\-' + name + ':(#[0-9a-f]{6})', 'i'));
+  const match = source.match(new RegExp('\\-\\-' + name + ':(#[0-9a-f]{6}|#[0-9a-f]{3})(?![0-9a-f])', 'i'));
   assert.ok(match, 'Missing Origin color token: ' + name);
   return match[1].length === 4 ? '#' + [...match[1].slice(1)].map(char => char + char).join('') : match[1];
 };
