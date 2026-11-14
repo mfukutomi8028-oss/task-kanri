@@ -70,3 +70,28 @@ test('Origin local reactions explain availability and tool cards retain their na
  await root.locator('.sheet-close').click();await root.locator('#mobileNav [data-route="tools"]').click();await expect(root.locator('.origin-tool-nav button')).toHaveCount(5);await expect(root.locator('#originInboxButton')).toBeAttached();
  await root.locator('[data-action="tool-tab"][data-value="settings"]').click();await expect(root.locator('.origin-management')).toHaveCount(3);expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+for(const width of [320,390,1366]){
+ test('Origin task reader navigates directly to expanded workflow settings at '+width+'px',async({page})=>{
+  const root=await boot(page,width),nav=root.locator('.origin-reader-nav');
+  const related=nav.locator('[data-action="detail-jump"][data-value="originTaskLinks"]');
+  const settings=nav.locator('[data-action="detail-jump"][data-value="originWorkflow"]');
+  await expect(related).toContainText('関連予定');
+  await expect(settings).toContainText('前提・設定');
+  const workflow=root.locator('#originWorkflow'),summary=workflow.locator(':scope > summary');
+  await expect(workflow).not.toHaveAttribute('open','');
+  await settings.focus();await settings.press('Enter');
+  await expect(workflow).toHaveAttribute('open','');
+  await expect(summary).toBeFocused();
+  const outline=await summary.evaluate(el=>({style:getComputedStyle(el).outlineStyle,width:getComputedStyle(el).outlineWidth}));
+  expect(outline.style).not.toBe('none');
+  expect(parseFloat(outline.width)).toBeGreaterThanOrEqual(2);
+  await expect(summary).toBeInViewport();
+  await expect(settings).toHaveAttribute('aria-current','location');
+  const widths=await page.evaluate(()=>({document:document.documentElement.scrollWidth,viewport:innerWidth}));
+  expect(widths.document-widths.viewport).toBeLessThanOrEqual(2);
+  await related.click();
+  await expect(root.locator('#originTaskLinks h3')).toBeFocused();
+  await expect(related).toHaveAttribute('aria-current','location');
+ });
+}

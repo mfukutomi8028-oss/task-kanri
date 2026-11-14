@@ -311,7 +311,7 @@
 .origin-comment-actions [aria-pressed="true"]{color:var(--accent-dark);background:var(--accent-bg);border-color:var(--accent)}
 .origin-comment-list blockquote{margin:0 0 12px;padding:9px 11px;border-left:3px solid var(--accent);background:var(--paper);border-radius:0 7px 7px 0;font-size:12px;color:var(--ink-soft);line-height:1.7}
 .origin-comment-connect{margin:0 0 14px;padding:10px 12px;border-radius:9px;background:var(--hover);font-size:12px;color:var(--ink-soft);line-height:1.7}
-.origin-workflow>summary{cursor:pointer;font-size:15px;font-weight:780;min-height:44px;padding:0;line-height:1.6}
+.origin-workflow>summary{cursor:pointer;font-size:15px;font-weight:780;min-height:44px;padding:0;line-height:1.6}.origin-workflow>summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:6px}
 .origin-workflow>summary small{display:block;font-weight:600;font-size:12px;color:var(--ink-soft);margin:5px 0 0;line-height:1.6}
 .origin-workflow section{padding:18px 0;border-top:1px solid var(--line-soft);margin-top:16px}
 .origin-workflow h4{margin:0 0 12px;font-size:14px}
@@ -1798,7 +1798,7 @@ function taskPanel(t){
  const due=t.due?dateLabel(t.due)+(t.dueTime?' '+t.dueTime:''):'期限なし';
  const count=history.length,commentCount=originCommentsFor(t).length;
  return `<div class="origin-task-detail">
- <nav class="origin-reader-nav" aria-label="タスク詳細の目次"><button type="button" data-action="detail-jump" data-value="originTaskOverview" aria-current="location">概要</button>${t.desc||items.length?'<button type="button" data-action="detail-jump" data-value="originTaskWork">作業内容</button>':''}<button type="button" data-action="detail-jump" data-value="originTaskComments">コメント<small>${commentCount}</small></button><button type="button" data-action="detail-jump" data-value="originTaskLinks">関連・設定</button></nav>
+ <nav class="origin-reader-nav" aria-label="タスク詳細の目次"><button type="button" data-action="detail-jump" data-value="originTaskOverview" aria-current="location">概要</button>${t.desc||items.length?'<button type="button" data-action="detail-jump" data-value="originTaskWork">作業内容</button>':''}<button type="button" data-action="detail-jump" data-value="originTaskComments">コメント<small>${commentCount}</small></button><button type="button" data-action="detail-jump" data-value="originTaskLinks">関連予定</button>${window.WorkBoardWorkflowV152?'<button type="button" data-action="detail-jump" data-value="originWorkflow">前提・設定</button>':''}</nav>
  <div class="record-meta">${badge(t)}<span class="tag">${esc(t.priority||'中')}優先</span><span class="tag">${esc(t.category||'分類なし')}</span></div>
  <section class="origin-task-overview" id="originTaskOverview" aria-label="タスクの要点">
  <dl class="detail-list origin-task-facts"><div class="origin-detail-main-fact ${t.due&&!t.completed&&t.due<base?'is-overdue':t.due?'':'is-undated'}"><dt>期限日・時刻</dt><dd>${esc(due)}</dd></div>
@@ -2933,7 +2933,13 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  if(a==='settings-close')return closeOriginSettings(true);
  if(a==='detail-jump'){
    const target=$('#sheet')?.querySelector('#'+value);if(!target)return;
-   const heading=target.querySelector('h3')||target;heading.tabIndex=-1;heading.focus({preventScroll:true});target.scrollIntoView({block:'start',behavior:'auto'});
+   // Workflow settings live inside a closed details element. Open it before scrolling and focus its native summary.
+   const summary=target.matches('details')?target.querySelector(':scope > summary'):null;
+   if(summary)target.open=true;
+   const heading=summary||target.querySelector('h3')||target;
+   if(!summary)heading.tabIndex=-1;
+   heading.focus({preventScroll:true});
+   target.scrollIntoView({block:'start',behavior:'auto'});
    el.closest('nav').querySelectorAll('button').forEach(button=>button===el?button.setAttribute('aria-current','location'):button.removeAttribute('aria-current'));
    return;
  }
