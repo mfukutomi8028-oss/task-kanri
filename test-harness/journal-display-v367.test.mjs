@@ -890,7 +890,7 @@ test('JOURNAL Memo V592 uses a single canonical reading desk and quick reference
   assert.match(js,/function composeMemoShortcutsV592\(spread,memo\)/);
   assert.match(js,/spread\.append\(mast,shortcuts,index,reader,gallery\)/);
   assert.match(js,/reader\.classList\.add\('j592-memo-reading-desk'\)/);
-  assert.match(js,/data\.j592MemoShortcut/);
+  assert.match(js,/dataset\.j592MemoShortcut/);
   assert.match(js,/selectMemoForReadingV451\(spread,card,'shortcut'\)/);
   assert.match(css,/\.j592-memo-shortcuts\s*\{/);
   assert.match(css,/\.j592-memo-reading-desk\s*\{/);
