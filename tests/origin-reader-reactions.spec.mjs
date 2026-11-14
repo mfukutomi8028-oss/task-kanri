@@ -189,5 +189,12 @@ for(const width of [320,390,1366]){
   const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks
    .find(task=>task.id==='reader-task'));
   expect(saved.description||saved.desc).toBe(longText);
+  await root.locator('.item-name',{hasText:'Origin 詳細の読みやすさ'}).click();
+  const reading=root.locator('#sheet #originTaskWork .record-description');
+  await expect(reading).toHaveText(longText);
+  const readingLayout=await reading.evaluate(el=>({scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,
+   rectWidth:el.getBoundingClientRect().width}));
+  expect(readingLayout.scrollWidth-readingLayout.clientWidth).toBeLessThanOrEqual(1);
+  expect(readingLayout.rectWidth).toBeGreaterThan(0);
  });
 }
