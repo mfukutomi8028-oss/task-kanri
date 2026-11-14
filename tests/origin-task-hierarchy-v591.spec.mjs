@@ -67,6 +67,11 @@ for(const width of [390,1366]){
   test('Origin detailed list presents work briefs with labeled due and assignee at '+width+'px',async({page},testInfo)=>{
     test.setTimeout(90000);
     const {host}=await openOrigin(page,width,'expanded');
+    // Mobile density settings live within the deliberately collapsed advanced filters.
+    if(width<768){
+      await host.locator('[data-action="task-advanced-toggle"]').click();
+      await expect(host.locator('[data-action="task-density"]')).toBeVisible();
+    }
     await host.locator('[data-action="task-density"]').click();
     const list=host.locator('.origin-task-layout-list:not(.origin-tasks-compact)');
     const rows=list.locator('.item-row');
