@@ -1251,6 +1251,132 @@
       syncJournalLocalSearchV492(input);
   },true);
 
+
+  // V594: JOURNAL-only, in-memory cross-page bookmark. Canonical task/memo
+  // owners still handle navigation, filtering and all writes.
+  let journalReturnV594=null;
+  const journalReturnBarV594=document.createElement('aside');
+  journalReturnBarV594.className='j594-return-bookmark';
+  journalReturnBarV594.dataset.j594Return='';
+  journalReturnBarV594.hidden=true;
+  journalReturnBarV594.setAttribute('aria-label','前に開いていた手帳のページ');
+  header.querySelector('.wb-journal-navigation-v367').after(journalReturnBarV594);
+  const journalReturnOwnerV594=()=>shelfOwnerKey(shelfSnapshot());
+  function journalReturnCaptureV594(kind,id) {
+    if(!isJournal()||!id||!shelfSnapshot())return;
+    journalReturnV594={
+      kind,id,owner:journalReturnOwnerV594(),
+      query:journalSearchQueryV393,top:window.scrollY,width:window.innerWidth
+    };
+  }
+  function journalReturnToSourceV594() {
+    const origin=journalReturnV594;
+    journalReturnV594=null;
+    if(!origin||!isJournal()||journalReturnOwnerV594()!==origin.owner){
+      syncJournalReturnV594();return;
+    }
+    const target=origin.kind==='task'?'tasks':'memo';
+    navigate(target);
+    // The shared search already belongs to its canonical adapter.
+    // Restore the starting keyword before selecting the original record.
+    if(globalSearchInputV393.value!==origin.query){
+      globalSearchInputV393.value=origin.query;
+      updateJournalSearchV393();
+    }
+    requestAnimationFrame(()=>{
+      if(!isJournal()||journalReturnOwnerV594()!==origin.owner||canonicalRoute()!==target)return;
+      if(origin.kind==='memo'){
+        journalMemoSelectedV425=origin.id;
+        const spread=document.querySelector('#workMemoViewV167 .j425-memo-spread');
+        const card=[...(spread?.querySelectorAll('.work-memo-card-v167')||[])]
+          .find(node=>node.dataset.memoSortId===origin.id);
+        if(card)selectMemoForReadingV451(spread,card);
+        else spread?.querySelector('[data-j450-memo-find],.j-memo-index-heading-v383')?.focus?.({preventScroll:true});
+      }else{
+        const board=document.getElementById('boardView');
+        const card=[...(board?.querySelectorAll('[data-j420-task-id]')||[])]
+          .find(node=>node.dataset.j420TaskId===origin.id);
+        if(card)card.click();
+        else window.WorkBoardJournalNavigation?.openTask(origin.id);
+      }
+      if(origin.width===window.innerWidth&&Number.isFinite(origin.top)){
+        requestAnimationFrame(()=>{
+          if(isJournal()&&canonicalRoute()===target
+            &&journalReturnOwnerV594()===origin.owner)
+            window.scrollTo({top:origin.top,behavior:'auto'});
+        });
+      }
+    });
+    syncJournalReturnV594();
+  }
+  function syncJournalReturnV594() {
+    const origin=journalReturnV594;
+    const valid=origin&&isJournal()&&journalReturnOwnerV594()===origin.owner;
+    if(origin&&!valid)journalReturnV594=null;
+    const route=canonicalRoute();
+    const show=Boolean(valid&&(origin.kind==='task'?route==='memo':route==='tasks'));
+    journalReturnBarV594.hidden=!show;
+    journalReturnBarV594.replaceChildren();
+    if(!show)return;
+    const text=document.createElement('p');
+    text.textContent=origin.kind==='task'
+      ?'前に見ていた案件ノートへ戻れます。':'タスク作成前に見ていたメモへ戻れます。';
+    const back=document.createElement('button');
+    back.type='button';
+    back.dataset.j594Return='';
+    back.textContent=origin.kind==='task'?'← 元の案件へ':'← 元のメモへ';
+    back.addEventListener('click',journalReturnToSourceV594);
+    journalReturnBarV594.append(text,back);
+  }
+  // Enhance original JOURNAL task actions only. No duplicate record renderer,
+  // storage or business handler is introduced.
+  function journalMemoLinkEnhanceV594() {
+    const containers=[
+      document.querySelector('#boardView #j494AtelierNote .j420-note-actions'),
+      document.querySelector('#detailBody .detail-actions .main-actions')
+    ];
+    for(const container of containers){
+      const old=container?.querySelector('[data-j594-open-memo]');
+      if(!isJournal()||!body.classList.contains('task-mode')){
+        old?.remove();continue;
+      }
+      if(!container||old)continue;
+      const button=document.createElement('button');
+      button.type='button';
+      button.dataset.j594OpenMemo='';
+      button.className='j594-open-memo';
+      button.textContent='メモを参照';
+      container.append(button);
+    }
+  }
+  document.addEventListener('click',event=>{
+    if(!isJournal())return;
+    const open=event.target.closest('[data-j594-open-memo]');
+    if(open){
+      const id=String(document.querySelector('#boardView [data-j420-task-id].is-selected')?.dataset.j420TaskId
+        ||shelfSnapshot()?.tasks?.find(t=>t.id===document.querySelector('#detailBody [data-action="edit"]')?.dataset.taskId)?.id||'');
+      // A detail-only entry can have no matching board card; do not bookmark
+      // an unrelated case. The note reader always has an explicit selection.
+      if(id)journalReturnCaptureV594('task',id);
+      navigate('memo');
+      syncJournalReturnV594();
+      return;
+    }
+  });
+  // Capture before the original memo control navigates to the task editor.
+  window.addEventListener('click',event=>{
+    if(!isJournal()||canonicalRoute()!=='memo')return;
+    const source=event.target.closest('[data-memo-task]');
+    if(source)journalReturnCaptureV594('memo',source.dataset.memoTask);
+  },true);
+  const journalReturnBoardV594=document.getElementById('boardView');
+  if(journalReturnBoardV594)new MutationObserver(journalMemoLinkEnhanceV594)
+    .observe(journalReturnBoardV594,{childList:true,subtree:true});
+  const journalReturnDetailV594=document.getElementById('detailBody');
+  if(journalReturnDetailV594)new MutationObserver(journalMemoLinkEnhanceV594)
+    .observe(journalReturnDetailV594,{childList:true,subtree:true});
+  journalMemoLinkEnhanceV594();
+
   function syncNavigation() {
     queued = false;
     if (!isJournal()) return;
@@ -1264,6 +1390,8 @@
       else button.removeAttribute('aria-current');
     }
     body.dataset.journalRoute = currentRoute;
+    syncJournalReturnV594();
+    journalMemoLinkEnhanceV594();
     requestJournalCompose();
     requestAnimationFrame(syncGlobalSearchV393);
   }
@@ -2015,6 +2143,9 @@
         dateLabel();
         scheduleSync();
       } else {
+        journalReturnV594=null;
+        syncJournalReturnV594();
+        journalMemoLinkEnhanceV594();
         restoreJournalComposition();
         restoreJournalSearchV393();
         restoreJournalSettingsV393();
@@ -2072,6 +2203,8 @@
   }
   document.getElementById('currentUserSelect')?.addEventListener('change', () => {
     // Never show a previous user's note selection in a different account.
+    journalReturnV594=null;
+    syncJournalReturnV594();
     journalMemoSelectedV425='';
     journalMemoColorV396='all';
     journalMemoIndexQueryV450='';
