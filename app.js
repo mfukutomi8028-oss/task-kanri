@@ -4501,6 +4501,31 @@ function journalScheduleV425(){
     <aside class="j425-reading-rail j425-schedule-sidebar"><div class="j425-notebook-holes" aria-hidden="true"></div>${previewHtml}<h3>今日の予定</h3><small>${today} / ${targetToday.length}件</small><div class="j425-side-schedule-list">${todayList}</div><h4>今後の予定</h4>${upcoming.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(scheduleLocalDate(s))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>近日中の予定はありません</p>'}<h4>今週の関連タスク</h4>${related.slice(0,4).map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button>`).join('')||'<p>関連タスクはありません</p>'}</aside>
   </div></div>`;
  const root=elements.scheduleView;
+ // Calendar controls are rebuilt from canonical records after each date or
+ // filter change. Keep the same control and reading position without caching
+ // or duplicating schedules, and never restore focus after leaving JOURNAL.
+ const refreshJournalNavigationV582=(attribute,value)=>{
+   const pageX=window.scrollX,pageY=window.scrollY;
+   const gridLeft=root.querySelector('.j425-week-scroll')?.scrollLeft||0;
+   const sidebarTop=root.querySelector('.j425-schedule-sidebar')?.scrollTop||0;
+   journalScheduleV425();
+   requestAnimationFrame(()=>{
+     if(document.documentElement.dataset.wbDisplay!=='journal'
+       || elements.scheduleView.hidden
+       || owner!==ROOM_ID+'|'+getCurrentUser()
+       || document.querySelector('dialog[open]'))return;
+     const updated=elements.scheduleView;
+     const grid=updated.querySelector('.j425-week-scroll');
+     if(grid)grid.scrollLeft=gridLeft;
+     const sidebar=updated.querySelector('.j425-schedule-sidebar');
+     if(sidebar)sidebar.scrollTop=sidebarTop;
+     const focusTarget=[...updated.querySelectorAll('['+attribute+']')]
+       .find(node=>node.getAttribute(attribute)===String(value)
+         &&node.getClientRects().length);
+     focusTarget?.focus({preventScroll:true});
+     window.scrollTo({left:pageX,top:pageY,behavior:'instant'});
+   });
+ };
  journalPositionDayPreviewV478();
  root.querySelector('#j459SchedulePreview .j481-memo-details')?.addEventListener('toggle',event=>{
    if(!event.currentTarget.isConnected)return;
@@ -4522,9 +4547,13 @@ function journalScheduleV425(){
      journalScheduleOptionsExpandedV451=compactOptions.open;
  });
  root.querySelectorAll('[data-j430-schedule-category]').forEach(b=>b.addEventListener('click',()=>{
-    journalScheduleCategoryV430=b.dataset.j430ScheduleCategory;journalScheduleV425();
+    journalScheduleCategoryV430=b.dataset.j430ScheduleCategory;
+    refreshJournalNavigationV582('data-j430-schedule-category',b.dataset.j430ScheduleCategory);
   }));
- root.querySelectorAll('[data-j425-mode]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.mode=b.dataset.j425Mode;journalScheduleV425()}));
+ root.querySelectorAll('[data-j425-mode]').forEach(b=>b.addEventListener('click',()=>{
+   journalScheduleStateV425.mode=b.dataset.j425Mode;
+   refreshJournalNavigationV582('data-j425-mode',b.dataset.j425Mode);
+ }));
  // Use the existing successful gap-booking return for the main creation
  // action too. A day-cell draft remains on its originating calendar.
  const openJournalCreateWithFollowV568=(seed=null)=>{
@@ -4533,7 +4562,11 @@ function journalScheduleV425(){
  };
  root.querySelector('[data-j425-add-schedule]')?.addEventListener('click',
    ()=>openJournalCreateWithFollowV568());
- root.querySelectorAll('[data-j425-day]').forEach(b=>b.addEventListener('click',()=>{journalScheduleStateV425.anchor=b.dataset.j425Day;journalScheduleStateV425.mode='day';journalScheduleV425()}));
+ root.querySelectorAll('[data-j425-day]').forEach(b=>b.addEventListener('click',()=>{
+   journalScheduleStateV425.anchor=b.dataset.j425Day;
+   journalScheduleStateV425.mode='day';
+   refreshJournalNavigationV582('data-j425-day',b.dataset.j425Day);
+ }));
  // Preserve the real timetable's horizontal position and focused control.
  const refreshWeekChoicesV470=focusSelector=>{
   const gridLeft=root.querySelector('.j425-week-scroll')?.scrollLeft||0;
@@ -4664,14 +4697,27 @@ function journalScheduleV425(){
      });
    });
  }));
- root.querySelector('[data-j425-today]')?.addEventListener('click',()=>{journalScheduleStateV425.anchor=todayISO();journalScheduleV425()});
+ root.querySelector('[data-j425-today]')?.addEventListener('click',()=>{
+   journalScheduleStateV425.anchor=todayISO();
+   refreshJournalNavigationV582('data-j425-today','');
+ });
  root.querySelector('[data-j459-return-week]')?.addEventListener('click',()=>{
    journalScheduleStateV425.mode='week';
    journalScheduleV425();
    requestAnimationFrame(()=>elements.scheduleView.querySelector('[data-j425-mode="week"]')?.focus({preventScroll:true}));
  });
- root.querySelectorAll('[data-j425-shift]').forEach(b=>b.addEventListener('click',()=>{const step=Number(b.dataset.j425Shift),date=parseISODate(journalScheduleStateV425.anchor)||startOfToday();journalScheduleStateV425.anchor=toISODate(journalScheduleStateV425.mode==='month'?addMonths(date,step):addDays(date,step*(journalScheduleStateV425.mode==='day'?1:7)));journalScheduleV425()}));
- root.querySelectorAll('[data-j425-shift-month]').forEach(b=>b.addEventListener('click',()=>{const date=parseISODate(journalScheduleStateV425.anchor)||startOfToday();journalScheduleStateV425.anchor=toISODate(addMonths(date,Number(b.dataset.j425ShiftMonth)));journalScheduleV425()}));
+ root.querySelectorAll('[data-j425-shift]').forEach(b=>b.addEventListener('click',()=>{
+   const step=Number(b.dataset.j425Shift);
+   const date=parseISODate(journalScheduleStateV425.anchor)||startOfToday();
+   journalScheduleStateV425.anchor=toISODate(journalScheduleStateV425.mode==='month'
+     ?addMonths(date,step):addDays(date,step*(journalScheduleStateV425.mode==='day'?1:7)));
+   refreshJournalNavigationV582('data-j425-shift',b.dataset.j425Shift);
+ }));
+ root.querySelectorAll('[data-j425-shift-month]').forEach(b=>b.addEventListener('click',()=>{
+   const date=parseISODate(journalScheduleStateV425.anchor)||startOfToday();
+   journalScheduleStateV425.anchor=toISODate(addMonths(date,Number(b.dataset.j425ShiftMonth)));
+   refreshJournalNavigationV582('data-j425-shift-month',b.dataset.j425ShiftMonth);
+ }));
  root.querySelectorAll('[data-j425-empty-date]').forEach(el=>el.addEventListener('dblclick',e=>{if(!e.target.closest('[data-schedule-id],[data-j456-day-focus],[data-j473-free-date]'))openScheduleDialog(newScheduleSeedForDate(el.dataset.j425EmptyDate))}));
  // A dedicated button works on touch and keyboard; double-click remains an optional shortcut.
  root.querySelectorAll('[data-j443-add-schedule-date]').forEach(button=>button.addEventListener('click',()=>openScheduleDialog(newScheduleSeedForDate(button.dataset.j443AddScheduleDate))));

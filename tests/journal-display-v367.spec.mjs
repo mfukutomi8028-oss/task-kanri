@@ -4424,3 +4424,63 @@ for(const width of [390,1366]){
     await choose(page,'classic');
   });
 }
+
+
+for(const width of [320,390,768,1280,1440]) {
+  test('JOURNAL schedule date navigation preserves keyboard focus and reading position at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await boot(page,width);await choose(page,'journal');
+    const route=width>=861
+      ?'.wb-journal-tabs-v367 [data-journal-route="schedule"]'
+      :'#wbJournalDockV367 [data-journal-route="schedule"]';
+    await page.locator(route).click();
+    await page.setViewportSize({width,height:700});
+    const schedule=page.locator('#scheduleView');
+    const datebar=schedule.locator('.j425-schedule-datebar');
+    await expect(datebar).toBeVisible();
+    const current=await datebar.locator('strong').textContent();
+    const next=datebar.locator('[data-j425-shift="1"]');
+    await next.scrollIntoViewIfNeeded();
+    await page.evaluate(()=>window.scrollTo(0,Math.min(100,Math.max(0,document.documentElement.scrollHeight-innerHeight))));
+    const priorScroll=await page.evaluate(()=>window.scrollY);
+    await next.click();
+    await expect(next).toBeFocused();
+    await expect(datebar.locator('strong')).not.toHaveText(current);
+    if(priorScroll>0) {
+      expect(Math.abs((await page.evaluate(()=>window.scrollY))-priorScroll)).toBeLessThanOrEqual(3);
+    }
+    const previous=datebar.locator('[data-j425-shift="-1"]');
+    await previous.click();
+    await expect(previous).toBeFocused();
+    await expect(datebar.locator('strong')).toHaveText(current);
+
+    const today=datebar.locator('[data-j425-today]');
+    await today.click();
+    await expect(today).toBeFocused();
+
+    const month=schedule.locator('[data-j425-mode="month"]');
+    await month.click();
+    await expect(month).toBeFocused();
+    await expect(schedule.locator('.j425-month-grid')).toBeVisible();
+
+    const options=schedule.locator('[data-j451-schedule-options]');
+    if(!(await options.evaluate(node=>node.open)))await options.locator(':scope > summary').click();
+    const monthForward=schedule.locator('[data-j425-shift-month="1"]');
+    await monthForward.click();
+    await expect(monthForward).toBeFocused();
+    const picked=schedule.locator('[data-j425-day]').nth(13);
+    const day=await picked.getAttribute('data-j425-day');
+    await picked.click();
+    await expect(schedule.locator('[data-j425-day="'+day+'"]')).toBeFocused();
+    await expect(schedule.locator('.j425-week-grid.is-single-day')).toBeVisible();
+    await expect(schedule.locator('[data-j425-mode="day"]')).toHaveAttribute('aria-pressed','true');
+
+    const week=schedule.locator('[data-j425-mode="week"]');
+    await week.click();
+    await expect(week).toBeFocused();
+    const all=schedule.locator('[data-j430-schedule-category=""]');
+    await all.click();
+    await expect(all).toBeFocused();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  });
+}
