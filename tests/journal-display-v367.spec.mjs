@@ -4887,3 +4887,67 @@ test('JOURNAL V595 paper chapter tabs, primary controls and reduced-motion feedb
   const duration=await today.evaluate(el=>getComputedStyle(el).transitionDuration);
   expect(duration.split(',').every(x=>parseFloat(x)===0)).toBeTruthy();
 });
+
+
+test('JOURNAL V596 tablet starts with a compact and operable task index',async ({page})=>{
+  test.setTimeout(90000);
+  await boot(page,768);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  const toggle=board.locator('[data-j502-toggle-index]');
+  const contents=board.locator('#j502IndexContents');
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-expanded','false');
+  await expect(contents).toBeHidden();
+  await expect(board.locator('.j420-atelier-desk')).toBeInViewport();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await expect(contents).toBeVisible();
+  await expect(contents.locator('[data-j420-view]')).toHaveCount(6);
+  await toggle.click();
+  await expect(contents).toBeHidden();
+});
+
+test('JOURNAL V596 empty desktop atelier remains actionable without a tall blank desk',async ({page})=>{
+  test.setTimeout(90000);
+  await boot(page,1366);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),desk=board.locator('.j420-atelier-desk');
+  await expect(board.locator('.j520-atelier-empty')).toBeVisible();
+  await expect(board.locator('[data-j502-toggle-index]')).toBeVisible();
+  const height=await desk.evaluate(el=>el.getBoundingClientRect().height);
+  expect(height).toBeLessThanOrEqual(400);
+  const newButton=board.locator('[data-j420-new-task]');
+  expect(await newButton.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  await newButton.click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await page.locator('#closeTaskDialog').click();
+});
+
+test('JOURNAL V596 phone task counters form a balanced two by two index',async ({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const rects=await page.locator('#boardView .j420-atelier-stats>span').evaluateAll(nodes=>
+    nodes.map(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width}}));
+  expect(rects).toHaveLength(4);
+  expect(Math.abs(rects[0].y-rects[1].y)).toBeLessThan(2);
+  expect(Math.abs(rects[2].y-rects[3].y)).toBeLessThan(2);
+  expect(rects[2].y).toBeGreaterThan(rects[0].y+15);
+  expect(Math.abs(rects[0].x-rects[2].x)).toBeLessThan(2);
+  expect(Math.abs(rects[1].x-rects[3].x)).toBeLessThan(2);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
+
+test('JOURNAL V596 mobile gap choice reads as optional time precision instead of a repeated primary CTA',async ({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const weekly=page.locator('#scheduleView .j425-week-column');
+  await expect(weekly).toHaveCount(7);
+  const summary=weekly.first().locator('.j473-mobile-gaps>summary');
+  await expect(summary).toHaveText(/時刻を細かく指定/);
+  await expect(summary).not.toContainText('空き時間から追加');
+  await summary.click();
+  await expect(weekly.first().locator('[data-j473-free-date]').first()).toBeVisible();
+});
