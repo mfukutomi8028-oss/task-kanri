@@ -16,3 +16,12 @@ test('Origin global schedule jump prioritizes global matches over unrelated week
  assert.match(navigation,/events:view==='calendar'&&scheduleSearchScope==='all'/);
  assert.match(navigation,/\.origin-schedule-global-results \.origin-schedule-global-item \[data-action="open"\]/);
 });
+
+test('Origin schedule reset describes the full set of cleared filters',()=>{
+ assert.match(calendar,/aria-label="予定の検索語・担当者・分類・期間などの条件を解除"/);
+});
+
+test('Origin schedule footer accurately explains the detail-first edit path',()=>{
+ assert.match(calendar,/予定を押すと詳細を確認できます/);
+ assert.doesNotMatch(calendar,/予定を押すと詳細・編集が開きます/);
+});
