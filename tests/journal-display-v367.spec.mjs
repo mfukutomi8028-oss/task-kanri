@@ -4528,3 +4528,40 @@ for (const width of [390,1366]) {
     await choose(page,'classic');
   });
 }
+
+
+for (const width of [390,1366]) {
+  test('JOURNAL moved schedule offers a deliberate destination link at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await bootPaperAuxiliary(page,width);
+    await paperRoute(page,width,'schedule');
+    const view=page.locator('#scheduleView');
+    await view.locator('[data-j425-mode="list"]').click();
+    const original=view.locator('.j425-schedule-ledger [data-schedule-id="paper-plan"]');
+    const editor=page.locator('#scheduleDialog');
+    await original.click();
+    await editor.locator('#closeScheduleDialog').click();
+    await expect(view.locator('[data-j586-follow-moved]')).toHaveCount(0);
+    await original.click();
+    const moved=await page.evaluate(()=>{
+      const d=new Date();d.setDate(d.getDate()+21);
+      return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),
+        String(d.getDate()).padStart(2,'0')].join('-');
+    });
+    await editor.locator('#scheduleStart').fill(moved+'T10:00');
+    await editor.locator('#scheduleEnd').fill(moved+'T10:30');
+    await editor.locator('#scheduleForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+    await expect(original).toHaveCount(0);
+    const follow=view.locator('[data-j586-follow-moved]');
+    await expect(follow).toBeVisible();
+    await expect(view.locator('[data-j586-move-notice]')).toContainText(moved.replaceAll('-','/'));
+    await expect(follow).toBeFocused();
+    await follow.click();
+    await expect(view.locator('[data-j425-mode="day"]')).toHaveAttribute('aria-pressed','true');
+    const destination=view.locator('[data-schedule-id="paper-plan"]').first();
+    await expect(destination).toBeVisible();
+    await expect(destination).toBeFocused();
+    await expect(view.locator('[data-j586-follow-moved]')).toHaveCount(0);
+  });
+}
