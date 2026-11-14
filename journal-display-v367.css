@@ -3012,7 +3012,11 @@ html[data-wb-display="journal"] .detail-panel .detail-head {
   height:54px!important;padding:0 23px!important;
   background:var(--j-paper-alt)!important;border-bottom:1px solid var(--j-border)!important;
 }
-html[data-wb-display="journal"] .detail-panel .detail-head strong {font:800 13px var(--j-serif);letter-spacing:.07em;color:var(--j-muted)}
+html[data-wb-display="journal"] .detail-panel .detail-head strong {
+  display:block;flex:1 1 auto;min-width:0;max-width:100%;
+  margin-right:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font:800 13px/1.45 var(--j-serif);letter-spacing:.07em;color:var(--j-muted);
+}
 html[data-wb-display="journal"] .detail-panel #closeDetail {flex:0 0 42px;width:42px;height:42px;color:var(--j-ink)!important;border:1px solid var(--j-border)!important;border-radius:1px!important;background:var(--j-paper)!important}
 html[data-wb-display="journal"] .detail-panel #detailBody {
   display:flex!important;flex-direction:column!important;gap:0!important;
@@ -6084,11 +6088,6 @@ html[data-wb-display="journal"] .app-shell .detail-panel .j495-detail-more .sub-
 /* JOURNAL V497 — mobile folio orientation. The header is intentionally
    one line; the full, untruncated task title remains in the page body. */
 @media(max-width:760px) {
-  html[data-wb-display="journal"] .app-shell .detail-panel .detail-head strong {
-    display:block;flex:1 1 auto;min-width:0;max-width:100%;
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-    margin-right:10px;font:800 13px/1.45 var(--j-serif);
-  }
   html[data-wb-display="journal"] .app-shell .detail-panel .detail-title:focus {
     outline:2px solid var(--j-accent);outline-offset:3px;
   }
