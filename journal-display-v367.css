@@ -3551,8 +3551,9 @@ html[data-wb-display="journal"] .j420-atelier-index,
 html[data-wb-display="journal"] .j420-atelier-desk,
 html[data-wb-display="journal"] .j420-atelier-log {
   position:relative;min-width:0;padding:19px 13px 18px;
-  border:3px solid var(--j420-edge);border-radius:15px;background:#faf8f1;
-  box-shadow:var(--j420-shadow),inset 0 0 0 3px #f4f2e9;
+  border:1px solid #d9d8cb;border-left:3px solid #9caf9c;
+  border-radius:9px;background:#faf8f1;
+  box-shadow:0 3px 11px rgba(53,67,56,.065),inset 0 1px 0 #fff;
 }
 html[data-wb-display="journal"] .j420-atelier-index {
   padding-left:16px;padding-right:16px;
@@ -3622,7 +3623,7 @@ html[data-wb-display="journal"] .j420-atelier-search input {
 }
 html[data-wb-display="journal"] .j420-atelier-tools>button,
 html[data-wb-display="journal"] .j420-atelier-switch button {
-  min-height:39px;padding:7px 11px;border:1px solid #d8d0c2;
+  min-height:44px;padding:9px 11px;border:1px solid #d8d0c2;
   border-radius:4px;background:#fffefa;color:#486451;
   font:750 12px/1.45 var(--j-text);cursor:pointer;
 }
@@ -3936,6 +3937,17 @@ html[data-wb-display="journal"] :is(.j420-atelier-task,.j420-work-note,.j420-wai
   html[data-wb-display="journal"] :is(.j420-masthead-stats,.j420-atelier-stats)>span {
     flex:1 1 29%;min-width:72px;padding:6px 3px;
   }
+  /* Four atelier counters belong in a balanced 2x2 register on narrow pages. */
+  html[data-wb-display="journal"] .j420-atelier-stats {
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:0;justify-content:stretch;
+  }
+  html[data-wb-display="journal"] .j420-atelier-stats>span {
+    flex:none;min-width:0;padding:7px 3px;
+    border-left:1px solid var(--j-border);
+  }
+  html[data-wb-display="journal"] .j420-atelier-stats>span:nth-child(odd){border-left:0}
+  html[data-wb-display="journal"] .j420-atelier-stats>span:nth-child(n+3){border-top:1px solid var(--j-border)}
   html[data-wb-display="journal"] .j420-today-spread {padding:5px;border-radius:10px}
   html[data-wb-display="journal"] .j420-planner,
   html[data-wb-display="journal"] .j420-focus {padding:15px 11px}
@@ -5729,9 +5741,10 @@ html[data-wb-display="journal"] #scheduleView .j473-mobile-gaps {display:none}
     display:block;margin:4px 0 1px;padding:0;border-top:1px dashed #d9decf;
   }
   html[data-wb-display="journal"] #scheduleView .j473-mobile-gaps>summary {
-    padding:9px 3px;color:#527455;font:750 11px/1.4 var(--j-text);
+    padding:5px 3px;color:#667b6a;font:650 11px/1.35 var(--j-text);
     cursor:pointer;list-style-position:inside;
   }
+  html[data-wb-display="journal"] #scheduleView .j473-mobile-gaps>summary:hover {color:#365d46}
   html[data-wb-display="journal"] #scheduleView .j473-mobile-gaps>summary>span {
     margin-left:5px;color:#738b70;font-weight:600;
   }
@@ -6393,23 +6406,23 @@ html[data-wb-display="journal"] .app-shell .detail-panel .j495-detail-more .sub-
 
 /* JOURNAL V502: the phone's case index is a compact bookmark until needed.
    Desktop keeps its always-visible index. One canonical filter list is reused. */
-html[data-wb-display="journal"] #boardView .j502-index-toggle {display:none}
+html[data-wb-display="journal"] #boardView .j502-index-toggle {
+  display:none;align-items:center;justify-content:space-between;gap:8px;
+  width:100%;min-height:44px;box-sizing:border-box;
+  border:1px solid #cdd7cb;border-radius:6px;padding:9px 12px;
+  background:#f6f5ed;color:#405b4b;font:750 13px/1.45 var(--j-text);
+  text-align:left;cursor:pointer;
+}
+html[data-wb-display="journal"] #boardView .j502-index-state {
+  flex:0 0 auto;font-size:12px;color:#536f56;
+}
 html[data-wb-display="journal"] #boardView .j502-index-contents {min-width:0}
-@media(max-width:760px) {
+@media(max-width:860px) {
   html[data-wb-display="journal"] #boardView .j420-atelier-index {
     padding:9px 10px!important;
     border-radius:9px!important;
   }
-  html[data-wb-display="journal"] #boardView .j502-index-toggle {
-    display:flex;align-items:center;justify-content:space-between;gap:8px;
-    width:100%;min-height:44px;box-sizing:border-box;
-    border:1px solid #cfdbcb;border-radius:5px;padding:9px 12px;
-    background:#f6f5ea;color:#496950;font:800 13px/1.45 var(--j-text);
-    text-align:left;cursor:pointer;
-  }
-  html[data-wb-display="journal"] #boardView .j502-index-state {
-    flex:0 0 auto;font-size:12px;color:#536f56;
-  }
+  html[data-wb-display="journal"] #boardView .j502-index-toggle {display:flex}
   html[data-wb-display="journal"] #boardView .j420-atelier-index[data-j502-index-open="false"] .j502-index-contents {
     display:none!important;
   }
@@ -6454,6 +6467,28 @@ html[data-wb-display="journal"] #boardView .j502-index-contents {min-width:0}
   html[data-wb-display="journal"] #boardView .j420-project-note.j494-inline-note :is(.j420-note-description p,.j420-next-step p,.j420-note-checks li) {
     min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word;
   }
+}
+
+
+/* V596: the empty atelier is a concise opening page, not an empty 900px desk.
+   Reuse the single existing index/desk/log and its original toggle handlers. */
+html[data-wb-display="journal"] #boardView .j420-atelier-workbench:has(.j520-atelier-empty) {
+  grid-template-columns:minmax(0,1fr)!important;
+  align-items:start;
+}
+html[data-wb-display="journal"] #boardView .j420-atelier-workbench:has(.j520-atelier-empty) :is(
+  .j420-atelier-index,.j420-atelier-desk,.j420-atelier-log
+) {grid-column:1/-1;min-height:0}
+html[data-wb-display="journal"] #boardView .j420-atelier-workbench:has(.j520-atelier-empty) .j420-atelier-index {
+  padding:10px 12px;
+}
+html[data-wb-display="journal"] #boardView .j420-atelier-workbench:has(.j520-atelier-empty) .j502-index-toggle {
+  display:flex;
+}
+html[data-wb-display="journal"] #boardView .j420-atelier-workbench:has(.j520-atelier-empty)
+  .j420-atelier-index[data-j502-index-open="false"] .j502-index-contents {display:none!important}
+html[data-wb-display="journal"] #boardView .j420-atelier-workbench:has(.j520-atelier-empty) .j420-atelier-desk {
+  padding-bottom:10px;
 }
 
 /* JOURNAL V504 — date-rail quick add, long titles and stable mobile
@@ -6721,7 +6756,7 @@ html[data-wb-display="journal"] #timelineView .j511-chronicle-travel {
 
 /* JOURNAL V516 — mobile atelier should grow with its actual contents, not
    reserve a blank 480px desk when only a few cases are displayed. */
-@media(max-width:760px) {
+@media(max-width:860px) {
   html[data-wb-display="journal"] #boardView .j420-atelier-desk {
     min-height:0;
     padding-bottom:10px;

@@ -4531,7 +4531,7 @@ function journalScheduleV425(){
    return `<div class="j473-grid-gap-layer">${desktop}</div>
      <details class="j473-mobile-gaps" data-j475-mobile-date="${iso}"
        ${journalMobileGapOpenDaysV475.has(iso)?'open':''}>
-       <summary>空き時間から追加 <span>${gaps.length}枠</span></summary>
+       <summary>時刻を細かく指定${gaps.length>1?` <span>${gaps.length}候補</span>`:''}</summary>
        <div class="j473-mobile-gap-options">${mobile}</div>
        ${explicit?`<div class="j476-mobile-choice">
          <span>選択中 ${fmtTimeV463(chosen)}〜${fmtTimeV463(chosen+journalGapDurationV466*60000)}</span>
@@ -7898,14 +7898,14 @@ function journalAtelierV420(tasks){
       </aside>
       <section class="j420-atelier-desk" aria-label="案件の作業机">
         <div class="j420-atelier-tools"><span class="j420-desk-flourish" aria-hidden="true">✦</span>
-          <button type="button" class="j420-create-task" data-j420-new-task>＋ 新しいタスク</button>
+          <button type="button" class="j420-create-task" data-j420-new-task${!viewTasks.length&&!activeFilterCountV520?' data-j520-empty-new':''}>＋ 新しいタスク</button>
           <label class="j420-atelier-search"><span aria-hidden="true">⌕</span><input type="search" data-j420-search value="${escapeHtml(elements.searchInput.value)}" placeholder="案件・タスクを検索" aria-label="案件を検索"></label>
           <button type="button" data-j420-reset-view>絞り込み解除</button>
           <div class="j420-atelier-switch" role="group" aria-label="タスク表示形式">
             <button type="button" aria-pressed="true" title="アトリエ">机上</button>
             <button type="button" data-j420-layout="list" title="索引一覧">一覧</button>
             <button type="button" data-j420-layout="timeline" title="日付日誌">日誌</button>
-            <button type="button" data-j420-layout="dashboard" title="集計ダッシュボード">ダッシュボード</button>
+            <button type="button" data-j420-layout="dashboard" title="集計ダッシュボード">集計</button>
           </div>
           ${journalReservedTaskShortcutV565()}
         </div>
@@ -7921,7 +7921,7 @@ function journalAtelierV420(tasks){
             ?'閲覧中の案件が同期更新で表示対象から外れました'
             :activeFilterCountV520?'条件に合う案件がありません':'登録された案件はありません'}</strong>
           <p>${activeFilterCountV520?'表示条件を解除すると、他の案件を確認できます。':'新しいタスクを作成すると、机上に表示されます。'}</p>
-          ${activeFilterCountV520?'<button type="button" data-j520-empty-reset>条件を解除して案件を表示</button>':'<button type="button" data-j520-empty-new>＋ タスクを追加</button>'}
+          ${activeFilterCountV520?'<button type="button" data-j520-empty-reset>条件を解除して案件を表示</button>':''}
         </div>`}</div>
         <div class="j420-stationery j420-atelier-stationery" aria-hidden="true"><img class="j441-atelier-cards" src="./assets/journal-atelier-cards-v441.svg" alt="" decoding="async"><span class="j420-stamp">JOURNAL / TASK ATELIER</span></div>
       </section>
@@ -8076,7 +8076,7 @@ function journalAtelierV420(tasks){
     resetAtelierV520(event.currentTarget,false)));
   root.querySelector('[data-j520-empty-reset]')?.addEventListener('click',event=>
     resetAtelierV520(event.currentTarget,true));
-  root.querySelector('[data-j520-empty-new]')?.addEventListener('click',()=>openTaskDialog());
+  // Empty-state creation reuses [data-j420-new-task] above; no duplicate handler.
   root.querySelectorAll('[data-j420-layout]').forEach(btn=>btn.addEventListener('click',()=>journalSwitchTaskPageV509(btn.dataset.j420Layout)));
   journalBindReservedTaskShortcutV565(root);
   bindJournalAtelierNoteActionsV420(root);
