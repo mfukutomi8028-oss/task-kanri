@@ -841,7 +841,7 @@ test('JOURNAL V479 keeps a single note return across edit, copy and cancellation
   assert.match(app,/journalSchedulePreviewIdV459=record.id/);
   assert.match(app,/journalNoteDialogReturnV479=null;\s*journalExpandedMemoIdV481='';\s*journalGapWindowByDateV470.clear\(\)/);
   assert.match(app,/elements.scheduleDialog.addEventListener\('close'/);
-  assert.match(app,/journalNoteDialogReturnV479\?\.action!=='edit'\|\|\$\("scheduleCopyDialog"\)\?\.open/);
+  assert.match(app,/!\['edit','calendar'\]\.includes\(action\)\|\|\$\("scheduleCopyDialog"\)\?\.open/);
   assert.match(app,/const returnToJournalNote = !fromNewForm/);
   assert.match(app,/journalNoteDialogReturnV479.action==='copy'/);
   assert.match(app,/if\(returnToJournalNote\)\{\s*journalRestoreNoteV479\(\);/);
@@ -849,6 +849,20 @@ test('JOURNAL V479 keeps a single note return across edit, copy and cancellation
   const fn=app.slice(app.indexOf('function journalRestoreNoteV479(){'),
     app.indexOf('\n// JOURNAL-only visible schedule summary'));
   assert.doesNotMatch(fn,/(?:persistSchedule|copyScheduleOccurrences|runTransaction|setDatabase|updateDatabase)\s*\(/);
+});
+
+test('JOURNAL V584 calendar editor returns through the same guarded page context',()=>{
+  const app=read('app.js');
+  assert.match(app,/function journalPrepareCalendarReturnV584\(card,record\)/);
+  assert.match(app,/journalPrepareCalendarReturnV584\(card,schedule\)/);
+  assert.match(app,/action:'calendar'/);
+  assert.match(app,/if\(context.action==='calendar'\)/);
+  assert.match(app,/context.room!==ROOM_ID\|\|context.user!==getCurrentUser\(\)/);
+  assert.match(app,/document.querySelector\('dialog\[open\]'\)/);
+  assert.match(app,/\[data-j425-today\]/);
+  const fn=app.slice(app.indexOf('function journalRestoreNoteV479(){'),
+    app.indexOf('\n// JOURNAL-only visible schedule summary'));
+  assert.doesNotMatch(fn,/(?:persistSchedule|runTransaction|setDatabase|updateDatabase)\s*\(/);
 });
 
 test('JOURNAL V481 memo preview is escaped, compact and expands long text without losing it',()=>{
