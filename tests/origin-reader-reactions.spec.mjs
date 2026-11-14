@@ -95,3 +95,55 @@ for(const width of [320,390,1366]){
   await expect(related).toHaveAttribute('aria-current','location');
  });
 }
+
+for(const width of [320,390,1366]){
+ test('Origin detail footer shows primary actions and keyboard-accessible extra actions at '+width+'px',async({page})=>{
+  const root=await boot(page,width),sheet=root.locator('#sheet');
+  const primary=sheet.locator('.origin-sheet-primary');
+  await expect(primary.locator('[data-action="edit"]')).toBeVisible();
+  await expect(primary.locator('[data-action="task-done"]')).toBeVisible();
+  const extra=sheet.locator('.origin-task-more-actions'),summary=extra.locator(':scope > summary');
+  await expect(summary).toContainText('その他の操作');
+  await expect(extra).not.toHaveAttribute('open','');
+  const star=extra.locator('[data-action="task-star"]');
+  await expect(star).toBeHidden();
+  const collapsedHeight=await sheet.locator('.sheet-foot').evaluate(el=>el.getBoundingClientRect().height);
+  expect(collapsedHeight).toBeLessThanOrEqual(180);
+  await summary.focus();
+  await summary.press('Tab');
+  await expect(sheet.locator('.sheet-close')).toBeFocused();
+  await summary.focus();
+  await summary.press('Enter');
+  await expect(extra).toHaveAttribute('open','');
+  for(const action of ['task-star','task-copy','task-knowledge','close']){
+   const button=extra.locator('[data-action="'+action+'"]');
+   await expect(button).toBeVisible();
+   expect(await button.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  }
+  await summary.focus();
+  await summary.press('Tab');
+  await expect(star).toBeFocused();
+  const layout=await sheet.evaluate(el=>{
+   const footer=el.querySelector('.sheet-foot'),list=el.querySelector('.origin-task-more-actions .origin-sheet-secondary');
+   return {pageOverflow:document.documentElement.scrollWidth-innerWidth,
+    listOverflow:list.scrollWidth-list.clientWidth,footerHeight:footer.getBoundingClientRect().height};
+  });
+  expect(layout.pageOverflow).toBeLessThanOrEqual(3);
+  expect(layout.listOverflow).toBeLessThanOrEqual(2);
+  await summary.focus();await summary.press('Enter');
+  await expect(star).toBeHidden();
+  await primary.locator('[data-action="edit"]').click();
+  await expect(sheet.locator('#editForm')).toBeVisible();
+  await expect(sheet.locator('.origin-task-more-actions')).toHaveCount(0);
+ });
+}
+test('Origin favorite action retains expanded footer and keyboard focus after refresh',async({page})=>{
+ const root=await boot(page,390),extra=root.locator('#sheet .origin-task-more-actions');
+ await extra.locator('summary').click();
+ const star=extra.locator('[data-action="task-star"]');
+ await expect(star).toHaveAttribute('aria-pressed','false');
+ await star.click();
+ await expect(extra).toHaveAttribute('open','');
+ await expect(star).toHaveAttribute('aria-pressed','true');
+ await expect(star).toBeFocused();
+});
