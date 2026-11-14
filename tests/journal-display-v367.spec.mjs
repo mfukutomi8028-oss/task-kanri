@@ -4961,3 +4961,63 @@ test('JOURNAL V596 mobile gap choice reads as optional time precision instead of
   // Select the visible mobile disclosure instead of the first hidden grid node.
   await expect(weekly.first().locator('.j473-mobile-gaps [data-j473-free-date]').first()).toBeVisible();
 });
+
+
+test('JOURNAL V598 weekly mobile page brings today appointments to the first screen without removing the week',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const root=page.locator('#scheduleView');
+  await expect(root.locator('[data-j598-today-shortcut]')).toHaveCount(0);
+  await root.locator('[data-j425-mode="day"]').click();
+  const date=await root.locator('[data-j443-add-schedule-date]').first().getAttribute('data-j443-add-schedule-date');
+  for(const [title,begin,end] of [
+    ['院内端末の設定確認ミーティング','09:00','10:00'],
+    ['運用手順の確認','14:00','14:30']
+  ]){
+    await root.locator('[data-j443-add-schedule-date]').first().click();
+    const dialog=page.locator('#scheduleDialog');
+    await dialog.locator('#scheduleTitle').fill(title);
+    await dialog.locator('#scheduleStart').fill(date+'T'+begin);
+    await dialog.locator('#scheduleEnd').fill(date+'T'+end);
+    await dialog.locator('#scheduleForm button[type="submit"]').click();
+    await expect(dialog).toBeHidden();
+  }
+  await root.locator('[data-j459-return-week]').click();
+  await expect(root.locator('.j425-week-column')).toHaveCount(7);
+  const shortcut=root.locator('[data-j598-today-shortcut]');
+  await expect(shortcut).toBeVisible();
+  await expect(shortcut).toContainText('今日の予定');
+  await expect(shortcut).toContainText('2件');
+  await expect(shortcut).toContainText('院内端末の設定確認ミーティング');
+  const action=shortcut.locator('[data-j598-open-today]');
+  await expect(action).toHaveText('今日の予定を見る');
+  const size=await action.evaluate(el=>el.getBoundingClientRect());
+  expect(size.height).toBeGreaterThanOrEqual(44);
+  await action.focus();
+  await action.press('Enter');
+  await expect(root.locator('[data-j425-mode="day"]')).toHaveAttribute('aria-pressed','true');
+  await expect(root.locator('.j425-week-grid.is-single-day')).toBeVisible();
+  await expect(root.locator('.j459-day-record')).toHaveCount(2);
+  await expect(root.locator('.j459-day-record').first()).toContainText('院内端末の設定確認ミーティング');
+  await root.locator('[data-j459-return-week]').click();
+  await expect(shortcut).toBeVisible();
+  await page.setViewportSize({width:320,height:900});
+  await expect(shortcut).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  await root.locator('[data-j425-shift="-1"]').click();
+  await expect(root.locator('[data-j598-today-shortcut]')).toHaveCount(0);
+  await root.locator('[data-j425-today]').click();
+  await page.setViewportSize({width:1366,height:900});
+  await expect(root.locator('[data-j598-today-shortcut]')).toBeHidden();
+});
+
+test('JOURNAL V598 optional today entry does not show when the current day has no matching appointments',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,320);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const schedule=page.locator('#scheduleView');
+  await expect(schedule.locator('.j425-week-column')).toHaveCount(7);
+  await expect(schedule.locator('[data-j598-today-shortcut]')).toHaveCount(0);
+  await expect(schedule.locator('[data-j425-today]')).toBeVisible();
+});
