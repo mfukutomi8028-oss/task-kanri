@@ -7,7 +7,7 @@ async function launch(page,room,width=1366){
   await page.addInitScript(name=>{
     Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
     localStorage.setItem('systemTaskRoomId',name);
-    localStorage.setItem('systemTaskUser','OriginTester');
+    localStorage.setItem('systemTaskUser','福冨');
   },room);
   await page.goto('/?room='+room,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
