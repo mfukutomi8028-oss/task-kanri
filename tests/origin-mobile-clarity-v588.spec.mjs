@@ -29,10 +29,12 @@ for(const width of [320,390]){
     await expect(buttons).toHaveCount(6);
     const geometry=await buttons.evaluateAll(els=>els.map(el=>{
       const r=el.getBoundingClientRect();
-      return {x:r.x,y:r.y,width:r.width,height:r.height};
+      return {x:r.x,y:r.y,width:r.width,height:r.height,font:parseFloat(getComputedStyle(el).fontSize)};
     }));
     expect(Math.max(...geometry.map(x=>x.y))-Math.min(...geometry.map(x=>x.y))).toBeLessThan(2);
-    expect(geometry.every(x=>x.width>=44&&x.height>=44)).toBe(true);
+    expect(geometry.every(x=>x.width>=44&&x.height>=44&&x.font>=11)).toBe(true);
+    const adjacentGaps=geometry.slice(1).map((item,i)=>item.x-(geometry[i].x+geometry[i].width));
+    expect(Math.min(...adjacentGaps)).toBeGreaterThanOrEqual(7);
     const navHeight=await nav.evaluate(el=>el.getBoundingClientRect().height);
     expect(navHeight).toBeLessThan(90);
     await nav.locator('[data-route="tools"]').click();
@@ -50,6 +52,9 @@ for(const width of [320,390]){
 
     await host.locator('#mobileNav [data-route="tasks"]').click();
     expect(await fontSize(host.locator('#originTaskQuery'))).toBeGreaterThanOrEqual(16);
+
+    await host.locator('#mobileNav [data-route="todos"]').click();
+    expect(await fontSize(host.locator('[data-form="quick-todo"] [name="title"]'))).toBeGreaterThanOrEqual(16);
 
     await host.locator('#mobileNav [data-route="notes"]').click();
     expect(await fontSize(host.locator('#originMemoQuery'))).toBeGreaterThanOrEqual(16);
