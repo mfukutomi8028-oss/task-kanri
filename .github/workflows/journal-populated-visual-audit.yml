@@ -1,0 +1,26 @@
+name: JOURNAL populated visual audit (temporary)
+on:
+  push:
+    branches: [audit/journal-populated-v598-20261115]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Audit synthetic populated JOURNAL layout at four widths
+        run: npx playwright test tests/journal-populated-visual-audit.spec.mjs --retries=0 --reporter=line
+      - name: Upload screenshots and metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journal-populated-v598-snapshots
+          path: journal-audit-populated/
+          if-no-files-found: warn
+          retention-days: 3
