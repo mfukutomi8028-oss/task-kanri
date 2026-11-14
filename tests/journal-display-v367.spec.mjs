@@ -4645,3 +4645,65 @@ for(const width of [320,390,1366]){
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   });
 }
+
+
+// Ver.591: an action-first reading hierarchy, using a synthetic isolated room.
+async function bootWorkdayBriefV591(page,width){
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    const task=(id,title,extra)=>({
+      id,title,status:'未着手',priority:'中',assignee:'JournalTester',category:'院内',
+      createdAt:now,updatedAt:now,revision:1,...extra
+    });
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify([
+      task('j591-leading','期限超過の院内資料を確認する',{
+        priority:'高',dueDate:'2020-01-01',
+        description:'期限前の確認結果を照合する',
+        checklist:[{text:'変更点を担当部署へ確認する',done:false},{text:'承認欄を更新する',done:true}]
+      }),
+      task('j591-following','棚卸しの一覧を見直す',{dueDate:'2099-02-02'}),
+      task('j591-waiting','担当者からの回答を確認する',{status:'確認待ち',dueDate:'2099-02-03'})
+    ]));
+  },{room:ROOM});
+  await boot(page,width);
+  await choose(page,'journal');
+}
+
+for(const width of [320,390,768,1366]){
+  test('JOURNAL V591 priority reading and case handoff at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await bootWorkdayBriefV591(page,width);
+    const lead=page.locator('#todayView .j591-featured-work');
+    await expect(lead).toBeVisible();
+    await expect(lead).toContainText('期限超過の院内資料を確認する');
+    await expect(lead).toContainText('変更点を担当部署へ確認する');
+    await expect(page.locator('#todayView .j591-following-work .j420-work-note')).toHaveCount(2);
+    const headline=await lead.locator(':scope > strong').evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+    expect(headline).toBeGreaterThanOrEqual(19);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+    await lead.click();
+    await expect(page.locator('.detail-panel')).toHaveClass(/open/);
+    await page.locator('#closeDetail').evaluate(el=>el.click());
+    const tabs=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(tabs+' [data-journal-route="tasks"]').click();
+    const overview=page.locator('#boardView .j591-atelier-brief');
+    await expect(overview).toBeVisible();
+    await expect(overview).toContainText('変更点を担当部署へ確認する');
+    const launch=overview.locator('button[data-j420-log-task="j591-leading"]');
+    await expect(launch).toBeVisible();
+    await launch.click();
+    const notebook=page.locator('#boardView #j494AtelierNote');
+    await expect(notebook).toBeVisible();
+    await expect(notebook).toContainText('期限超過の院内資料を確認する');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  });
+}
+
+test('JOURNAL V591 empty task room keeps an understandable Today empty state',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await expect(page.locator('#todayView .j591-featured-work')).toHaveCount(0);
+  await expect(page.locator('#todayView .j420-empty')).not.toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
