@@ -4742,6 +4742,10 @@ test('JOURNAL V592 Memo opens quick references on a readable central sheet, with
   await expect(reader.locator('h3')).toHaveText('日常参照する申請手順');
   await expect(reader).toContainText('申請の順番を確認し');
   await expect(reader.locator('.j425-memo-reader-actions button')).toHaveCount(3);
+  const returnToCard=reader.locator('.j451-memo-back');
+  await expect(returnToCard).toBeVisible();
+  await returnToCard.click();
+  await expect(view.locator('.work-memo-card-v167').filter({hasText:'日常参照する申請手順'})).toBeFocused();
   const copy=reader.locator('.j592-reader-primary');
   await expect(copy).toBeVisible();
   expect(await copy.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
