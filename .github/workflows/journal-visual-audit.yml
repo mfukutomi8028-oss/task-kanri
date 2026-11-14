@@ -1,0 +1,27 @@
+name: JOURNAL synthetic visual audit (temporary)
+on:
+  push:
+    branches: ['audit/journal-visual-20261114']
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Capture synthetic JOURNAL at 1366, 768, 390 and 320
+        run: npx playwright test tests/journal-visual-capture.spec.mjs --retries=0
+      - name: Upload screenshots and layout metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journal-visual-capture
+          path: visual-audit/
+          if-no-files-found: warn
+          retention-days: 3
