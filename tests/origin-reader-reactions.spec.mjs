@@ -149,3 +149,45 @@ test('Origin favorite action retains expanded footer and keyboard focus after re
  await expect(star).toHaveAttribute('aria-pressed','true');
  await expect(star).toBeFocused();
 });
+
+for(const width of [320,390,1366]){
+ test('Origin task description editor gives long text enough room and saves through viewport changes at '+width+'px',async({page})=>{
+  const root=await boot(page,width),sheet=root.locator('#sheet');
+  if(width<=770)await page.setViewportSize({width,height:568});
+  await sheet.locator('[data-action="edit"]').click();
+  const form=sheet.locator('#editForm[data-kind="tasks"]'),field=form.locator('[name="desc"]');
+  const minHeight=await field.evaluate(el=>parseFloat(getComputedStyle(el).minHeight));
+  expect(minHeight).toBeGreaterThanOrEqual(width>770?180:150);
+  const longText='長文説明'.repeat(1500);
+  await field.fill(longText);
+  if(width<=770){
+   await field.focus();
+   await field.evaluate(el=>el.setSelectionRange(el.value.length,el.value.length));
+   await page.setViewportSize({width,height:300});
+   await expect(sheet).toHaveAttribute('data-origin-keyboard','true');
+   await expect(field).toBeFocused();
+   const metrics=await sheet.evaluate(el=>{
+    const body=el.querySelector('.sheet-body'),area=el.querySelector('#editForm [name="desc"]');
+    const footer=el.querySelector('.sheet-foot'),save=el.querySelector('button[form="editForm"]');
+    const b=body.getBoundingClientRect(),a=area.getBoundingClientRect(),f=footer.getBoundingClientRect(),s=save.getBoundingClientRect();
+    return {height:el.getBoundingClientRect().height,viewport:window.visualViewport?.height||innerHeight,
+     fieldVisible:Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top),bodyHeight:b.height,
+     saveVisible:s.top>=f.top-1&&s.bottom<=f.bottom+1&&s.top>=0&&s.bottom<=innerHeight,
+     scrollWidth:document.documentElement.scrollWidth,viewportWidth:innerWidth,
+     selection:area.selectionStart===area.value.length&&area.selectionEnd===area.value.length};
+   });
+   expect(metrics.height).toBeLessThanOrEqual(metrics.viewport+3);
+   expect(metrics.bodyHeight).toBeGreaterThan(35);
+   expect(metrics.fieldVisible).toBeGreaterThan(20);
+   expect(metrics.saveVisible).toBe(true);
+   expect(metrics.selection).toBe(true);
+   expect(metrics.scrollWidth-metrics.viewportWidth).toBeLessThanOrEqual(2);
+   await expect(field).toHaveValue(longText);
+  }
+  await sheet.locator('button[form="editForm"]').click();
+  await expect(root.locator('#overlay')).toBeHidden();
+  const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks
+   .find(task=>task.id==='reader-task'));
+  expect(saved.description||saved.desc).toBe(longText);
+ });
+}
