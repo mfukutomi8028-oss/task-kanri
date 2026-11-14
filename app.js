@@ -751,7 +751,12 @@ function setupEvents() {
     const result = await requestDeleteWithSeries("schedule", id, {
       expectedRevision: Number(elements.scheduleForm.dataset.baseRevision)
     });
-    if (result?.ok) elements.scheduleDialog.close();
+    if (result?.ok) {
+      if (journalNoteDialogReturnV479?.action==='calendar'
+        && journalNoteDialogReturnV479.id===id)
+        journalNoteDialogReturnV479.deleted=true;
+      elements.scheduleDialog.close();
+    }
   });
   elements.newTask.addEventListener("click", () => openTaskDialog());
   $("taskRecurrence")?.addEventListener("change", () => {
@@ -4056,6 +4061,7 @@ const journalMobilePrecisionOpenDaysV476=new Set(); // Preserve optional mobile 
 let journalSchedulePreviewIdV459=''; // JOURNAL-only reading selection; never persisted.
 let journalSchedulePreviewOwnerV459=''; // Clear the selection when room / user changes.
 let journalNoteDialogReturnV479=null; // Unpersisted note origin for editor/copy.
+let journalScheduleReturnNoticeV586=null; // Unsaved destination/deletion hint, scoped to the originating page.
 let journalExpandedMemoIdV481=''; // Ephemeral long-note disclosure; not a schedule field.
 const journalScheduleCompactMediaV451=window.matchMedia('(max-width:760px)');
 journalScheduleCompactMediaV451.addEventListener('change',event=>{
@@ -4134,12 +4140,22 @@ function journalPrepareCalendarReturnV584(card,record){
   journalNoteDialogReturnV479={
     id:record.id,room:ROOM_ID,user:getCurrentUser(),action:'calendar',
     mode:journalScheduleStateV425.mode,anchor:journalScheduleStateV425.anchor,
+    originDate:scheduleLocalDate(record),
     region:card.closest('.j425-schedule-sidebar')?'sidebar'
       :card.closest('.j425-schedule-ledger')?'ledger':'week',
     pageX:window.scrollX,pageY:window.scrollY,
     gridLeft:root.querySelector('.j425-week-scroll')?.scrollLeft||0,
     sidebarTop:root.querySelector('.j425-schedule-sidebar')?.scrollTop||0
   };
+}
+// The destination is a view-only date selection; it never changes shared records.
+function journalDateInPeriodV586(date,mode,anchor){
+  const d=parseISODate(date),a=parseISODate(anchor)||startOfToday();
+  if(!d)return false;
+  if(mode==='day')return toISODate(d)===toISODate(a);
+  if(mode==='month')return d>=startOfMonth(a)&&d<addMonths(startOfMonth(a),1);
+  const week=startOfWeekMonday(a);
+  return d>=week&&d<addDays(week,7);
 }
 function journalRestoreNoteV479(){
   const context=journalNoteDialogReturnV479;
@@ -4152,6 +4168,18 @@ function journalRestoreNoteV479(){
     // successful deletion must never return focus to a removed element.
     if(context.mode!==journalScheduleStateV425.mode
       ||context.anchor!==journalScheduleStateV425.anchor)return;
+    const record=state.schedules.find(item=>item.id===context.id);
+    const movedDate=record && context.savedDate===scheduleLocalDate(record)
+      && context.originDate!==context.savedDate
+      && !journalDateInPeriodV586(context.savedDate,context.mode,context.anchor)
+      ?context.savedDate:null;
+    journalScheduleReturnNoticeV586=movedDate
+      ?{kind:'moved',id:context.id,date:movedDate,title:record.title,
+          room:context.room,user:context.user,mode:context.mode,anchor:context.anchor}
+      :context.deleted
+        ?{kind:'deleted',room:context.room,user:context.user,
+            mode:context.mode,anchor:context.anchor}
+        :null;
     journalScheduleV425();
     requestAnimationFrame(()=>{
       if(document.documentElement.dataset.wbDisplay!=='journal'
@@ -4165,13 +4193,16 @@ function journalRestoreNoteV479(){
         :context.region==='ledger'?'.j425-schedule-ledger':'.j425-week-scroll';
       const card=[...root.querySelectorAll(region+' [data-schedule-id]')]
         .find(node=>node.dataset.scheduleId===context.id&&node.getClientRects().length);
-      const target=card||root.querySelector('[data-j425-today]');
+      const target=(movedDate?root.querySelector('[data-j586-follow-moved]'):null)
+        ||card||root.querySelector('[data-j425-today]');
       const grid=root.querySelector('.j425-week-scroll');
       if(grid)grid.scrollLeft=context.gridLeft;
       const sidebar=root.querySelector('.j425-schedule-sidebar');
       if(sidebar)sidebar.scrollTop=context.sidebarTop;
       target?.focus({preventScroll:true});
       window.scrollTo({left:context.pageX,top:context.pageY,behavior:'instant'});
+      if(!card && target && window.matchMedia('(max-width:760px)').matches)
+        target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
     });
     return;
   }
@@ -4315,6 +4346,7 @@ function journalScheduleV425(){
  if(journalSchedulePreviewOwnerV459!==owner){
    journalSchedulePreviewIdV459='';
    journalNoteDialogReturnV479=null;
+   journalScheduleReturnNoticeV586=null;
    journalExpandedMemoIdV481='';
    journalGapWindowByDateV470.clear();
    journalGapStartByDateV469.clear();
@@ -4324,6 +4356,11 @@ function journalScheduleV425(){
    journalSchedulePreviewOwnerV459=owner;
  }
  const mode=journalScheduleStateV425.mode;
+ const notice=journalScheduleReturnNoticeV586;
+ if(notice&&(notice.room!==ROOM_ID||notice.user!==getCurrentUser()
+   ||notice.mode!==mode||notice.anchor!==journalScheduleStateV425.anchor))
+   journalScheduleReturnNoticeV586=null;
+ const returnNotice=journalScheduleReturnNoticeV586;
  const anchor=parseISODate(journalScheduleStateV425.anchor)||startOfToday();
  const weekStart=startOfWeekMonday(anchor),monthStart=startOfMonth(anchor);
  const range=mode==='month'?{start:monthStart,end:addMonths(monthStart,1)}:mode==='day'?{start:anchor,end:addDays(anchor,1)}:{start:weekStart,end:addDays(weekStart,7)};
@@ -4492,6 +4529,15 @@ function journalScheduleV425(){
  `<div class="j425-week-scroll" role="region" aria-label="週間の時間割" tabindex="0"><div class="j425-week-grid ${mode==='day'?'is-single-day':''}"><div class="j425-week-hours"><header>時間</header><div>${Array.from({length:12},(_,i)=>`<span style="top:${i*interval}px">${String(i+8).padStart(2,'0')}:00</span>`).join('')}</div></div>${days.map(dayColumn).join('')}</div></div>`;
  const rangeLabel=mode==='month'?`${monthStart.getFullYear()}年${monthStart.getMonth()+1}月`:
  `${days[0].getMonth()+1}/${days[0].getDate()} 〜 ${days[days.length-1].getMonth()+1}/${days[days.length-1].getDate()}`;
+ const returnNoticeHtml=returnNotice?.kind==='moved'
+   ?`<div class="j586-schedule-return" data-j586-move-notice role="status">
+       <p><strong>予定の移動先</strong> 「${escapeHtml(returnNotice.title)}」は
+       ${escapeHtml(returnNotice.date.replace(/-/g,'/'))} に変更されました。</p>
+       <button type="button" data-j586-follow-moved>変更後の予定を見る</button>
+     </div>`
+   :returnNotice?.kind==='deleted'&&!schedules.length
+     ?`<div class="j586-schedule-return" role="status"><p>この表示期間の予定はありません。</p>
+       <button type="button" data-j586-add-after-delete>予定を追加</button></div>`:'';
  const todayList=targetToday.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(formatScheduleTime(s.startAt))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>今日の予定はありません</p>';
  const orderedDayV460=mode==='day'?orderJournalDayEventsV460(byDay(toISODate(anchor))):[];
  const selectedPositionV460=orderedDayV460.findIndex(s=>s.id===journalSchedulePreviewIdV459);
@@ -4541,6 +4587,7 @@ function journalScheduleV425(){
       </div></div></details>
     </aside>
     <section class="j425-schedule-planner"><div class="j425-schedule-datebar"><button type="button" data-j425-shift="-1">‹ 前へ</button><strong>${escapeHtml(rangeLabel)}</strong><button type="button" data-j425-shift="1">次へ ›</button><button type="button" data-j425-today>今日</button>${mode==='day'?'<button type="button" class="j459-return-week" data-j459-return-week>週へ戻る</button>':''}</div>
+      ${returnNoticeHtml}
       ${weekBody}
       <div class="j425-schedule-footnotes"><section><h3>関連タスク <small>${related.length}件</small></h3>${related.map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}"><span>□</span>${escapeHtml(t.title)}<small>${escapeHtml(t.dueDate)}</small></button>`).join('')||'<p>表示期間に期限があるタスクはありません</p>'}</section><section><h3>予定のメモ</h3>${notes.map(s=>`<p><strong>${escapeHtml(s.title)}</strong>：${escapeHtml(s.memo)}</p>`).join('')||'<p>表示期間の予定にメモはありません</p>'}</section></div>
       <div class="j425-stationery-row j425-schedule-props" aria-hidden="true"><img class="j442-schedule-botanical" src="./assets/journal-schedule-botanical-v442.svg" alt="" decoding="async"></div>
@@ -4609,6 +4656,45 @@ function journalScheduleV425(){
  };
  root.querySelector('[data-j425-add-schedule]')?.addEventListener('click',
    ()=>openJournalCreateWithFollowV568());
+ root.querySelector('[data-j586-follow-moved]')?.addEventListener('click',()=>{
+   const hint=journalScheduleReturnNoticeV586;
+   if(!hint||hint.kind!=='moved'||hint.room!==ROOM_ID||hint.user!==getCurrentUser())return;
+   const moved=state.schedules.find(item=>item.id===hint.id);
+   if(!moved||scheduleLocalDate(moved)!==hint.date){
+     journalScheduleReturnNoticeV586=null;
+     journalScheduleV425();
+     toast('予定が再度変更されたため、最新の予定を確認してください。',true);
+     return;
+   }
+   journalScheduleReturnNoticeV586=null;
+   journalScheduleStateV425.anchor=hint.date;
+   journalScheduleStateV425.mode='day';
+   // Never silently clear search, assignee, or category constraints.
+   const day=parseISODate(hint.date);
+   const visible=getFilteredSchedules({start:day,end:addDays(day,1)})
+     .some(item=>item.id===moved.id&&(!journalScheduleCategoryV430
+       ||item.category===journalScheduleCategoryV430));
+   journalSchedulePreviewIdV459=visible?moved.id:'';
+   journalScheduleV425();
+   requestAnimationFrame(()=>{
+     if(document.documentElement.dataset.wbDisplay!=='journal'
+       ||state.layout!=='schedule'||elements.scheduleView.hidden
+       ||ROOM_ID!==hint.room||getCurrentUser()!==hint.user
+       ||journalScheduleStateV425.mode!=='day'||journalScheduleStateV425.anchor!==hint.date
+       ||document.querySelector('dialog[open]'))return;
+     const root=elements.scheduleView;
+     const card=[...root.querySelectorAll('.j459-day-record [data-schedule-id]')]
+       .find(node=>node.dataset.scheduleId===hint.id);
+     const target=card||root.querySelector('[data-j425-today]');
+     target?.focus({preventScroll:true});
+     target?.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
+     if(!card)toast('移動先の日付を表示しました。予定が見えない場合は検索・分類・担当の条件をご確認ください。');
+   });
+ });
+ root.querySelector('[data-j586-add-after-delete]')?.addEventListener('click',()=>{
+   journalScheduleReturnNoticeV586=null;
+   openJournalCreateWithFollowV568();
+ });
  root.querySelectorAll('[data-j425-day]').forEach(b=>b.addEventListener('click',()=>{
    journalScheduleStateV425.anchor=b.dataset.j425Day;
    journalScheduleStateV425.mode='day';
@@ -6055,6 +6141,11 @@ async function saveScheduleFromForm() {
   schedule.lastChange = changeInfo;
   const result = await persistSchedule(schedule);
   if (!result.ok) return showWriteFailure(result, "予定を保存できませんでした。入力内容はそのままです。");
+  // Mark only an actually persisted calendar edit; cancelling or failed writes
+  // must never show a destination that may not exist.
+  if (editingId && journalNoteDialogReturnV479?.action==='calendar'
+    && journalNoteDialogReturnV479.id===editingId)
+    journalNoteDialogReturnV479.savedDate=scheduleLocalDate(schedule);
   // Only deliberate JOURNAL planner creation (top action or verified gap)
   // follows the new record. The canonical write path and other entry points
   // retain their existing behavior, including direct day-cell creation.
