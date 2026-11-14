@@ -8,7 +8,7 @@ const source = readFileSync('origin-modern-v372.js', 'utf8');
 const token = (name) => {
   const match = source.match(new RegExp('\\-\\-' + name + ':(#[0-9a-f]{6})', 'i'));
   assert.ok(match, 'Missing Origin color token: ' + name);
-  return match[1];
+  return match[1].length === 4 ? '#' + [...match[1].slice(1)].map(char => char + char).join('') : match[1];
 };
 const luminance = (hex) => {
   const channels = hex.slice(1).match(/.{2}/g).map(part => parseInt(part, 16) / 255);
