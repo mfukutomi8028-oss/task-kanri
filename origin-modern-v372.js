@@ -331,8 +331,19 @@
 .origin-tool-nav button{display:flex;align-items:center;gap:11px;text-align:left;min-width:0;min-height:76px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink-soft)}
 .origin-tool-nav button span{display:grid;gap:5px;min-width:0}.origin-tool-nav button strong{font-size:13px;color:var(--ink)}
 .origin-tool-nav button small{font-size:11px;line-height:1.5;overflow-wrap:anywhere}.origin-tool-nav button.active,.origin-tool-nav button:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent-dark)}
-.sheet[data-reader-kind="tasks"] .origin-sheet-secondary{flex-wrap:nowrap;overflow-x:auto;padding:2px 1px 5px;scrollbar-width:thin}
-.sheet[data-reader-kind="tasks"] .origin-sheet-secondary button{flex:0 0 auto;width:auto;min-width:0;min-height:44px;padding:8px 11px;font-size:12px;white-space:nowrap}
+/* Task detail footer: two frequent actions stay visible, infrequent ones are disclosed. */
+.sheet[data-reader-kind="tasks"] .origin-sheet-primary{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+.sheet[data-reader-kind="tasks"] .origin-task-primary-done{font-weight:780}
+.sheet[data-reader-kind="tasks"] .origin-task-more-actions{min-width:0;border-top:1px solid var(--line-soft);padding-top:5px}
+.sheet[data-reader-kind="tasks"] .origin-task-more-actions>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:8px 12px;border-radius:9px;cursor:pointer;color:var(--ink-soft);font-size:12px;font-weight:760}
+.sheet[data-reader-kind="tasks"] .origin-task-more-actions>summary::-webkit-details-marker{display:none}
+.sheet[data-reader-kind="tasks"] .origin-task-more-actions>summary:hover{background:var(--hover);color:var(--ink)}
+.sheet[data-reader-kind="tasks"] .origin-task-more-actions>summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sheet[data-reader-kind="tasks"] .origin-task-more-actions>summary:after{content:'';width:8px;height:8px;flex:none;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .15s ease;margin-right:4px}
+.sheet[data-reader-kind="tasks"] .origin-task-more-actions[open]>summary:after{transform:rotate(225deg)}
+.sheet[data-reader-kind="tasks"] .origin-task-more-actions .origin-sheet-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px;padding:0;overflow:visible}
+.sheet[data-reader-kind="tasks"] .origin-task-more-actions .origin-sheet-secondary button{width:100%;min-width:0;min-height:44px;padding:9px 10px;white-space:normal;line-height:1.4;overflow-wrap:anywhere;justify-content:center;text-align:center}
+@media(prefers-reduced-motion:reduce){.sheet[data-reader-kind="tasks"] .origin-task-more-actions>summary:after{transition:none}}
 @media(max-width:520px){.origin-task-detail>.origin-task-section{padding:15px 13px;margin-top:14px}.origin-comment-list li{padding:13px 11px}.origin-comment-list time{margin-left:0;width:100%;padding-left:37px}.origin-reader-nav{gap:4px}.origin-reader-nav button{padding:8px;font-size:11px}#originCommentForm{padding:12px;gap:10px}.origin-tool-nav{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.origin-tool-nav button{padding:11px;gap:8px;min-height:74px}.origin-tool-nav button small{font-size:10px}}
 @media(max-width:420px){.origin-workflow-add{flex-wrap:wrap}.origin-workflow-add>label{flex-basis:100%}.origin-batch-options .origin-task-extra-grid{padding:12px}.origin-task-facts dd{font-size:14px}}
 
@@ -2226,13 +2237,16 @@ function restoreOriginTaskFromSchedule(saved=false){
 }
 function originPanelFooter(kind,id,editing,item){
  const safeId=esc(id||'');
+ const taskDetail=kind==='tasks'&&!editing;
  const main=editing
    ?`<button type="submit" class="primary-button" form="editForm">${id?'変更を保存':'登録する'}</button><button type="button" class="secondary-button" data-action="close">キャンセル</button>`
+   :taskDetail
+   ?`<button type="button" class="primary-button" data-action="edit" data-kind="${kind}" data-id="${safeId}">${icon('edit',16)} 編集する</button><button type="button" class="secondary-button origin-task-primary-done" data-action="task-done" data-id="${safeId}">${item.completed?'未完了に戻す':'完了にする'}</button>`
    :`<button type="button" class="primary-button" data-action="edit" data-kind="${kind}" data-id="${safeId}">${icon('edit',16)} 編集する</button><button type="button" class="secondary-button" data-action="close">閉じる</button>`;
  let secondary='';
  if(!editing){
-   if(kind==='tasks')secondary=`<button type="button" class="secondary-button" data-action="task-done" data-id="${safeId}">${item.status==='完了'?'未完了に戻す':'完了にする'}</button><button type="button" class="secondary-button" data-action="task-star" data-id="${safeId}" aria-pressed="${item.favorite}">${item.favorite?'★ お気に入り解除':'☆ お気に入り'}</button><button type="button" class="secondary-button" data-action="task-copy" data-id="${safeId}">複製して作成</button>`;
-   if(kind==='tasks')secondary+=`<button type="button" class="secondary-button" data-action="task-knowledge" data-id="${safeId}">ナレッジ${item.knowledgeId?'を開く':'として残す'}</button>${item.completed?`<button type="button" class="secondary-button" data-action="task-archive" data-id="${safeId}" data-base="${esc(JSON.stringify(window.WorkBoardWorkflowV152?.archiveInfo(id)||null))}">アーカイブ</button>`:''}`;
+   if(kind==='tasks')secondary=`<button type="button" class="secondary-button" data-action="task-star" data-id="${safeId}" aria-pressed="${Boolean(item.favorite)}">${item.favorite?'★ お気に入り解除':'☆ お気に入り'}</button><button type="button" class="secondary-button" data-action="task-copy" data-id="${safeId}">複製して作成</button>`;
+   if(kind==='tasks')secondary+=`<button type="button" class="secondary-button" data-action="task-knowledge" data-id="${safeId}">ナレッジ${item.knowledgeId?'を開く':'として残す'}</button>${item.completed?`<button type="button" class="secondary-button" data-action="task-archive" data-id="${safeId}" data-base="${esc(JSON.stringify(window.WorkBoardWorkflowV152?.archiveInfo(id)||null))}">アーカイブ</button>`:''}<button type="button" class="secondary-button" data-action="close">閉じる</button>`;
    if(kind==='todos'){
      const rows=data.todos.filter(t=>t.done===item.done),index=rows.findIndex(t=>t.id===id);
      secondary=`<button type="button" class="secondary-button" data-action="todo-toggle" data-id="${safeId}">${item.done?'未完了に戻す':'完了にする'}</button><button type="button" class="secondary-button" data-action="todo-move" data-id="${safeId}" data-value="up" ${index<=0?'disabled':''}>上へ移動</button><button type="button" class="secondary-button" data-action="todo-move" data-id="${safeId}" data-value="down" ${index>=rows.length-1?'disabled':''}>下へ移動</button>`;
@@ -2242,7 +2256,10 @@ function originPanelFooter(kind,id,editing,item){
  }
  const dangerous=editing&&id
    ?`<div class="origin-sheet-danger"><button type="button" class="danger-button" data-action="delete" data-kind="${kind}" data-id="${safeId}">${icon('trash',14)} 削除する</button></div>`:'';
- return `<div class="origin-sheet-actions"><div class="origin-sheet-primary">${main}</div>${secondary?`<div class="origin-sheet-secondary">${secondary}</div>`:''}${dangerous}</div>`;
+ const extras=secondary?(taskDetail
+   ?`<details class="origin-task-more-actions"><summary>その他の操作</summary><div class="origin-sheet-secondary">${secondary}</div></details>`
+   :`<div class="origin-sheet-secondary">${secondary}</div>`):'';
+ return `<div class="origin-sheet-actions"><div class="origin-sheet-primary">${main}</div>${extras}${dangerous}</div>`;
 }
 function panelShow(kind,id,edit=false,seed={}){
  const obj=id?findItem(kind,id):null;if(id&&!obj)return;
@@ -2445,7 +2462,7 @@ function originSheetFocusable(){
  // A single modal dialog must contain keyboard focus until it is closed.
  const sheet=$('#sheet');
  return Array.from(sheet?.querySelectorAll(
-   'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+   'a[href],button:not([disabled]),summary:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
  )||[]).filter(el=>el.getClientRects().length&&!el.closest('[hidden]'));
 }
 function handleOriginModalKeys(e){
@@ -2988,7 +3005,16 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  }
  if(a==='task-star'){
    if(busy)return;
-   return send({type:'task.star',id},'お気に入りを更新しました').then(ok=>{if(ok&&panelOpen&&panelMode==='detail'&&panelId===id)panelShow('tasks',id)});
+   const wasOpen=Boolean(el.closest('.origin-task-more-actions')?.open);
+   const previousScroll=$('#sheet .sheet-body')?.scrollTop||0;
+   return send({type:'task.star',id},'お気に入りを更新しました').then(ok=>{
+     if(!ok||!panelOpen||panelMode!=='detail'||panelId!==id)return;
+     panelShow('tasks',id);
+     const more=$('#sheet .origin-task-more-actions');
+     if(more&&wasOpen)more.open=true;
+     const body=$('#sheet .sheet-body');if(body)body.scrollTop=previousScroll;
+     more?.querySelector('[data-action="task-star"]')?.focus({preventScroll:true});
+   });
  }
  if(a==='todo-move'){
    const item=findItem('todos',id);if(!item||busy)return;
