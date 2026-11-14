@@ -93,6 +93,9 @@ for(const width of [320,390]){
     const row=root.locator('.origin-todo-list .todo-entry',{hasText:'点検表を確認'});
     await expect(row.locator('.origin-todo-preview')).toBeVisible();
     const rowBox=await row.boundingBox();
+    const touch=await row.locator('.origin-todo-check-hit').boundingBox();
+    expect(touch.width).toBeGreaterThanOrEqual(44);
+    expect(touch.height).toBeGreaterThanOrEqual(44);
     const titleBox=await row.locator('.todo-text').boundingBox();
     const editBox=await row.locator('.origin-list-quick-edit').boundingBox();
     const detailBox=await row.locator('.todo-edit').boundingBox();
