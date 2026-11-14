@@ -865,6 +865,25 @@ test('JOURNAL V584 calendar editor returns through the same guarded page context
   assert.doesNotMatch(fn,/(?:persistSchedule|runTransaction|setDatabase|updateDatabase)\s*\(/);
 });
 
+test('JOURNAL planner touch targets preserve readable and tappable actions',()=>{
+  const css=read('journal-display-v367.css');
+  for(const selector of [
+    '.j425-index-option',
+    '.j425-schedule-datebar button',
+    '.j425-mini-month-head button',
+    '.j425-schedule-footnotes button',
+    '.j425-side-schedule-list button'
+  ]){
+    const start=css.indexOf(selector+' {');
+    assert.ok(start>=0,'missing selector '+selector);
+    const rule=css.slice(start,css.indexOf('}',start));
+    const height=Number(rule.match(/min-height:\s*(\d+)px/)?.[1]);
+    assert.ok(height>=44,selector+' target too short: '+height);
+  }
+  assert.match(css,/\.j425-schedule-datebar button\s*\{[^}]*font:750 12px/s);
+  assert.match(css,/\.j425-side-schedule-list button\s*\{[^}]*font:650 12px/s);
+});
+
 test('JOURNAL V586 moved calendar records expose a saved-only destination action',()=>{
   const app=read('app.js');
   assert.match(app,/function journalDateInPeriodV586\(date,mode,anchor\)/);
