@@ -5,7 +5,7 @@
 - タスク詳細の目次を「関連予定」と「前提・設定」に分離。「前提・設定」の選択時は既存の折りたたみ欄を開き、見出しにフォーカスを移して直接操作できる。
 - Origin専用ソースと回帰テストでの変更に限定し、Classic・JOURNALの画面、Palette廃止状態、Firebaseの業務データと認可・保存ロジックを維持する。
 - 320/390/1366pxでの目次・キーボード動作を対象ブラウザ検査に追加。公開にあわせて配信キャッシュキーとリリース正本をVer.578へ更新する。
-- Originの修正PR #810（`f90887f4a4ceb48c90f5351f1c8a7f2dabaf5c6e`）・#811（`6bd5cd4079be0f0fda14adb3600af24c179e8b79`）を個別の必須CI成功後に統合。Ver.578の配信可否は公開PRの回帰結果で別途判定する。
+- Originの修正[PR #810](https://github.com/mfukutomi8028-oss/task-kanri/pull/810)（`f90887f4a4ceb48c90f5351f1c8a7f2dabaf5c6e`）・[PR #811](https://github.com/mfukutomi8028-oss/task-kanri/pull/811)（`6bd5cd4079be0f0fda14adb3600af24c179e8b79`）を個別の必須CI成功後に統合。Ver.578の配信可否は公開PRの回帰結果で別途判定する。
 
 ## Ver.577 — JOURNALの読みやすさと操作の整理（2026-11-13）
 
