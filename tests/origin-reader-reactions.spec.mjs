@@ -156,8 +156,6 @@ for(const width of [320,390,1366]){
   if(width<=770)await page.setViewportSize({width,height:568});
   await sheet.locator('[data-action="edit"]').click();
   const form=sheet.locator('#editForm[data-kind="tasks"]'),field=form.locator('[name="desc"]');
-  const minHeight=await field.evaluate(el=>parseFloat(getComputedStyle(el).minHeight));
-  expect(minHeight).toBeGreaterThanOrEqual(width>770?180:150);
   const longText='長文説明'.repeat(1500);
   await field.fill(longText);
   if(width<=770){
@@ -184,6 +182,8 @@ for(const width of [320,390,1366]){
    expect(metrics.scrollWidth-metrics.viewportWidth).toBeLessThanOrEqual(2);
    await expect(field).toHaveValue(longText);
   }
+  const minHeight=await field.evaluate(el=>parseFloat(getComputedStyle(el).minHeight));
+  expect(minHeight).toBeGreaterThanOrEqual(width>770?180:150);
   await sheet.locator('button[form="editForm"]').click();
   await expect(root.locator('#overlay')).toBeHidden();
   const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks
