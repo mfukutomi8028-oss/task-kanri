@@ -4763,7 +4763,6 @@ test('JOURNAL V592 Memo opens quick references on a readable central sheet, with
     await recent.click();
     await expect(reader).toBeFocused();
   }
-  await page.locator('#wbJournalDockV367 [data-journal-route="memo"]').isVisible().catch(()=>false);
   await choose(page,'classic');
   await expect(view.locator('.j592-memo-shortcuts')).toHaveCount(0);
   await expect(view.locator('.work-memo-card-v167')).toHaveCount(2);
