@@ -4563,5 +4563,19 @@ for (const width of [390,1366]) {
     await expect(destination).toBeVisible();
     await expect(destination).toBeFocused();
     await expect(view.locator('[data-j586-follow-moved]')).toHaveCount(0);
+
+    // Deleting the last event on its day reveals a useful empty state.
+    await destination.click();
+    page.once('dialog',dialog=>dialog.accept());
+    await editor.locator('#deleteSchedule').click();
+    await expect(editor).toBeHidden();
+    await expect(view.locator('.j459-day-record [data-schedule-id="paper-plan"]')).toHaveCount(0);
+    const createAgain=view.locator('[data-j586-add-after-delete]');
+    await expect(createAgain).toBeVisible();
+    await expect(view.locator('[data-j425-today]')).toBeFocused();
+    await createAgain.click();
+    await expect(editor).toBeVisible();
+    await expect(editor.locator('#scheduleId')).toHaveValue('');
+    await editor.locator('#closeScheduleDialog').click();
   });
 }
