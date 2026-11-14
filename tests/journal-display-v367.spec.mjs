@@ -4787,3 +4787,56 @@ test('JOURNAL V592 empty memo room retains creation and reading guidance',async(
   await expect(view.locator('[data-memo-new]').first()).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+for(const width of [1366,390]){
+  test('JOURNAL V594 returns from a case to its memo and back at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await boot(page,width);await choose(page,'journal');
+    await page.locator((width<=760?'#wbJournalDockV367':'.wb-journal-tabs-v367')+' [data-journal-route="tasks"]').click();
+    const board=page.locator('#boardView');
+    await board.locator('[data-j420-new-task]').click();
+    const taskTitle='案件からメモを参照する V594 '+width;
+    await page.locator('#taskTitle').fill(taskTitle);
+    await page.locator('#taskDescription').fill('元の案件へ戻れることを確認します');
+    await page.locator('#taskForm button[type="submit"]').click();
+    await expect(page.locator('#taskDialog')).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
+    const card=board.locator('[data-j420-task-id]').filter({hasText:taskTitle});
+    await card.click();
+    await expect(board.locator('#j494AtelierNote')).toBeVisible();
+    await expect(board.locator('[data-j594-open-memo]')).toBeVisible();
+    await board.locator('[data-j594-open-memo]').click();
+    await expect(page.locator('#workMemoViewV167')).toBeVisible();
+    const back=page.locator('.j594-return-bookmark [data-j594-return]');
+    await expect(back).toBeVisible();
+    await back.click();
+    await expect(page.locator('#boardView')).toBeVisible();
+    await expect(board.locator('#j494AtelierNote')).toContainText(taskTitle);
+    await expect(back).toBeHidden();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  });
+
+  test('JOURNAL V594 memo-to-task returns to the same reading sheet at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await boot(page,width);await choose(page,'journal');
+    await page.locator((width<=760?'#wbJournalDockV367':'.wb-journal-tabs-v367')+' [data-journal-route="memo"]').click();
+    const view=page.locator('#workMemoViewV167');
+    await view.locator('[data-memo-new]').first().click();
+    await page.locator('#workMemoTitleV167').fill('元のメモへのしおり V594 '+width);
+    await page.locator('#workMemoBodyV167').fill('作成したタスクの元資料');
+    await page.locator('#workMemoFormV167 button[type="submit"]').click();
+    await expect(page.locator('#workMemoDialogV167')).toBeHidden();
+    const original=view.locator('.j592-memo-shortcuts [data-j592-memo-shortcut]').filter({hasText:'元のメモへのしおり'});
+    await original.click();
+    await expect(view.locator('.j592-memo-reading-desk h3')).toContainText('元のメモへのしおり');
+    await view.locator('.j425-memo-reader-actions button', {hasText:'タスク化'}).click();
+    await expect(page.locator('#taskDialog')).toBeVisible();
+    await page.locator('#closeTaskDialog').click();
+    const back=page.locator('.j594-return-bookmark [data-j594-return]');
+    await expect(back).toBeVisible();
+    await back.click();
+    await expect(view).toBeVisible();
+    await expect(view.locator('.j592-memo-reading-desk h3')).toContainText('元のメモへのしおり');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  });
+}

@@ -7484,3 +7484,27 @@ html[data-wb-display="journal"] .j586-schedule-return button:focus-visible {
   html[data-wb-display="journal"] .j586-schedule-return {align-items:stretch}
   html[data-wb-display="journal"] .j586-schedule-return button {flex:1 1 100%;width:100%}
 }
+
+/* V594: a short paper bookmark keeps the last cross-page origin visible. */
+html[data-wb-display="journal"] .j594-return-bookmark:not([hidden]) {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:10px;margin:8px 0 12px;padding:10px 14px;
+  border:1px solid var(--j-border);border-left:3px solid var(--j-accent);
+  border-radius:5px;background:var(--j-paper-alt);color:var(--j-ink);
+}
+html[data-wb-display="journal"] .j594-return-bookmark p {
+  flex:1 1 210px;min-width:0;margin:0;font-size:13px;line-height:1.6;
+}
+html[data-wb-display="journal"] .j594-return-bookmark button,
+html[data-wb-display="journal"] .j594-open-memo {
+  min-height:44px;padding:9px 14px;border:1px solid var(--j-accent);
+  border-radius:5px;background:var(--j-paper-alt);color:var(--j-ink);
+  font:700 13px/1.5 var(--j-text);cursor:pointer;
+}
+html[data-wb-display="journal"] :is(.j594-return-bookmark button,.j594-open-memo):focus-visible {
+  outline:3px solid var(--j-marker);outline-offset:3px;
+}
+@media(max-width:760px){
+  html[data-wb-display="journal"] .j594-return-bookmark {align-items:stretch}
+  html[data-wb-display="journal"] .j594-return-bookmark button {flex:1 1 100%}
+}
