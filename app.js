@@ -2510,18 +2510,44 @@ function openActivityDialog() {
   elements.activityDialog.showModal();
 }
 
-function journalTodayTaskCardV420(task, index) {
+// Reuse this work cue in Today and Atelier without inventing new task state.
+function journalWorkIsWaitingV591(task) {
+  return /確認待|回答待|承認待|レビュー待|検収待|材料待|準備待|部品待|資料待|納品待|手配待|依頼中|対応待|外部依頼/.test(String(task?.status||''));
+}
+function journalWorkCueV591(task) {
+  if(journalWorkIsWaitingV591(task))return {kind:'waiting',label:'返答・準備を待つ案件'};
+  if(isOverdue(task))return {kind:'late',label:'期限を過ぎています'};
+  if(isDueToday(task))return {kind:'today',label:'今日が期限'};
+  if(task?.pinned)return {kind:'pinned',label:'固定している案件'};
+  if(['高','緊急'].includes(task?.priority))return {kind:'priority',label:'優先度の高い案件'};
+  return {kind:'normal',label:'続きを確認する案件'};
+}
+function journalWorkNextV591(task) {
+  const item=(task?.checklist||[]).find(entry=>!entry.done&&String(entry.text||'').trim());
+  if(item)return {label:'次のチェック項目',text:String(item.text).trim()};
+  const description=String(task?.description||'').trim();
+  if(description)return {label:'まず確認する内容',text:description.slice(0,160)};
+  return {label:'次にすること',text:'案件ノートを開いて、作業内容と進行状況を確認する'};
+}
+
+function journalTodayTaskCardV420(task, index, featured=false) {
   const p=checklistProgress(task);
+  const cue=journalWorkCueV591(task),next=journalWorkNextV591(task);
   const due=task.dueDate?(isOverdue(task)?"期限超過":isDueToday(task)?"今日まで":task.dueDate.slice(5).replace("-","/")):"期限なし";
-  return `<article class="j420-work-note ${isOverdue(task)?'is-late':''}" data-task-id="${escapeHtml(task.id)}" data-task-drag-id="${escapeHtml(task.id)}" draggable="true" role="button" tabindex="0" aria-label="${escapeHtml(task.title)}のタスク詳細">
-     <svg class="j425-today-card-fastener" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#${index%2?'pin':'binder'}"></use></svg><div class="j420-note-top"><span class="j420-note-index">${String(index+1).padStart(2,'0')}</span><span class="j420-note-due">${escapeHtml(due)}</span></div>
+  return `<article class="j420-work-note ${featured?'j591-featured-work ':''}${isOverdue(task)?'is-late':''}" data-task-id="${escapeHtml(task.id)}" data-task-drag-id="${escapeHtml(task.id)}" draggable="true" role="button" tabindex="0" aria-label="${escapeHtml(task.title)}のタスク詳細">
+     <svg class="j425-today-card-fastener" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#${index%2?'pin':'binder'}"></use></svg>
+     ${featured?`<div class="j591-featured-marker"><span>まず、ここから</span><em class="j591-urgency j591-urgency-${cue.kind}">${escapeHtml(cue.label)}</em></div>`:''}
+     <div class="j420-note-top"><span class="j420-note-index">${String(index+1).padStart(2,'0')}</span><span class="j420-note-due">${escapeHtml(due)}</span></div>
      <strong>${escapeHtml(task.title)}</strong>
      <span class="j420-note-category">${escapeHtml(task.category||'未分類')} / ${escapeHtml(task.status)}</span>
+     ${featured?`<div class="j591-work-next"><small>${escapeHtml(next.label)}</small><p>${escapeHtml(next.text)}</p></div>`:''}
      <div class="j420-note-tags"><span>優先 ${escapeHtml(task.priority)}</span><span>担当 ${escapeHtml(task.assignee||'未割当')}</span></div>
      ${p.total?`<div class="j420-note-progress"><span style="width:${p.percent}%"></span></div><small class="j420-note-count">${p.done}/${p.total} 確認</small>`:''}
+     ${featured?'<span class="j591-open-hint">案件の詳細を開く <span aria-hidden="true">→</span></span>':''}
      ${favoriteButton(task,'j420-note-favorite')}
    </article>`;
 }
+
 
 function journalTodayV420() {
   const today=todayISO();
@@ -2537,6 +2563,8 @@ function journalTodayV420() {
   const important=all.filter(t=>!(/保留/.test(t.status)) && (isOverdue(t)||isDueToday(t)||t.pinned||['緊急','高'].includes(t.priority)))
     .sort(compareSmartTasks);
   const top=important.concat(all.filter(t=>!important.includes(t)).sort(compareSmartTasks)).slice(0,6);
+  const leadTaskV591=top.find(task=>!journalWorkIsWaitingV591(task))||top[0]||null;
+  const followingTasksV591=top.filter(task=>task.id!==leadTaskV591?.id);
   const alerts=getActivityItems().filter(x=>x.important).slice(0,4);
   const todos=visibleTodos().filter(x=>!x.completed).slice(0,4);
   const waiting=all.filter(t=>/確認待|回答待|承認待|依頼中|材料待|待機/.test(t.status)).slice(0,3);
@@ -2573,10 +2601,15 @@ function journalTodayV420() {
           <div class="j420-agenda">${agenda}</div>
           <button type="button" class="j420-add-appointment" data-j420-create-schedule>＋ 予定を追加</button>
         </section>
-        <section class="j420-focus" aria-label="進行中の案件">
-          <div class="j420-paper-head"><div><span>FOCUS / THE WORK IN PROGRESS</span><h3>進行中の案件</h3></div><button type="button" data-j420-to-tasks>すべて見る →</button></div>
-          <div class="j420-note-grid">${top.slice(0,3).map(journalTodayTaskCardV420).join('')||'<div class="j420-empty">進行中の案件はありません。新しいタスクから登録できます。</div>'}</div>
-          ${top.length>3?`<details class="j-today-more" data-journal-today-more ${journalTodayMoreOpen?'open':''}><summary>ほかの進行中の案件（${top.length-3}件）</summary><div class="j420-note-grid">${top.slice(3).map((task,index)=>journalTodayTaskCardV420(task,index+3)).join('')}</div></details>`:''}
+        <section class="j420-focus" aria-label="今日の優先案件">
+          <div class="j420-paper-head"><div><span>WORKDAY / FIRST THING FIRST</span><h3>今日、まず開く1件</h3></div><button type="button" data-j420-to-tasks>案件アトリエへ →</button></div>
+          <p class="j591-focus-explain">優先する理由と次の作業を、ひとつの紙面で確認できます。</p>
+          ${leadTaskV591?`<div class="j591-focus-lead">${journalTodayTaskCardV420(leadTaskV591,0,true)}</div>`:'<div class="j420-empty">進行中の案件はありません。新しいタスクから登録できます。</div>'}
+          ${followingTasksV591.length?`<div class="j591-following-work">
+            <div class="j591-following-heading"><h4>次に控える案件</h4><span>${followingTasksV591.length} 件</span></div>
+            <div class="j420-note-grid">${followingTasksV591.slice(0,2).map((task,index)=>journalTodayTaskCardV420(task,index+1)).join('')}</div>
+          </div>`:''}
+          ${followingTasksV591.length>2?`<details class="j-today-more" data-journal-today-more ${journalTodayMoreOpen?'open':''}><summary>ほかの進行中の案件（${followingTasksV591.length-2}件）</summary><div class="j420-note-grid">${followingTasksV591.slice(2).map((task,index)=>journalTodayTaskCardV420(task,index+3)).join('')}</div></details>`:''}
           <button type="button" class="j420-add-task" data-j420-create-task>＋ 新しい案件を書き込む</button>
           <div class="j420-stationery j425-today-stationery" aria-hidden="true"><img class="j440-today-bookmark" src="./assets/journal-bookmark-seal-v440.svg" alt="" decoding="async"></div>
         </section>
