@@ -4345,12 +4345,20 @@ test('JOURNAL settings book contains keyboard focus and returns to its trigger',
   await expect(sidebar).toHaveAttribute('aria-label','JOURNAL 設定の手帳');
   await expect(page.locator('[data-journal-settings-tab="display"]')).toBeFocused();
   // A direct attempt to tab out must wrap within the open notebook.
-  const focusables=await sidebar.locator('button:not([disabled]), input:not([disabled]), select:not([disabled]), a[href]').all();
-  let last=null;
-  for(const item of focusables){if(await item.isVisible() && await item.isEnabled())last=item;}
-  expect(last).not.toBeNull();
-  await last.focus();
+  const boundary=await sidebar.evaluate(el=>{
+    const nodes=[...el.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+      .filter(node=>node.getClientRects().length&&!node.closest('[hidden]')&&node.tabIndex>=0);
+    return {first:nodes[0]?.className||'',last:nodes[nodes.length-1]?.className||'',count:nodes.length};
+  });
+  expect(boundary.count).toBeGreaterThan(2);
+  await sidebar.evaluate(el=>{
+    const nodes=[...el.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+      .filter(node=>node.getClientRects().length&&!node.closest('[hidden]')&&node.tabIndex>=0);
+    nodes[nodes.length-1].focus();
+  });
   await page.keyboard.press('Tab');
+  await expect(page.locator('[data-journal-settings-tab="display"]')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
   expect(await page.evaluate(()=>document.activeElement?.closest('.sidebar')!==null)).toBe(true);
   await page.locator('.j-settings-book-close-v393').click();
   await expect(page.locator('body')).toHaveAttribute('data-journal-settings-open','false');
