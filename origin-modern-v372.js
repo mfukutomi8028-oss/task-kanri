@@ -1867,6 +1867,8 @@ let calendarRenderedMobile=window.innerWidth<=770;
 let detailSequence=null;
 // Linked task/event browsing is local to this open inspector, never persisted.
 let detailTrail=[];
+// Transient return point for a task editor opened from its detail.
+let originTaskEditReturn=null;
 // Local context for returning from a task-initiated schedule create or edit.
 let originTaskScheduleSource=null;
 let originEditorInitialHeight=0;
@@ -2240,7 +2242,7 @@ function originPanelFooter(kind,id,editing,item){
  const safeId=esc(id||'');
  const taskDetail=kind==='tasks'&&!editing;
  const main=editing
-   ?`<button type="submit" class="primary-button" form="editForm">${id?'変更を保存':'登録する'}</button><button type="button" class="secondary-button" data-action="close">キャンセル</button>`
+   ?`<button type="submit" class="primary-button" form="editForm">${id?'変更を保存':'登録する'}</button><button type="button" class="secondary-button" data-action="${kind==='tasks'&&originTaskEditReturn?.id===id?'origin-edit-back-detail':'close'}">${kind==='tasks'&&originTaskEditReturn?.id===id?'詳細に戻る':'キャンセル'}</button>`
    :taskDetail
    ?`<button type="button" class="primary-button" data-action="edit" data-kind="${kind}" data-id="${safeId}">${icon('edit',16)} 編集する</button><button type="button" class="secondary-button origin-task-primary-done" data-action="task-done" data-id="${safeId}">${item.completed?'未完了に戻す':'完了にする'}</button>`
    :`<button type="button" class="primary-button" data-action="edit" data-kind="${kind}" data-id="${safeId}">${icon('edit',16)} 編集する</button><button type="button" class="secondary-button" data-action="close">閉じる</button>`;
@@ -2264,13 +2266,23 @@ function originPanelFooter(kind,id,editing,item){
 }
 function panelShow(kind,id,edit=false,seed={}){
  const obj=id?findItem(kind,id):null;if(id&&!obj)return;
+ // Capture the detail reading state before switching to a task editor.
+ const taskReturn=edit&&kind==='tasks'&&id&&panelOpen&&panelMode==='detail'
+   &&panelKind==='tasks'&&panelId===id?{
+    id,scrollTop:$('#sheet .sheet-body')?.scrollTop||0,
+    workflowOpen:Boolean($('#sheet #originWorkflow')?.open),
+    relatedExpanded:Boolean($('#sheet .origin-related-more')?.open),
+    relatedPastExpanded:Boolean($('#sheet .origin-related-past')?.open),
+    section:$('#sheet .origin-reader-nav [aria-current="location"]')?.dataset.value||''
+   }:null;
  const replacing=panelOpen;
  if(replacing&&!closePanel(false,false))return;
+ originTaskEditReturn=taskReturn;
  if(!replacing)panelReturnScrollY=window.scrollY;
  panelOpen=true;panelMode=edit?'edit':'detail';panelKind=kind;panelId=id||'';
  const freshObj=obj||{},v={...freshObj,...seed};
  if(edit){
- const fields=kind==='tasks'?`<div class="form-grid">${originTemplatePicker()}<label class="form-field full">件名<input name="title" maxlength="80" required value="${esc(v.title||'')}"/></label><label class="form-field">状態<select name="status">${snapshot.statuses.map(s=>`<option value="${esc(s)}" ${s===(v.status||'未着手')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">優先度<select name="priority">${['緊急','高','中','低'].map(s=>`<option value="${s}" ${s===(v.priority||'中')?'selected':''}>${s}</option>`).join('')}</select></label><label class="form-field">開始日・予約（任意）<input name="startDate" type="date" value="${esc(v.startDate||'')}"/></label><label class="form-field">期限日（任意）<input name="due" type="date" value="${esc(v.due||'')}"/></label><label class="form-field">期限時刻（任意）<input name="dueTime" type="time" value="${esc(v.dueTime||'')}"/></label><label class="form-field">担当者<select name="assignee">${[...new Set(['自分',...snapshot.assignees.filter(x=>x!==snapshot.currentUser),v.assignee])].filter(Boolean).map(s=>`<option value="${esc(s)}" ${s===(v.assignee||'自分')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">分類<select name="category">${snapshot.categories.map(s=>`<option value="${esc(s)}" ${s===(v.category||snapshot.categories[0])?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field full">説明<textarea name="desc" class="origin-task-description-input" maxlength="6000" placeholder="対応内容や補足事項">${esc(v.desc||'')}</textarea></label><details class="origin-task-optional" ${v.requester||(v.tags||[]).length||(v.checklist||[]).length||v.pinned?'open':''}><summary>追加情報 <small>依頼者・タグ・チェックリスト・固定</small><span class="origin-task-expand-cue" aria-hidden="true">${icon('chevron',14)}</span></summary><div class="origin-task-extra-grid"><label class="form-field">依頼者<input name="requester" maxlength="40" value="${esc(v.requester||'')}"/></label><label class="form-field">タグ<input name="tags" maxlength="80" value="${esc((v.tags||[]).join(', '))}"/></label><div class="form-field full"><strong>チェックリスト</strong><div id="originTaskChecks">${taskCheckboxRows(v)}</div><button type="button" class="secondary-button" data-action="task-check-add">＋ 項目を追加</button></div><label class="form-field full"><span><input type="checkbox" name="pinned" ${v.pinned?'checked':''}/>固定する</span></label></div></details>${originRecurrenceEditor(v)}<p id="originTaskError" class="origin-task-error" role="alert" hidden></p></div>`:
+ const fields=kind==='tasks'?`<div class="form-grid">${originTemplatePicker()}<label class="form-field full">件名<input name="title" maxlength="80" required value="${esc(v.title||'')}"/></label><label class="form-field">状態<select name="status">${snapshot.statuses.map(s=>`<option value="${esc(s)}" ${s===(v.status||'未着手')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">優先度<select name="priority">${['緊急','高','中','低'].map(s=>`<option value="${s}" ${s===(v.priority||'中')?'selected':''}>${s}</option>`).join('')}</select></label><label class="form-field full">説明<textarea name="desc" class="origin-task-description-input" maxlength="6000" placeholder="対応内容や補足事項">${esc(v.desc||'')}</textarea></label><label class="form-field">開始日・予約（任意）<input name="startDate" type="date" value="${esc(v.startDate||'')}"/></label><label class="form-field">期限日（任意）<input name="due" type="date" value="${esc(v.due||'')}"/></label><label class="form-field">期限時刻（任意）<input name="dueTime" type="time" value="${esc(v.dueTime||'')}"/></label><label class="form-field">担当者<select name="assignee">${[...new Set(['自分',...snapshot.assignees.filter(x=>x!==snapshot.currentUser),v.assignee])].filter(Boolean).map(s=>`<option value="${esc(s)}" ${s===(v.assignee||'自分')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">分類<select name="category">${snapshot.categories.map(s=>`<option value="${esc(s)}" ${s===(v.category||snapshot.categories[0])?'selected':''}>${esc(s)}</option>`).join('')}</select></label><details class="origin-task-optional" ${v.requester||(v.tags||[]).length||(v.checklist||[]).length||v.pinned?'open':''}><summary>追加情報 <small>依頼者・タグ・チェックリスト・固定</small><span class="origin-task-expand-cue" aria-hidden="true">${icon('chevron',14)}</span></summary><div class="origin-task-extra-grid"><label class="form-field">依頼者<input name="requester" maxlength="40" value="${esc(v.requester||'')}"/></label><label class="form-field">タグ<input name="tags" maxlength="80" value="${esc((v.tags||[]).join(', '))}"/></label><div class="form-field full"><strong>チェックリスト</strong><div id="originTaskChecks">${taskCheckboxRows(v)}</div><button type="button" class="secondary-button" data-action="task-check-add">＋ 項目を追加</button></div><label class="form-field full"><span><input type="checkbox" name="pinned" ${v.pinned?'checked':''}/>固定する</span></label></div></details>${originRecurrenceEditor(v)}<p id="originTaskError" class="origin-task-error" role="alert" hidden></p></div>`:
  kind==='templates'?originTemplateEditor(v):kind==='knowledge'?originKnowledgeEditor(v):
  kind==='todos'?`<div class="origin-todo-edit-fields"><label class="form-field">やること <span class="help">必須</span><input name="title" value="${esc(v.title||'')}" maxlength="${snapshot.todoTitleMaxLength}" required placeholder="何をしますか？"/></label><label class="form-field origin-todo-status-field"><span>状態</span><select name="done"><option value="false" ${!v.done?'selected':''}>未完了</option><option value="true" ${v.done?'selected':''}>完了</option></select></label><label class="form-field">補足メモ<textarea name="memo" maxlength="${snapshot.todoMemoMaxLength}" placeholder="必要な情報を記録（任意）">${esc(v.memo||'')}</textarea></label></div>`:
  kind==='events'?originScheduleEditor(v,id):
@@ -2533,6 +2545,7 @@ function closePanel(force=false,restoreFocus=true){
    if(!window.confirm('入力中の変更を破棄して閉じますか？'))return false;
  }
  const kind=panelKind,id=panelId;
+ originTaskEditReturn=null;
  const returnToInbox=Boolean(restoreFocus&&originInboxReturn&&originInboxReturn.user===snapshot.currentUser);
  originTaskScheduleSource=null;
  $('#overlay').hidden=true;$('#sheet').innerHTML='';syncOriginEditorViewport();document.body.style.overflow='';
@@ -2546,6 +2559,28 @@ function closePanel(force=false,restoreFocus=true){
   if(returnToInbox)openOriginInbox(true);
   originInboxReturn=null;
  }else if(force){detailTrail=[];originInboxReturn=null;}
+ return true;
+}
+function returnOriginTaskEditorToDetail(){
+ const state=originTaskEditReturn;
+ if(!state||panelMode!=='edit'||panelKind!=='tasks'||panelId!==state.id
+   ||!findItem('tasks',state.id))return closePanel();
+ // Reuse the same unsaved-change guard as the existing cancel action.
+ if(!closePanel(false,false))return false;
+ panelShow('tasks',state.id,false);
+ if(!panelOpen||panelMode!=='detail'||panelId!==state.id)return false;
+ const workflow=$('#sheet #originWorkflow');
+ if(workflow)workflow.open=state.workflowOpen;
+ const related=$('#sheet .origin-related-more'),past=$('#sheet .origin-related-past');
+ if(related)related.open=state.relatedExpanded;
+ if(past)past.open=state.relatedPastExpanded;
+ if(state.section){
+   $('#sheet .origin-reader-nav')?.querySelectorAll('button').forEach(button=>
+     button.dataset.value===state.section?button.setAttribute('aria-current','location'):button.removeAttribute('aria-current'));
+ }
+ const body=$('#sheet .sheet-body');
+ if(body)body.scrollTop=state.scrollTop;
+ $('#sheet .origin-sheet-primary [data-action="edit"]')?.focus({preventScroll:true});
  return true;
 }
 function notify(message){const t=$('#originToast');window.clearTimeout(toastTimer);
@@ -3301,6 +3336,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    return panelShow(kind,id,false);
  }
  if(a==='close')return closePanel();
+ if(a==='origin-edit-back-detail')return returnOriginTaskEditorToDetail();
  if(a==='edit')return panelShow(kind,id,true);
  if(a==='delete')return deleteItem(kind,id);
  if(a==='task-done'){toggleTaskDone(id);return}
