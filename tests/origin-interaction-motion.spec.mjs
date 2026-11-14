@@ -70,6 +70,15 @@ test('Origin desktop calendar offers visible hover and press feedback across con
   expect(pressed.transform).not.toBe('none');
   await page.mouse.up();
   await expect(inactiveView).toHaveAttribute('aria-pressed','true');
+  const toolbarAction=host.locator('.origin-schedule-toolbar .secondary-button').first();
+  await toolbarAction.hover();
+  await page.waitForTimeout(240);
+  const lifted=await appearance(toolbarAction);
+  await page.mouse.down();
+  await page.waitForTimeout(120);
+  const depressed=await appearance(toolbarAction);
+  expect(depressed.transform).not.toEqual(lifted.transform);
+  await page.mouse.up();
   const select=host.locator('#originScheduleAssignee');
   const selectBefore=await appearance(select);
   await select.focus();
