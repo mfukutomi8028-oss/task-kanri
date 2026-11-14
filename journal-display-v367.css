@@ -4284,6 +4284,15 @@ html[data-wb-display="journal"] .j425-schedule-datebar button {
   min-height:37px;padding:6px 9px;border:1px solid #d6d1c4;
   border-radius:4px;background:#fffefa;color:#507458;font:750 11px var(--j-text);cursor:pointer;
 }
+/* Keyboard users must see the restored position after a page-turn action. */
+html[data-wb-display="journal"] #scheduleView :is(
+  .j425-schedule-datebar button,.j425-mini-month-head button,
+  .j425-mini-grid button,.j425-schedule-index [data-j425-mode],
+  .j430-schedule-categories button
+):focus-visible {
+  outline:2px solid var(--j-accent) !important;
+  outline-offset:2px;
+}
 html[data-wb-display="journal"] .j425-week-scroll {
   min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;
   scroll-snap-type:x proximity;scroll-padding-inline:49px;
