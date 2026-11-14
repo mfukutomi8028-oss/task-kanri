@@ -838,7 +838,7 @@
     const head=document.createElement('header');
     head.className='j592-shortcuts-heading';
     const title=document.createElement('h3');
-    title.textContent='しおりを挟んだメモ';
+    title.textContent='すぐ開くメモ';
     const count=document.createElement('span');
     count.textContent=cards.length+' 件の記録';
     head.append(title,count);
@@ -918,7 +918,7 @@
     const galleryTitle=document.createElement('h3');
     galleryTitle.textContent='メモの書庫';
     const galleryHelp=document.createElement('p');
-    galleryHelp.textContent='カードを選ぶと、中央の紙面で全文を確認できます。';
+    galleryHelp.textContent='カードを選ぶと、閲覧ページで全文を確認できます。';
     galleryHeading.append(galleryTitle,galleryHelp);
     mast.append(head);gallery.append(galleryHeading,tools,memo);
     if(memo.classList.contains('work-memo-grid-v167')){
