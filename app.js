@@ -4562,6 +4562,19 @@ function journalScheduleV425(){
  `<div class="j425-week-scroll" role="region" aria-label="週間の時間割" tabindex="0"><div class="j425-week-grid ${mode==='day'?'is-single-day':''}"><div class="j425-week-hours"><header>時間</header><div>${Array.from({length:12},(_,i)=>`<span style="top:${i*interval}px">${String(i+8).padStart(2,'0')}:00</span>`).join('')}</div></div>${days.map(dayColumn).join('')}</div></div>`;
  const rangeLabel=mode==='month'?`${monthStart.getFullYear()}年${monthStart.getMonth()+1}月`:
  `${days[0].getMonth()+1}/${days[0].getDate()} 〜 ${days[days.length-1].getMonth()+1}/${days[days.length-1].getDate()}`;
+ // V598: surface a direct path to today's existing day reader on a populated
+ // current mobile week. It is a read-only summary of canonical filtered records.
+ const showTodayShortcutV598=mode==='week'&&targetToday.length>0
+   &&today>=toISODate(weekStart)&&today<toISODate(addDays(weekStart,7));
+ const firstTodayV598=targetToday[0];
+ const todayShortcutV598=showTodayShortcutV598
+   ?`<section class="j598-today-shortcut" data-j598-today-shortcut aria-label="今日の予定への近道">
+      <div class="j598-today-summary"><small>今日の予定 · ${escapeHtml(today.slice(5).replace('-','/'))}</small>
+        <strong>${targetToday.length}件</strong>
+        <span>${escapeHtml(formatScheduleTime(firstTodayV598.startAt))}　${escapeHtml(firstTodayV598.title)}</span>
+      </div>
+      <button type="button" data-j598-open-today>今日の予定を見る</button>
+    </section>`:'';
  const returnNoticeHtml=returnNotice?.kind==='moved'
    ?`<div class="j586-schedule-return" data-j586-move-notice role="status">
        <p><strong>予定の移動先</strong> 「${escapeHtml(returnNotice.title)}」は
@@ -4621,6 +4634,7 @@ function journalScheduleV425(){
     </aside>
     <section class="j425-schedule-planner"><div class="j425-schedule-datebar"><button type="button" data-j425-shift="-1">‹ 前へ</button><strong>${escapeHtml(rangeLabel)}</strong><button type="button" data-j425-shift="1">次へ ›</button><button type="button" data-j425-today>今日</button>${mode==='day'?'<button type="button" class="j459-return-week" data-j459-return-week>週へ戻る</button>':''}</div>
       ${returnNoticeHtml}
+      ${todayShortcutV598}
       ${weekBody}
       <div class="j425-schedule-footnotes"><section><h3>関連タスク <small>${related.length}件</small></h3>${related.map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}"><span>□</span>${escapeHtml(t.title)}<small>${escapeHtml(t.dueDate)}</small></button>`).join('')||'<p>表示期間に期限があるタスクはありません</p>'}</section><section><h3>予定のメモ</h3>${notes.map(s=>`<p><strong>${escapeHtml(s.title)}</strong>：${escapeHtml(s.memo)}</p>`).join('')||'<p>表示期間の予定にメモはありません</p>'}</section></div>
       <div class="j425-stationery-row j425-schedule-props" aria-hidden="true"><img class="j442-schedule-botanical" src="./assets/journal-schedule-botanical-v442.svg" alt="" decoding="async"></div>
@@ -4681,6 +4695,12 @@ function journalScheduleV425(){
    journalScheduleStateV425.mode=b.dataset.j425Mode;
    refreshJournalNavigationV582('data-j425-mode',b.dataset.j425Mode);
  }));
+ // The daily shortcut reuses the same mode selector and navigation restoration.
+ root.querySelector('[data-j598-open-today]')?.addEventListener('click',()=>{
+   journalScheduleStateV425.mode='day';
+   journalScheduleStateV425.anchor=today;
+   refreshJournalNavigationV582('data-j425-mode','day');
+ });
  // Use the existing successful gap-booking return for the main creation
  // action too. A day-cell draft remains on its originating calendar.
  const openJournalCreateWithFollowV568=(seed=null)=>{

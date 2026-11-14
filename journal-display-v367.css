@@ -4454,6 +4454,62 @@ html[data-wb-display="journal"] .j425-schedule-datebar button {
   min-height:44px;padding:9px 10px;border:1px solid #d6d1c4;
   border-radius:4px;background:#fffefa;color:#507458;font:750 12px var(--j-text);cursor:pointer;
 }
+
+/* V598 — a current-day bookmark before a populated mobile week.
+   Only the existing day reader is opened; the seven canonical day slips remain. */
+html[data-wb-display="journal"] #scheduleView .j598-today-shortcut {display:none}
+@media(max-width:760px){
+  html[data-wb-display="journal"] #scheduleView .j598-today-shortcut {
+    display:flex;align-items:center;gap:12px;min-width:0;
+    margin:11px 0 5px;padding:12px 13px;
+    border:1px solid #bdcdb9;border-left:4px solid #739079;
+    border-radius:6px;background:#f3f5ea;
+    box-shadow:0 2px 5px #435a3e0d;
+  }
+  html[data-wb-display="journal"] #scheduleView .j598-today-summary {
+    flex:1 1 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;
+    align-items:baseline;gap:2px 7px;min-width:0;
+  }
+  html[data-wb-display="journal"] #scheduleView .j598-today-summary small {
+    min-width:0;color:#4c7055;font:750 11px/1.5 var(--j-text);
+  }
+  html[data-wb-display="journal"] #scheduleView .j598-today-summary strong {
+    color:#365a43;font:800 15px/1.4 var(--j-serif);
+    font-variant-numeric:tabular-nums;
+  }
+  html[data-wb-display="journal"] #scheduleView .j598-today-summary span {
+    grid-column:1/-1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;color:#425c48;font:600 12px/1.5 var(--j-text);
+  }
+  html[data-wb-display="journal"] #scheduleView .j598-today-shortcut button {
+    flex:0 0 auto;min-height:44px;min-width:0;padding:9px 12px;
+    border:1px solid #61816a;border-radius:5px;
+    background:#55775e;color:#fff;
+    font:750 12px/1.5 var(--j-text);cursor:pointer;
+    transition:background-color .15s ease,transform .15s ease;
+  }
+  html[data-wb-display="journal"] #scheduleView .j598-today-shortcut button:focus-visible {
+    outline:2px solid #4c7055;outline-offset:3px;
+  }
+}
+@media(max-width:460px){
+  html[data-wb-display="journal"] #scheduleView .j598-today-shortcut {
+    display:grid;grid-template-columns:minmax(0,1fr);gap:9px;
+  }
+  html[data-wb-display="journal"] #scheduleView .j598-today-shortcut button {
+    width:100%;
+  }
+}
+@media(hover:hover) and (pointer:fine){
+  html[data-wb-display="journal"] #scheduleView .j598-today-shortcut button:hover {
+    background:#3d694d;transform:translateY(-1px);
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  html[data-wb-display="journal"] #scheduleView .j598-today-shortcut button {
+    transition:none;transform:none!important;
+  }
+}
 /* Keyboard users must see the restored position after a page-turn action. */
 html[data-wb-display="journal"] #scheduleView :is(
   .j425-schedule-datebar button,.j425-mini-month-head button,
