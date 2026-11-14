@@ -931,8 +931,7 @@ function originTodoEmpty(query,completedCount){
  const title=searched?'一致する未完了ToDoはありません':'未完了のToDoはありません';
  const guidance=searched?(hasDone?'完了履歴に'+completedCount+'件の一致があります。履歴を確認するか、検索を解除してください。':'検索語を変えるか、検索を解除してください。'):completedCount?'すべて完了しています。次のToDoは上の入力欄から追加できます。':'上の入力欄から新しいToDoを追加できます。';
  const action=searched?`<button type="button" class="primary-button" data-action="todo-clear-query">${icon('search',15)} 検索を解除</button>`:`<button type="button" class="primary-button" data-action="todo-new-focus">${icon('plus',15)} 新しいToDoを入力</button>`;
- const jump=hasDone?`<button type="button" class="secondary-button" data-action="jump-result" data-kind="todos">完了履歴の一致を見る</button>`:'';
- return `<section class="origin-todo-empty" aria-label="ToDoの検索・登録案内"><span class="origin-todo-empty-icon" aria-hidden="true">${icon('todo',24)}</span><strong>${title}</strong><p>${esc(guidance)}</p><div class="origin-todo-empty-actions">${action}${jump}</div></section>`;
+ return `<section class="origin-todo-empty" aria-label="ToDoの検索・登録案内"><span class="origin-todo-empty-icon" aria-hidden="true">${icon('todo',24)}</span><strong>${title}</strong><p>${esc(guidance)}</p><div class="origin-todo-empty-actions">${action}</div></section>`;
 }
 function renderTodos(){
  const done=originVisibleCompletedTodos(),pending=data.todos.filter(t=>!t.done);
