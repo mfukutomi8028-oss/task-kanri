@@ -884,16 +884,6 @@ test('JOURNAL planner touch targets preserve readable and tappable actions',()=>
   assert.match(css,/\.j425-side-schedule-list button\s*\{[^}]*font:650 12px/s);
 });
 
-test('JOURNAL V586 moved calendar records');
-    const match=css.match(new RegExp(escaped+'\\s*\\{([^}]+)\\}'));
-    assert.ok(match,'missing selector '+selector);
-    const height=Number(match[1].match(/min-height:\\s*(\\d+)px/)?.[1]);
-    assert.ok(height>=min,selector+' target too short: '+height);
-  }
-  assert.match(css,/\\.j425-schedule-datebar button\\s*\\{[^}]*font:750 12px/s);
-  assert.match(css,/\\.j425-side-schedule-list button\\s*\\{[^}]*font:650 12px/s);
-});
-
 test('JOURNAL V586 moved calendar records expose a saved-only destination action',()=>{
   const app=read('app.js');
   assert.match(app,/function journalDateInPeriodV586\(date,mode,anchor\)/);
