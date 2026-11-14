@@ -1324,6 +1324,35 @@
     journalSettingsRecordV393 = null;
   }
 
+  // The paper settings drawer is modal only while open. Keep keyboard
+  // traversal inside the actual moved controls without duplicating them.
+  function containSettingsFocus(event) {
+    if (!drawerOpen || !isJournal() || event.key !== 'Tab'
+      || document.querySelector('dialog[open]')) return;
+    const controls = [...sidebar.querySelectorAll(
+      'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+    )].filter(node => node.getClientRects().length
+      && !node.closest('[hidden]')
+      && node.getAttribute('aria-hidden') !== 'true'
+      && node.tabIndex >= 0);
+    if (!controls.length) {
+      event.preventDefault();
+      sidebar.focus({preventScroll:true});
+      return;
+    }
+    const first=controls[0],last=controls[controls.length-1];
+    if (!sidebar.contains(document.activeElement)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   function openDrawer() {
     if (!isJournal() || drawerOpen) return;
     closeMenu();
@@ -1331,7 +1360,11 @@
     composeJournalSettingsV393();
     drawerOpen = true;
     lastFocus = document.activeElement;
+    sidebar.setAttribute('role','dialog');
+    sidebar.setAttribute('aria-modal','true');
+    sidebar.setAttribute('aria-label','JOURNAL 設定の手帳');
     body.dataset.journalSettingsOpen = 'true';
+    document.addEventListener('keydown', containSettingsFocus, true);
     document.addEventListener('keydown', onEscape);
     sidebar.querySelector('[data-journal-settings-tab="display"]')?.focus();
   }
@@ -1340,11 +1373,16 @@
     if (!drawerOpen) return;
     drawerOpen = false;
     body.dataset.journalSettingsOpen = 'false';
+    sidebar.removeAttribute('role');
+    sidebar.removeAttribute('aria-modal');
+    sidebar.removeAttribute('aria-label');
     settingsButton.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('keydown', containSettingsFocus, true);
     document.removeEventListener('keydown', onEscape);
     const restoreTarget = lastFocus?.closest?.('#wbJournalPreferencesV370')
       ? settingsButton : lastFocus;
-    if (restoreTarget && typeof restoreTarget.focus === 'function') restoreTarget.focus();
+    if (restoreTarget?.isConnected && typeof restoreTarget.focus === 'function')
+      restoreTarget.focus({preventScroll:true});
     lastFocus = null;
   }
 
