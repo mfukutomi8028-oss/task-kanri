@@ -4394,3 +4394,33 @@ for(const width of [320,390,768,1280,1440]){
     await expect(heading).toHaveText('タスク詳細');
   });
 }
+
+for(const width of [390,1366]){
+  test(`JOURNAL task folio contains stray keyboard focus and includes its disclosure at ${width}px`,async({page})=>{
+    await bootRecordShelf(page,width);
+    await page.locator('.j-shelf-launch').click();
+    await page.locator('#jRecordShelf [data-j-shelf-task]').click();
+    const folio=page.locator('.detail-panel');
+    await expect(folio).toHaveClass(/open/);
+    await expect(folio).toHaveAttribute('aria-modal','true');
+    const disclosure=folio.locator('.j495-detail-more > summary');
+    await expect(disclosure).toBeVisible();
+    await disclosure.focus();
+    await expect(disclosure).toBeFocused();
+    // An unexpectedly focused background search must not become a route out
+    // of the open modal (for example after a delayed external update).
+    await page.locator('#wbJournalSearchV393').evaluate(el=>el.focus());
+    await page.keyboard.press('Tab');
+    await expect(folio.locator('#closeDetail')).toBeFocused();
+    await page.locator('#wbJournalSearchV393').evaluate(el=>el.focus());
+    await page.keyboard.press('Shift+Tab');
+    expect(await page.evaluate(()=>Boolean(document.activeElement?.closest('.detail-panel')))).toBe(true);
+    // Reverse traversal from the first control stays inside the folio.
+    await folio.locator('#closeDetail').focus();
+    await page.keyboard.press('Shift+Tab');
+    expect(await page.evaluate(()=>Boolean(document.activeElement?.closest('.detail-panel')))).toBe(true);
+    await folio.locator('#closeDetail').click();
+    await expect(folio).not.toHaveClass(/open/);
+    await choose(page,'classic');
+  });
+}
