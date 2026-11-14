@@ -100,7 +100,8 @@
     button.dataset.journalRoute = entry.id;
     button.dataset.journalIndex = String(routes.indexOf(entry) + 1).padStart(2,'0');
     button.textContent = entry.label;
-    if (!mobile) button.prepend(tabIconV412(entry.id));
+    // The same five chapter icons help people recognize pages on phone and desktop.
+    button.prepend(tabIconV412(entry.id));
     button.setAttribute('aria-label', entry.label + 'ページを表示');
     button.addEventListener('click', () => navigate(entry.id));
     if (mobile) dockButtons.set(entry.id, button);

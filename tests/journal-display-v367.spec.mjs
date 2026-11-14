@@ -4840,3 +4840,50 @@ for(const width of [1366,390]){
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   });
 }
+
+test('JOURNAL V595 paper chapter tabs, primary controls and reduced-motion feedback',async({page})=>{
+  test.setTimeout(120000);
+  await boot(page,1366);await choose(page,'journal');
+  for(const width of [1366,768,390,320]){
+    await page.setViewportSize({width,height:900});
+    const mobile=width<=860;
+    const selector=mobile?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    const tabs=page.locator(selector);
+    await expect(tabs.locator('[data-journal-route]')).toHaveCount(5);
+    await expect(tabs.locator('.j-tab-illustration-v412 svg')).toHaveCount(5);
+    const controls=await tabs.locator('button[data-journal-route]').evaluateAll(nodes=>nodes.map(n=>({
+      height:n.getBoundingClientRect().height,
+      clipped:getComputedStyle(n).clipPath
+    })));
+    expect(controls.every(c=>c.height>=44)).toBeTruthy();
+    if(!mobile)expect(controls.every(c=>c.clipped==='none')).toBeTruthy();
+    await tabs.locator('[data-journal-route="today"]').click();
+    await expect(page.locator('#todayView .j420-today')).toBeVisible();
+    const todayNew=page.locator('#todayView [data-j420-create-task]');
+    await expect(todayNew).toBeVisible();
+    expect(await todayNew.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+    await tabs.locator('[data-journal-route="tasks"]').click();
+    await expect(page.locator('#boardView .j420-atelier')).toBeVisible();
+    await expect(tabs.locator('[data-journal-route="tasks"]')).toHaveAttribute('aria-current','page');
+    await tabs.locator('[data-journal-route="schedule"]').click();
+    const schedule=page.locator('#scheduleView .j425-schedule');
+    await expect(schedule).toBeVisible();
+    const day=schedule.locator('[data-j425-mode="day"]');
+    await day.click();
+    await expect(day).toHaveAttribute('aria-pressed','true');
+    expect(await day.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+    const add=schedule.locator('[data-j425-add-schedule]');
+    expect(await add.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  }
+  await page.setViewportSize({width:1366,height:900});
+  const tabs=page.locator('.wb-journal-tabs-v367');
+  const today=tabs.locator('[data-journal-route="today"]');
+  const before=await today.evaluate(el=>getComputedStyle(el).backgroundColor);
+  await today.hover();await page.waitForTimeout(240);
+  const after=await today.evaluate(el=>getComputedStyle(el).backgroundColor);
+  expect(after).not.toBe(before);
+  await page.emulateMedia({reducedMotion:'reduce'});
+  const duration=await today.evaluate(el=>getComputedStyle(el).transitionDuration);
+  expect(duration.split(',').every(x=>parseFloat(x)===0)).toBeTruthy();
+});

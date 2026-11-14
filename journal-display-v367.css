@@ -148,54 +148,55 @@ html[data-wb-display="journal"] .wb-journal-tabs-v367 {
   flex:1 1 auto;justify-content:flex-start;align-items:flex-end;
   gap:3px;overflow-x:auto;overflow-y:hidden;padding:0 0 0 7px;
 }
-/* Ver.412 page dividers: a tactile row of pastel notebook tabs, not Classic chips. */
+/* V595: subtle paper chapter markers replace the cutout pastel tab set. */
 html[data-wb-display="journal"] .wb-journal-tabs-v367 {
-  gap:7px!important;overflow-x:auto;overflow-y:hidden;
-  padding:11px 6px 0!important;scrollbar-width:thin;
+  gap:6px!important;overflow-x:auto;overflow-y:hidden;
+  padding:6px 5px 2px!important;scrollbar-width:thin;
 }
 html[data-wb-display="journal"] .wb-journal-tabs-v367 button {
-  --j-tab-color:#f1deb0;--j-tab-edge:#c5ae83;
+  --j-chapter-hover:#ece7dd;--j-chapter-mark:#978b78;
   position:relative;display:inline-flex;align-items:center;justify-content:center;
-  flex:0 0 auto;min-width:108px;min-height:53px;gap:8px;
-  padding:11px 13px 9px!important;margin:0!important;
-  border:1px solid var(--j-tab-edge)!important;border-bottom:0!important;
-  border-radius:9px 9px 0 0!important;
-  clip-path:polygon(0 9px,9px 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);
-  background:var(--j-tab-color)!important;color:var(--j-ink)!important;
-  font:800 14px/1.4 var(--j-text)!important;white-space:nowrap;cursor:pointer;
-  box-shadow:inset 0 4px 0 rgba(255,255,255,.6)!important;
-  transition:transform .16s ease,background .16s ease,box-shadow .16s ease;
-  transform-origin:bottom center;
+  flex:0 0 auto;min-width:108px;min-height:54px;gap:7px;
+  padding:10px 13px!important;margin:0!important;
+  border:1px solid #d5cdbf!important;border-bottom:2px solid #bdb2a2!important;
+  border-radius:7px 7px 4px 4px!important;clip-path:none!important;
+  background:#f7f4ed!important;color:var(--j-ink)!important;
+  font:750 14px/1.35 var(--j-text)!important;white-space:nowrap;cursor:pointer;
+  box-shadow:inset 0 1px 0 #fff,0 2px 3px #524f4320!important;
+  transform:none!important;
+  transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease;
 }
 html[data-wb-display="journal"] .wb-journal-tabs-v367 button::before {
   content:attr(data-journal-index);flex:0 0 auto;
-  padding-right:7px;border-right:1px solid color-mix(in srgb,var(--j-ink) 20%,transparent);
-  font:750 10px/1.2 var(--j-text);color:var(--j-muted);
+  padding-right:7px;border-right:1px solid #d2c9bb;
+  font:700 10px/1.25 var(--j-text);color:var(--j-muted);
 }
 html[data-wb-display="journal"] .wb-journal-tabs-v367 button .j-tab-illustration-v412 {
-  display:inline-flex;flex:0 0 19px;width:19px;height:19px;
+  display:inline-flex;flex:0 0 18px;width:18px;height:18px;
   align-items:center;justify-content:center;color:var(--j-accent);
 }
-html[data-wb-display="journal"] .wb-journal-tabs-v367 button .j-tab-illustration-v412 svg {display:block;width:19px;height:19px}
-html[data-wb-display="journal"] .wb-journal-tabs-v367 button[data-journal-route="today"] {--j-tab-color:#f8e5b7;--j-tab-edge:#dfc38c}
-html[data-wb-display="journal"] .wb-journal-tabs-v367 button[data-journal-route="todos"] {--j-tab-color:#dcebdc;--j-tab-edge:#b9d0b8}
-html[data-wb-display="journal"] .wb-journal-tabs-v367 button[data-journal-route="tasks"] {--j-tab-color:#f2deda;--j-tab-edge:#dbb9b4}
-html[data-wb-display="journal"] .wb-journal-tabs-v367 button[data-journal-route="schedule"] {--j-tab-color:#dfeaf3;--j-tab-edge:#bccfdd}
-html[data-wb-display="journal"] .wb-journal-tabs-v367 button[data-journal-route="memo"] {--j-tab-color:#ece0f2;--j-tab-edge:#d0bddb}
-html[data-wb-display="journal"] .wb-journal-tabs-v367 button:not([aria-current="page"]):is(:hover,:focus-visible) {
-  transform:translateY(-4px)!important;background:color-mix(in srgb,var(--j-tab-color) 83%,#fff)!important;
-}
+html[data-wb-display="journal"] .wb-journal-tabs-v367 button .j-tab-illustration-v412 svg {display:block;width:18px;height:18px}
+html[data-wb-display="journal"] .wb-journal-tabs-v367 button[data-journal-route="today"] {--j-chapter-mark:#b2956b}
+html[data-wb-display="journal"] .wb-journal-tabs-v367 button[data-journal-route="todos"] {--j-chapter-mark:#869c87}
+html[data-wb-display="journal"] .wb-journal-tabs-v367 button[data-journal-route="tasks"] {--j-chapter-mark:#8d9bb0}
+html[data-wb-display="journal"] .wb-journal-tabs-v367 button[data-journal-route="schedule"] {--j-chapter-mark:#9c8790}
+html[data-wb-display="journal"] .wb-journal-tabs-v367 button[data-journal-route="memo"] {--j-chapter-mark:#ac9b83}
 html[data-wb-display="journal"] .wb-journal-tabs-v367 button[aria-current="page"] {
-  z-index:3;transform:translateY(-5px)!important;
-  border-color:var(--j-tab-edge)!important;
-  background:var(--j-tab-color)!important;color:var(--j-ink)!important;
-  box-shadow:inset 0 5px 0 rgba(255,255,255,.8),0 -3px 11px rgba(40,40,37,.10)!important;
+  z-index:2;border-color:#bcb19e!important;border-bottom-color:var(--j-accent)!important;
+  background:var(--j-paper)!important;color:var(--j-ink)!important;
+  box-shadow:inset 0 3px 0 var(--j-chapter-mark),0 1px 4px #3b40341d!important;
 }
 html[data-wb-display="journal"] .wb-journal-tabs-v367 button[aria-current="page"]::after {
-  content:"";position:absolute;bottom:0;left:8px;right:8px;height:4px;
-  background:var(--j-accent);opacity:.85;pointer-events:none;
+  content:"";position:absolute;left:11px;right:11px;bottom:0;height:3px;
+  background:var(--j-accent);pointer-events:none;
 }
-html[data-wb-display="journal"] .wb-journal-tabs-v367 button:disabled {opacity:.45}
+@media (hover:hover) and (pointer:fine) {
+  html[data-wb-display="journal"] .wb-journal-tabs-v367 button:not([aria-current="page"]):not(:disabled):hover {
+    transform:translateY(-1px)!important;background:var(--j-chapter-hover)!important;
+    border-color:#ada38e!important;box-shadow:0 3px 6px #45463623!important;
+  }
+}
+html[data-wb-display="journal"] .wb-journal-tabs-v367 button:disabled {opacity:.45;cursor:not-allowed}
 html[data-wb-display="journal"] .wb-journal-add-v367 {position:relative;flex:0 0 auto;align-self:center}
 html[data-wb-display="journal"] .wb-journal-add-toggle-v367 {
   min-height:44px;padding:9px 16px;background:var(--j-accent) !important;
@@ -211,7 +212,7 @@ html[data-wb-display="journal"] .wb-journal-create-menu-v367 {
 html[data-wb-display="journal"] .wb-journal-create-menu-v367[hidden] {display:none !important}
 html[data-wb-display="journal"] .wb-journal-create-menu-v367:not([hidden]) {display:grid;gap:2px}
 html[data-wb-display="journal"] .wb-journal-create-menu-v367 button {
-  min-height:42px;text-align:left;padding:8px 12px;border:0;
+  min-height:44px;text-align:left;padding:8px 12px;border:0;
   border-radius:3px;background:transparent;color:var(--j-ink);font:700 14px var(--j-text);
 }
 html[data-wb-display="journal"] .wb-journal-create-menu-v367 button:is(:hover,:focus-visible) {background:var(--j-soft)}
@@ -1439,21 +1440,31 @@ html[data-wb-display="journal"][data-wb-journal-theme="margin"] #workMemoViewV16
     grid-template-columns:minmax(0,1fr) !important;
   }
   html[data-wb-display="journal"] .wb-journal-dock-v367 {
-    display:grid !important;grid-template-columns:repeat(5,minmax(0,1fr));
+    display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));
     position:fixed;z-index:1400;left:8px;right:8px;
-    bottom:max(8px,env(safe-area-inset-bottom));gap:2px;
-    min-height:61px;padding:4px;
+    bottom:max(8px,env(safe-area-inset-bottom));gap:3px;
+    min-height:68px;padding:5px;
     background:var(--j-paper);border:1px solid var(--j-border);
-    border-radius:8px;box-shadow:0 9px 24px rgba(34,40,37,.22);
+    border-radius:10px;box-shadow:0 8px 24px rgba(34,40,37,.19);
   }
   html[data-wb-display="journal"] .wb-journal-dock-v367 button {
-    min-height:50px;padding:5px 1px;border:0 !important;border-radius:4px;
-    background:transparent;color:var(--j-ink);font:800 12px var(--j-text);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    min-width:0;min-height:56px;padding:5px 1px;
+    border:0!important;border-radius:6px!important;
+    background:transparent!important;color:var(--j-ink)!important;
+    font:750 11px/1.25 var(--j-text);cursor:pointer;
+    transition:background-color .16s ease,box-shadow .16s ease;
+  }
+  html[data-wb-display="journal"] .wb-journal-dock-v367 button .j-tab-illustration-v412 {
+    display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;
+    color:var(--j-accent);
+  }
+  html[data-wb-display="journal"] .wb-journal-dock-v367 button .j-tab-illustration-v412 svg {
+    display:block;width:18px;height:18px;
   }
   html[data-wb-display="journal"] .wb-journal-dock-v367 button[aria-current="page"] {
-    background:var(--j-paper-alt) !important;color:var(--j-ink) !important;
-    box-shadow:inset 0 4px 0 var(--j-accent) !important;
-    border-bottom:2px solid var(--j-marker) !important;
+    background:#f0ece3!important;color:var(--j-ink)!important;
+    box-shadow:inset 0 3px 0 var(--j-accent)!important;
   }
 }
 @media (max-width:610px) {
@@ -3171,10 +3182,10 @@ html[data-wb-display="journal"] .j420-eyebrow {
 html[data-wb-display="journal"] .j420-masthead,
 html[data-wb-display="journal"] .j420-atelier-hero {
   display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:15px;
-  min-width:0;padding:12px clamp(15px,2vw,24px) 12px;margin-bottom:11px;
-  border:1px solid var(--j-border);border-left:4px solid var(--j-sage);
-  border-radius:3px;background:linear-gradient(118deg,var(--j420-cream),var(--j-paper));
-  box-shadow:0 3px 10px rgba(54,63,49,.03);
+  min-width:0;padding:15px clamp(15px,2vw,26px);margin-bottom:12px;
+  border:1px solid var(--j-border);border-left:3px solid var(--j-sage);
+  border-radius:7px;background:var(--j-paper);
+  box-shadow:0 2px 7px rgba(54,63,49,.035);
 }
 html[data-wb-display="journal"] :is(.j420-masthead,.j420-atelier-hero) h2 {
   margin:1px 0!important;font:800 clamp(24px,2.5vw,34px)/1.38 var(--j-serif);
@@ -3208,23 +3219,23 @@ html[data-wb-display="journal"] .j420-filter-summary {
   border:1px dashed var(--j-border);font-size:12px;color:var(--j-muted);
 }
 html[data-wb-display="journal"] .j420-filter-summary button {
-  margin-left:7px;min-height:33px;padding:4px 12px;border:1px solid var(--j-border);
+  margin-left:7px;min-height:44px;padding:8px 12px;border:1px solid var(--j-border);
   background:var(--j-paper);color:var(--j-accent);cursor:pointer;
 }
 /* The three zones are deliberately not Classic's rows of section cards. */
 html[data-wb-display="journal"] .j420-today-spread {
   display:grid;grid-template-columns:minmax(210px,.80fr) minmax(360px,2fr) minmax(200px,.72fr);
   gap:9px;align-items:start;min-width:0;
-  padding:8px;border:3px solid var(--j420-edge);border-radius:19px;
-  background:linear-gradient(90deg,#c5ccbd,#f6f2e9 45%,#b5c0ac);
-  box-shadow:0 10px 23px rgba(45,57,47,.12),inset 0 0 0 3px #f5f3eb;
+  padding:9px;border:1px solid var(--j-border);border-radius:12px;
+  background:linear-gradient(90deg,#e5e1d6 0 8px,var(--j-paper-alt) 8px 100%);
+  box-shadow:0 7px 20px rgba(45,57,47,.075),inset 0 1px 0 #fff;
 }
 html[data-wb-display="journal"] .j420-planner,
 html[data-wb-display="journal"] .j420-focus,
 html[data-wb-display="journal"] .j420-pockets {
   position:relative;min-width:0;padding:22px clamp(12px,1.4vw,23px) 15px;
   background:var(--j420-cream);border:1px solid #e5ded1;
-  border-radius:10px 10px 6px 6px;box-shadow:inset 0 1px 0 #fff,0 2px 6px rgba(30,36,26,.05);
+  border-radius:6px;box-shadow:inset 0 1px 0 #fff,0 1px 4px rgba(30,36,26,.035);
 }
 html[data-wb-display="journal"] .j420-planner {
   background:repeating-linear-gradient(0deg,transparent 0 39px,rgba(133,148,125,.085) 40px),
@@ -3257,7 +3268,7 @@ html[data-wb-display="journal"] .j420-paper-head h3 {
 }
 html[data-wb-display="journal"] .j420-paper-head>button,
 html[data-wb-display="journal"] .j420-paper-head-icon {
-  min-height:36px;border:0;background:transparent;color:var(--j-accent);
+  min-height:44px;border:0;background:transparent;color:var(--j-accent);
   font:750 12px var(--j-text);cursor:pointer;
 }
 html[data-wb-display="journal"] .j420-agenda {position:relative;display:grid;gap:9px;padding:5px 0}
@@ -3292,13 +3303,12 @@ html[data-wb-display="journal"] .j420-agenda-paper :is(small,span) {
   display:block;margin-top:3px;color:var(--j-muted);font-size:11px;line-height:1.5;
   overflow-wrap:anywhere;
 }
-html[data-wb-display="journal"] .j420-agenda-item:hover .j420-agenda-paper,
 html[data-wb-display="journal"] .j420-agenda-item:focus-visible .j420-agenda-paper {
-  border-color:#8aa28e;background:#fff;transform:translateX(1px);
+  border-color:#8aa28e;background:#fff;
 }
 html[data-wb-display="journal"] .j420-add-appointment,
 html[data-wb-display="journal"] .j420-add-task {
-  width:100%;min-height:42px;margin-top:17px;padding:8px 12px;cursor:pointer;
+  width:100%;min-height:44px;margin-top:17px;padding:9px 12px;cursor:pointer;
   border:1px dashed #bcc9b9!important;border-radius:3px!important;
   background:transparent!important;color:var(--j-accent)!important;
   font:750 13px var(--j-text)!important;box-shadow:none!important;
@@ -3317,9 +3327,7 @@ html[data-wb-display="journal"] .j420-work-note {
 html[data-wb-display="journal"] .j420-work-note:nth-child(2n) {
   background:linear-gradient(135deg,#f5f9ef,#fcfcf4)!important;
 }
-html[data-wb-display="journal"] .j420-work-note:hover {
-  transform:translateY(-2px);box-shadow:4px 6px 11px #6f64422c!important;
-}
+/* Card lift is limited to mouse hover in the consolidated interaction rules below. */
 html[data-wb-display="journal"] .j420-work-note::before {
   content:"";position:absolute;top:-7px;left:45%;
   width:20px;height:16px;border:3px double #ae9665;border-radius:6px 6px 0 0;
@@ -3343,7 +3351,7 @@ html[data-wb-display="journal"] .j420-work-note .j420-note-category {
   color:var(--j-muted);font-size:12px;margin-bottom:11px;overflow-wrap:anywhere;
 }
 html[data-wb-display="journal"] .j420-work-note .j420-note-tags {
-  justify-content:flex-start;margin-top:auto;padding-right:28px;color:var(--j-muted);
+  justify-content:flex-start;margin-top:auto;padding-right:48px;color:var(--j-muted);
 }
 html[data-wb-display="journal"] .j420-note-progress {
   overflow:hidden;height:5px;margin-top:11px;border-radius:5px;background:#e0dfd5;
@@ -3352,11 +3360,11 @@ html[data-wb-display="journal"] .j420-note-progress span {
   display:block;height:100%;background:#799d82;border-radius:5px;
 }
 html[data-wb-display="journal"] .j420-note-count {
-  align-self:flex-end;margin-top:3px;margin-right:34px;font-size:12px;color:var(--j-muted);
+  align-self:flex-end;margin-top:3px;margin-right:46px;font-size:12px;color:var(--j-muted);
 }
 html[data-wb-display="journal"] .j420-work-note .j420-note-favorite {
-  position:absolute;right:10px;bottom:10px;min-width:29px!important;
-  min-height:28px!important;padding:3px!important;background:transparent!important;
+  position:absolute;right:10px;bottom:10px;min-width:44px!important;
+  min-height:44px!important;padding:7px!important;background:transparent!important;
   border:0!important;box-shadow:none!important;color:#8ba392!important;
 }
 
@@ -3675,9 +3683,9 @@ html[data-wb-display="journal"] .j420-island-grid {
 }
 html[data-wb-display="journal"] .j420-island {
   position:relative;min-width:0;overflow:hidden;
-  border:1px solid #dfd4c1;border-radius:13px;
-  padding:0 10px 10px;background:linear-gradient(135deg,#fffef9,#f8f5ed);
-  box-shadow:1px 3px 5px #665c4626;
+  border:1px solid #dfd4c1;border-radius:7px;
+  padding:0 10px 10px;background:#fffdf7;
+  box-shadow:0 2px 5px #665c4618;
 }
 html[data-wb-display="journal"] .j420-island>header {
   display:flex;align-items:center;gap:8px;margin:0 -3px 7px;
@@ -3708,11 +3716,12 @@ html[data-wb-display="journal"] .j420-atelier-task {
   display:grid;grid-template-columns:5px minmax(0,1fr) auto 23px;
   align-items:center;gap:7px;min-height:52px;padding:8px 7px;
   cursor:pointer;min-width:0;color:#303f34;
-  border:1px solid #eae1d4;border-radius:4px;background:#fffefa;
-  box-shadow:0 1px 2px #6f69541a;
+  border:1px solid #e5ddcf;border-radius:5px;background:#fffefa;
+  box-shadow:0 1px 2px #6f695410;
+  transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease;
 }
 html[data-wb-display="journal"] .j420-atelier-task:is(:hover,:focus-visible,.is-selected) {
-  border-color:#97b2a0;background:#f0f5e9;outline:0;
+  border-color:#9eafa4;background:#f0f4ef;box-shadow:inset 3px 0 0 #728e80;
 }
 html[data-wb-display="journal"] .j420-card-dot {align-self:stretch;background:#9da991;border-radius:3px}
 html[data-wb-display="journal"] .j420-atelier-task.is-overdue .j420-card-dot {background:#c99388}
@@ -3853,8 +3862,8 @@ html[data-wb-display="journal"] .j420-note-lead small {
 }
 html[data-wb-display="journal"] .j420-note-actions {display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
 html[data-wb-display="journal"] .j420-note-actions button {
-  min-height:36px;padding:5px 10px;background:#f0f2e7;
-  border:1px solid #cdd7c6;border-radius:2px;color:#507458;
+  min-height:44px;padding:8px 12px;background:#f0f2e7;
+  border:1px solid #cdd7c6;border-radius:5px;color:#405f4c;
   font:750 11px var(--j-text);cursor:pointer;
 }
 html[data-wb-display="journal"] .j420-note-description p,
@@ -4037,9 +4046,9 @@ html[data-wb-display="journal"] .j425-action-primary {
 html[data-wb-display="journal"] .j425-action-primary:hover {background:#3c6248!important}
 html[data-wb-display="journal"] .j425-editorial-layout {
   display:grid;grid-template-columns:minmax(192px,.74fr) minmax(0,2.35fr) minmax(228px,.93fr);
-  gap:12px;align-items:start;min-width:0;padding:8px;
-  border:2px solid #aebba8;border-radius:13px;
-  background:#ebe8dc;box-shadow:0 6px 15px #545e4d21,inset 0 0 0 3px #f4f1e8;
+  gap:10px;align-items:start;min-width:0;padding:9px;
+  border:1px solid var(--j-border);border-radius:11px;
+  background:var(--j-paper-alt);box-shadow:0 5px 13px #545e4d16;
 }
 html[data-wb-display="journal"] .j425-index-rail,
 html[data-wb-display="journal"] .j425-index-workpaper,
@@ -4048,8 +4057,8 @@ html[data-wb-display="journal"] .j425-schedule-planner,
 html[data-wb-display="journal"] .j425-reading-rail {
   position:relative;min-width:0;
   background:var(--j425-cream)!important;
-  border:1px solid #e2d9c8!important;border-radius:8px!important;
-  box-shadow:0 3px 9px #786a5520!important;
+  border:1px solid #e2d9c8!important;border-radius:6px!important;
+  box-shadow:0 2px 6px #786a5514!important;
   color:#39463b!important;
 }
 html[data-wb-display="journal"] .j425-index-rail {
@@ -4076,14 +4085,14 @@ html[data-wb-display="journal"] .j425-index-rail select {
   color:#3b483b!important;font:500 12px var(--j-text)!important;
 }
 html[data-wb-display="journal"] .j425-index-option {
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-  width:100%;min-height:44px;text-align:left;padding:9px 9px;
-  background:transparent!important;border:0!important;border-radius:4px!important;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;min-height:44px;text-align:center;padding:9px 9px;
+  background:transparent!important;border:1px solid transparent!important;border-radius:5px!important;
   color:#435243!important;font:750 12px/1.5 var(--j-text)!important;box-shadow:none!important;cursor:pointer;
 }
 html[data-wb-display="journal"] .j425-index-option[aria-pressed="true"] {
-  background:#e6eddc!important;box-shadow:inset 3px 0 0 #7a9c7d!important;
-  color:#365b3d!important;
+  background:#edece3!important;border-color:#bbc7b8!important;
+  box-shadow:inset 3px 0 0 var(--j-accent)!important;color:var(--j-ink)!important;
 }
 html[data-wb-display="journal"] .j425-index-option>span {
   min-width:22px;padding:2px 6px;text-align:center;border-radius:20px;
@@ -4108,8 +4117,8 @@ html[data-wb-display="journal"] .j425-schedule-actions label {
 }
 html[data-wb-display="journal"] .j425-workbench-toolbar :is(input,select),
 html[data-wb-display="journal"] .j425-schedule-actions input {
-  min-width:0;width:100%;min-height:40px;padding:8px 10px!important;
-  border:1px solid #d9d2c4!important;border-radius:4px!important;
+  min-width:0;width:100%;min-height:44px;padding:9px 11px!important;
+  border:1px solid #d9d2c4!important;border-radius:5px!important;
   background:#fffefa!important;color:#354b3b!important;font:600 12px var(--j-text)!important;
   box-shadow:none!important;
 }
@@ -5305,7 +5314,7 @@ html[data-wb-display="journal"] .j451-schedule-options>summary {display:none}
 html[data-wb-display="journal"] .j451-schedule-options-content {min-width:0}
 html[data-wb-display="journal"] .j425-schedule-index>.j451-schedule-options {margin-top:12px}
 html[data-wb-display="journal"] .j425-schedule-index>nav {
-  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;
 }
 html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader .j451-memo-back {
   display:inline-flex;align-items:center;justify-content:center;
@@ -5337,12 +5346,12 @@ html[data-wb-display="journal"] .j425-memo-reader-body {
   html[data-wb-display="journal"] .j425-schedule-index>h4 {display:none}
   html[data-wb-display="journal"] .j425-schedule-index>nav {margin:7px 0 3px}
   html[data-wb-display="journal"] .j425-schedule-index>nav [data-j425-mode] {
-    display:grid;place-items:center;min-height:42px!important;
-    padding:7px 3px!important;font-size:12px!important;
+    display:grid;place-items:center;min-height:44px!important;
+    padding:8px 3px!important;font-size:12px!important;
   }
   html[data-wb-display="journal"] .j451-schedule-options>summary {
-    display:flex;align-items:center;min-height:42px;
-    padding:8px 10px;border:1px solid #cbd6c5;border-radius:4px;
+    display:flex;align-items:center;min-height:44px;
+    padding:9px 10px;border:1px solid #cbd6c5;border-radius:5px;
     background:#f6f8ef;color:#45674b;cursor:pointer;
     font:750 12px/1.5 var(--j-text);
   }
@@ -7507,4 +7516,58 @@ html[data-wb-display="journal"] :is(.j594-return-bookmark button,.j594-open-memo
 @media(max-width:760px){
   html[data-wb-display="journal"] .j594-return-bookmark {align-items:stretch}
   html[data-wb-display="journal"] .j594-return-bookmark button {flex:1 1 100%}
+}
+
+/* V595: one restrained tactile language for Today, Task Atelier and Schedule.
+   Hover is optional decoration, never the only way to discover an action. */
+html[data-wb-display="journal"] :is(
+  .j420-paper-head>button,.j420-add-appointment,.j420-add-task,
+  .j420-note-actions button,.j420-atelier-tools button,.j420-atelier-index button,
+  .j425-index-option,.j425-schedule-datebar button,.j425-action-primary,
+  .j451-schedule-options>summary,.wb-journal-create-menu-v367 button
+) {
+  transition:background-color .16s ease,border-color .16s ease,
+    box-shadow .16s ease,color .16s ease;
+}
+html[data-wb-display="journal"] :is(
+  .j420-paper-head>button,.j420-add-appointment,.j420-add-task,
+  .j420-note-actions button,.j420-atelier-tools button,
+  .j425-index-option,.j425-schedule-datebar button
+):focus-visible {
+  outline:3px solid var(--j-marker)!important;outline-offset:2px;
+}
+html[data-wb-display="journal"] :is(
+  .j420-note-actions button,.j425-index-option,.j425-schedule-datebar button
+):active:not(:disabled) {
+  box-shadow:inset 0 2px 4px #2b413b21!important;background:var(--j-soft)!important;
+}
+@media (hover:hover) and (pointer:fine) {
+  html[data-wb-display="journal"] :is(
+    .j420-paper-head>button,.j420-add-appointment,.j420-add-task,
+    .j420-note-actions button,.j425-index-option,.j425-schedule-datebar button
+  ):hover:not(:disabled) {
+    border-color:#a6aea3!important;background:#eaece4!important;
+    box-shadow:0 2px 6px #33483c12!important;
+  }
+  html[data-wb-display="journal"] .j420-work-note:hover,
+  html[data-wb-display="journal"] .j420-atelier-task:hover {
+    transform:translateY(-1px);box-shadow:0 4px 9px #3d4b3720!important;
+  }
+  html[data-wb-display="journal"] .j420-agenda-item:hover .j420-agenda-paper {
+    background:#fff;border-color:#9aac9d;transform:translateX(1px);
+  }
+  html[data-wb-display="journal"] #boardView .j420-atelier-tools button:hover:not(:disabled) {
+    border-color:var(--j-accent)!important;box-shadow:0 2px 6px #33483c24!important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-wb-display="journal"] :is(
+    .wb-journal-tabs-v367 button,.wb-journal-dock-v367 button,
+    .j420-work-note,.j420-atelier-task,.j420-agenda-paper,
+    .j420-paper-head>button,.j420-add-appointment,.j420-add-task,
+    .j420-note-actions button,.j420-atelier-tools button,
+    .j425-index-option,.j425-schedule-datebar button
+  ) {
+    transition:none!important;animation:none!important;transform:none!important;
+  }
 }
