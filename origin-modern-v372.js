@@ -1054,6 +1054,7 @@ function renderCalendar(){
     &&(!scheduleDateFrom||e.date>=scheduleDateFrom)
     &&(!scheduleDateTo||e.date<=scheduleDateTo)).sort(compareGlobal):[];
  const globalVisible=globalResults.slice(0,scheduleSearchLimit);
+ const jumpCandidates=scheduleSearchScope==='all'?globalVisible:shown;
  // Use every sorted match as the inspector sequence, not only 30 rendered rows.
  scheduleGlobalResultIds=globalResults.map(event=>event.id);
  // Group the displayed week once instead of re-filtering all events for every day.
@@ -1121,14 +1122,14 @@ function renderCalendar(){
     <label>終了日<input type="date" id="originScheduleTo" aria-label="検索期間の終了日" value="${esc(scheduleDateTo)}"/></label>
     <label>並び順<select id="originScheduleSort" aria-label="全期間の検索結果の並び順">${[['upcoming','近日優先'],['newest','新しい順'],['oldest','古い順']].map(([v,l])=>`<option value="${v}" ${scheduleSearchSort===v?'selected':''}>${l}</option>`).join('')}</select></label>
    </div>`:''}
-   <button type="button" class="origin-jump-result" data-action="jump-result" data-kind="events" aria-label="表示中の予定の先頭へ移動" ${shown.length?'':'disabled'}>${icon('arrow',16)} <span>結果へ</span></button>
+   <button type="button" class="origin-jump-result" data-action="jump-result" data-kind="events" aria-label="${scheduleSearchScope==='all'?'全期間の検索結果':'この週の予定'}の先頭へ移動" ${jumpCandidates.length?'':'disabled'}>${icon('arrow',16)} <span>結果へ</span></button>
    <select class="select-small" id="originScheduleAssignee" aria-label="予定担当者で絞り込む"><option value="all">全担当者</option>${[...new Set(data.events.map(e=>e.assignee).filter(Boolean))].map(a=>`<option value="${esc(a)}" ${scheduleAssignee===a?'selected':''}>${esc(a)}</option>`).join('')}</select>
   </div>
-  ${filterCount?'<button type="button" class="origin-schedule-filter-reset" data-action="schedule-filter-reset" aria-label="検索語と担当者の絞り込みをすべて解除">条件を解除</button>':''}
+  ${filterCount?'<button type="button" class="origin-schedule-filter-reset" data-action="schedule-filter-reset" aria-label="予定の検索語・担当者・分類・期間などの条件を解除">条件を解除</button>':''}
   <input type="date" id="originDateJump" aria-label="表示する日付を選ぶ" value="${selectedDay}"/>
   <div class="origin-schedule-view" role="group" aria-label="予定の表示形式">${[['week','週間'],['agenda','一覧'],['day','日別']].map(([mode,label])=>`<button type="button" data-action="calendar-view" data-value="${mode}" class="${scheduleView===mode?'active':''}" aria-pressed="${scheduleView===mode}">${label}</button>`).join('')}</div>
  </div><div class="spacer"></div><button class="secondary-button" data-action="pick-today">今日に戻る</button><button class="secondary-button" data-action="new" data-kind="events">${icon('plus')} 予定を追加</button></div>
- <section class="surface">${calendarBody}<div class="calendar-footer"><span>予定を押すと詳細・編集が開きます</span><span>表示 ${shown.length}件 ／ この週 ${weekAll.length}件</span></div></section>${globalPanel}`;
+ <section class="surface">${calendarBody}<div class="calendar-footer"><span>予定を押すと詳細を確認できます</span><span>表示 ${shown.length}件 ／ この週 ${weekAll.length}件</span></div></section>${globalPanel}`;
 }
 const MEMO_RENDER_BATCH=24;
 const memoColors=[['ivory','白'],['lemon','レモン'],['peach','ピーチ'],['mint','ミント'],['sky','スカイ'],['lavender','ラベンダー']];function memoColor(v){return memoColors.some(x=>x[0]===v)?v:'ivory'}
@@ -2791,7 +2792,9 @@ function focusOriginFirstResult(kind){
  const selectors={
   tasks:'.origin-task-collection [data-action="open"][data-kind="tasks"]',
   todos:'.origin-todo-list [data-action="open"][data-kind="todos"],#originCompletedTodos [data-action="open"][data-kind="todos"]',
-  events:'[data-action="open"][data-kind="events"]',
+  events:view==='calendar'&&scheduleSearchScope==='all'
+    ?'.origin-schedule-global-results .origin-schedule-global-item [data-action="open"][data-kind="events"]'
+    :'[data-action="open"][data-kind="events"]',
   memos:'.memo-grid .memo-card[data-action="open"]'
  };
  const selector=selectors[kind];
