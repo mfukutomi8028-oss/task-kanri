@@ -758,8 +758,8 @@ function originTodayBriefing(priority,events,todos,count){
  const item=task?{kind:'tasks',id:task.id,title:task.title,...originTodayReason(task)}:
     event?{kind:'events',id:event.id,title:event.title,label:'この日の予定',tone:'event'}:
     todo?{kind:'todos',id:todo.id,title:todo.title,label:'個人ToDo',tone:'todo'}:null;
- const action=item?`<button type="button" class="origin-day-briefing-action" data-action="open" data-kind="${item.kind}" data-id="${esc(item.id)}" aria-label="${esc(item.title)}の詳細を開く"><span><small class="origin-day-briefing-reason" data-tone="${item.tone}">${item.label}</small><strong>${esc(item.title)}</strong></span>${icon('right',18)}</button>`:
-  `<div class="origin-day-briefing-idle"><strong>今日の準備ができています</strong><span>必要な仕事は「すぐ追加」から登録できます。</span></div>`;
+ const action=item?`<button type="button" class="origin-day-briefing-action" data-action="open" data-kind="${item.kind}" data-id="${esc(item.id)}" aria-label="${esc(item.label)}：${esc(item.title)}の詳細を開く"><span><small class="origin-day-briefing-reason" data-tone="${item.tone}">${item.label}</small><strong>${esc(item.title)}</strong></span>${icon('right',18)}</button>`:
+  `<div class="origin-day-briefing-idle"><strong>${label}の準備ができています</strong><span>必要な仕事は「すぐ追加」から登録できます。</span></div>`;
  const metrics=[['tasks','優先タスク',count],['events','この日の予定',events.length],['todos','未完了ToDo',todos.length]];
  return `<section class="origin-day-briefing" aria-label="${label}の見通し"><div class="origin-day-briefing-main"><span class="origin-day-briefing-eyebrow">${label}の一歩 <small>DAILY FOCUS</small></span>${action}</div><div class="origin-day-briefing-metrics" role="group" aria-label="${label}の件数">${metrics.map(([kind,name,total])=>`<div class="origin-day-metric" data-kind="${kind}"><span>${name}</span><strong>${total}</strong><small>件</small></div>`).join('')}</div></section>`;
 }
