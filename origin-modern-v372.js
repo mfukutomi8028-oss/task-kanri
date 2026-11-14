@@ -341,7 +341,7 @@
 .sheet[data-reader-kind="tasks"] .origin-task-more-actions>summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .sheet[data-reader-kind="tasks"] .origin-task-more-actions>summary:after{content:'';width:8px;height:8px;flex:none;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .15s ease;margin-right:4px}
 .sheet[data-reader-kind="tasks"] .origin-task-more-actions[open]>summary:after{transform:rotate(225deg)}
-.sheet[data-reader-kind="tasks"] .origin-task-more-actions .origin-sheet-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px;padding:0;overflow:visible}
+.sheet[data-reader-kind="tasks"] .origin-task-more-actions[open] .origin-sheet-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px;padding:0;overflow:visible}
 .sheet[data-reader-kind="tasks"] .origin-task-more-actions .origin-sheet-secondary button{width:100%;min-width:0;min-height:44px;padding:9px 10px;white-space:normal;line-height:1.4;overflow-wrap:anywhere;justify-content:center;text-align:center}
 @media(prefers-reduced-motion:reduce){.sheet[data-reader-kind="tasks"] .origin-task-more-actions>summary:after{transition:none}}
 @media(max-width:520px){.origin-task-detail>.origin-task-section{padding:15px 13px;margin-top:14px}.origin-comment-list li{padding:13px 11px}.origin-comment-list time{margin-left:0;width:100%;padding-left:37px}.origin-reader-nav{gap:4px}.origin-reader-nav button{padding:8px;font-size:11px}#originCommentForm{padding:12px;gap:10px}.origin-tool-nav{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.origin-tool-nav button{padding:11px;gap:8px;min-height:74px}.origin-tool-nav button small{font-size:10px}}
@@ -2463,7 +2463,14 @@ function originSheetFocusable(){
  const sheet=$('#sheet');
  return Array.from(sheet?.querySelectorAll(
    'a[href],button:not([disabled]),summary:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
- )||[]).filter(el=>el.getClientRects().length&&!el.closest('[hidden]'));
+ )||[]).filter(el=>{
+  if(!el.getClientRects().length||el.closest('[hidden]'))return false;
+  // Author grid rules can leave closed <details> descendants with rectangles.
+  // Only the direct summary of the nearest closed details remains tabbable.
+  const closed=el.closest('details:not([open])');
+  return !closed||(el.matches('summary')&&el.parentElement===closed
+    &&!closed.parentElement.closest('details:not([open])'));
+ });
 }
 function handleOriginModalKeys(e){
  if(!panelOpen)return false;
