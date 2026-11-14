@@ -7836,6 +7836,10 @@ function journalAtelierV420(tasks){
   const counts=views.map(v=>({ ...v,count:tasks.filter(viewFns[v.id]).length }));
   const dueSoon=tasks.filter(t=>t.dueDate&&week(t)).length;
   const activities=[...tasks].filter(t=>Number(t.updatedAt)>0).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,6);
+  const briefingCandidatesV591=groups.flatMap(group=>group.items).filter(task=>!isCompletedStatus(task.status));
+  const briefingTaskV591=briefingCandidatesV591.find(task=>!journalWorkIsWaitingV591(task))||briefingCandidatesV591[0]||null;
+  const briefingCueV591=briefingTaskV591?journalWorkCueV591(briefingTaskV591):null;
+  const briefingNextV591=briefingTaskV591?journalWorkNextV591(briefingTaskV591):null;
   if(!viewTasks.some(t=>t.id===journalAtelierSelectedV420)){
     const returnAnchorV538=journalTaskNoteReturnV519?.layout==='board'
       &&journalTaskNoteReturnV519.id===journalAtelierSelectedV420
@@ -7905,6 +7909,13 @@ function journalAtelierV420(tasks){
           </div>
           ${journalReservedTaskShortcutV565()}
         </div>
+        ${briefingTaskV591?`<section class="j591-atelier-brief" aria-label="次に進める案件">
+          <div class="j591-atelier-brief-top"><span>今日の先頭ページ</span><em class="j591-urgency j591-urgency-${briefingCueV591.kind}">${escapeHtml(briefingCueV591.label)}</em></div>
+          <div class="j591-atelier-brief-main"><div><h3>${escapeHtml(briefingTaskV591.title)}</h3><p>担当 ${escapeHtml(briefingTaskV591.assignee||'未割当')}　/　期限 ${escapeHtml(briefingTaskV591.dueDate||'なし')}</p></div>
+            <button type="button" data-j420-log-task="${escapeHtml(briefingTaskV591.id)}">案件ノートを開く <span aria-hidden="true">→</span></button>
+          </div>
+          <div class="j591-atelier-brief-next"><strong>${escapeHtml(briefingNextV591.label)}</strong><p>${escapeHtml(briefingNextV591.text)}</p></div>
+        </section>`:''}
         <div class="j420-island-grid">${displayGroups.map(renderGroup).join('')||`<div class="j420-atelier-empty j520-atelier-empty" role="status">
           <strong>${syncAnchorV530?.atelierInlineReaderV552
             ?'閲覧中の案件が同期更新で表示対象から外れました'
