@@ -3213,7 +3213,7 @@ html[data-wb-display="journal"] .j420-filter-summary button {
 }
 /* The three zones are deliberately not Classic's rows of section cards. */
 html[data-wb-display="journal"] .j420-today-spread {
-  display:grid;grid-template-columns:minmax(230px,.92fr) minmax(340px,1.65fr) minmax(212px,.72fr);
+  display:grid;grid-template-columns:minmax(210px,.80fr) minmax(360px,2fr) minmax(200px,.72fr);
   gap:9px;align-items:start;min-width:0;
   padding:8px;border:3px solid var(--j420-edge);border-radius:19px;
   background:linear-gradient(90deg,#c5ccbd,#f6f2e9 45%,#b5c0ac);
@@ -3359,6 +3359,88 @@ html[data-wb-display="journal"] .j420-work-note .j420-note-favorite {
   min-height:28px!important;padding:3px!important;background:transparent!important;
   border:0!important;box-shadow:none!important;color:#8ba392!important;
 }
+
+/* V591: one actionable task becomes the large, readable center of Today. */
+html[data-wb-display="journal"] .j591-focus-explain {
+  max-width:48ch;margin:-5px 0 17px;color:#5e6c5e;
+  font:500 13px/1.75 var(--j-text);
+}
+html[data-wb-display="journal"] .j591-focus-lead {
+  position:relative;min-width:0;isolation:isolate;
+}
+html[data-wb-display="journal"] .j420-work-note.j591-featured-work {
+  min-height:265px;padding:22px 23px 19px!important;
+  background:linear-gradient(125deg,#fffffa 5%,#f2f4e9 100%)!important;
+  border:1px solid #c9d5c7!important;border-left:5px solid #75977a!important;
+  box-shadow:0 7px 18px #4c624422!important;border-radius:5px!important;
+}
+html[data-wb-display="journal"] .j420-work-note.j591-featured-work.is-late {
+  border-left-color:#b06c61!important;
+}
+html[data-wb-display="journal"] .j420-work-note.j591-featured-work::before {
+  top:-9px;left:46%;width:25px;height:17px;
+}
+html[data-wb-display="journal"] .j591-featured-marker {
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-height:25px;
+  padding-right:44px;margin-bottom:10px;
+}
+html[data-wb-display="journal"] .j591-featured-marker>span {
+  color:#42664e;font:800 13px/1.5 var(--j-text);letter-spacing:.04em;
+}
+html[data-wb-display="journal"] .j591-urgency {
+  display:inline-block;padding:4px 8px;border-radius:2px;font-style:normal;
+  background:#e6ede2;color:#4f6852;font:750 11px/1.45 var(--j-text);
+}
+html[data-wb-display="journal"] .j591-urgency-late {
+  background:#f2e4de;color:#964c43;
+}
+html[data-wb-display="journal"] .j591-urgency-today {
+  background:#eee7d5;color:#745e3e;
+}
+html[data-wb-display="journal"] .j420-work-note.j591-featured-work>strong {
+  margin:12px 0 7px;color:#2c3e34;
+  font:800 clamp(21px,2.15vw,28px)/1.42 var(--j-serif);
+  letter-spacing:.015em;overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] .j591-work-next {
+  margin:13px 0 17px;padding:12px 15px 13px;
+  border:1px solid #d7dfd4;border-left:3px solid #86a38a;
+  border-radius:3px;background:rgba(255,255,253,.82);
+}
+html[data-wb-display="journal"] .j591-work-next small {
+  display:block;color:#617c68;font:750 11px/1.5 var(--j-text);
+}
+html[data-wb-display="journal"] .j591-work-next p {
+  margin:5px 0 0;font:650 15px/1.7 var(--j-text);
+  color:#334539;overflow-wrap:anywhere;white-space:pre-line;
+}
+html[data-wb-display="journal"] .j591-open-hint {
+  display:inline-flex;align-items:center;gap:10px;align-self:flex-start;
+  margin:15px 49px 0 0;padding:7px 0 5px;border-bottom:2px solid #83a187;
+  color:#3c6a4e;font:750 13px/1.5 var(--j-text);pointer-events:none;
+}
+html[data-wb-display="journal"] .j591-open-hint span {font-size:18px}
+html[data-wb-display="journal"] .j420-work-note.j591-featured-work .j420-note-favorite {
+  top:16px;right:14px;bottom:auto;box-sizing:border-box;
+  min-width:44px!important;min-height:44px!important;
+}
+html[data-wb-display="journal"] .j591-featured-work .j420-note-count {
+  align-self:flex-start;margin-right:0;
+}
+html[data-wb-display="journal"] .j591-following-work {
+  min-width:0;margin-top:24px;padding-top:15px;border-top:1px solid #d8dfd3;
+}
+html[data-wb-display="journal"] .j591-following-heading {
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:9px;margin-bottom:12px;color:#54745d;
+}
+html[data-wb-display="journal"] .j591-following-heading h4 {
+  margin:0;font:800 17px/1.5 var(--j-serif);color:#3c5541;
+}
+html[data-wb-display="journal"] .j591-following-heading>span {
+  font:750 12px var(--j-text);
+}
+
 html[data-wb-display="journal"] .j420-pockets .j420-pocket {
   position:relative;min-width:0;padding:12px 10px 9px;
   background:#fffcf5;border:1px solid #e3d8c9;border-radius:8px;
@@ -3540,6 +3622,53 @@ html[data-wb-display="journal"] .j420-atelier-switch {display:inline-flex;gap:2p
 html[data-wb-display="journal"] .j420-atelier-switch button[aria-pressed="true"] {
   background:#6d937d!important;color:white!important;
 }
+
+/* V591: the existing five shelves follow this single work-desk briefing. */
+html[data-wb-display="journal"] .j591-atelier-brief {
+  position:relative;min-width:0;margin:0 0 19px;padding:17px 18px 18px;
+  border:1px solid #cbd7c8;border-left:5px solid #75987d;border-radius:5px;
+  background:linear-gradient(115deg,#fffefa 10%,#f0f3e6 100%);
+  box-shadow:0 5px 14px #5c6a4c1a;
+}
+html[data-wb-display="journal"] .j591-atelier-brief-top {
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;
+}
+html[data-wb-display="journal"] .j591-atelier-brief-top>span {
+  color:#4f6d56;font:800 12px/1.6 var(--j-text);letter-spacing:.035em;
+}
+html[data-wb-display="journal"] .j591-atelier-brief-main {
+  display:grid;grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;gap:14px;min-width:0;
+}
+html[data-wb-display="journal"] .j591-atelier-brief-main>div {min-width:0}
+html[data-wb-display="journal"] .j591-atelier-brief-main h3 {
+  margin:0 0 7px;font:800 clamp(19px,1.6vw,25px)/1.45 var(--j-serif);
+  color:#334638;overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] .j591-atelier-brief-main p {
+  margin:0;color:#627267;font:600 12px/1.6 var(--j-text);overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] .j591-atelier-brief-main button {
+  min-height:44px;padding:10px 14px;border:1px solid #78967e;
+  background:#577d62;color:#fff;border-radius:3px;
+  font:750 12px/1.4 var(--j-text);cursor:pointer;text-align:center;
+}
+html[data-wb-display="journal"] .j591-atelier-brief-main button:hover,
+html[data-wb-display="journal"] .j591-atelier-brief-main button:focus-visible {
+  background:#416d50;outline:2px solid #759b79;outline-offset:2px;
+}
+html[data-wb-display="journal"] .j591-atelier-brief-next {
+  margin-top:15px;padding:11px 13px;border-top:1px solid #d9e1d4;
+  background:#fffefa9c;min-width:0;
+}
+html[data-wb-display="journal"] .j591-atelier-brief-next strong {
+  display:block;margin-bottom:4px;color:#66836c;font:750 11px/1.6 var(--j-text);
+}
+html[data-wb-display="journal"] .j591-atelier-brief-next p {
+  margin:0;color:#35483a;font:650 14px/1.7 var(--j-text);
+  overflow-wrap:anywhere;white-space:pre-line;
+}
+
 html[data-wb-display="journal"] .j420-island-grid {
   display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
   align-items:start;gap:12px;min-width:0;
@@ -3802,6 +3931,23 @@ html[data-wb-display="journal"] :is(.j420-atelier-task,.j420-work-note,.j420-wai
   html[data-wb-display="journal"] .j420-planner,
   html[data-wb-display="journal"] .j420-focus {padding:15px 11px}
   html[data-wb-display="journal"] .j420-note-grid {grid-template-columns:minmax(0,1fr)}
+
+  html[data-wb-display="journal"] .j420-work-note.j591-featured-work {
+    padding:16px 12px 17px!important;min-height:240px;
+  }
+  html[data-wb-display="journal"] .j420-work-note.j591-featured-work>strong {font-size:21px}
+  html[data-wb-display="journal"] .j591-featured-marker {padding-right:45px}
+  html[data-wb-display="journal"] .j591-work-next {padding:12px}
+  html[data-wb-display="journal"] .j591-atelier-brief {
+    padding:13px 11px 15px;margin-bottom:13px;
+  }
+  html[data-wb-display="journal"] .j591-atelier-brief-main {
+    grid-template-columns:minmax(0,1fr);gap:11px;
+  }
+  html[data-wb-display="journal"] .j591-atelier-brief-main button {
+    width:100%;white-space:normal;
+  }
+
   html[data-wb-display="journal"] .j420-pockets {flex-direction:column}
   html[data-wb-display="journal"] .j420-atelier-index nav {grid-template-columns:repeat(2,minmax(0,1fr))}
   html[data-wb-display="journal"] .j420-island-grid {grid-template-columns:minmax(0,1fr)}
