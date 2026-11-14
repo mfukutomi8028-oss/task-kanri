@@ -304,7 +304,9 @@ test('JOURNAL memo index navigates cards and note color persists through canonic
   await page.locator('.j-memo-index-sort-v383 select').selectOption('category');
   await expect(page.locator('.j-memo-index-group-v383')).not.toHaveCount(0);
   await page.locator('.j-memo-index-link-v383').filter({hasText:'JOURNAL付箋動作確認'}).click();
-  await expect(card).toBeFocused();
+  const readingFolio=page.locator('#workMemoViewV167 .j425-memo-reader');
+  await expect(readingFolio).toBeFocused();
+  await expect(readingFolio).toContainText('JOURNAL付箋動作確認');
   await page.locator('[data-journal-settings]').click();
   await page.locator('[data-journal-open-drawer]').click();
   await page.locator('[data-wb-display-choice="classic"]').click();
