@@ -304,7 +304,9 @@ test('JOURNAL memo index navigates cards and note color persists through canonic
   await page.locator('.j-memo-index-sort-v383 select').selectOption('category');
   await expect(page.locator('.j-memo-index-group-v383')).not.toHaveCount(0);
   await page.locator('.j-memo-index-link-v383').filter({hasText:'JOURNAL付箋動作確認'}).click();
-  await expect(card).toBeFocused();
+  const readingFolio=page.locator('#workMemoViewV167 .j425-memo-reader');
+  await expect(readingFolio).toBeFocused();
+  await expect(readingFolio).toContainText('JOURNAL付箋動作確認');
   await page.locator('[data-journal-settings]').click();
   await page.locator('[data-journal-open-drawer]').click();
   await page.locator('[data-wb-display-choice="classic"]').click();
@@ -4705,5 +4707,83 @@ test('JOURNAL V591 empty task room keeps an understandable Today empty state',as
   await boot(page,390);await choose(page,'journal');
   await expect(page.locator('#todayView .j591-featured-work')).toHaveCount(0);
   await expect(page.locator('#todayView .j420-empty')).not.toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
+
+
+test('JOURNAL V592 Memo opens quick references on a readable central sheet, without losing edit actions',async({page})=>{
+  test.setTimeout(120000);
+  await boot(page,1366);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
+  const view=page.locator('#workMemoViewV167');
+  const create=async(title,body,pinned)=>{
+    await view.locator('[data-memo-new]').first().click();
+    const dialog=page.locator('#workMemoDialogV167');
+    await expect(dialog).toBeVisible();
+    await dialog.locator('#workMemoTitleV167').fill(title);
+    await dialog.locator('#workMemoBodyV167').fill(body);
+    await dialog.locator('#workMemoPinnedV167').setChecked(pinned);
+    await dialog.locator('#workMemoFormV167 button[type="submit"]').click();
+    await expect(dialog).toBeHidden();
+    await expect(view.locator('.work-memo-card-v167').filter({hasText:title})).toBeVisible();
+  };
+  await create('日常参照する申請手順','申請の順番を確認し、関係部署に相談する。',true);
+  await create('新しい申し送りの記録','引き継ぎ事項を確認して次の業務へつなぐ。',false);
+  const shortcuts=view.locator('.j592-memo-shortcuts');
+  const reader=view.locator('.j592-memo-reading-desk');
+  const gallery=view.locator('.j425-memo-gallery');
+  await expect(shortcuts).toBeVisible();
+  await expect(shortcuts.locator('[data-j592-memo-shortcut]')).toHaveCount(2);
+  await expect(shortcuts).toContainText('固定');
+  await expect(shortcuts).toContainText('最近');
+  const pinned=shortcuts.locator('[data-j592-memo-shortcut]').filter({hasText:'日常参照する申請手順'});
+  await pinned.click();
+  await expect(reader).toBeFocused();
+  await expect(reader.locator('h3')).toHaveText('日常参照する申請手順');
+  await expect(reader).toContainText('申請の順番を確認し');
+  await expect(reader.locator('.j425-memo-reader-actions button')).toHaveCount(3);
+  const returnToCard=reader.locator('.j451-memo-back');
+  await expect(returnToCard).toBeVisible();
+  await returnToCard.click();
+  await expect(view.locator('.work-memo-card-v167').filter({hasText:'日常参照する申請手順'})).toBeFocused();
+  const copy=reader.locator('.j592-reader-primary');
+  await expect(copy).toBeVisible();
+  expect(await copy.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  const deskSize=await reader.locator('.j425-memo-reader-body').evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+  expect(deskSize).toBeGreaterThanOrEqual(14);
+  const recent=shortcuts.locator('[data-j592-memo-shortcut]').filter({hasText:'新しい申し送りの記録'});
+  await recent.click();
+  await expect(reader.locator('h3')).toHaveText('新しい申し送りの記録');
+  await expect(reader).toBeFocused();
+  for(const width of [1366,768,390,320]){
+    await page.setViewportSize({width,height:900});
+    await expect(reader).toBeVisible();
+    const a=await reader.boundingBox(),b=await gallery.boundingBox();
+    if(width>1190){
+      expect(a.x+a.width/2).toBeLessThan(b.x+b.width/2);
+      expect(a.width).toBeGreaterThan(b.width);
+    }else{
+      expect(a.y).toBeLessThan(b.y);
+    }
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+    await recent.click();
+    await expect(reader).toBeFocused();
+  }
+  await choose(page,'classic');
+  await expect(view.locator('.j592-memo-shortcuts')).toHaveCount(0);
+  await expect(view.locator('.work-memo-card-v167')).toHaveCount(2);
+});
+
+test('JOURNAL V592 empty memo room retains creation and reading guidance',async({page})=>{
+  test.setTimeout(90000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="memo"]').click();
+  const view=page.locator('#workMemoViewV167');
+  const shortcuts=view.locator('.j592-memo-shortcuts');
+  await expect(shortcuts).toBeVisible();
+  await expect(shortcuts.locator('[data-j592-memo-shortcut]')).toHaveCount(0);
+  await expect(shortcuts).toContainText('メモ');
+  await expect(view.locator('.work-memo-empty-v167')).toBeVisible();
+  await expect(view.locator('[data-memo-new]').first()).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });

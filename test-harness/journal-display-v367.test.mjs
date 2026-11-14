@@ -884,6 +884,25 @@ test('JOURNAL planner touch targets preserve readable and tappable actions',()=>
   assert.match(css,/\.j425-side-schedule-list button\s*\{[^}]*font:650 12px/s);
 });
 
+
+
+test('JOURNAL Memo V592 all selection origins focus the same reading folio',()=>{
+  const js=read('journal-display-v367.js');
+  assert.match(js,/function selectMemoForReadingV451\(spread, card\)/);
+  assert.doesNotMatch(js,/else if \(fromIndex/);
+});
+
+test('JOURNAL Memo V592 uses a single canonical reading desk and quick references',()=>{
+  const js=read('journal-display-v367.js'),css=read('journal-display-v367.css');
+  assert.match(js,/function composeMemoShortcutsV592\(spread,memo\)/);
+  assert.match(js,/spread\.append\(mast,shortcuts,index,reader,gallery\)/);
+  assert.match(js,/reader\.classList\.add\('j592-memo-reading-desk'\)/);
+  assert.match(js,/dataset\.j592MemoShortcut/);
+  assert.match(js,/selectMemoForReadingV451\(spread,card\)/);
+  assert.match(css,/\.j592-memo-shortcuts\s*\{/);
+  assert.match(css,/\.j592-memo-reading-desk\s*\{/);
+});
+
 test('JOURNAL task and memo controls meet the touch target and legibility baseline',()=>{
   const css=read('journal-display-v367.css');
   for(const selector of [

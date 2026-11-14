@@ -643,7 +643,7 @@
           (card.querySelector('h4')?.textContent?.trim() || '無題');
         button.addEventListener('click', () => {
           const spread=index.closest('.j425-memo-spread');
-          if(spread)selectMemoForReadingV451(spread,card,true);
+          if(spread)selectMemoForReadingV451(spread,card);
         });
         item.append(button);
         list.append(item);
@@ -685,7 +685,10 @@
     applyIndexQuery();
     index.scrollTop = lastScroll;
     const spread=index.closest('.j425-memo-spread');
-    if(spread)updateMemoReaderV425(spread);
+    if(spread){
+      composeMemoShortcutsV592(spread,memo);
+      updateMemoReaderV425(spread);
+    }
   }
 
   // The memo index follows the page using native sticky positioning.
@@ -723,7 +726,9 @@
 
   // The original memo cards remain canonical. This only moves focus between
   // a selected paper slip and its read-only reader on stacked layouts.
-  function selectMemoForReadingV451(spread, card, fromIndex=false) {
+  // Every entrypoint leads to the same folio, and one canonical card remains
+  // the owner of editing/copy/task operations and the return-focus target.
+  function selectMemoForReadingV451(spread, card) {
     if (!spread || !card) return;
     journalMemoSelectedV425 = card.dataset.memoSortId;
     const selectedLink=[...spread.querySelectorAll('.j-memo-index-link-v383')]
@@ -731,20 +736,15 @@
     const group=selectedLink?.closest('details.j-memo-index-group-v383');
     if(group&&!group.open)group.open=true;
     updateMemoReaderV425(spread);
-    if (window.matchMedia('(max-width:1190px)').matches) {
-      requestAnimationFrame(() => {
-        if (!isJournal() || !spread.isConnected) return;
-        const reader=spread.querySelector('.j425-memo-reader');
-        reader?.focus({preventScroll:true});
-        reader?.scrollIntoView({
-          behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
-          block:'start'
-        });
+    requestAnimationFrame(() => {
+      if (!isJournal() || !spread.isConnected) return;
+      const reader=spread.querySelector('.j425-memo-reader');
+      reader?.focus({preventScroll:true});
+      reader?.scrollIntoView({
+        behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',
+        block:window.matchMedia('(max-width:1190px)').matches?'start':'nearest'
       });
-    } else if (fromIndex) {
-      card.focus({preventScroll:true});
-      card.scrollIntoView({behavior:'smooth',block:'center'});
-    }
+    });
   }
 
   function updateMemoReaderV425(spread) {
@@ -763,11 +763,16 @@
     });
     spread.querySelectorAll('.j-memo-index-link-v383').forEach(button =>
       button.setAttribute('aria-current',String(Boolean(card) && button.dataset.journalMemoId === visibleId)));
+    spread.querySelectorAll('[data-j592-memo-shortcut]').forEach(button =>
+      button.setAttribute('aria-current',String(Boolean(card) && button.dataset.j592MemoShortcut === visibleId)));
     reader.replaceChildren();
     const holes=document.createElement('span');
     holes.className='j425-notebook-holes';
     holes.setAttribute('aria-hidden','true');
     reader.append(holes);
+    const edition=document.createElement('p');
+    edition.className='j592-reader-edition';
+    edition.textContent='いま開いているメモ';
     const title=document.createElement('h3');
     const label=document.createElement('span');label.className='j425-reader-kicker';
     const meta=document.createElement('p');meta.className='j425-memo-reader-meta';
@@ -777,7 +782,7 @@
       title.textContent='メモを選択してください';
       label.textContent='MEMO JOURNAL';
       text.textContent='メモを選ぶと、このノートに内容が表示されます。';
-      reader.append(label,title,text);return;
+      reader.append(edition,label,title,text);return;
     }
     label.textContent=card.querySelector('.work-memo-category-v167')?.textContent||'業務メモ';
     title.textContent=card.querySelector('h4')?.textContent||'無題';
@@ -801,6 +806,7 @@
     const actions=document.createElement('div');actions.className='j425-memo-reader-actions';
     for(const [caption,selector] of [['編集','[data-memo-edit]'],['コピー','[data-memo-copy]'],['タスク化','[data-memo-task]']]){
       const btn=document.createElement('button');btn.type='button';btn.textContent=caption;
+      if(selector==='[data-memo-copy]')btn.className='j592-reader-primary';
       btn.addEventListener('click',()=>card.querySelector(selector)?.click());actions.append(btn);
     }
     // Long memo readers need a return at the end as well as at the heading.
@@ -808,7 +814,73 @@
     footerBack.type='button';footerBack.className='j491-memo-footer-back';
     footerBack.textContent='← メモ一覧へ戻る';
     footerBack.addEventListener('click',()=>back.click());
-    reader.append(label,back,title,meta,tags,text,actions,footerBack);
+    reader.append(edition,label,back,title,meta,tags,text,actions,footerBack);
+  }
+
+
+  // Read-only shortcuts built from the live canonical cards. Neither a second
+  // memo store nor an independent filter owner is introduced here.
+  function composeMemoShortcutsV592(spread,memo) {
+    const region=spread.querySelector('.j592-memo-shortcuts');
+    if(!region)return;
+    const cards=[...(memo?.querySelectorAll(':scope > .work-memo-card-v167')||[])]
+      .filter(card=>!card.classList.contains('j-memo-color-hidden-v396'));
+    const pinned=cards.filter(card=>card.classList.contains('is-pinned')).slice(0,3);
+    const recent=cards.filter(card=>!card.classList.contains('is-pinned'))
+      .sort((a,b)=>Number(b.dataset.memoUpdatedAt||0)-Number(a.dataset.memoUpdatedAt||0))
+      .slice(0,3);
+    region.replaceChildren();
+    const head=document.createElement('header');
+    head.className='j592-shortcuts-heading';
+    const title=document.createElement('h3');
+    title.textContent='すぐ開くメモ';
+    const count=document.createElement('span');
+    count.textContent=cards.length+' 件の記録';
+    head.append(title,count);
+    region.append(head);
+    if(!cards.length){
+      const empty=document.createElement('p');
+      empty.className='j592-shortcuts-empty';
+      empty.textContent='表示できるメモはありません。メモを登録すると、ここからすぐ開けます。';
+      region.append(empty);
+      return;
+    }
+    const shelves=document.createElement('div');
+    shelves.className='j592-shortcuts-shelves';
+    const shelf=(label,items,fallback)=>{
+      const group=document.createElement('section');
+      group.className='j592-shortcuts-group';
+      const heading=document.createElement('h4');
+      heading.textContent=label;
+      group.append(heading);
+      if(!items.length){
+        const empty=document.createElement('p');
+        empty.className='j592-shortcuts-empty';
+        empty.textContent=fallback;
+        group.append(empty);
+      }else{
+        const list=document.createElement('div');
+        list.className='j592-shortcuts-list';
+        for(const card of items){
+          const button=document.createElement('button');
+          button.type='button';
+          button.className='j592-shortcut';
+          button.dataset.j592MemoShortcut=card.dataset.memoSortId||'';
+          const category=document.createElement('small');
+          category.textContent=card.querySelector('.work-memo-category-v167')?.textContent||'業務メモ';
+          const title=document.createElement('strong');
+          title.textContent=card.querySelector('h4')?.textContent||'無題';
+          button.append(category,title);
+          button.addEventListener('click',()=>selectMemoForReadingV451(spread,card));
+          list.append(button);
+        }
+        group.append(list);
+      }
+      shelves.append(group);
+    };
+    shelf('固定したメモ',pinned,'よく使う記録は、メモの☆から固定できます。');
+    shelf('最近更新したメモ',recent,'固定以外のメモが追加されると表示されます。');
+    region.append(shelves);
   }
 
   function composeMemoSheets() {
@@ -822,7 +894,12 @@
     const mast=document.createElement('header');mast.className='j425-memo-masthead';
     const index=paperLeaf('memo-index','メモの索引');index.classList.add('j425-memo-index');
     const gallery=paperLeaf('memo-pages','業務メモの書庫');gallery.classList.add('j425-memo-gallery');
-    const reader=document.createElement('aside');reader.className='j425-memo-reader j425-reading-rail';reader.setAttribute('aria-label','選択したメモの本文');reader.tabIndex=-1;
+    const shortcuts=document.createElement('section');
+    shortcuts.className='j592-memo-shortcuts';
+    shortcuts.setAttribute('aria-label','固定・最近のメモへのしおり');
+    const reader=document.createElement('section');reader.className='j425-memo-reader j425-reading-rail';
+    reader.classList.add('j592-memo-reading-desk');
+    reader.setAttribute('aria-label','選択したメモの本文');reader.tabIndex=-1;
     // One gallery accent: linen and thread. Memo cards keep their own stable fasteners.
     const memoLinen=document.createElement('img');
     memoLinen.className='j442-memo-linen';
@@ -831,7 +908,14 @@
     memoLinen.decoding='async';
     memoLinen.setAttribute('aria-hidden','true');
     const holes=document.createElement('span');holes.className='j425-notebook-holes';holes.setAttribute('aria-hidden','true');reader.append(holes);
-    mast.append(head);gallery.append(tools,memo);
+    const galleryHeading=document.createElement('div');
+    galleryHeading.className='j592-gallery-heading';
+    const galleryTitle=document.createElement('h3');
+    galleryTitle.textContent='メモの書庫';
+    const galleryHelp=document.createElement('p');
+    galleryHelp.textContent='カードを選ぶと、閲覧ページで全文を確認できます。';
+    galleryHeading.append(galleryTitle,galleryHelp);
+    mast.append(head);gallery.append(galleryHeading,tools,memo);
     if(memo.classList.contains('work-memo-grid-v167')){
       let previousFastener='';
       [...memo.querySelectorAll(':scope > .work-memo-card-v167')].forEach(card=>{
@@ -854,7 +938,7 @@
       });
     }
     gallery.append(memoLinen);
-    spread.append(mast,index,gallery,reader);view.append(spread);
+    spread.append(mast,shortcuts,index,reader,gallery);view.append(spread);
     composeMemoIndex(index,memo);
     updateMemoReaderV425(spread);
   }
