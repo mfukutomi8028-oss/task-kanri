@@ -20,8 +20,8 @@ async function openOrigin(page,width,roomSuffix){
   const seeded=await page.evaluate(async()=>{
     const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
     const input=[
-      {title:'電子カルテの更新手順を確認',description:'検証項目と運用手順を整理して担当部署と共有する',days:0,priority:'高',checklist:'事前確認\\n手順確認\\n結果共有'},
-      {title:'端末更新の作業日程を調整',description:'現場業務に支障が出ない時間帯を調整する',days:2,priority:'中',checklist:'利用部署へ確認\\n日程確定'},
+      {title:'電子カルテの更新手順を確認',description:'検証項目と運用手順を整理して担当部署と共有する',days:0,priority:'高',checklist:'事前確認\n手順確認\n結果共有'},
+      {title:'端末更新の作業日程を調整',description:'現場業務に支障が出ない時間帯を調整する',days:2,priority:'中',checklist:'利用部署へ確認\n日程確定'},
       {title:'ネットワーク機器の設定を確認',description:'機器設定と運用資料の差分を確認する',days:6,priority:'低',checklist:''}
     ];
     const created=[];
