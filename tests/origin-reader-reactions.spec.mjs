@@ -198,3 +198,41 @@ for(const width of [320,390,1366]){
   expect(readingLayout.rectWidth).toBeGreaterThan(0);
  });
 }
+
+for(const width of [320,390,1366]){
+ test('Origin task editor discards to its prior detail and preserves reading position at '+width+'px',async({page})=>{
+  const root=await boot(page,width),sheet=root.locator('#sheet');
+  const heading=await sheet.locator('#panelHeading').textContent();
+  await root.locator('.origin-reader-nav [data-value="originWorkflow"]').click();
+  await expect(sheet.locator('#originWorkflow')).toHaveAttribute('open','');
+  const before=await sheet.locator('.sheet-body').evaluate(el=>el.scrollTop);
+  expect(before).toBeGreaterThan(0);
+  await sheet.locator('.origin-sheet-primary [data-action="edit"]').click();
+  const form=sheet.locator('#editForm[data-kind="tasks"]');
+  await expect(form).toBeVisible();
+  const back=sheet.locator('.origin-sheet-primary [data-action="origin-edit-back-detail"]');
+  await expect(back).toContainText('詳細に戻る');
+  const order=await form.evaluate(el=>[...el.querySelectorAll('input,select,textarea')].map(control=>control.name));
+  expect(order.indexOf('desc')).toBeGreaterThan(order.indexOf('priority'));
+  expect(order.indexOf('desc')).toBeLessThan(order.indexOf('due'));
+  expect(order.indexOf('desc')).toBeLessThan(order.indexOf('assignee'));
+  await form.locator('[name="title"]').fill('保存しない見出し');
+  page.once('dialog',dialog=>dialog.dismiss());
+  await back.click();
+  await expect(form).toBeVisible();
+  await expect(form.locator('[name="title"]')).toHaveValue('保存しない見出し');
+  page.once('dialog',dialog=>dialog.accept());
+  await back.click();
+  await expect(sheet.locator('#editForm')).toHaveCount(0);
+  await expect(sheet.locator('#panelHeading')).toHaveText(heading);
+  await expect(sheet.locator('#originWorkflow')).toHaveAttribute('open','');
+  const after=await sheet.locator('.sheet-body').evaluate(el=>el.scrollTop);
+  expect(Math.abs(after-before)).toBeLessThanOrEqual(3);
+  await expect(sheet.locator('.origin-sheet-primary [data-action="edit"]')).toBeFocused();
+  await expect(root.locator('#overlay')).toBeVisible();
+  await sheet.locator('.sheet-close').click();
+  await expect(root.locator('#overlay')).toBeHidden();
+  const record=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id==='reader-task'));
+  expect(record.title).toBe('Origin 詳細の読みやすさ');
+ });
+}
