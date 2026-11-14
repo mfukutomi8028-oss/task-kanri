@@ -4357,7 +4357,7 @@ test('JOURNAL settings book contains keyboard focus and returns to its trigger',
     nodes[nodes.length-1].focus();
   });
   await page.keyboard.press('Tab');
-  await expect(page.locator('[data-journal-settings-tab="display"]')).toBeFocused();
+  await expect(page.locator('.j-settings-book-close-v393')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   expect(await page.evaluate(()=>document.activeElement?.closest('.sidebar')!==null)).toBe(true);
   await page.locator('.j-settings-book-close-v393').click();
