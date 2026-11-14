@@ -107,6 +107,8 @@ for(const width of [320,390,1366]){
   await expect(extra).not.toHaveAttribute('open','');
   const star=extra.locator('[data-action="task-star"]');
   await expect(star).toBeHidden();
+  // Closed <details> controls must have no layout box and no Tab stop.
+  expect(await star.evaluate(el=>el.getClientRects().length)).toBe(0);
   const collapsedHeight=await sheet.locator('.sheet-foot').evaluate(el=>el.getBoundingClientRect().height);
   expect(collapsedHeight).toBeLessThanOrEqual(180);
   await summary.focus();
