@@ -865,6 +865,21 @@ test('JOURNAL V584 calendar editor returns through the same guarded page context
   assert.doesNotMatch(fn,/(?:persistSchedule|runTransaction|setDatabase|updateDatabase)\s*\(/);
 });
 
+test('JOURNAL V586 moved calendar records expose a saved-only destination action',()=>{
+  const app=read('app.js');
+  assert.match(app,/function journalDateInPeriodV586\(date,mode,anchor\)/);
+  assert.match(app,/journalNoteDialogReturnV479\.savedDate=scheduleLocalDate\(schedule\)/);
+  assert.match(app,/!journalDateInPeriodV586\(context\.savedDate,context\.mode,context\.anchor\)/);
+  assert.match(app,/data-j586-follow-moved/);
+  assert.match(app,/journalScheduleStateV425\.anchor=hint\.date/);
+  assert.match(app,/journalScheduleStateV425\.mode='day'/);
+  assert.match(app,/journalNoteDialogReturnV479\.deleted=true/);
+  assert.match(app,/data-j586-add-after-delete/);
+  const fn=app.slice(app.indexOf('function journalDateInPeriodV586('),
+    app.indexOf('\\n// JOURNAL-only visible schedule summary'));
+  assert.doesNotMatch(fn,/(?:persistSchedule|requestDeleteWithSeries|runTransaction|setDatabase|updateDatabase)\\s*\\(/);
+});
+
 test('JOURNAL V481 memo preview is escaped, compact and expands long text without losing it',()=>{
   const app=read('app.js');
   const start=app.indexOf('function journalPreviewMemoMarkupV481(memo,expanded=false){');
