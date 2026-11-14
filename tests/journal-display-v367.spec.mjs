@@ -4792,7 +4792,7 @@ for(const width of [1366,390]){
   test('JOURNAL V594 returns from a case to its memo and back at '+width+'px',async({page})=>{
     test.setTimeout(120000);
     await boot(page,width);await choose(page,'journal');
-    await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+    await page.locator((width<=760?'#wbJournalDockV367':'.wb-journal-tabs-v367')+' [data-journal-route="tasks"]').click();
     const board=page.locator('#boardView');
     await board.locator('[data-j420-new-task]').click();
     const taskTitle='案件からメモを参照する V594 '+width;
@@ -4819,7 +4819,7 @@ for(const width of [1366,390]){
   test('JOURNAL V594 memo-to-task returns to the same reading sheet at '+width+'px',async({page})=>{
     test.setTimeout(120000);
     await boot(page,width);await choose(page,'journal');
-    await page.locator('.wb-journal-tabs-v367 [data-journal-route="memo"]').click();
+    await page.locator((width<=760?'#wbJournalDockV367':'.wb-journal-tabs-v367')+' [data-journal-route="memo"]').click();
     const view=page.locator('#workMemoViewV167');
     await view.locator('[data-memo-new]').first().click();
     await page.locator('#workMemoTitleV167').fill('元のメモへのしおり V594 '+width);
