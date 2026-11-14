@@ -25,8 +25,8 @@ async function createMemos(page){
     const entries=[
       {title:'手順書A',category:'手順',paperColor:'mint',pinned:true},
       {title:'手順書B',category:'手順',paperColor:'ivory',pinned:false},
-      {title:'連絡先C',category:'連絡先',paperColor:'peach',pinned:false},
-      {title:'報告D',category:'報告',paperColor:'mint',pinned:true}
+      {title:'連絡先C',category:'宛先・連絡先',paperColor:'peach',pinned:false},
+      {title:'報告D',category:'定型情報',paperColor:'mint',pinned:true}
     ];
     for(const item of entries){
       const out=await bridge.dispatch({type:'memo.create',ownerRoom:roomId,ownerUser:currentUser,
@@ -51,11 +51,11 @@ test('Origin memo filters communicate context-aware counts and zero-result recov
   await expect(count(color('mint'))).toHaveText('2');
   await root.locator('#originMemoQuery').fill('手順');
   await expect(count(category('all'))).toHaveText('2');
-  await expect(count(category('連絡先'))).toHaveText('0');
+  await expect(count(category('宛先・連絡先'))).toHaveText('0');
   await expect(count(color('mint'))).toHaveText('1');
   await color('mint').click();
   await expect(count(category('手順'))).toHaveText('1');
-  await category('連絡先').click();
+  await category('宛先・連絡先').click();
   await expect(root.locator('.origin-memo-shell')).toHaveCount(0);
   const zero=root.locator('.origin-memo-empty');
   await expect(zero).toContainText('該当するメモがありません');
