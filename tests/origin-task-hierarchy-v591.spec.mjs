@@ -28,8 +28,8 @@ async function openOrigin(page,width,roomSuffix){
     for(const t of input){
       const d=new Date(); d.setDate(d.getDate()+t.days);
       const dueDate=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
-      const response=await bridge.dispatch({type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,assignee:s.currentUser,status:s.statuses.includes('未着手')?'未着手':s.statuses[0],category:s.categories[0],title:t.title,description:t.description,requester:'',tags:'',checklist:t.checklist,checklistDone:[],priority:t.priority,dueDate,dueTime:'15:30',pinned:false});
-      if(!response?.ok)throw Error('task.create fixture: '+response?.error);
+      const response=await bridge.dispatch({type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,assignee:s.users?.[0]||s.currentUser,status:s.statuses.includes('未着手')?'未着手':s.statuses[0],category:s.categories[0],title:t.title,description:t.description,requester:'',tags:'',checklist:t.checklist,checklistDone:[],priority:t.priority,dueDate,dueTime:'15:30',pinned:false});
+      if(!response?.ok)throw Error('task.create fixture: '+JSON.stringify(response));
       created.push(response.id);
     }
     return created;
