@@ -341,6 +341,7 @@
 .sheet[data-reader-kind="tasks"] .origin-task-more-actions>summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .sheet[data-reader-kind="tasks"] .origin-task-more-actions>summary:after{content:'';width:8px;height:8px;flex:none;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .15s ease;margin-right:4px}
 .sheet[data-reader-kind="tasks"] .origin-task-more-actions[open]>summary:after{transform:rotate(225deg)}
+.sheet[data-reader-kind="tasks"] .origin-task-more-actions:not([open])>.origin-sheet-secondary{display:none}
 .sheet[data-reader-kind="tasks"] .origin-task-more-actions[open] .origin-sheet-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px;padding:0;overflow:visible}
 .sheet[data-reader-kind="tasks"] .origin-task-more-actions .origin-sheet-secondary button{width:100%;min-width:0;min-height:44px;padding:9px 10px;white-space:normal;line-height:1.4;overflow-wrap:anywhere;justify-content:center;text-align:center}
 @media(prefers-reduced-motion:reduce){.sheet[data-reader-kind="tasks"] .origin-task-more-actions>summary:after{transition:none}}
