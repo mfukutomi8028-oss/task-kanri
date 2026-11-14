@@ -1868,7 +1868,7 @@ let detailSequence=null;
 // Linked task/event browsing is local to this open inspector, never persisted.
 let detailTrail=[];
 // Transient return point for a task editor opened from its detail.
-let originTaskEditReturn=null;
+let originDetailEditReturn=null;
 // Local context for returning from a task-initiated schedule create or edit.
 let originTaskScheduleSource=null;
 let originEditorInitialHeight=0;
@@ -2242,7 +2242,7 @@ function originPanelFooter(kind,id,editing,item){
  const safeId=esc(id||'');
  const taskDetail=kind==='tasks'&&!editing;
  const main=editing
-   ?`<button type="submit" class="primary-button" form="editForm">${id?'変更を保存':'登録する'}</button><button type="button" class="secondary-button" data-action="${kind==='tasks'&&originTaskEditReturn?.id===id?'origin-edit-back-detail':'close'}">${kind==='tasks'&&originTaskEditReturn?.id===id?'詳細に戻る':'キャンセル'}</button>`
+   ?`<button type="submit" class="primary-button" form="editForm">${id?'変更を保存':'登録する'}</button><button type="button" class="secondary-button" data-action="${originDetailEditReturn?.kind===kind&&originDetailEditReturn?.id===id?'origin-edit-back-detail':'close'}">${originDetailEditReturn?.kind===kind&&originDetailEditReturn?.id===id?'詳細に戻る':'キャンセル'}</button>`
    :taskDetail
    ?`<button type="button" class="primary-button" data-action="edit" data-kind="${kind}" data-id="${safeId}">${icon('edit',16)} 編集する</button><button type="button" class="secondary-button origin-task-primary-done" data-action="task-done" data-id="${safeId}">${item.completed?'未完了に戻す':'完了にする'}</button>`
    :`<button type="button" class="primary-button" data-action="edit" data-kind="${kind}" data-id="${safeId}">${icon('edit',16)} 編集する</button><button type="button" class="secondary-button" data-action="close">閉じる</button>`;
@@ -2267,8 +2267,9 @@ function originPanelFooter(kind,id,editing,item){
 function panelShow(kind,id,edit=false,seed={}){
  const obj=id?findItem(kind,id):null;if(id&&!obj)return;
  // Capture the detail reading state before switching to a task editor.
- const taskReturn=edit&&kind==='tasks'&&id&&panelOpen&&panelMode==='detail'
-   &&panelKind==='tasks'&&panelId===id?{
+ const detailReturn=edit&&id&&panelOpen&&panelMode==='detail'
+   &&panelKind===kind&&panelId===id&&['tasks','todos','events','memos'].includes(kind)?{
+    kind,
     id,scrollTop:$('#sheet .sheet-body')?.scrollTop||0,
     workflowOpen:Boolean($('#sheet #originWorkflow')?.open),
     relatedExpanded:Boolean($('#sheet .origin-related-more')?.open),
@@ -2277,7 +2278,7 @@ function panelShow(kind,id,edit=false,seed={}){
    }:null;
  const replacing=panelOpen;
  if(replacing&&!closePanel(false,false))return;
- originTaskEditReturn=taskReturn;
+ originDetailEditReturn=detailReturn;
  if(!replacing)panelReturnScrollY=window.scrollY;
  panelOpen=true;panelMode=edit?'edit':'detail';panelKind=kind;panelId=id||'';
  const freshObj=obj||{},v={...freshObj,...seed};
@@ -2545,7 +2546,7 @@ function closePanel(force=false,restoreFocus=true){
    if(!window.confirm('入力中の変更を破棄して閉じますか？'))return false;
  }
  const kind=panelKind,id=panelId;
- originTaskEditReturn=null;
+ originDetailEditReturn=null;
  const returnToInbox=Boolean(restoreFocus&&originInboxReturn&&originInboxReturn.user===snapshot.currentUser);
  originTaskScheduleSource=null;
  $('#overlay').hidden=true;$('#sheet').innerHTML='';syncOriginEditorViewport();document.body.style.overflow='';
@@ -2561,20 +2562,22 @@ function closePanel(force=false,restoreFocus=true){
  }else if(force){detailTrail=[];originInboxReturn=null;}
  return true;
 }
-function returnOriginTaskEditorToDetail(){
- const state=originTaskEditReturn;
- if(!state||panelMode!=='edit'||panelKind!=='tasks'||panelId!==state.id
-   ||!findItem('tasks',state.id))return closePanel();
+function returnOriginEditorToDetail(){
+ const state=originDetailEditReturn,kind=panelKind;
+ // Task-linked schedule editing already returns to its source task.
+ if(originTaskScheduleSource&&kind==='events')return closePanel();
+ if(!state||panelMode!=='edit'||panelKind!==state.kind||panelId!==state.id
+   ||!findItem(kind,state.id))return closePanel();
  // Reuse the same unsaved-change guard as the existing cancel action.
  if(!closePanel(false,false))return false;
- panelShow('tasks',state.id,false);
- if(!panelOpen||panelMode!=='detail'||panelId!==state.id)return false;
+ panelShow(kind,state.id,false);
+ if(!panelOpen||panelMode!=='detail'||panelKind!==kind||panelId!==state.id)return false;
  const workflow=$('#sheet #originWorkflow');
- if(workflow)workflow.open=state.workflowOpen;
+ if(kind==='tasks'&&workflow)workflow.open=state.workflowOpen;
  const related=$('#sheet .origin-related-more'),past=$('#sheet .origin-related-past');
- if(related)related.open=state.relatedExpanded;
- if(past)past.open=state.relatedPastExpanded;
- if(state.section){
+ if(kind==='tasks'&&related)related.open=state.relatedExpanded;
+ if(kind==='tasks'&&past)past.open=state.relatedPastExpanded;
+ if(kind==='tasks'&&state.section){
    $('#sheet .origin-reader-nav')?.querySelectorAll('button').forEach(button=>
      button.dataset.value===state.section?button.setAttribute('aria-current','location'):button.removeAttribute('aria-current'));
  }
@@ -3336,7 +3339,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    return panelShow(kind,id,false);
  }
  if(a==='close')return closePanel();
- if(a==='origin-edit-back-detail')return returnOriginTaskEditorToDetail();
+ if(a==='origin-edit-back-detail')return returnOriginEditorToDetail();
  if(a==='edit')return panelShow(kind,id,true);
  if(a==='delete')return deleteItem(kind,id);
  if(a==='task-done'){toggleTaskDone(id);return}
