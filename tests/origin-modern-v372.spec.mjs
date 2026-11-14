@@ -1449,7 +1449,11 @@ test('Origin 320px and 390px inspectors keep long headings scrollable and footer
        await expect(sheet.locator('.origin-sheet-primary [data-action="edit"]')).toBeVisible();
        await sheet.locator('.sheet-close').click();
      }else{
-       await sheet.locator('.origin-sheet-primary [data-action="close"]').click();
+       await expect(sheet.locator('.origin-sheet-primary [data-action="origin-edit-back-detail"]')).toBeVisible();
+       await sheet.locator('.origin-sheet-primary [data-action="origin-edit-back-detail"]').click();
+       await expect(sheet.locator('#editForm')).toHaveCount(0);
+       await expect(sheet.locator('.origin-sheet-primary [data-action="edit"]')).toBeVisible();
+       await sheet.locator('.sheet-close').click();
      }
      await expect(host.locator('#overlay')).toBeHidden();
    }
