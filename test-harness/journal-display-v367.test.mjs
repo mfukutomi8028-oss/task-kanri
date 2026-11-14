@@ -1883,3 +1883,14 @@ test('JOURNAL V594 cross-page context is transient and returns to its canonical 
   assert.match(js,/origin\.width===window\.innerWidth/);
   assert.doesNotMatch(js,/localStorage\.setItem\([^\n]*journalReturn/);
 });
+
+test('JOURNAL V595 unifies paper chapter navigation and minimal motion without changing routes',()=>{
+  assert.match(js,/button\.prepend\(tabIconV412\(entry\.id\)\)/);
+  assert.match(css,/\.wb-journal-dock-v367 button \.j-tab-illustration-v412/);
+  assert.match(css,/--j-chapter-hover:/);
+  assert.match(css,/@media\s*\(hover:\s*hover\)\s*and\s*\(pointer:\s*fine\)/);
+  assert.doesNotMatch(css,/clip-path:polygon\(0 9px,9px 0/,'Cutout pastel tab treatment should be retired');
+  assert.match(css,/\.j420-add-appointment,\s*\nhtml\[data-wb-display="journal"\] \.j420-add-task \{[^}]*min-height:44px/s);
+  assert.match(css,/\.j420-note-actions button \{[^}]*min-height:44px/s);
+  assert.match(css,/@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+});
