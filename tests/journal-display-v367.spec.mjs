@@ -1796,7 +1796,9 @@ test('JOURNAL V495 mobile task folio keeps primary actions short and returns fro
   expect(fit.outer).toBeLessThanOrEqual(2);
   expect(fit.inner).toBeLessThanOrEqual(2);
   await page.setViewportSize({width:1366,height:900});
-  await expect(folio.locator('.detail-head strong')).toHaveText('タスク詳細');
+  await expect(folio.locator('.detail-head strong')).toHaveText(taskTitle);
+  await expect(folio.locator('.detail-head strong')).toHaveAttribute('title',taskTitle);
+  expect(await folio.locator('.detail-head').evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(2);
   await expect(folio.locator('.j495-detail-more')).toBeVisible();
   await expect(folio.locator('.j495-detail-footer')).toHaveCount(0);
   await expect(actions.locator('.sub-actions [data-action="delete"]')).toBeVisible();
@@ -4381,6 +4383,7 @@ test('JOURNAL desktop task record keeps the case title visible in its sticky hea
   const heading=panel.locator('.detail-head strong');
   await expect(heading).toHaveText('確認する案件');
   await expect(heading).toHaveAttribute('title','確認する案件');
+  await expect(panel).toHaveAttribute('aria-label','タスクの記録ページ：確認する案件');
   await panel.evaluate(el=>{el.scrollTop=el.scrollHeight;});
   await expect(heading).toBeVisible();
   await expect(heading).toHaveText('確認する案件');
