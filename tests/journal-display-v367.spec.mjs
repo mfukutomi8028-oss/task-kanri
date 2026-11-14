@@ -4484,3 +4484,47 @@ for(const width of [320,390,768,1280,1440]) {
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   });
 }
+
+for (const width of [390,1366]) {
+  test('JOURNAL schedule ledger returns to its edited record or a safe day control at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await bootPaperAuxiliary(page,width);
+    await paperRoute(page,width,'schedule');
+    const schedule=page.locator('#scheduleView');
+    await schedule.locator('[data-j425-mode="list"]').click();
+    const ledger=schedule.locator('.j425-schedule-ledger');
+    const record=ledger.locator('[data-schedule-id="paper-plan"]');
+    await expect(record).toBeVisible();
+    const dateLabel=await schedule.locator('.j425-schedule-datebar strong').textContent();
+    const form=page.locator('#scheduleDialog');
+
+    // Cancelling editing must return to the same schedule in the same ledger.
+    await record.click();
+    await expect(form).toBeVisible();
+    await form.locator('#closeScheduleDialog').click();
+    await expect(form).toBeHidden();
+    await expect(record).toBeFocused();
+
+    // A successful write re-renders from canonical data; the new element
+    // must inherit focus without moving to a different date or display mode.
+    await record.click();
+    await form.locator('#scheduleTitle').fill('編集後の紙面予定');
+    await form.locator('#scheduleForm button[type="submit"]').click();
+    await expect(form).toBeHidden();
+    await expect(record).toContainText('編集後の紙面予定');
+    await expect(record).toBeFocused();
+    await expect(schedule.locator('.j425-schedule-datebar strong')).toHaveText(dateLabel);
+    await expect(schedule.locator('[data-j425-mode="list"]')).toHaveAttribute('aria-pressed','true');
+
+    // A deleted card no longer exists: return to the stable date toolbar.
+    await record.click();
+    page.once('dialog',dialog=>dialog.accept());
+    await form.locator('#deleteSchedule').click();
+    await expect(form).toBeHidden();
+    await expect(record).toHaveCount(0);
+    await expect(schedule.locator('[data-j425-today]')).toBeFocused();
+    await expect(schedule.locator('.j425-schedule-datebar strong')).toHaveText(dateLabel);
+    await expect(schedule.locator('[data-j425-mode="list"]')).toHaveAttribute('aria-pressed','true');
+    await choose(page,'classic');
+  });
+}

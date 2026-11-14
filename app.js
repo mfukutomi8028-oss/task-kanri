@@ -674,8 +674,9 @@ function setupEvents() {
 
   elements.closeScheduleDialog.addEventListener("click", () => elements.scheduleDialog.close());
   elements.scheduleDialog.addEventListener('close',()=>{
-    // Closing the edit form to open its copy flow is not a return to the note.
-    if(journalNoteDialogReturnV479?.action!=='edit'||$("scheduleCopyDialog")?.open)return;
+    // Closing the editor to open its copy flow is not a return to the page.
+    const action=journalNoteDialogReturnV479?.action;
+    if(!['edit','calendar'].includes(action)||$("scheduleCopyDialog")?.open)return;
     journalRestoreNoteV479();
   });
   $("scheduleStart").addEventListener("input", syncScheduleEndFromStart);
@@ -4123,12 +4124,58 @@ function journalPrepareNoteReturnV479(record,action){
     ? {id:record.id,room:ROOM_ID,user:getCurrentUser(),action}
     : null;
 }
+// Direct week/list/sidebar cards use the same temporary return context as
+// the day reading note. No second editor, database field or save path is added.
+function journalPrepareCalendarReturnV584(card,record){
+  const root=elements.scheduleView;
+  if(!record?.id||!root?.contains(card)||root.hidden
+    ||document.documentElement.dataset.wbDisplay!=='journal'
+    ||state.layout!=='schedule')return;
+  journalNoteDialogReturnV479={
+    id:record.id,room:ROOM_ID,user:getCurrentUser(),action:'calendar',
+    mode:journalScheduleStateV425.mode,anchor:journalScheduleStateV425.anchor,
+    region:card.closest('.j425-schedule-sidebar')?'sidebar'
+      :card.closest('.j425-schedule-ledger')?'ledger':'week',
+    pageX:window.scrollX,pageY:window.scrollY,
+    gridLeft:root.querySelector('.j425-week-scroll')?.scrollLeft||0,
+    sidebarTop:root.querySelector('.j425-schedule-sidebar')?.scrollTop||0
+  };
+}
 function journalRestoreNoteV479(){
   const context=journalNoteDialogReturnV479;
   journalNoteDialogReturnV479=null;
   if(!context || document.documentElement.dataset.wbDisplay!=='journal'
     || context.room!==ROOM_ID || context.user!==getCurrentUser()
-    || journalScheduleStateV425.mode!=='day')return;
+    || state.layout!=='schedule' || elements.scheduleView.hidden)return;
+  if(context.action==='calendar'){
+    // Rebuild from canonical records: a save may replace the card and a
+    // successful deletion must never return focus to a removed element.
+    if(context.mode!==journalScheduleStateV425.mode
+      ||context.anchor!==journalScheduleStateV425.anchor)return;
+    journalScheduleV425();
+    requestAnimationFrame(()=>{
+      if(document.documentElement.dataset.wbDisplay!=='journal'
+        || state.layout!=='schedule' || elements.scheduleView.hidden
+        ||context.room!==ROOM_ID ||context.user!==getCurrentUser()
+        ||context.mode!==journalScheduleStateV425.mode
+        ||context.anchor!==journalScheduleStateV425.anchor
+        ||document.querySelector('dialog[open]'))return;
+      const root=elements.scheduleView;
+      const region=context.region==='sidebar'?'.j425-schedule-sidebar'
+        :context.region==='ledger'?'.j425-schedule-ledger':'.j425-week-scroll';
+      const card=[...root.querySelectorAll(region+' [data-schedule-id]')]
+        .find(node=>node.dataset.scheduleId===context.id&&node.getClientRects().length);
+      const target=card||root.querySelector('[data-j425-today]');
+      const grid=root.querySelector('.j425-week-scroll');
+      if(grid)grid.scrollLeft=context.gridLeft;
+      const sidebar=root.querySelector('.j425-schedule-sidebar');
+      if(sidebar)sidebar.scrollTop=context.sidebarTop;
+      target?.focus({preventScroll:true});
+      window.scrollTo({left:context.pageX,top:context.pageY,behavior:'instant'});
+    });
+    return;
+  }
+  if(journalScheduleStateV425.mode!=='day')return;
   const record=state.schedules.find(item=>item.id===context.id);
   if(record){
     journalScheduleStateV425.anchor=scheduleLocalDate(record);
@@ -4995,7 +5042,10 @@ function bindScheduleCardEvents() {
   elements.scheduleView.querySelectorAll("[data-schedule-id]").forEach(card => {
     card.addEventListener("click", () => {
       const schedule = state.schedules.find(s => s.id === card.dataset.scheduleId);
-      if (schedule) openScheduleDialog(schedule);
+      if (schedule) {
+        journalPrepareCalendarReturnV584(card,schedule);
+        openScheduleDialog(schedule);
+      }
     });
   });
   elements.scheduleView.querySelectorAll("[data-calendar-date]").forEach(cell => {
