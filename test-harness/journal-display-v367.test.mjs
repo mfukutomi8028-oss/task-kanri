@@ -1870,3 +1870,16 @@ test('JOURNAL V558 note return keeps modal source and newer focus across phone r
   assert.doesNotMatch(modal+reader,
     /(?:persistTask|runTransaction|commitTaskDraft|setDoc|onValue)\s*\(/i);
 });
+
+test('JOURNAL V594 cross-page context is transient and returns to its canonical owners',()=>{
+  assert.match(js,/function journalReturnCaptureV594\(kind,id\)/);
+  assert.match(js,/function journalReturnToSourceV594\(\)/);
+  assert.match(js,/function syncJournalReturnV594\(\)/);
+  assert.match(js,/data-j594-open-memo/);
+  assert.match(js,/data-j594-return/);
+  assert.match(js,/\[data-memo-task\]/);
+  assert.match(js,/journalMemoSelectedV425=origin\.id/);
+  assert.match(js,/journalReturnOwnerV594\(\)!==origin\.owner/);
+  assert.match(js,/origin\.width===window\.innerWidth/);
+  assert.doesNotMatch(js,/localStorage\.setItem\([^\n]*journalReturn/);
+});
