@@ -989,11 +989,14 @@ test('JOURNAL V495 mobile detail reveals secondary actions without cloning canon
   assert.match(css,/@media\(max-width:350px\)/);
 });
 
-test('JOURNAL V497 mobile detail retains a useful sticky title and fresh open focus',()=>{
+test('JOURNAL V497 detail retains case identity, restores canonical heading and fresh open focus',()=>{
   const folio=js.slice(js.indexOf('function installJournalFolioV411('));
   assert.match(folio,/const originalHeadLabel=headLabel\?\.textContent\|\|'タスク詳細'/);
-  assert.match(folio,/const title=active\(\)&&compact\.matches/);
-  assert.match(folio,/headLabel\.textContent=title\|\|originalHeadLabel/);
+  assert.match(folio,/const title=active\(\)/);
+  assert.match(folio,/\?detailBody\?\.querySelector\('\.detail-title'\)\?\.textContent\?\.trim\(\):''/);
+  assert.match(folio,/const label=title\|\|originalHeadLabel/);
+  assert.match(folio,/if\(headLabel\.textContent!==label\)headLabel\.textContent=label/);
+  assert.match(folio,/panel\.setAttribute\('aria-label','タスクの記録ページ：'\+title\)/);
   assert.match(folio,/headLabel\.removeAttribute\('title'\)/);
   assert.match(folio,/panel\.scrollTop=0/);
   assert.match(folio,/panel\.contains\(document\.activeElement\)\?null:document\.activeElement/);
