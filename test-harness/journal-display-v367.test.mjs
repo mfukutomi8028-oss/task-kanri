@@ -907,6 +907,20 @@ test('JOURNAL task and memo controls meet the touch target and legibility baseli
   assert.match(css,/#workMemoViewV167 \.work-memo-actions-v167 button\s*\{[^}]*min-width:44px!important;[^}]*min-height:44px!important;/s);
 });
 
+
+test('JOURNAL V591 Today and Atelier share a prioritized next-action briefing',()=>{
+  const app=read('app.js');
+  const css=read('journal-display-v367.css');
+  assert.match(app,/function journalWorkCueV591\(task\)/);
+  assert.match(app,/function journalWorkNextV591\(task\)/);
+  assert.match(app,/j591-featured-work/);
+  assert.match(app,/j591-following-work/);
+  assert.match(app,/j591-atelier-brief/);
+  assert.match(app,/data-j420-log-task="\$\{escapeHtml\(briefingTaskV591\.id\)\}"/);
+  assert.match(css,/\.j591-featured-work\s*\{/);
+  assert.match(css,/\.j591-atelier-brief\s*\{/);
+});
+
 test('JOURNAL V586 moved calendar records expose a saved-only destination action',()=>{
   const app=read('app.js');
   assert.match(app,/function journalDateInPeriodV586\(date,mode,anchor\)/);
