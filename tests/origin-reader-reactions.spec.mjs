@@ -83,6 +83,9 @@ for(const width of [320,390,1366]){
   await settings.focus();await settings.press('Enter');
   await expect(workflow).toHaveAttribute('open','');
   await expect(summary).toBeFocused();
+  const outline=await summary.evaluate(el=>({style:getComputedStyle(el).outlineStyle,width:getComputedStyle(el).outlineWidth}));
+  expect(outline.style).not.toBe('none');
+  expect(parseFloat(outline.width)).toBeGreaterThanOrEqual(2);
   await expect(summary).toBeInViewport();
   await expect(settings).toHaveAttribute('aria-current','location');
   const widths=await page.evaluate(()=>({document:document.documentElement.scrollWidth,viewport:innerWidth}));
