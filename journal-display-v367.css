@@ -4074,7 +4074,7 @@ html[data-wb-display="journal"] .j425-todo-tray header h3 span {
 html[data-wb-display="journal"] .j425-todo-tray header small {font:500 11px var(--j-text);color:#7e8173}
 html[data-wb-display="journal"] .j425-todo-items {padding:4px 9px 9px}
 html[data-wb-display="journal"] .j425-todo-record {
-  display:grid;grid-template-columns:26px minmax(0,1fr) 85px 58px;
+  display:grid;grid-template-columns:26px minmax(0,1fr) 85px 88px;
   align-items:center;gap:7px;min-height:54px;padding:7px 5px;
   border-bottom:1px solid #e9e1d6;min-width:0;
 }
@@ -4100,7 +4100,7 @@ html[data-wb-display="journal"] .j425-todo-record.is-done .j425-todo-record-titl
 html[data-wb-display="journal"] .j425-todo-record-state {font-size:12px;color:var(--j-muted);text-align:center}
 html[data-wb-display="journal"] .j425-todo-record-move {display:flex}
 html[data-wb-display="journal"] .j425-todo-record-move button {
-  width:27px;height:32px;min-height:32px!important;padding:2px!important;
+  box-sizing:border-box;width:44px;min-width:44px;height:44px;min-height:44px!important;padding:2px!important;
   border:0!important;border-radius:2px!important;box-shadow:none!important;
   background:transparent!important;color:#6a8570!important;cursor:pointer;
 }
@@ -4148,7 +4148,7 @@ html[data-wb-display="journal"] .j425-index-checkbox input {
 }
 html[data-wb-display="journal"] .j425-index-records {display:grid;gap:7px;min-width:0}
 html[data-wb-display="journal"] .j425-index-record {
-  display:grid;grid-template-columns:21px 38px minmax(0,1fr) minmax(100px,.58fr) 34px;
+  display:grid;grid-template-columns:21px 38px minmax(0,1fr) minmax(100px,.58fr) 44px;
   align-items:center;gap:8px;min-width:0;min-height:75px;
   padding:8px 10px;border:1px solid #ded5c7;border-radius:7px;
   background:linear-gradient(120deg,#fffcf5,#faf8f1);
@@ -4193,7 +4193,8 @@ html[data-wb-display="journal"] .j425-index-bar span,.j425-preview-progress span
   display:block;height:100%;border-radius:6px;background:#7a9d80;
 }
 html[data-wb-display="journal"] .j425-list-star {
-  min-height:33px!important;padding:3px!important;border:0!important;
+  box-sizing:border-box;display:inline-grid;place-items:center;min-width:44px;min-height:44px!important;
+  padding:3px!important;border:0!important;
   box-shadow:none!important;background:transparent!important;color:#7e9c7e!important;
 }
 html[data-wb-display="journal"] .j425-index-bulk {
@@ -4547,7 +4548,8 @@ html[data-wb-display="journal"] .j425-memo-gallery .work-memo-actions-v167 {
   display:flex!important;gap:3px!important;flex-wrap:wrap;
 }
 html[data-wb-display="journal"] .j425-memo-gallery .work-memo-actions-v167 button {
-  min-height:44px!important;padding:8px 9px!important;font:750 12px var(--j-text)!important;
+  box-sizing:border-box;min-width:44px!important;min-height:44px!important;
+  padding:8px 9px!important;font:750 12px var(--j-text)!important;
 }
 html[data-wb-display="journal"] .j425-memo-fastener {
   position:absolute;display:block;z-index:2;pointer-events:none;
@@ -4645,10 +4647,10 @@ html[data-wb-display="journal"] .j425-memo-reader-actions button {
   html[data-wb-display="journal"] .j425-reading-rail,
   html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {grid-column:1!important}
   html[data-wb-display="journal"] .j425-index-rail {padding:13px}
-  html[data-wb-display="journal"] .j425-todo-record {grid-template-columns:24px minmax(0,1fr) 40px!important}
+  html[data-wb-display="journal"] .j425-todo-record {grid-template-columns:24px minmax(0,1fr) 88px!important}
   html[data-wb-display="journal"] .j425-todo-record-state {display:none}
   html[data-wb-display="journal"] .j425-index-record {
-    grid-template-columns:19px 31px minmax(0,1fr) 31px!important;gap:6px;padding:9px 6px;
+    grid-template-columns:19px 31px minmax(0,1fr) 44px!important;gap:6px;padding:9px 6px;
   }
   html[data-wb-display="journal"] .j425-index-record-meta {grid-column:3;grid-row:2}
   html[data-wb-display="journal"] .j425-list-star {grid-column:4;grid-row:1}
@@ -4903,7 +4905,7 @@ html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {
    desktops: metadata drops under the title rather than squeezing it. */
 @media(min-width:761px) and (max-width:1190px){
  html[data-wb-display="journal"] .j425-index-record {
-   grid-template-columns:21px 38px minmax(0,1fr) 34px!important;
+   grid-template-columns:21px 38px minmax(0,1fr) 44px!important;
    gap:5px 8px!important;
  }
  html[data-wb-display="journal"] .j425-index-record-meta {grid-column:3;grid-row:2}
@@ -5055,7 +5057,7 @@ html[data-wb-display="journal"] .j425-memo-reader-body {
   }
   html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader .j451-memo-back {
     display:inline-flex;align-items:center;justify-content:center;
-    min-height:42px;max-width:100%;margin:10px 0 5px;padding:8px 12px;
+    min-height:44px;max-width:100%;margin:10px 0 5px;padding:8px 12px;
     border:1px solid #c9d7c4;border-radius:4px;background:#ecf3e8;
     color:#4c7453;font:750 12px/1.45 var(--j-text);cursor:pointer;
   }
@@ -5773,19 +5775,19 @@ html[data-wb-display="journal"] #workMemoViewV167 .j491-memo-footer-back {
     outline:2px solid #779b7b;outline-offset:2px;
   }
   html[data-wb-display="journal"] #todoView .j425-todo-record {
-    grid-template-columns:24px minmax(0,1fr) 80px!important;
+    grid-template-columns:24px minmax(0,1fr) 88px!important;
     gap:5px!important;min-height:52px;padding:5px 3px;
   }
   html[data-wb-display="journal"] #todoView .j425-todo-record-move {
     min-width:0;justify-content:flex-end;gap:0;
   }
   html[data-wb-display="journal"] #todoView .j425-todo-record-move button {
-    box-sizing:border-box;width:40px!important;min-width:40px!important;
-    height:42px!important;min-height:42px!important;
+    box-sizing:border-box;width:44px!important;min-width:44px!important;
+    height:44px!important;min-height:44px!important;
     border-radius:3px!important;
   }
   html[data-wb-display="journal"] #listView .j425-index-record {
-    grid-template-columns:18px 30px minmax(0,1fr) 34px!important;
+    grid-template-columns:18px 30px minmax(0,1fr) 44px!important;
     gap:5px 6px!important;min-height:67px!important;padding:7px 6px!important;
   }
   html[data-wb-display="journal"] #listView .j425-index-record-number {
