@@ -4371,3 +4371,21 @@ test('JOURNAL settings book contains keyboard focus and returns to its trigger',
   await expect(trigger).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
 });
+
+test('JOURNAL desktop task record keeps the case title visible in its sticky heading',async({page})=>{
+  await bootRecordShelf(page,1366);
+  await page.locator('.j-shelf-launch').click();
+  await page.locator('#jRecordShelf [data-j-shelf-task]').click();
+  const panel=page.locator('.detail-panel');
+  await expect(panel).toHaveClass(/open/);
+  const heading=panel.locator('.detail-head strong');
+  await expect(heading).toHaveText('確認する案件');
+  await expect(heading).toHaveAttribute('title','確認する案件');
+  await panel.evaluate(el=>{el.scrollTop=el.scrollHeight;});
+  await expect(heading).toBeVisible();
+  await expect(heading).toHaveText('確認する案件');
+  await panel.locator('#closeDetail').click();
+  await expect(heading).toHaveText('タスク詳細');
+  await choose(page,'classic');
+  await expect(heading).toHaveText('タスク詳細');
+});
