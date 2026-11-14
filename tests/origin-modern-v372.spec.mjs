@@ -643,7 +643,11 @@ test('Origin inspector keeps actions distinct on a 320px screen',async({page})=>
  const deleteRect=await sheet.locator('.origin-sheet-danger').boundingBox();
  const saveRect=await sheet.locator('.origin-sheet-primary').boundingBox();
  expect(deleteRect.y).toBeGreaterThan(saveRect.y+saveRect.height);
- await sheet.locator('.origin-sheet-primary [data-action="close"]').click();
+ await expect(sheet.locator('.origin-sheet-primary [data-action="origin-edit-back-detail"]')).toBeVisible();
+ await sheet.locator('.origin-sheet-primary [data-action="origin-edit-back-detail"]').click();
+ await expect(sheet.locator('#editForm')).toHaveCount(0);
+ await expect(sheet.locator('.origin-sheet-primary [data-action="edit"]')).toBeFocused();
+ await sheet.locator('.sheet-close').click();
  await expect(host.locator('#overlay')).toBeHidden();
  const data=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().todos.find(t=>t.text==='詳細パネルの操作確認'));
  expect(data?.memo).toBe('変更前のメモ');
@@ -672,7 +676,12 @@ test('Origin memo inspector keeps paper color and exposes all swatches',async({p
  await expect(palette.locator('input[value="peach"]')).toBeChecked();
  const choiceHeight=await palette.locator('label[data-paper-color="peach"]').evaluate(el=>el.getBoundingClientRect().height);
  expect(choiceHeight).toBeGreaterThanOrEqual(44);
- await sheet.locator('.origin-sheet-primary [data-action="close"]').click();
+ await expect(sheet.locator('.origin-sheet-primary [data-action="origin-edit-back-detail"]')).toBeVisible();
+ await sheet.locator('.origin-sheet-primary [data-action="origin-edit-back-detail"]').click();
+ await expect(sheet.locator('#editForm')).toHaveCount(0);
+ await expect(sheet.locator('.origin-memo-paper')).toHaveAttribute('data-paper-color','peach');
+ await expect(sheet.locator('.origin-sheet-primary [data-action="edit"]')).toBeFocused();
+ await sheet.locator('.sheet-close').click();
  await expect(host.locator('#overlay')).toBeHidden();
 });
 
