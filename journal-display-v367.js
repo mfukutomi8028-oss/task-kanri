@@ -2099,15 +2099,20 @@
         tools.prepend(button);
       }
     }
-    // Long records need a stable, useful sticky heading. Only JOURNAL phones
-    // override the label, and leaving the view restores its canonical text.
+    // Identify the active task in the existing sticky heading on every
+    // viewport. Preserve the canonical header outside JOURNAL detail mode.
     const syncTaskHeading=()=>{
       if(!headLabel)return;
-      const title=active()&&compact.matches
+      const title=active()
         ?detailBody?.querySelector('.detail-title')?.textContent?.trim():'';
-      headLabel.textContent=title||originalHeadLabel;
-      if(title)headLabel.title=title;
-      else headLabel.removeAttribute('title');
+      const label=title||originalHeadLabel;
+      if(headLabel.textContent!==label)headLabel.textContent=label;
+      if(title){
+        headLabel.title=title;
+        panel.setAttribute('aria-label','タスクの記録ページ：'+title);
+      } else {
+        headLabel.removeAttribute('title');
+      }
     };
     // Enhance only the already-bound canonical buttons. Moving a node preserves
     // its original listeners and avoids a second editor or persistence owner.
