@@ -4374,21 +4374,23 @@ test('JOURNAL settings book contains keyboard focus and returns to its trigger',
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
 });
 
-test('JOURNAL desktop task record keeps the case title visible in its sticky heading',async({page})=>{
-  await bootRecordShelf(page,1366);
-  await page.locator('.j-shelf-launch').click();
-  await page.locator('#jRecordShelf [data-j-shelf-task]').click();
-  const panel=page.locator('.detail-panel');
-  await expect(panel).toHaveClass(/open/);
-  const heading=panel.locator('.detail-head strong');
-  await expect(heading).toHaveText('確認する案件');
-  await expect(heading).toHaveAttribute('title','確認する案件');
-  await expect(panel).toHaveAttribute('aria-label','タスクの記録ページ：確認する案件');
-  await panel.evaluate(el=>{el.scrollTop=el.scrollHeight;});
-  await expect(heading).toBeVisible();
-  await expect(heading).toHaveText('確認する案件');
-  await panel.locator('#closeDetail').click();
-  await expect(heading).toHaveText('タスク詳細');
-  await choose(page,'classic');
-  await expect(heading).toHaveText('タスク詳細');
-});
+for(const width of [320,390,768,1280,1440]){
+  test(`JOURNAL task record keeps its sticky case title and focus at ${width}px`,async({page})=>{
+    await bootRecordShelf(page,width);
+    await page.locator('.j-shelf-launch').click();
+    await page.locator('#jRecordShelf [data-j-shelf-task]').click();
+    const panel=page.locator('.detail-panel');
+    await expect(panel).toHaveClass(/open/);
+    const heading=panel.locator('.detail-head strong');
+    await expect(heading).toHaveText('確認する案件');
+    await expect(heading).toHaveAttribute('title','確認する案件');
+    await expect(panel).toHaveAttribute('aria-label','タスクの記録ページ：確認する案件');
+    await panel.evaluate(el=>{el.scrollTop=el.scrollHeight;});
+    await expect(heading).toBeVisible();
+    expect(await panel.locator('.detail-head').evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(2);
+    await panel.locator('#closeDetail').click();
+    await expect(heading).toHaveText('タスク詳細');
+    await choose(page,'classic');
+    await expect(heading).toHaveText('タスク詳細');
+  });
+}
