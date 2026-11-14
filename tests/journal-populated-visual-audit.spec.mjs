@@ -73,7 +73,7 @@ test('JOURNAL populated workspace visual and interaction audit',async({page})=>{
     await expect(page.locator(root)).toBeVisible();
     await page.waitForTimeout(140);
     await page.screenshot({path:'journal-audit-populated/'+width+'-'+route+'.png',animations:'disabled',fullPage:true});
-    const data=await page.evaluate(({route,width})=>{
+    const data=await page.evaluate(({route,width,root})=>{
       const rect=selector=>{const el=document.querySelector(selector);if(!el)return null;const b=el.getBoundingClientRect();return {y:Math.round(b.y),height:Math.round(b.height),width:Math.round(b.width),x:Math.round(b.x)}};
       const tasks=[...document.querySelectorAll('#boardView [data-j420-task-id]')];
       return {route,width,pageHeight:document.documentElement.scrollHeight,horizontalOverflow:document.documentElement.scrollWidth-innerWidth,
