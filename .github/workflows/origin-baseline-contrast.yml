@@ -1,0 +1,28 @@
+name: Origin baseline contrast diagnostic (temporary)
+on:
+  push:
+    branches:
+      - audit/origin-contrast-baseline-20261114
+permissions:
+  contents: read
+jobs:
+  contrast:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Verify baseline Origin contrast test without JOURNAL changes
+        run: npx playwright test tests/origin-modern-v372.spec.mjs --grep "Origin long titles and theme contrast fit" --retries=0 --reporter=line
+      - name: Save evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: origin-contrast-baseline-failure
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 2
