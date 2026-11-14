@@ -21,6 +21,9 @@ async function launchOrigin(page,room,width){
 async function createEvent(page,title,daysFromToday){
   return page.evaluate(async({title,daysFromToday})=>{
     const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    const assignee=s.users?.[0]||s.currentUser;
+    // A chosen user can be stored locally without belonging to the room's
+    // canonical assignee list; schedule creation requires an actual member.
     const start=new Date();
     start.setDate(start.getDate()+daysFromToday);
     start.setHours(10,0,0,0);
@@ -28,7 +31,7 @@ async function createEvent(page,title,daysFromToday){
     const result=await bridge.dispatch({
       type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
       values:{title,startAt:start.toISOString(),endAt:end.toISOString(),
-        assignee:s.currentUser,category:s.categories[0],
+        assignee,category:s.categories[0],
         relatedTaskId:'',location:'',memo:''}
     });
     if(!result?.ok)throw Error('schedule.create: '+result?.error);
