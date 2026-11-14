@@ -899,12 +899,12 @@ test('JOURNAL task and memo controls meet the touch target and legibility baseli
     const start=css.indexOf(selector+' {');
     assert.ok(start>=0,'missing selector '+selector);
     const rule=css.slice(start,css.indexOf('}',start));
-    const height=Number(rule.match(/min-height:\\s*(\\d+)px/)?.[1]);
+    const height=Number(rule.match(/min-height:\s*(\d+)px/)?.[1]);
     assert.ok(height>=44,selector+' target too short: '+height);
   }
-  assert.match(css,/#workMemoViewV167 \\.j425-memo-gallery \\.work-memo-body-v167 \\{[^}]*font:500 12px/s);
-  assert.match(css,/\\.j425-memo-gallery \\.work-memo-actions-v167 button\\s*\\{[^}]*font:750 12px/s);
-  assert.match(css,/#workMemoViewV167 \\.j425-memo-gallery \\.work-memo-actions-v167 button \\{\\s*min-height:44px!important;/);
+  assert.match(css,/#workMemoViewV167 \.j425-memo-gallery \.work-memo-body-v167 \{[^}]*font:500 12px/s);
+  assert.match(css,/\.j425-memo-gallery \.work-memo-actions-v167 button\s*\{[^}]*font:750 12px/s);
+  assert.match(css,/#workMemoViewV167 \.j425-memo-gallery \.work-memo-actions-v167 button \{\s*min-height:44px!important;/);
 });
 
 test('JOURNAL V586 moved calendar records expose a saved-only destination action',()=>{
