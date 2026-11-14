@@ -86,6 +86,25 @@ test('An empty pending list offers an explicit create action without inventing T
   expect(saved[0].memo||'').toBe('');
 });
 
+test('Completed history search uses matching items, not the total completed count',async({page})=>{
+  const root=await openOrigin(page,'origin-todo-context-archive-count');
+  await createTodos(page);
+  await root.locator('.origin-todo-list .todo-check').first().check();
+  await expect(root.locator('.origin-todo-list .todo-entry')).toHaveCount(2);
+  await root.locator('[data-action="todo-search-toggle"]').click();
+  await root.locator('[data-action="todo-search-history"]').click();
+  const search=root.locator('#originTodoQuery');
+  await search.fill('どのToDoにも存在しない検索語');
+  const empty=root.locator('.origin-todo-empty');
+  await expect(empty).toContainText('一致する未完了ToDoはありません');
+  await expect(empty).not.toContainText('完了履歴に');
+  await expect(empty.locator('[data-action="jump-result"]')).toHaveCount(0);
+  await search.fill('点検表を確認');
+  await expect(empty).toContainText('完了履歴に1件の一致');
+  await empty.locator('[data-action="jump-result"]').click();
+  await expect(root.locator('#originCompletedTodos .todo-text',{hasText:'点検表を確認'})).toBeFocused();
+});
+
 for(const width of [320,390]){
   test('ToDo context rows remain readable and touch-safe at '+width+'px',async({page})=>{
     const root=await openOrigin(page,'origin-todo-context-mobile-'+width,width);
