@@ -4918,6 +4918,9 @@ test('JOURNAL V596 empty desktop atelier remains actionable without a tall blank
   const height=await desk.evaluate(el=>el.getBoundingClientRect().height);
   expect(height).toBeLessThanOrEqual(400);
   const newButton=board.locator('[data-j420-new-task]');
+  // One canonical create action doubles as the sync/focus recovery target.
+  await expect(newButton).toHaveAttribute('data-j520-empty-new','');
+  await expect(board.locator('.j520-atelier-empty [data-j520-empty-new]')).toHaveCount(0);
   expect(await newButton.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
   await newButton.click();
   await expect(page.locator('#taskDialog')).toBeVisible();
