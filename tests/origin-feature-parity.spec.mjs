@@ -127,6 +127,7 @@ test('Origin favorites and ToDo ordering use the existing canonical operations',
  await form.locator('[name="title"]').fill('お気に入り対象');await root.locator('[form="editForm"]').click();
  await root.locator('#desktopNav [data-route="tasks"]').click();
  await root.locator('.item-name',{hasText:'お気に入り対象'}).click();
+ await root.locator('#sheet .origin-task-more-actions > summary').click();
  await root.locator('[data-action="task-star"]').click();
  await expect(root.locator('[data-action="task-star"]')).toHaveAttribute('aria-pressed','true');
  await root.locator('[data-action="task-copy"]').click();
