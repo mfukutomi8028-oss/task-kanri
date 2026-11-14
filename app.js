@@ -4531,7 +4531,7 @@ function journalScheduleV425(){
    return `<div class="j473-grid-gap-layer">${desktop}</div>
      <details class="j473-mobile-gaps" data-j475-mobile-date="${iso}"
        ${journalMobileGapOpenDaysV475.has(iso)?'open':''}>
-       <summary>空き時間から追加 <span>${gaps.length}枠</span></summary>
+       <summary>時刻を細かく指定${gaps.length>1?` <span>${gaps.length}候補</span>`:''}</summary>
        <div class="j473-mobile-gap-options">${mobile}</div>
        ${explicit?`<div class="j476-mobile-choice">
          <span>選択中 ${fmtTimeV463(chosen)}〜${fmtTimeV463(chosen+journalGapDurationV466*60000)}</span>
@@ -7905,7 +7905,7 @@ function journalAtelierV420(tasks){
             <button type="button" aria-pressed="true" title="アトリエ">机上</button>
             <button type="button" data-j420-layout="list" title="索引一覧">一覧</button>
             <button type="button" data-j420-layout="timeline" title="日付日誌">日誌</button>
-            <button type="button" data-j420-layout="dashboard" title="集計ダッシュボード">ダッシュボード</button>
+            <button type="button" data-j420-layout="dashboard" title="集計ダッシュボード">集計</button>
           </div>
           ${journalReservedTaskShortcutV565()}
         </div>
