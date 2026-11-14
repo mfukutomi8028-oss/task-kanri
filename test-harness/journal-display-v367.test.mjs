@@ -893,7 +893,7 @@ test('JOURNAL task and memo controls meet the touch target and legibility baseli
     '.j425-todo-detail-actions button',
     '.j425-index-bulk button',
     '.j425-preview-actions button',
-    '.j425-memo-gallery .work-memo-actions-v167 button',
+    '#workMemoViewV167 .work-memo-actions-v167 button',
     '.j425-memo-reader-actions button'
   ]){
     const start=css.indexOf(selector+' {');
@@ -904,7 +904,7 @@ test('JOURNAL task and memo controls meet the touch target and legibility baseli
   }
   assert.match(css,/#workMemoViewV167 \.j425-memo-gallery \.work-memo-body-v167 \{[^}]*font:500 12px/s);
   assert.match(css,/\.j425-memo-gallery \.work-memo-actions-v167 button\s*\{[^}]*font:750 12px/s);
-  assert.match(css,/#workMemoViewV167 \.j425-memo-gallery \.work-memo-actions-v167 button \{\s*min-height:44px!important;/);
+  assert.match(css,/#workMemoViewV167 \.work-memo-actions-v167 button\s*\{[^}]*min-width:44px!important;[^}]*min-height:44px!important;/s);
 });
 
 test('JOURNAL V586 moved calendar records expose a saved-only destination action',()=>{
