@@ -89,7 +89,8 @@ test('Origin desktop calendar offers visible hover and press feedback across con
 
 test('Origin honors reduced motion for repeated controls while keeping selected state',async({page})=>{
   const host=await openOrigin(page,1366,'reduce');
-  const day=host.locator('.origin-weekday-focus[aria-pressed="false"]').first();
+  const date=await host.locator('.origin-weekday-focus[aria-pressed="false"]').first().getAttribute('data-date');
+  const day=host.locator('.origin-weekday-focus[data-date="'+date+'"]');
   await expect(day).toBeVisible();
   const before=await appearance(day);
   const durations=before.duration.split(',').map(x=>parseFloat(x));
