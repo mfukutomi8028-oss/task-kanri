@@ -177,6 +177,31 @@
 .origin-schedule-move-actions button:hover{background:var(--hover);border-color:var(--accent)}
 .origin-schedule-move-actions button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 @media(max-width:420px){.origin-schedule-move-actions{width:100%}.origin-schedule-move-actions button:first-child{flex:1 1 190px}}
+/* Mobile calendar: week index defaults to compact; all-day view is explicit and reversible. */
+.origin-schedule-active-criteria{display:none}
+@media(max-width:770px){
+ .origin-schedule-day-head{gap:7px}
+ .origin-week-density-toggle{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:7px 10px;border:1px solid var(--accent);border-radius:9px;background:var(--paper);color:var(--accent-dark);font-size:12px;font-weight:770;white-space:nowrap;cursor:pointer}
+ .origin-week-density-toggle[aria-pressed="true"]{background:var(--accent-bg)}
+ .origin-week-density-toggle:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+ .origin-schedule-active-criteria{display:flex;align-items:center;justify-content:space-between;gap:8px;max-width:100%;min-width:0;margin:0 0 10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper);font-size:12px;color:var(--ink-soft)}
+ .origin-schedule-criteria-text{display:flex;flex:1;gap:5px;min-width:0;overflow-x:auto;scrollbar-width:thin}
+ .origin-schedule-criteria-pill{display:inline-block;max-width:220px;min-width:0;padding:5px 8px;border-radius:7px;background:var(--accent-bg);color:var(--accent-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .origin-schedule-active-criteria strong{flex:none;font-size:11px;font-weight:780;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+ .mobile-agenda[data-density="compact"]{padding:6px 13px 13px}
+ .mobile-agenda[data-density="compact"] .agenda-day{scroll-margin-top:105px}
+ .mobile-agenda .agenda-day.origin-agenda-compact-row{padding:6px 0;border-bottom:1px solid var(--line);opacity:1;outline:0}
+ .mobile-agenda .agenda-day.origin-agenda-compact-row .agenda-day-head{flex-wrap:nowrap;gap:5px;margin:0}
+ .mobile-agenda .agenda-day.origin-agenda-compact-row .origin-agenda-day-label{display:flex;flex-direction:column;align-items:stretch;justify-content:center;flex:1;gap:2px;min-width:0;min-height:48px;padding:5px 7px;border:1px solid transparent;background:transparent;border-radius:9px;color:var(--ink);text-align:left}
+ .mobile-agenda .agenda-day.origin-agenda-compact-row .origin-agenda-day-label:hover{border-color:var(--line);background:var(--hover)}
+ .mobile-agenda .agenda-day.origin-agenda-compact-row .origin-agenda-day-label:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+ .origin-agenda-day-line{display:flex;align-items:center;gap:8px;min-width:0}
+ .origin-agenda-day-line strong{font-size:13px;font-weight:790}
+ .origin-agenda-day-count{font-size:11px;color:var(--muted);white-space:nowrap}
+ .origin-agenda-day-preview{display:block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--ink-soft);font-size:11px;line-height:1.35}
+ .origin-agenda-day-preview time{color:var(--accent-dark);font-weight:780;font-variant-numeric:tabular-nums}
+ .mobile-agenda .agenda-day.origin-agenda-compact-row .agenda-day-head button[data-action="new"]{flex:none;min-height:44px;min-width:64px;padding:7px 8px}
+}
 /* Origin weekly agenda: busy dates show a compact preview with a reversible reveal. */
 .mobile-agenda .agenda-day.origin-agenda-empty{padding-top:8px;padding-bottom:8px;opacity:.88}
 .mobile-agenda .agenda-day.origin-agenda-busy .agenda-day-head{margin-bottom:8px}
@@ -1163,11 +1188,22 @@ function renderCalendar(){
    <div class="weekday-body">${events.slice(0,2).map(e=>`<button class="schedule-event ${e.time<'12:00'?'':'blue'}" data-action="open" data-kind="events" data-id="${esc(e.id)}" title="${esc(e.title)}"><div class="time">${esc(e.time)}–${esc(e.end)}</div><div class="title">${esc(e.title)}</div>${originScheduleMeta(e)}</button>`).join('')}${events.length>2?`<button type="button" class="origin-week-more" data-action="schedule-week-day" data-date="${dateKey}">残り${events.length-2}件を見る</button>`:''}<button class="weekday-add" data-action="new" data-kind="events" data-date="${dateKey}" aria-label="${dateLabel(dateKey)}に予定追加">＋</button></div>
  </section>`).join(''):'';
  const mobile=scheduleView==='week'&&calendarRenderedMobile?daysInWeek.map(({date,dateKey,events})=>{
+    const selected=dateKey===selectedDay;
+    const condensed=scheduleWeekDensity==='compact'&&!selected;
     const expanded=scheduleExpandedDays.has(dateKey),visible=expanded?events:events.slice(0,ORIGIN_MOBILE_DAY_PREVIEW);
-    return `<div class="agenda-day ${dateKey===selectedDay?'origin-selected':''} ${events.length?'':'origin-agenda-empty'} ${events.length>ORIGIN_MOBILE_DAY_PREVIEW?'origin-agenda-busy':''}" data-date="${dateKey}">
-   <div class="agenda-day-head"><button type="button" class="origin-agenda-day-label" data-action="calendar-day" data-date="${dateKey}" aria-label="${dateLabel(dateKey)}の日別表示">${date.getMonth()+1}/${date.getDate()}（${days[date.getDay()]}） ${dateKey===base?'・今日':''} <span>${events.length}件</span></button><button data-action="new" data-kind="events" data-date="${dateKey}">＋ 予定</button></div>
-   ${events.length?visible.map(e=>`<button class="agenda-entry" data-action="open" data-kind="events" data-id="${esc(e.id)}" title="${esc(e.title)}"><span class="agenda-time">${esc(e.time)}–${esc(e.end)}</span><span><span class="agenda-name">${esc(e.title)}</span>${e.location?`<span class="agenda-location">${esc(e.location)}</span>`:''}${originScheduleMeta(e)}</span></button>`).join(''):'<span class="quiet-small">予定なし</span>'}
-    ${events.length>ORIGIN_MOBILE_DAY_PREVIEW?`<button type="button" class="origin-agenda-more" data-action="schedule-day-expand" data-date="${dateKey}" aria-expanded="${expanded}" aria-label="${dateLabel(dateKey)}の予定を${expanded?'折りたたむ':'すべて表示'}">${expanded?'折りたたむ':'残り'+(events.length-ORIGIN_MOBILE_DAY_PREVIEW)+'件を見る'} ${icon(expanded?'arrowUp':'chevron',14)}</button>`:''}</div>`;
+    const dayAction=condensed?'schedule-week-focus':'calendar-day';
+    const dayActionLabel=condensed?dateLabel(dateKey)+'の予定を週間表示で開く':dateLabel(dateKey)+'の日別表示';
+    return `<div class="agenda-day ${selected?'origin-selected':''} ${events.length?'':'origin-agenda-empty'} ${events.length>ORIGIN_MOBILE_DAY_PREVIEW?'origin-agenda-busy':''} ${condensed?'origin-agenda-compact-row':''}" data-date="${dateKey}">
+     <div class="agenda-day-head">
+       <button type="button" class="origin-agenda-day-label" data-action="${dayAction}" data-date="${dateKey}" aria-label="${esc(dayActionLabel)}" ${condensed?'aria-expanded="false"':''}>
+         <span class="origin-agenda-day-line"><strong>${date.getMonth()+1}/${date.getDate()}（${days[date.getDay()]}）${dateKey===base?' · 今日':''}</strong><span class="origin-agenda-day-count">${events.length}件</span></span>
+         ${condensed&&events.length?`<span class="origin-agenda-day-preview"><time>${esc(events[0].time)}</time> ${esc(events[0].title)}</span>`:''}
+       </button>
+       <button type="button" data-action="new" data-kind="events" data-date="${dateKey}" aria-label="${esc(dateLabel(dateKey))}に予定を追加">＋ 予定</button>
+     </div>
+     ${condensed?'':events.length?visible.map(e=>`<button class="agenda-entry" data-action="open" data-kind="events" data-id="${esc(e.id)}" title="${esc(e.title)}"><span class="agenda-time">${esc(e.time)}–${esc(e.end)}</span><span><span class="agenda-name">${esc(e.title)}</span>${e.location?`<span class="agenda-location">${esc(e.location)}</span>`:''}${originScheduleMeta(e)}</span></button>`).join(''):'<span class="quiet-small">予定なし</span>'}
+     ${!condensed&&events.length>ORIGIN_MOBILE_DAY_PREVIEW?`<button type="button" class="origin-agenda-more" data-action="schedule-day-expand" data-date="${dateKey}" aria-expanded="${expanded}" aria-label="${esc(dateLabel(dateKey))}の予定を${expanded?'折りたたむ':'すべて表示'}">${expanded?'折りたたむ':'残り'+(events.length-ORIGIN_MOBILE_DAY_PREVIEW)+'件を見る'} ${icon(expanded?'arrowUp':'chevron',14)}</button>`:''}
+    </div>`;
  }).join(''):'';
  // Agenda scans scheduled days only; weekly view still shows all seven days.
  const agendaDays=scheduleView==='agenda'?daysInWeek.filter(({events})=>events.length>0):[];
@@ -1193,6 +1229,8 @@ function renderCalendar(){
      <div class="origin-schedule-day-title"><small>SELECTED DAY / 選択日</small>
        <strong>${esc(dateLabel(focusDay.dateKey))}</strong></div>
      <span class="origin-schedule-day-count" role="status">${weekFiltered?'一致'+focusEvents.length+'件 / 登録'+dayRegisteredCount+'件':dayRegisteredCount+'件'}</span>
+     <button type="button" class="origin-week-density-toggle" data-action="schedule-week-density"
+       aria-pressed="${scheduleWeekDensity==='all'}" aria-label="${scheduleWeekDensity==='all'?'週間の詳細一覧を閉じる':'週間のすべての日を展開'}">${scheduleWeekDensity==='all'?'見通しに戻す':'全日展開'}</button>
    </div>
    ${focusEvents.length?`<div class="origin-schedule-day-next-row"><span>最初の予定</span>
      <button type="button" class="origin-schedule-day-next" data-action="open" data-kind="events"
@@ -1217,7 +1255,7 @@ function renderCalendar(){
     :'<p class="origin-week-focus-empty">'+scheduleDayEmpty+'。'+(weekFiltered&&dayRegisteredCount?'検索・担当者の条件を変更してください。':'新しい予定を登録できます。')+'</p>')
    +'<button type="button" class="origin-week-focus-new" data-action="new" data-kind="events" data-date="'+focusDay.dateKey+'">'
    +icon('plus',15)+' この日に予定を追加</button></aside>':'';
- const calendarBody=scheduleView==='day'?dayView:scheduleView==='agenda'?agenda:`${weekJump}${mobileDayOverview}${calendarRenderedMobile?'<div class="mobile-agenda">'+mobile+'</div>':'<div class="origin-week-layout"><div class="origin-week-board"><div class="week-board">'+wide+'</div></div>'+weekFocus+'</div>'}${weekFooter}`;
+ const calendarBody=scheduleView==='day'?dayView:scheduleView==='agenda'?agenda:`${weekJump}${mobileDayOverview}${calendarRenderedMobile?'<div class="mobile-agenda" data-density="'+scheduleWeekDensity+'">'+mobile+'</div>':'<div class="origin-week-layout"><div class="origin-week-board"><div class="week-board">'+wide+'</div></div>'+weekFocus+'</div>'}${weekFooter}`;
  const globalPanel=scheduleSearchScope==='all'? `<section class="origin-schedule-global-results" aria-label="全期間の予定検索結果">
    <div class="origin-schedule-global-head"><strong>全期間の検索結果</strong><small role="status">${invalidSchedulePeriod?'期間を確認してください':hasGlobalCriteria?globalResults.length+'件一致'+(globalResults.length>globalVisible.length?' · '+globalVisible.length+'件表示':''):'条件を指定して検索してください'}</small></div>
    ${invalidSchedulePeriod?'<p class="origin-schedule-global-empty" role="alert">開始日が終了日より後です。期間を修正してください。</p>':
@@ -1231,6 +1269,19 @@ function renderCalendar(){
       '<p class="origin-schedule-global-empty">一致する予定はありません。検索語や担当者を変更してください。</p>'}
   </section>`:'';
 
+ const activeCriteriaText=[
+   scheduleSearchScope==='all'?'範囲：全期間':'',
+   query?'検索：'+scheduleQuery.trim():'',
+   scheduleAssignee!=='all'?'担当：'+scheduleAssignee:'',
+   scheduleSearchScope==='all'&&scheduleCategory!=='all'?'分類：'+scheduleCategory:'',
+   scheduleSearchScope==='all'&&scheduleDateFrom?'開始：'+scheduleDateFrom:'',
+   scheduleSearchScope==='all'&&scheduleDateTo?'終了：'+scheduleDateTo:''
+ ].filter(Boolean);
+ const activeCriteria=calendarRenderedMobile&&filterCount&&!scheduleFiltersOpen
+   ?`<div class="origin-schedule-active-criteria" role="status" aria-live="polite" aria-label="適用中の予定検索条件">
+     <span class="origin-schedule-criteria-text">${activeCriteriaText.map(t=>`<span class="origin-schedule-criteria-pill" title="${esc(t)}">${esc(t)}</span>`).join('')}</span>
+     <strong>${scheduleSearchScope==='all'?'全期間 '+globalResults.length+'件一致':'表示 '+shown.length+'件 / 登録'+weekAll.length+'件'}</strong>
+   </div>`:'';
  const movedSchedule=originScheduleMoveNotice
    ?data.events.find(item=>item.id===originScheduleMoveNotice.id
      &&item.date===originScheduleMoveNotice.date):null;
@@ -1269,7 +1320,7 @@ function renderCalendar(){
   ${filterCount?'<button type="button" class="origin-schedule-filter-reset" data-action="schedule-filter-reset" aria-label="予定の検索語・担当者・分類・期間などの条件を解除">条件を解除</button>':''}
 
  </div><div class="spacer"></div><button class="secondary-button" data-action="pick-today">今日に戻る</button><button class="secondary-button" data-action="new" data-kind="events">${icon('plus')} 予定を追加</button></div>
- ${movedNotice}<section class="surface">${calendarBody}<div class="calendar-footer"><span>予定を押すと詳細を確認できます</span><span>表示 ${shown.length}件 ／ この週 ${weekAll.length}件</span></div></section>${globalPanel}`;
+ ${activeCriteria}${movedNotice}<section class="surface">${calendarBody}<div class="calendar-footer"><span>予定を押すと詳細を確認できます</span><span>表示 ${shown.length}件 ／ この週 ${weekAll.length}件</span></div></section>${globalPanel}`;
 }
 const MEMO_RENDER_BATCH=24;
 const memoColors=[['ivory','白'],['lemon','レモン'],['peach','ピーチ'],['mint','ミント'],['sky','スカイ'],['lavender','ラベンダー']];function memoColor(v){return memoColors.some(x=>x[0]===v)?v:'ivory'}
@@ -2018,6 +2069,8 @@ let scheduleGlobalReturn=null;
 let scheduleGlobalResultIds=[];
 let scheduleWeekResultIds=[];
 const ORIGIN_MOBILE_DAY_PREVIEW=4;
+// Compact mobile week preserves one-day detail; expanded mode restores all seven lists.
+let scheduleWeekDensity='compact';
 const scheduleExpandedDays=new Set();
 // A transient route back to a schedule moved by a successful editor save.
 let originScheduleMoveNotice=null;
@@ -2197,8 +2250,10 @@ function revealOriginReturnCard(kind,id){
    &&calendarRenderedMobile&&scheduleWeekResultIds.includes(id)){
    // The next matching appointment may be beyond the four-card day preview.
    const event=data.events.find(item=>item.id===id);
-   if(event&&!scheduleExpandedDays.has(event.date)){
+   if(event&&(!scheduleExpandedDays.has(event.date)
+     ||(scheduleWeekDensity==='compact'&&selectedDay!==event.date))){
      scheduleExpandedDays.add(event.date);
+     if(scheduleWeekDensity==='compact')selectedDay=event.date;
      render();
    }
  }
@@ -3475,6 +3530,13 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    else scheduleExpandedDays.add(date);
    render();
    $('#workspace .origin-agenda-more[data-date="'+date+'"]')?.focus({preventScroll:true});
+   return;
+ }
+ if(a==='schedule-week-density'){
+   if(view!=='calendar'||scheduleView!=='week'||!calendarRenderedMobile)return;
+   scheduleWeekDensity=scheduleWeekDensity==='compact'?'all':'compact';
+   render();
+   $('#workspace [data-action="schedule-week-density"]')?.focus({preventScroll:true});
    return;
  }
  if(a==='schedule-week-focus'){
