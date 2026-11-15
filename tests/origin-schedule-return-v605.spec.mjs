@@ -66,8 +66,19 @@ for(const width of [320,390]){
    await expect(root.locator('#sheet')).toContainText('選択日概要から開いた予定');
    await root.locator('#sheet .sheet-close').click();
    await expect(source).toBeFocused();
-   const after=await source.evaluate(el=>el.getBoundingClientRect().top);
-   expect(Math.abs(after-originalTop)).toBeLessThanOrEqual(25);
+   const position=await source.evaluate(el=>{
+     const scroller=document.scrollingElement;
+     return {top:el.getBoundingClientRect().top,scrollY:window.scrollY,
+       maxScroll:Math.max(0,scroller.scrollHeight-window.innerHeight)};
+   });
+   // Exact positioning is possible only when the document has enough scroll
+   // range; when clamped at an edge the source must still be visible and focused.
+   const requested=position.scrollY+position.top-originalTop;
+   if(requested>=0&&requested<=position.maxScroll){
+     expect(Math.abs(position.top-originalTop)).toBeLessThanOrEqual(25);
+   }else{
+     await expect(source).toBeInViewport();
+   }
    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
  });
 }
