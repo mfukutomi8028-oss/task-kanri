@@ -10088,7 +10088,7 @@ function journalShowTaskSaveFeedbackV607(result) {
     actions.before(feedback);
   }
   const error=result?.error;
-  feedback.textContent=['revision-or-relation-mismatch','remote-content-changed','already-deleted']
+  feedback.textContent=['revision-or-relation-mismatch','remote-content-changed','already-deleted','conflict']
     .includes(error)
     ? '他の更新と競合したため保存できませんでした。入力内容はこの画面に残っています。閉じると未保存分は消えるため、必要な内容を控えてから閉じ、最新の案件を確認して編集し直してください。'
     : ['network-or-read-failure','write-not-available'].includes(error)
