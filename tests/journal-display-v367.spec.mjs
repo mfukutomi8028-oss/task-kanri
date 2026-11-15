@@ -5237,7 +5237,7 @@ test('JOURNAL V605 remote shrink of 7 to 6 cases moves focus off hidden direct-j
     expect(source).toContain('function scheduleSubscribedRender() {');
     await route.fulfill({response,body:source.replace(
       'function scheduleSubscribedRender() {',
-      'window.__journalV605RemoteRemove = id => { state.tasks=state.tasks.filter(t=>t.id!==id); scheduleSubscribedRender(); };\\nfunction scheduleSubscribedRender() {'
+      'window.__journalV605RemoteRemove = id => { state.tasks=state.tasks.filter(t=>t.id!==id); scheduleSubscribedRender(); };\nfunction scheduleSubscribedRender() {'
     )});
   });
   await page.reload({waitUntil:'domcontentloaded'});
