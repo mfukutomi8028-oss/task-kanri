@@ -10075,18 +10075,10 @@ function journalClearTaskSaveFeedbackV607() {
 }
 function journalShowTaskSaveFeedbackV607(result) {
   if(!journalTaskV411()||!elements.taskDialog?.open)return;
-  const actions=elements.taskForm?.querySelector('.dialog-actions');
-  if(!actions)return;
-  let feedback=elements.taskDialog.querySelector('[data-j607-task-save-feedback]');
-  if(!feedback){
-    feedback=document.createElement('p');
-    feedback.className='j607-task-save-feedback';
-    feedback.dataset.j607TaskSaveFeedback='';
-    feedback.setAttribute('role','alert');
-    feedback.setAttribute('aria-atomic','true');
-    feedback.tabIndex=-1;
-    actions.before(feedback);
-  }
+  // Use the stationary form alert rather than inserting nodes during
+  // an open editor; JOURNAL's dialog layout can react to DOM changes.
+  const feedback=elements.taskDialog.querySelector('[data-j607-task-save-feedback]');
+  if(!feedback)return;
   const error=result?.error;
   feedback.textContent=['revision-or-relation-mismatch','remote-content-changed','already-deleted','conflict']
     .includes(error)
