@@ -2514,6 +2514,11 @@ function openActivityDialog() {
 function journalWorkIsWaitingV591(task) {
   return /確認待|回答待|承認待|レビュー待|検収待|材料待|準備待|部品待|資料待|納品待|手配待|依頼中|対応待|外部依頼/.test(String(task?.status||''));
 }
+// An urgent due date does not make a blocked or held case immediately actionable.
+// This is presentation-only; the canonical priority, status and due date stay intact.
+function journalAtelierCanAdvanceV602(task) {
+  return !journalWorkIsWaitingV591(task)&&!/保留/.test(String(task?.status||''));
+}
 function journalWorkCueV591(task) {
   if(journalWorkIsWaitingV591(task))return {kind:'waiting',label:'返答・準備を待つ案件'};
   if(isOverdue(task))return {kind:'late',label:'期限を過ぎています'};
@@ -7825,7 +7830,8 @@ function journalAtelierV420(tasks){
   const week=t=>t.dueDate&&!isOverdue(t)&&new Date(t.dueDate+'T00:00:00').getTime()-now<=7*86400000;
   const viewFns={
     all:t=>true,
-    focus:t=>isDueToday(t)||isOverdue(t)||t.pinned||['高','緊急'].includes(t.priority),
+    focus:t=>journalAtelierCanAdvanceV602(t)
+      &&(isDueToday(t)||isOverdue(t)||t.pinned||['高','緊急'].includes(t.priority)),
     waiting:t=>waitingRe.test(t.status),
     material:t=>supplyRe.test(t.status),
     request:t=>requestRe.test(t.status),
@@ -7844,7 +7850,8 @@ function journalAtelierV420(tasks){
   const used=new Set();
   const collect=predicate=>viewTasks.filter(t=>!used.has(t.id)&&predicate(t)&&!!used.add(t.id));
   const groups=[
-    {id:'focus',roman:'Ⅰ',title:'今すぐ進める',items:collect(t=>isDueToday(t)||isOverdue(t)||t.pinned||['高','緊急'].includes(t.priority))},
+    {id:'focus',roman:'Ⅰ',title:'今すぐ進める',items:collect(t=>journalAtelierCanAdvanceV602(t)
+      &&(isDueToday(t)||isOverdue(t)||t.pinned||['高','緊急'].includes(t.priority)))},
     {id:'waiting',roman:'Ⅱ',title:'確認待ち',items:collect(t=>waitingRe.test(t.status)||requestRe.test(t.status))},
     {id:'materials',roman:'Ⅲ',title:'材料待ち',items:collect(t=>supplyRe.test(t.status))},
     {id:'week',roman:'Ⅳ',title:'今週の締切',items:collect(week)},
@@ -7864,7 +7871,8 @@ function journalAtelierV420(tasks){
   const dueSoon=tasks.filter(t=>t.dueDate&&week(t)).length;
   const activities=[...tasks].filter(t=>Number(t.updatedAt)>0).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,6);
   const briefingCandidatesV591=groups.flatMap(group=>group.items).filter(task=>!isCompletedStatus(task.status));
-  const briefingTaskV591=briefingCandidatesV591.find(task=>!journalWorkIsWaitingV591(task))||briefingCandidatesV591[0]||null;
+  const briefingTaskV591=briefingCandidatesV591.find(journalAtelierCanAdvanceV602)
+    ||briefingCandidatesV591[0]||null;
   const briefingCueV591=briefingTaskV591?journalWorkCueV591(briefingTaskV591):null;
   const briefingNextV591=briefingTaskV591?journalWorkNextV591(briefingTaskV591):null;
   if(!viewTasks.some(t=>t.id===journalAtelierSelectedV420)){

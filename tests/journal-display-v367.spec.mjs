@@ -5057,3 +5057,56 @@ test('JOURNAL V600 many waiting cases never hide the first actionable case, and 
   await expect(page.locator('#boardView .j420-atelier-stats')).toContainText('8');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V602 urgent waiting cases stay in waiting shelves while actionable cases open and return from the notebook',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    const task=(id,title,status,priority='中',extra={})=>({
+      id,title,status,priority,assignee:'JournalTester',category:'院内',
+      createdAt:now,updatedAt:now,revision:1,...extra
+    });
+    const items=[
+      ...Array.from({length:6},(_,i)=>task('j602-wait-'+i,'回答待ちの重要案件 '+i,
+        '確認待ち','緊急',{pinned:true,dueDate:'2020-01-01'})),
+      task('j602-now','着手できる資料整理','対応中','高',
+        {checklist:[{text:'差分を確認する',done:false}]}),
+      task('j602-next','着手できる連絡作業','未着手','高')
+    ];
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify(items));
+  },{room:ROOM});
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  const readyShelf=board.locator('.j420-island-focus [data-j420-task-id]');
+  const waitShelf=board.locator('.j420-island-waiting [data-j420-task-id]');
+  await expect(readyShelf).toHaveCount(2);
+  await expect(waitShelf).toHaveCount(6);
+  await expect(readyShelf.first()).toContainText('着手できる');
+  await expect(waitShelf.first()).toContainText('回答待ち');
+  await expect(board.locator('.j420-atelier-stats')).toContainText('2');
+
+  const indexToggle=board.locator('[data-j502-toggle-index]');
+  if(await indexToggle.isVisible()&&await indexToggle.getAttribute('aria-expanded')==='false')
+    await indexToggle.click();
+  await board.locator('[data-j420-view="focus"]').click();
+  await expect(board.locator('[data-j420-task-id]')).toHaveCount(2);
+  await expect(board.locator('[data-j420-view="focus"]')).toHaveAttribute('aria-pressed','true');
+
+  const open=board.locator('.j591-atelier-brief [data-j420-log-task="j602-now"]');
+  await expect(open).toBeVisible();
+  await open.click();
+  const note=board.locator('#j494AtelierNote');
+  await expect(note).toBeVisible();
+  await expect(note.locator('.j420-note-lead h4')).toHaveText('着手できる資料整理');
+  await note.locator('[data-j494-atelier-back]').click();
+  await expect(note).toBeHidden();
+  await expect(board.locator('[data-j420-task-id="j602-now"]')).toBeFocused();
+
+  for(const width of [320,390,768,1366]){
+    await page.setViewportSize({width,height:900});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  }
+});
