@@ -66,8 +66,19 @@ for(const width of [320,390]){
    await expect(root.locator('#sheet')).toContainText('選択日概要から開いた予定');
    await root.locator('#sheet .sheet-close').click();
    await expect(source).toBeFocused();
-   const after=await source.evaluate(el=>el.getBoundingClientRect().top);
-   expect(Math.abs(after-originalTop)).toBeLessThanOrEqual(25);
+   const position=await source.evaluate(el=>{
+     const scroller=document.scrollingElement;
+     return {top:el.getBoundingClientRect().top,scrollY:window.scrollY,
+       maxScroll:Math.max(0,scroller.scrollHeight-window.innerHeight)};
+   });
+   // Preserve the original coordinate when scroll range allows it; when the
+   // page edge clamps scrolling, verify the original control remains visible.
+   const desiredScroll=position.scrollY+position.top-originalTop;
+   if(desiredScroll>=0&&desiredScroll<=position.maxScroll){
+     expect(Math.abs(position.top-originalTop)).toBeLessThanOrEqual(25);
+   }else{
+     await expect(source).toBeInViewport();
+   }
    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
  });
 }
