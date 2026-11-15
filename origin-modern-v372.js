@@ -599,15 +599,16 @@ async function send(command,label,{close=false,returnToTask=false}={}){
      // Restore focus after the canonical repaint: rendering replaces the old row.
      const returning=close&&panelOpen?{kind:panelKind,id:panelId}:null;
      if(close)closePanel(true,false);
-     syncSnapshot();
+     // Carry the successful editor's local day into the canonical repaint.
+     // The same snapshot repaint still precedes every focus restoration.
      if(command.type.startsWith('schedule.')){
-       const changed=command.type==='schedule.update'
-         ?data.events.find(event=>event.id===command.id):null;
-       originScheduleMoveNotice=previousScheduleDate&&changed?.date
-         &&changed.date!==previousScheduleDate
-         ?{id:changed.id,date:changed.date,title:changed.title}:null;
+       const movedDate=String(command.values?.startAt||'').slice(0,10);
+       originScheduleMoveNotice=command.type==='schedule.update'
+         &&previousScheduleDate&&/^\d{4}-\d{2}-\d{2}$/.test(movedDate)
+         &&movedDate!==previousScheduleDate
+         ?{id:command.id,date:movedDate,title:command.values.title}:null;
      }
-     render();
+     syncSnapshot();render();
      if(returning){
        // Search matches and history position may change even when the status
        // stays the same (for example, changing a title removes a query result).
@@ -2274,13 +2275,14 @@ function restorePanelReturnPosition(kind,id){
      :anchor.surface==='week-focus'
        ?$('#workspace .origin-week-focus-entry[data-id="'+id+'"]'):null;
    const visible=button=>button&&button.getClientRects().length?button:null;
-   const target=visible(moved)||visible(original)||revealOriginReturnCard(kind,id)||revealOriginAdjacentReturnCard(kind,id);
-   if(target){
-     const row=originReturnRow(kind,target);
+   const target=revealOriginReturnCard(kind,id)||revealOriginAdjacentReturnCard(kind,id);
+   const resolved=visible(moved)||visible(original)||target;
+   if(resolved){
+     const row=originReturnRow(kind,resolved);
      const quick=anchor.action==='list-quick-edit'
        ?row?.querySelector('[data-action="list-quick-edit"]'):null;
-     (quick||target).focus({preventScroll:true});
-     const top=row?.getBoundingClientRect().top??target.getBoundingClientRect().top;
+     (quick||resolved).focus({preventScroll:true});
+     const top=row?.getBoundingClientRect().top??resolved.getBoundingClientRect().top;
      const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
      const destination=Math.max(0,Math.min(maximum,window.scrollY+top-anchor.top));
      window.scrollTo({top:destination,behavior:'instant'});
@@ -2289,14 +2291,16 @@ function restorePanelReturnPosition(kind,id){
      // When the final matching record disappears, focus a useful filter/input.
      const fallback=kind==='tasks'?$('#originTaskQuery')
        :kind==='memos'?$('#originMemoQuery')
-       :kind==='events'?(window.innerWidth<=770
-           ?$('#workspace .origin-schedule-day-overview [data-action="calendar-day"]')
-             ||$('#workspace [data-action="schedule-filter-toggle"]')
-           :$('#originDateJump'))
+       :kind==='events'?$('#workspace [data-action="schedule-filter-toggle"]')
        :$('#workspace [data-form="quick-todo"] [name="title"]');
-     if(fallback?.getClientRects().length){
-       fallback.focus({preventScroll:true});
-       fallback.scrollIntoView({block:'nearest',behavior:'instant'});
+     const effectiveFallback=kind==='events'&&!fallback?.getClientRects().length
+       ?(window.innerWidth<=770
+         ?$('#workspace .origin-schedule-day-overview [data-action="calendar-day"]')
+           ||$('#originDateJump')
+         :$('#originDateJump')):fallback;
+     if(effectiveFallback?.getClientRects().length){
+       effectiveFallback.focus({preventScroll:true});
+       effectiveFallback.scrollIntoView({block:'nearest',behavior:'instant'});
        aligned=true;
      }else restoreDetailFocus(kind,id);
    }
