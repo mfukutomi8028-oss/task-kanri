@@ -79,6 +79,11 @@ for(const width of [320,390]){
      };
    });
    await source.click();
+   console.log('ORIGIN_CLICK_DIAGNOSTIC '+JSON.stringify(await source.evaluate(el=>({
+     top:el.getBoundingClientRect().top,y:window.scrollY,
+     bodyOverflow:document.body.style.overflow,
+     parentTop:el.closest('.origin-schedule-day-overview')?.getBoundingClientRect().top
+   }))));
    await expect(root.locator('#sheet')).toContainText('選択日概要から開いた予定');
    await root.locator('#sheet .sheet-close').click();
    await expect(source).toBeFocused();
