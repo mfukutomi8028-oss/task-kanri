@@ -165,6 +165,18 @@
  .origin-schedule-day-actions button:hover,.origin-schedule-day-next:hover{border-color:var(--accent);background:var(--hover)}
  .origin-schedule-day-actions button:focus-visible,.origin-schedule-day-next:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 }
+
+/* Returning from a moved schedule keeps search state until the user chooses its destination. */
+.origin-schedule-move-notice{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;min-width:0;margin:0 0 12px;padding:12px 14px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;background:var(--paper)}
+.origin-schedule-move-copy{display:grid;gap:3px;flex:1 1 230px;min-width:0}
+.origin-schedule-move-copy strong{font-size:12px;color:var(--accent-dark);font-weight:800}
+.origin-schedule-move-copy span{font-size:13px;color:var(--ink);line-height:1.55;overflow-wrap:anywhere}
+.origin-schedule-move-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.origin-schedule-move-actions button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;gap:5px;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);font-size:12px;font-weight:780;color:var(--ink);cursor:pointer}
+.origin-schedule-move-actions [data-action="schedule-move-open"]{background:var(--accent-bg);color:var(--accent-dark);border-color:var(--accent)}
+.origin-schedule-move-actions button:hover{background:var(--hover);border-color:var(--accent)}
+.origin-schedule-move-actions button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media(max-width:420px){.origin-schedule-move-actions{width:100%}.origin-schedule-move-actions button:first-child{flex:1 1 190px}}
 /* Origin weekly agenda: busy dates show a compact preview with a reversible reveal. */
 .mobile-agenda .agenda-day.origin-agenda-empty{padding-top:8px;padding-bottom:8px;opacity:.88}
 .mobile-agenda .agenda-day.origin-agenda-busy .agenda-day-head{margin-bottom:8px}
@@ -557,6 +569,8 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  const todoReturn=close&&savingPanel&&['todo.update','todo.delete'].includes(command.type)&&!panelReturnSearch
    ?captureOriginTodoListReturn(command.id):null;
  const beforeTodo=todoReturn?data.todos.find(item=>item.id===command.id):null;
+ const previousScheduleDate=command.type==='schedule.update'&&view==='calendar'
+   ?data.events.find(event=>event.id===command.id)?.date||'':'';
  if(savingPanel)markOriginEditorSaving(true,command);
  try{
    const result=command.type.startsWith('comment.')
@@ -585,7 +599,15 @@ async function send(command,label,{close=false,returnToTask=false}={}){
      // Restore focus after the canonical repaint: rendering replaces the old row.
      const returning=close&&panelOpen?{kind:panelKind,id:panelId}:null;
      if(close)closePanel(true,false);
-     syncSnapshot();render();
+     syncSnapshot();
+     if(command.type.startsWith('schedule.')){
+       const changed=command.type==='schedule.update'
+         ?data.events.find(event=>event.id===command.id):null;
+       originScheduleMoveNotice=previousScheduleDate&&changed?.date
+         &&changed.date!==previousScheduleDate
+         ?{id:changed.id,date:changed.date,title:changed.title}:null;
+     }
+     render();
      if(returning){
        // Search matches and history position may change even when the status
        // stays the same (for example, changing a title removes a query result).
@@ -1207,6 +1229,21 @@ function renderCalendar(){
        </article>`).join('')}</div>${globalResults.length>globalVisible.length?`<button type="button" class="origin-schedule-global-more" data-action="schedule-global-more">さらに${Math.min(30,globalResults.length-globalVisible.length)}件表示</button>`:''}`:
       '<p class="origin-schedule-global-empty">一致する予定はありません。検索語や担当者を変更してください。</p>'}
   </section>`:'';
+
+ const movedSchedule=originScheduleMoveNotice
+   ?data.events.find(item=>item.id===originScheduleMoveNotice.id
+     &&item.date===originScheduleMoveNotice.date):null;
+ const moveClearsFilters=scheduleSearchScope!=='week'
+   ||Boolean(scheduleQuery.trim())||scheduleAssignee!=='all';
+ const movedNotice=movedSchedule?`<section class="origin-schedule-move-notice"
+   role="status" aria-live="polite" aria-label="更新した予定の移動先">
+   <div class="origin-schedule-move-copy"><strong>予定の日付を変更しました</strong>
+     <span>${esc(movedSchedule.title)} · ${esc(dateLabel(movedSchedule.date))}</span></div>
+   <div class="origin-schedule-move-actions">
+     <button type="button" data-action="schedule-move-open">${icon('calendar',15)} 変更先を見る${moveClearsFilters?'（検索条件を解除）':''}</button>
+     <button type="button" data-action="schedule-move-dismiss">閉じる</button>
+   </div>
+ </section>`:'';
  return `${head('TIME · CALENDAR','予定を見渡す','週全体と選択日の予定を、用途に合わせて切り替えられます。',`<span>今週 ${weekAll.length}件</span>`)}
  <div class="work-toolbar origin-schedule-toolbar"><div class="calendar-tools"><button data-action="week-prev" aria-label="前の週">${icon('left')}</button><span class="period">${rangeLabel(selectedDay)}</span><button data-action="week-next" aria-label="次の週">${icon('right')}</button></div><div class="origin-calendar-controls">
   <input type="date" id="originDateJump" aria-label="表示する日付を選ぶ" value="${selectedDay}"/>
@@ -1231,7 +1268,7 @@ function renderCalendar(){
   ${filterCount?'<button type="button" class="origin-schedule-filter-reset" data-action="schedule-filter-reset" aria-label="予定の検索語・担当者・分類・期間などの条件を解除">条件を解除</button>':''}
 
  </div><div class="spacer"></div><button class="secondary-button" data-action="pick-today">今日に戻る</button><button class="secondary-button" data-action="new" data-kind="events">${icon('plus')} 予定を追加</button></div>
- <section class="surface">${calendarBody}<div class="calendar-footer"><span>予定を押すと詳細を確認できます</span><span>表示 ${shown.length}件 ／ この週 ${weekAll.length}件</span></div></section>${globalPanel}`;
+ ${movedNotice}<section class="surface">${calendarBody}<div class="calendar-footer"><span>予定を押すと詳細を確認できます</span><span>表示 ${shown.length}件 ／ この週 ${weekAll.length}件</span></div></section>${globalPanel}`;
 }
 const MEMO_RENDER_BATCH=24;
 const memoColors=[['ivory','白'],['lemon','レモン'],['peach','ピーチ'],['mint','ミント'],['sky','スカイ'],['lavender','ラベンダー']];function memoColor(v){return memoColors.some(x=>x[0]===v)?v:'ivory'}
@@ -1981,6 +2018,8 @@ let scheduleGlobalResultIds=[];
 let scheduleWeekResultIds=[];
 const ORIGIN_MOBILE_DAY_PREVIEW=4;
 const scheduleExpandedDays=new Set();
+// A transient route back to a schedule moved by a successful editor save.
+let originScheduleMoveNotice=null;
 let calendarRenderedMobile=window.innerWidth<=770;
 let detailSequence=null;
 // Linked task/event browsing is local to this open inspector, never persisted.
@@ -2081,12 +2120,15 @@ function originReturnRow(kind,card){
 function captureOriginReturnAnchor(kind,id,trigger){
  if(!((view==='tasks'&&kind==='tasks')||(view==='notes'&&kind==='memos')
    ||(view==='todos'&&kind==='todos')||(view==='calendar'&&kind==='events')))return null;
- const card=originReturnCard(kind,id);
+ const surface=kind==='events'&&trigger?.closest('.origin-schedule-day-overview')?'day-overview'
+   :kind==='events'&&trigger?.closest('.origin-week-focus')?'week-focus':'';
+ // Preserve the actual clicked source rather than another card for the same event.
+ const card=surface?trigger:originReturnCard(kind,id);
  if(!card||!trigger)return null;
  const row=originReturnRow(kind,card);
  const sameRow=Boolean(row&&row===originReturnRow(kind,trigger));
  if(!sameRow&&!card.contains(trigger)&&card!==trigger)return null;
- return row?{view,kind,id,top:row.getBoundingClientRect().top,
+ return row?{view,kind,id,top:row.getBoundingClientRect().top,surface,
    action:trigger.dataset.action==='list-quick-edit'?'list-quick-edit':'open'}:null;
 }
 // Find a nearby *still matching* result in the list order captured on opening
@@ -2225,7 +2267,14 @@ function restorePanelReturnPosition(kind,id){
    if(target)focusSearchResult(target);
    else search.focus({preventScroll:true});
  }else if(anchor&&anchor.view===view&&anchor.kind===kind){
-   const target=revealOriginReturnCard(kind,id)||revealOriginAdjacentReturnCard(kind,id);
+   const moved=kind==='events'&&originScheduleMoveNotice?.id===id
+     ?$('#workspace .origin-schedule-move-notice [data-action="schedule-move-open"]'):null;
+   const original=anchor.surface==='day-overview'
+     ?$('#workspace .origin-schedule-day-overview .origin-schedule-day-next[data-id="'+id+'"]')
+     :anchor.surface==='week-focus'
+       ?$('#workspace .origin-week-focus-entry[data-id="'+id+'"]'):null;
+   const visible=button=>button&&button.getClientRects().length?button:null;
+   const target=visible(moved)||visible(original)||revealOriginReturnCard(kind,id)||revealOriginAdjacentReturnCard(kind,id);
    if(target){
      const row=originReturnRow(kind,target);
      const quick=anchor.action==='list-quick-edit'
@@ -2240,7 +2289,10 @@ function restorePanelReturnPosition(kind,id){
      // When the final matching record disappears, focus a useful filter/input.
      const fallback=kind==='tasks'?$('#originTaskQuery')
        :kind==='memos'?$('#originMemoQuery')
-       :kind==='events'?$('#workspace [data-action="schedule-filter-toggle"]')
+       :kind==='events'?(window.innerWidth<=770
+           ?$('#workspace .origin-schedule-day-overview [data-action="calendar-day"]')
+             ||$('#workspace [data-action="schedule-filter-toggle"]')
+           :$('#originDateJump'))
        :$('#workspace [data-form="quick-todo"] [name="title"]');
      if(fallback?.getClientRects().length){
        fallback.focus({preventScroll:true});
@@ -2768,6 +2820,7 @@ function handleRoute(route){
  panelReturnAnchor=null;detailTrail=[];scheduleGlobalReturn=null;
  if(route===view){viewScrollPositions[view]=0;window.scrollTo({top:0,behavior:'instant'});return}
  viewScrollPositions[view]=window.scrollY;
+ if(route!=='calendar')originScheduleMoveNotice=null;
  detailSequence=null;panelReturnSearch=null;view=route;selectedBulk.clear();closeSearch(true);
  $('#createMenu').hidden=true;
  render();
@@ -3465,6 +3518,25 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    captureDetailSequence(kind,id,el);
    if(a==='search-open')closeSearch();
    return panelShow(kind,id,false);
+ }
+ if(a==='schedule-move-dismiss'){
+   originScheduleMoveNotice=null;render();
+   $('#originDateJump')?.focus({preventScroll:true});
+   return;
+ }
+ if(a==='schedule-move-open'){
+   const changed=originScheduleMoveNotice
+     ?data.events.find(item=>item.id===originScheduleMoveNotice.id):null;
+   if(!changed){originScheduleMoveNotice=null;render();return notify('移動先の予定が見つかりません。検索し直してください。')}
+   // Only the explicit jump may clear a query that would hide the moved item.
+   selectedDay=changed.date;scheduleView='day';scheduleSearchScope='week';
+   scheduleQuery='';scheduleAssignee='all';scheduleFiltersOpen=false;scheduleSearchLimit=30;
+   originScheduleMoveNotice=null;render();
+   const target=Array.from($('#workspace').querySelectorAll('.origin-day-entry[data-id]'))
+     .find(button=>button.dataset.id===changed.id);
+   (target||$('#originDateJump'))?.focus({preventScroll:true});
+   target?.scrollIntoView({block:'center',behavior:'instant'});
+   return;
  }
  if(a==='close')return closePanel();
  if(a==='origin-edit-back-detail')return returnOriginEditorToDetail();
