@@ -1894,3 +1894,19 @@ test('JOURNAL V595 unifies paper chapter navigation and minimal motion without c
   assert.match(css,/\.j420-note-actions button \{[^}]*min-height:44px/s);
   assert.match(css,/@media\s*\(prefers-reduced-motion:\s*reduce\)/);
 });
+
+
+test('JOURNAL desk actionability distinguishes waiting and held cases without losing urgent records',()=>{
+  const app=read('app.js');
+  const start=app.indexOf('function journalWorkIsWaitingV591(');
+  const end=app.indexOf('function journalWorkCueV591(',start);
+  assert.ok(start>0&&end>start,'canonical JOURNAL work-state helpers exist');
+  const owner=app.slice(start,end);
+  assert.match(owner,/function journalAtelierCanAdvanceV602\(task\)/);
+  const isActionable=runInNewContext(owner+'\njournalAtelierCanAdvanceV602;', {});
+  for(const [status,expected] of [
+    ['未着手',true],['対応中',true],['確認待ち',false],
+    ['回答待ち',false],['承認待ち',false],['材料待ち',false],
+    ['依頼中',false],['保留',false]
+  ])assert.equal(isActionable({status,priority:'緊急',pinned:true,dueDate:'2020-01-01'}),expected,status);
+});
