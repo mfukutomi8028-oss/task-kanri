@@ -5046,6 +5046,9 @@ test('JOURNAL V600 many waiting cases never hide the first actionable case, and 
   const featured=today.locator('.j591-featured-work');
   await expect(featured).toContainText('今すぐ進められる案件');
   await expect(featured).toContainText('依頼書を送る');
+  await page.setViewportSize({width:320,height:900});
+  await expect(featured).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   await expect(today.locator('[data-j600-hidden-work]')).toContainText('さらに2件');
   const more=today.locator('[data-j600-hidden-work] [data-j420-to-tasks]');
   await expect(more).toBeVisible();
