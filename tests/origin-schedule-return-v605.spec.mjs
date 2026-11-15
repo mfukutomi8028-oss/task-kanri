@@ -60,13 +60,20 @@ for(const width of [320,390]){
    await root.locator('#mobileNav [data-route="calendar"]').click();
    const overview=root.locator('.origin-schedule-day-overview');
    const source=overview.locator('.origin-schedule-day-next[data-id="'+id+'"]');
-   await source.scrollIntoViewIfNeeded();
+   // The 320px fixed mobile navigation can overlap an entry at the bottom.
+   // Stabilize the actionable viewport *before* measuring the return anchor:
+   // Playwright is otherwise allowed to scroll just before dispatching click.
+   await source.evaluate(el=>el.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'}));
+   await expect(source).toBeInViewport();
    const originalTop=await source.evaluate(el=>el.getBoundingClientRect().top);
    await source.click();
+   const clickTop=await source.evaluate(el=>el.getBoundingClientRect().top);
+   expect(Math.abs(clickTop-originalTop)).toBeLessThanOrEqual(2);
    await expect(root.locator('#sheet')).toContainText('選択日概要から開いた予定');
    await root.locator('#sheet .sheet-close').click();
    await expect(source).toBeFocused();
    const after=await source.evaluate(el=>el.getBoundingClientRect().top);
+   // Keep the strict return-position assertion: do not mask real drift.
    expect(Math.abs(after-originalTop)).toBeLessThanOrEqual(25);
    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
  });
