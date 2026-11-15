@@ -55,6 +55,8 @@ test('Origin selection and keyboard focus remain perceivable without hover',asyn
     bg:getComputedStyle(el).backgroundColor,color:getComputedStyle(el).color
   }));
   expect(selected).not.toEqual(idle);
+  // Enter keyboard modality before testing :focus-visible (not pointer focus).
+  await page.keyboard.press('Tab');
   await unselected.focus();
   const focus=await unselected.evaluate(el=>getComputedStyle(el).outlineStyle);
   expect(focus).not.toBe('none');
