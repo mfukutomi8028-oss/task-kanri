@@ -53,8 +53,16 @@ test('Origin related task search keeps selection, and unlink changes only the sc
   // A generic first match selects the hidden PC calendar button on phones.
   // Click the displayed mobile agenda record to test the user's actual path.
   await expect(host.locator('.week-board')).toBeHidden();
-  const savedDate=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot()
-    .schedules.find(item=>item.id===id)?.date,saved);
+  // Canonical schedules expose startAt; Origin derives the displayed
+  // calendar day from that timestamp in local time.
+  const savedDate=await page.evaluate(id=>{
+    const start=window.WorkBoardPaletteBridge.readSnapshot()
+      .schedules.find(item=>item.id===id)?.startAt;
+    if(!start)return '';
+    const d=new Date(start);
+    return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),
+      String(d.getDate()).padStart(2,'0')].join('-');
+  },saved);
   expect(savedDate).toBeTruthy();
   const dateRow=host.locator('.mobile-agenda .agenda-day[data-date="'+savedDate+'"]');
   await expect(dateRow).toBeVisible();
