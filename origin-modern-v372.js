@@ -261,15 +261,7 @@
 .origin-tool-list{display:grid;gap:8px}
 .origin-tool-row{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);text-align:left}
 .origin-tool-row span{min-width:0;overflow-wrap:anywhere}.origin-tool-row small{display:block;color:var(--muted);margin-top:6px}
-.origin-tool-search{margin-bottom:16px}.origin-layout-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:0}
-.origin-task-command{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px;margin:0 0 12px;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}
-.origin-task-command .origin-task-tools{margin:0;min-width:0;gap:8px}
-.origin-task-command .origin-task-tools>input{min-width:0;max-width:420px;min-height:44px;background:var(--bg);font-size:14px}
-.origin-task-command .origin-task-tools select,.origin-task-command .origin-density-button{min-height:44px}
-.origin-task-command .origin-layout-controls{margin:0;justify-content:flex-end;gap:8px;min-width:0}
-.origin-task-command .origin-layout-controls .tab-pills{background:var(--bg)}
-@media(max-width:1050px){.origin-task-command{grid-template-columns:minmax(0,1fr)}.origin-task-command .origin-layout-controls{justify-content:flex-start}}
-@media(max-width:770px){.origin-task-command{padding:10px 11px;gap:8px}.origin-task-command .origin-task-tools>input{flex:1 1 175px;min-width:0;max-width:none;font-size:16px}.origin-task-command .origin-layout-controls{justify-content:space-between;flex-wrap:wrap}}
+.origin-tool-search{margin-bottom:16px}.origin-layout-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:0}\n.origin-task-command{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px;margin:0 0 12px;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}\n.origin-task-command .origin-task-tools{margin:0;min-width:0;gap:8px}\n.origin-task-command .origin-task-tools>input{min-width:0;max-width:420px;min-height:44px;background:var(--bg);font-size:14px}\n.origin-task-command .origin-task-tools select,.origin-task-command .origin-density-button{min-height:44px}\n.origin-task-command .origin-layout-controls{margin:0;justify-content:flex-end;gap:8px;min-width:0}\n.origin-task-command .origin-layout-controls .tab-pills{background:var(--bg)}\n@media(max-width:1050px){.origin-task-command{grid-template-columns:minmax(0,1fr)}.origin-task-command .origin-layout-controls{justify-content:flex-start}}\n@media(max-width:770px){.origin-task-command{padding:10px 11px;gap:8px}.origin-task-command .origin-task-tools>input{flex:1 1 175px;min-width:0;max-width:none;font-size:16px}.origin-task-command .origin-layout-controls{justify-content:space-between;flex-wrap:wrap}}
 .origin-stats-scroll{overflow:auto}.origin-stats{width:100%;border-collapse:collapse;font-size:13px}.origin-stats th,.origin-stats td{text-align:left;padding:12px;border-bottom:1px solid var(--line)}
 .origin-task-layout-board{display:flex;overflow-x:auto;gap:14px;padding:14px;background:var(--bg)}
 .origin-task-layout-board>.origin-task-group{flex:0 0 292px;max-width:100%;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper)}
