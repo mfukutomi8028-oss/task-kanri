@@ -113,3 +113,85 @@ for(const width of [320,390]){
     await root.locator('#sheet .sheet-close').click();
   });
 }
+
+
+test('Today action hub opens task, next schedule and personal ToDo directly',async({page})=>{
+  test.setTimeout(90000);
+  const root=await launch(page,'origin-today-hub-three-actions');
+  const created=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    const today=new Date(),format=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+    const due=new Date(today);due.setDate(due.getDate()-1);
+    const task=await bridge.dispatch({
+      type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,
+      assignee:s.currentUser,status:s.statuses.includes('未着手')?'未着手':s.statuses[0],
+      category:s.categories[0],title:'起点：期限超過の設備点検',description:'設備点検の記録',
+      requester:'',tags:'',checklist:'',checklistDone:[],priority:'高',
+      dueDate:format(due),dueTime:'',pinned:false
+    });
+    if(!task?.ok)throw Error('task.create '+task?.error);
+    const start=new Date(today);start.setHours(17,0,0,0);
+    const end=new Date(start);end.setHours(18,0,0,0);
+    const event=await bridge.dispatch({type:'schedule.create',revision:0,ownerRoom:s.roomId,
+      ownerUser:s.currentUser,values:{title:'起点：夕方の定例会議',
+      startAt:start.toISOString(),endAt:end.toISOString(),assignee:s.currentUser,
+      category:s.categories[0],relatedTaskId:'',location:'会議室',memo:''}});
+    if(!event?.ok)throw Error('schedule.create '+event?.error);
+    const todo=await bridge.dispatch({type:'todo.create',text:'起点：明細を確認',memo:'個人作業'});
+    if(!todo?.ok)throw Error('todo.create '+todo?.error);
+    return {tasks:bridge.readSnapshot().tasks.length,schedules:bridge.readSnapshot().schedules.length,
+      todos:bridge.readSnapshot().todos.length};
+  });
+  expect(created).toEqual({tasks:1,schedules:1,todos:1});
+  const hub=root.locator('.origin-day-briefing');
+  const lanes=hub.locator('.origin-day-briefing-tile');
+  await expect(lanes).toHaveCount(3);
+  for(const [kind,title] of [
+    ['tasks','起点：期限超過の設備点検'],
+    ['events','起点：夕方の定例会議'],
+    ['todos','起点：明細を確認']
+  ]){
+    const item=hub.locator('.origin-day-briefing-tile[data-kind="'+kind+'"]');
+    await expect(item).toContainText(title);
+    await expect(item).toHaveAttribute('data-action','open');
+    await item.click();
+    await expect(root.locator('#sheet')).toContainText(title);
+    await root.locator('#sheet .sheet-close').click();
+  }
+  await expect(hub.locator('.origin-day-metric[data-kind="tasks"]')).toContainText('1');
+  await expect(hub.locator('.origin-day-metric[data-kind="events"]')).toContainText('1');
+  await expect(hub.locator('.origin-day-metric[data-kind="todos"]')).toContainText('1');
+});
+
+test('Today action hub offers each creation action when no work exists',async({page})=>{
+  test.setTimeout(90000);
+  const root=await launch(page,'origin-today-hub-empty');
+  const lanes=root.locator('.origin-day-briefing-tile');
+  await expect(lanes).toHaveCount(3);
+  for(const kind of ['tasks','events','todos']){
+    const tile=root.locator('.origin-day-briefing-tile[data-kind="'+kind+'"]');
+    await expect(tile).toHaveAttribute('data-action','new');
+    await tile.click();
+    await expect(root.locator('#editForm')).toHaveAttribute('data-kind',kind);
+    await root.locator('#sheet .sheet-close').click();
+  }
+  await expect(root.locator('.origin-day-briefing [data-action="open"]')).toHaveCount(0);
+});
+
+for(const width of [320,390,1280]){
+  test('Today action hub keeps three clear keyboard and touch targets at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    const root=await launch(page,'origin-today-hub-layout-'+width,width);
+    const cards=root.locator('.origin-day-briefing-tile');
+    await expect(cards).toHaveCount(3);
+    for(const card of await cards.all()){
+      const rect=await card.boundingBox();
+      expect(rect.width).toBeGreaterThanOrEqual(44);
+      expect(rect.height).toBeGreaterThanOrEqual(44);
+      expect(rect.width).toBeLessThanOrEqual(width);
+      await card.focus();
+      expect(await card.evaluate(el=>getComputedStyle(el).outlineStyle)).not.toBe('none');
+    }
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
+  });
+}
