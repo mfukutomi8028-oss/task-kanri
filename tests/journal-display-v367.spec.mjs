@@ -5332,6 +5332,20 @@ test('JOURNAL V607 stale edit of case 18/30 keeps the draft and gives durable co
   const current=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.id==='j607-case-18'));
   expect(current.title).toBe('J607 別の利用者が更新した件名');
   expect(current.revision).toBe(2);
+  // The existing dialog lifecycle protects unsaved edits with a native
+  // discard confirmation. A rejected confirmation must keep the draft.
+  page.once('dialog',async confirmation=>{
+    expect(confirmation.type()).toBe('confirm');
+    await confirmation.dismiss();
+  });
+  await dialog.locator('#closeTaskDialog').click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#taskTitle')).toHaveValue('J607 自分が編集中の件名');
+  // Explicitly discard the failed draft, then return to the neighboring note.
+  page.once('dialog',async confirmation=>{
+    expect(confirmation.type()).toBe('confirm');
+    await confirmation.accept();
+  });
   await dialog.locator('#closeTaskDialog').click();
   await expect(dialog).toBeHidden();
   await expect(board.locator('[data-j420-view="focus"]')).toHaveAttribute('aria-pressed','true');
