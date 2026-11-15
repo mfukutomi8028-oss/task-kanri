@@ -7322,10 +7322,15 @@ function journalOpenTaskNoteV519(id,layout,action,source,edit=false){
   const inlineReader=layout==='list'
     &&journalTaskInlineSelectedV491===id
     &&Boolean(source.closest('.j425-task-preview.j491-inline-detail'));
+  // The desk note may need to continue on the next filtered case after a
+  // committed edit. Remember only this view state, never duplicate task data.
+  const atelierReader=layout==='board'&&Boolean(source.closest('#j494AtelierNote'))
+    &&(journalAtelierInlineMediaV494.matches
+      ?journalAtelierInlineOpenV494:journalAtelierDeskNoteOpenV562);
   // V558: keep the opening button's relative viewport position when the
   // mobile width or height changes while the canonical panel is open.
   journalTaskNoteReturnV519={id,selected:id,order,layout,action,top,rowTop,
-    width:window.innerWidth,viewportHeight:window.innerHeight,inlineReader};
+    width:window.innerWidth,viewportHeight:window.innerHeight,inlineReader,atelierReader};
   // Only one return owner may be pending for the shared task detail panel.
   journalTimelineReturnTaskV494='';
   journalTimelineReturnDateV504='';
@@ -7365,7 +7370,9 @@ function journalRestoreTaskNoteV519(){
     ?view.querySelector('.j425-task-preview.j491-inline-detail'):null;
   const changedHeading=continuedReader&&selected!==origin.id
     ?continuedReader.querySelector('.j425-index-preview h3'):null;
-  const target=(button?.getClientRects().length?button:null)||changedHeading||row||nearRow||
+  const continuedDeskNote=board&&origin.atelierReader&&selected!==origin.id
+    ?view.querySelector('#j494AtelierNote:not([hidden]) .j420-note-lead h4'):null;
+  const target=(button?.getClientRects().length?button:null)||continuedDeskNote||changedHeading||row||nearRow||
     document.getElementById('wbJournalSearchV393')||
     view.querySelector(board?'[data-j420-new-task]':'[data-j425-new-task]');
   if(!target)return;
@@ -7754,6 +7761,13 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
       }
     }
     let target=emptyTargetV546||emptyTargetV552||journalTaskSyncLocateV530(root,snapshot.focus);
+    // V605: an open note can shrink from seven cases to six. The direct
+    // picker is then hidden; never restore focus to that inaccessible control.
+    if(target?.matches('[data-j603-case-jump]')&&!target.getClientRects().length){
+      target=root.querySelector('#j494AtelierNote.j494-inline-note .j420-note-lead h4')
+        ||root.querySelector('[data-j553-case-step="1"]:not(:disabled)')
+        ||root.querySelector('[data-j420-search]');
+    }
     if(target?.matches('[data-j540-case-step]')&&target.disabled){
       // A subscription may leave the reader at the first/last visible case.
       // Never put keyboard focus on a now-disabled navigation button.
@@ -7900,9 +7914,14 @@ function journalAtelierV420(tasks){
       :returnAnchorV538
         ?journalNearestSurvivingTaskV532(returnAnchorV538,viewTasks.map(t=>t.id))
         :viewTasks[0]?.id||'';
-    journalAtelierDeskNoteOpenV562=false;
+    // V605: a local edit can move a case out of its active index.
+    // Continue the same notebook on the nearest surviving case, just as
+    // subscribed updates and the list reader already do.
+    const continueNoteV605=Boolean(returnAnchorV538?.atelierReader&&journalAtelierSelectedV420);
+    journalAtelierDeskNoteOpenV562=continueNoteV605&&!journalAtelierInlineMediaV494.matches;
     journalAtelierInlineOpenV494=Boolean(syncAnchorV530?.atelierInlineReaderV552
-      &&journalAtelierSelectedV420);
+      &&journalAtelierSelectedV420)
+      ||Boolean(continueNoteV605&&journalAtelierInlineMediaV494.matches);
     journalAtelierReturnAnchorV516=null;
   }
   const chosen=viewTasks.find(t=>t.id===journalAtelierSelectedV420);

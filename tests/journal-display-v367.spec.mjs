@@ -5170,3 +5170,96 @@ test('JOURNAL V603 phone notebook jumps directly to case 24 and returns to its s
       .toBeLessThanOrEqual(2);
   }
 });
+
+
+test('JOURNAL V605 a saved priority edit that leaves Today focus keeps the adjacent phone note open',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    const tasks=['A','B','C'].map((suffix,i)=>({
+      id:'j605-edit-'+suffix,title:'JOURNAL V605 対象 '+suffix,
+      status:'対応中',priority:'高',assignee:'JournalTester',category:'院内',
+      tags:[],comments:[],checklist:[],pinned:false,
+      createdAt:now-i,updatedAt:now-i,revision:1
+    }));
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify(tasks));
+  },{room:ROOM});
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  const toggle=board.locator('[data-j502-toggle-index]');
+  if(await toggle.getAttribute('aria-expanded')==='false')await toggle.click();
+  await board.locator('[data-j420-view="focus"]').click();
+  const cards=board.locator('[data-j420-task-id]');
+  await expect(cards).toHaveCount(3);
+  const editedId=await cards.nth(1).getAttribute('data-j420-task-id');
+  const nextTitle=await cards.nth(2).locator('.j420-card-content strong').innerText();
+  await cards.nth(1).click();
+  const note=board.locator('#j494AtelierNote');
+  await expect(note).toBeVisible();
+  await note.locator('[data-j420-note-edit]').click();
+  const dialog=page.locator('#taskDialog');
+  await expect(dialog).toBeVisible();
+  await dialog.locator('#taskPriority').selectOption('中');
+  await dialog.locator('#taskForm button[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  await expect(cards).toHaveCount(2);
+  await expect(board.locator('[data-j420-task-id="'+editedId+'"]')).toHaveCount(0);
+  await expect(board.locator('[data-j420-view="focus"]')).toHaveAttribute('aria-pressed','true');
+  await expect(note).toBeVisible();
+  await expect(note).toHaveClass(/j494-inline-note/);
+  await expect(note.locator('.j420-note-lead h4')).toHaveText(nextTitle);
+  await expect(note.locator('.j420-note-lead h4')).toBeFocused();
+  await expect(note.locator('[data-j553-case-position]')).toHaveText('2 / 2 件');
+  await note.locator('[data-j494-atelier-back]').click();
+  await expect(note).toBeHidden();
+  await expect(cards.nth(1)).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
+
+test('JOURNAL V605 remote shrink of 7 to 6 cases moves focus off hidden direct-jump picker',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    const tasks=Array.from({length:7},(_,i)=>({
+      id:'j605-sync-'+i,title:'JOURNAL V605 同期 '+i,
+      status:'対応中',priority:'中',assignee:'JournalTester',category:'院内',
+      tags:[],comments:[],checklist:[],pinned:false,
+      createdAt:now-i,updatedAt:now-i,revision:1
+    }));
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify(tasks));
+  },{room:ROOM});
+  await boot(page,390);
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch(),source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      'window.__journalV605RemoteRemove = id => { state.tasks=state.tasks.filter(t=>t.id!==id); scheduleSubscribedRender(); };\nfunction scheduleSubscribedRender() {'
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),cards=board.locator('[data-j420-task-id]');
+  await expect(cards).toHaveCount(7);
+  const removeId=await cards.last().getAttribute('data-j420-task-id');
+  await cards.first().click();
+  const note=board.locator('#j494AtelierNote.j494-inline-note'),picker=note.locator('[data-j603-case-jump]');
+  await expect(picker).toBeVisible();
+  await picker.focus();
+  await expect(picker).toBeFocused();
+  await page.evaluate(id=>window.__journalV605RemoteRemove(id),removeId);
+  await expect(cards).toHaveCount(6);
+  await expect(note).toBeVisible();
+  await expect(note.locator('.j603-case-jump')).toBeHidden();
+  await expect(note.locator('.j420-note-lead h4')).toBeFocused();
+  await expect(note.locator('[data-j553-case-position]')).toHaveText('1 / 6 件');
+  await note.locator('[data-j553-case-step="1"]').click();
+  await expect(note.locator('[data-j553-case-position]')).toHaveText('2 / 6 件');
+  await page.setViewportSize({width:320,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
