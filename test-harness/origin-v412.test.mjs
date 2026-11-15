@@ -302,7 +302,7 @@ test('Origin shared task, ToDo and schedule controls use readable typography and
  ".status-marker .label{font-size:11px",
  ".select-small{min-height:44px",
  ".section-head h2{font-size:16px",
- ".tab-pills button{font-size:12px;font-weight:760;min-height:40px",
+ ".tab-pills button{font-size:12px;font-weight:760;min-height:44px",
  "background:var(--accent);border-radius:10px;color:var(--on-accent)",
  ".day-chip.active{background:var(--accent);border-color:var(--accent);color:var(--on-accent)",
  ".origin-memo-colors span{font-size:11px;color:var(--ink-soft)",
