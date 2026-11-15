@@ -7711,3 +7711,29 @@ html[data-wb-display="journal"] .j600-hidden-work button:focus-visible {
     outline:2px solid var(--j-accent);outline-offset:3px;
   }
 }
+
+/* JOURNAL V607: the canonical editor keeps a durable paper-margin failure
+   note. The shared save flow and other display themes remain unchanged. */
+html[data-wb-display="journal"] #taskDialog .j607-task-save-feedback:not([hidden]) {
+  box-sizing:border-box;
+  display:block;
+  margin:10px 18px 0;
+  padding:11px 13px;
+  border:1px solid var(--j-border);
+  border-inline-start:4px solid var(--j-rose);
+  border-radius:5px;
+  background:var(--j-paper-alt);
+  color:var(--j-ink);
+  font:600 13px/1.7 var(--j-text);
+  overflow-wrap:anywhere;
+}
+html[data-wb-display="journal"] #taskDialog .j607-task-save-feedback:focus {
+  outline:2px solid var(--j-accent);
+  outline-offset:2px;
+}
+@media(max-width:760px){
+  html[data-wb-display="journal"] #taskDialog .j607-task-save-feedback:not([hidden]){
+    margin:10px 12px 0;
+    padding:11px 12px;
+  }
+}
