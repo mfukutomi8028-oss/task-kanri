@@ -7686,3 +7686,28 @@ html[data-wb-display="journal"] .j600-hidden-work button:focus-visible {
 @media(max-width:390px) {
   html[data-wb-display="journal"] .j600-hidden-work button {width:100%}
 }
+
+/* JOURNAL V603: a compact paper index for jumping between 7+ open cases.
+   The native picker preserves mobile keyboard and screen-reader operation. */
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #boardView #j494AtelierNote.j494-inline-note
+  .j553-atelier-pager .j603-case-jump:not([hidden]) {
+    box-sizing:border-box;grid-column:1/-1;display:grid;
+    grid-template-columns:minmax(0,1fr);gap:5px;min-width:0;
+    padding:9px 0 0;margin:2px 0 0;
+    border-top:1px dashed var(--j-border);
+    color:var(--j-muted);font:700 12px/1.5 var(--j-text);
+  }
+  html[data-wb-display="journal"] #boardView #j494AtelierNote.j494-inline-note
+  .j603-case-jump select {
+    box-sizing:border-box;width:100%;min-width:0;min-height:44px;
+    padding:9px 12px;border:1px solid var(--j-border);
+    border-radius:5px;background:var(--j-soft);color:var(--j-accent);
+    font:700 13px/1.4 var(--j-text);
+    text-overflow:ellipsis;cursor:pointer;
+  }
+  html[data-wb-display="journal"] #boardView #j494AtelierNote.j494-inline-note
+  .j603-case-jump select:focus-visible {
+    outline:2px solid var(--j-accent);outline-offset:3px;
+  }
+}

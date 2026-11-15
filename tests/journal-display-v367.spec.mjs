@@ -5110,3 +5110,63 @@ test('JOURNAL V602 urgent waiting cases stay in waiting shelves while actionable
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   }
 });
+
+
+test('JOURNAL V603 phone notebook jumps directly to case 24 and returns to its shelf',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    const tasks=Array.from({length:24},(_,i)=>({
+      id:'j603-'+String(i+1),
+      title:'J603 '+(i>=22?'特別案件':'案件一覧')+' '+String(i+1).padStart(2,'0'),
+      status:i%7===0?'確認待ち':'対応中',
+      priority:i<10?'高':'中',
+      assignee:'JournalTester',category:'院内',
+      tags:[],comments:[],checklist:[],pinned:false,
+      createdAt:now,updatedAt:now,revision:1
+    }));
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify(tasks));
+  },{room:ROOM});
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  const cards=board.locator('[data-j420-task-id]');
+  await expect(cards).toHaveCount(24);
+  const folded=board.locator('[data-j565-island-toggle="other"]');
+  await folded.click();
+  await expect(folded).toHaveAttribute('aria-expanded','false');
+  await expect(board.locator('[data-j420-task-id="j603-24"]')).toBeHidden();
+
+  await cards.first().click();
+  const note=board.locator('#j494AtelierNote');
+  const jump=note.locator('[data-j603-case-jump]');
+  await expect(note).toBeVisible();
+  await expect(jump).toBeVisible();
+  await expect(jump.locator('option')).toHaveCount(24);
+  await jump.focus();
+  await jump.selectOption('j603-24');
+  await expect(note.locator('.j420-note-lead h4')).toHaveText('J603 特別案件 24');
+  await expect(jump).toHaveValue('j603-24');
+  await expect(jump).toBeFocused();
+  await expect(folded).toHaveAttribute('aria-expanded','true');
+  await expect(note.locator('[data-j553-case-position]')).toHaveText('24 / 24 件');
+
+  await note.locator('[data-j494-atelier-back]').click();
+  await expect(note).toBeHidden();
+  await expect(board.locator('[data-j420-task-id="j603-24"]')).toBeFocused();
+
+  // The picker follows the current search scope rather than showing hidden cases.
+  await page.locator('#wbJournalSearchV393').fill('特別案件');
+  await expect(cards).toHaveCount(2);
+  await cards.first().click();
+  await expect(note.locator('[data-j603-case-jump] option')).toHaveCount(2);
+  await expect(note.locator('.j603-case-jump')).toBeHidden();
+  await expect(note.locator('[data-j553-case-position]')).toHaveText('1 / 2 件');
+
+  for(const width of [320,390,768,1366]){
+    await page.setViewportSize({width,height:900});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+      .toBeLessThanOrEqual(2);
+  }
+});

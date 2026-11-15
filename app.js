@@ -7271,6 +7271,21 @@ function journalPositionAtelierNoteV494(root){
       const step=Number(button.dataset.j553CaseStep);
       button.disabled=!inline||index<0||!cards[index+step];
     });
+    // The native picker mirrors the rendered shelf order, including folded
+    // shelves. Rebuild only when the option identities change.
+    const picker=pager.querySelector('[data-j603-case-jump]');
+    if(picker){
+      if(picker.options.length!==cards.length
+        ||cards.some((el,i)=>picker.options[i]?.value!==el.dataset.j420TaskId)){
+        picker.replaceChildren(...cards.map((el,i)=>{
+          const title=el.querySelector('.j420-card-content strong')?.textContent?.trim()||'案件';
+          return new Option(String(i+1).padStart(2,'0')+' / '+title,el.dataset.j420TaskId);
+        }));
+      }
+      picker.value=card?.dataset.j420TaskId||'';
+      const wrap=picker.closest('.j603-case-jump');
+      if(wrap)wrap.hidden=!inline||cards.length<=6;
+    }
   }
 }
 journalAtelierInlineMediaV494.addEventListener('change',()=>{
@@ -7582,7 +7597,8 @@ const journalTaskSyncAttrsV530 = {
     'data-j420-category','data-j420-reset-view','data-j502-toggle-index',
     'data-j420-log-task','data-j420-layout','data-j420-new-task',
     'data-j520-empty-reset','data-j520-empty-new','data-j420-note-detail',
-    'data-j420-note-edit','data-j494-atelier-back','data-j553-case-step'],
+    'data-j420-note-edit','data-j494-atelier-back','data-j553-case-step',
+    'data-j603-case-jump'],
   list:['data-j425-row','data-j425-query','data-j425-sort','data-j565-reserved-open',
     'data-j430-facet','data-j425-due','data-j425-preset',
     'data-j425-task-layout','data-j425-new-task','data-j447-toggle-filters',
@@ -7973,6 +7989,7 @@ function journalAtelierV420(tasks){
         <button type="button" data-j553-case-step="-1">前の案件</button>
         <span data-j553-case-position aria-live="polite"></span>
         <button type="button" data-j553-case-step="1">次の案件</button>
+        <label class="j603-case-jump" hidden><span>案件を直接選ぶ</span><select data-j603-case-jump aria-label="案件ノートから開く案件を選択"></select></label>
       </div>
       ${journalAtelierNoteV420(chosen)}
       <svg class="j425-note-pin" aria-hidden="true"><use href="./assets/journal-fasteners-v425.svg#clip"></use></svg>
@@ -8179,6 +8196,33 @@ function journalAtelierV420(tasks){
       journalCaptureAtelierReaderAnchorV556();
     });
   }));
+  // V603: jump to any case without walking every previous/next page. Keep
+  // the existing card click as the only selection and shelf-opening owner.
+  root.querySelector('[data-j603-case-jump]')?.addEventListener('change',event=>{
+    const picker=event.currentTarget;
+    const id=picker.value;
+    const target=journalRevealAtelierTaskV567(root,id);
+    if(!target){picker.value=journalAtelierSelectedV420;return;}
+    journalAtelierPagingV554=true;
+    try{target.click();}finally{journalAtelierPagingV554=false;}
+    const token=journalAtelierPageTokenV553;
+    const activeAtRequest=document.activeElement;
+    requestAnimationFrame(()=>{
+      if(token!==journalAtelierPageTokenV553||!journalTaskV411()
+        ||state.layout!=='tasks'||state.taskLayout!=='board'||elements.boardView.hidden
+        ||!journalAtelierInlineMediaV494.matches||!journalAtelierInlineOpenV494
+        ||journalAtelierSelectedV420!==id)return;
+      const selected=root.querySelector('#j494AtelierNote.j494-inline-note [data-j603-case-jump]');
+      if(!selected)return;
+      const current=document.activeElement;
+      if(current&&current!==activeAtRequest
+        &&current!==document.body&&current!==document.documentElement
+        &&current.isConnected)return;
+      selected.focus({preventScroll:true});
+      selected.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+      journalCaptureAtelierReaderAnchorV556();
+    });
+  });
   root.querySelector('[data-j494-atelier-back]')?.addEventListener('click',()=>{
     ++journalAtelierPageTokenV553;
     journalAtelierInlineOpenV494=false;
