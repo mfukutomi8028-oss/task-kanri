@@ -62,6 +62,22 @@ for(const width of [320,390]){
    const source=overview.locator('.origin-schedule-day-next[data-id="'+id+'"]');
    await source.scrollIntoViewIfNeeded();
    const originalTop=await source.evaluate(el=>el.getBoundingClientRect().top);
+   // Diagnose the original 320px jump without changing the acceptance threshold.
+   const initialGeometry=await source.evaluate(el=>({
+     y:window.scrollY,top:el.getBoundingClientRect().top,
+     docHeight:document.scrollingElement.scrollHeight,
+     hostTop:document.getElementById('modernOriginRoot')?.getBoundingClientRect().top,
+     bodyOverflow:document.body.style.overflow
+   }));
+   await page.evaluate(()=>{
+     const scrollTo=window.scrollTo.bind(window);
+     window.__originScrollCalls=[];
+     window.scrollTo=(...args)=>{
+       const before=window.scrollY;
+       scrollTo(...args);
+       window.__originScrollCalls.push({args,before,after:window.scrollY});
+     };
+   });
    await source.click();
    await expect(root.locator('#sheet')).toContainText('選択日概要から開いた予定');
    await root.locator('#sheet .sheet-close').click();
@@ -73,6 +89,14 @@ for(const width of [320,390]){
    });
    // Preserve the original coordinate when scroll range allows it; when the
    // page edge clamps scrolling, verify the original control remains visible.
+   const diagnostic=await source.evaluate(el=>({
+     top:el.getBoundingClientRect().top,
+     parentTop:el.closest('.origin-schedule-day-overview')?.getBoundingClientRect().top,
+     y:window.scrollY,maxScroll:Math.max(0,document.scrollingElement.scrollHeight-window.innerHeight),
+     scrollCalls:window.__originScrollCalls,
+     bodyOverflow:document.body.style.overflow
+   }));
+   console.log('ORIGIN_RETURN_DIAGNOSTIC '+JSON.stringify({width,initialGeometry,diagnostic}));
    const desiredScroll=position.scrollY+position.top-originalTop;
    if(desiredScroll>=0&&desiredScroll<=position.maxScroll){
      expect(Math.abs(position.top-originalTop)).toBeLessThanOrEqual(25);
