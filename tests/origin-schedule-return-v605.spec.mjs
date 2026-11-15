@@ -60,54 +60,21 @@ for(const width of [320,390]){
    await root.locator('#mobileNav [data-route="calendar"]').click();
    const overview=root.locator('.origin-schedule-day-overview');
    const source=overview.locator('.origin-schedule-day-next[data-id="'+id+'"]');
-   await source.scrollIntoViewIfNeeded();
+   // The 320px fixed mobile navigation can overlap an entry at the bottom.
+   // Stabilize the actionable viewport *before* measuring the return anchor:
+   // Playwright is otherwise allowed to scroll just before dispatching click.
+   await source.evaluate(el=>el.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'}));
+   await expect(source).toBeInViewport();
    const originalTop=await source.evaluate(el=>el.getBoundingClientRect().top);
-   // Diagnose the original 320px jump without changing the acceptance threshold.
-   const initialGeometry=await source.evaluate(el=>({
-     y:window.scrollY,top:el.getBoundingClientRect().top,
-     docHeight:document.scrollingElement.scrollHeight,
-     hostTop:document.getElementById('modernOriginRoot')?.getBoundingClientRect().top,
-     bodyOverflow:document.body.style.overflow
-   }));
-   await page.evaluate(()=>{
-     const scrollTo=window.scrollTo.bind(window);
-     window.__originScrollCalls=[];
-     window.scrollTo=(...args)=>{
-       const before=window.scrollY;
-       scrollTo(...args);
-       window.__originScrollCalls.push({args,before,after:window.scrollY});
-     };
-   });
    await source.click();
-   console.log('ORIGIN_CLICK_DIAGNOSTIC '+JSON.stringify(await source.evaluate(el=>({
-     top:el.getBoundingClientRect().top,y:window.scrollY,
-     bodyOverflow:document.body.style.overflow,
-     parentTop:el.closest('.origin-schedule-day-overview')?.getBoundingClientRect().top
-   }))));
+   const clickTop=await source.evaluate(el=>el.getBoundingClientRect().top);
+   expect(Math.abs(clickTop-originalTop)).toBeLessThanOrEqual(2);
    await expect(root.locator('#sheet')).toContainText('選択日概要から開いた予定');
    await root.locator('#sheet .sheet-close').click();
    await expect(source).toBeFocused();
-   const position=await source.evaluate(el=>{
-     const scroller=document.scrollingElement;
-     return {top:el.getBoundingClientRect().top,scrollY:window.scrollY,
-       maxScroll:Math.max(0,scroller.scrollHeight-window.innerHeight)};
-   });
-   // Preserve the original coordinate when scroll range allows it; when the
-   // page edge clamps scrolling, verify the original control remains visible.
-   const diagnostic=await source.evaluate(el=>({
-     top:el.getBoundingClientRect().top,
-     parentTop:el.closest('.origin-schedule-day-overview')?.getBoundingClientRect().top,
-     y:window.scrollY,maxScroll:Math.max(0,document.scrollingElement.scrollHeight-window.innerHeight),
-     scrollCalls:window.__originScrollCalls,
-     bodyOverflow:document.body.style.overflow
-   }));
-   console.log('ORIGIN_RETURN_DIAGNOSTIC '+JSON.stringify({width,initialGeometry,diagnostic}));
-   const desiredScroll=position.scrollY+position.top-originalTop;
-   if(desiredScroll>=0&&desiredScroll<=position.maxScroll){
-     expect(Math.abs(position.top-originalTop)).toBeLessThanOrEqual(25);
-   }else{
-     await expect(source).toBeInViewport();
-   }
+   const after=await source.evaluate(el=>el.getBoundingClientRect().top);
+   // Keep the strict return-position assertion: do not mask real drift.
+   expect(Math.abs(after-originalTop)).toBeLessThanOrEqual(25);
    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
  });
 }
