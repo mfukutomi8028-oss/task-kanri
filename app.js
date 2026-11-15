@@ -7919,9 +7919,9 @@ function journalAtelierV420(tasks){
     // subscribed updates and the list reader already do.
     const continueNoteV605=Boolean(returnAnchorV538?.atelierReader&&journalAtelierSelectedV420);
     journalAtelierDeskNoteOpenV562=continueNoteV605&&!journalAtelierInlineMediaV494.matches;
-    journalAtelierInlineOpenV494=Boolean(
-      (syncAnchorV530?.atelierInlineReaderV552&&journalAtelierSelectedV420)
-      ||(continueNoteV605&&journalAtelierInlineMediaV494.matches));
+    journalAtelierInlineOpenV494=Boolean(syncAnchorV530?.atelierInlineReaderV552
+      &&journalAtelierSelectedV420)
+      ||Boolean(continueNoteV605&&journalAtelierInlineMediaV494.matches);
     journalAtelierReturnAnchorV516=null;
   }
   const chosen=viewTasks.find(t=>t.id===journalAtelierSelectedV420);
