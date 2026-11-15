@@ -136,6 +136,35 @@
 }
 `));
     mount.querySelector('style').appendChild(document.createTextNode(`
+/* Origin schedule command and mobile day focus: one theme-aware visual rhythm. */
+@media(min-width:771px){
+ .origin-schedule-toolbar{padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--paper);column-gap:10px;row-gap:9px;margin-bottom:15px}
+ .origin-schedule-toolbar .calendar-tools{gap:6px;flex:none}
+ .origin-schedule-toolbar .origin-calendar-controls{flex:1 1 560px;min-width:0;gap:8px}
+ .origin-schedule-toolbar .origin-schedule-view{background:var(--bg)}
+ .origin-schedule-toolbar>.spacer{display:none}
+}
+@media(max-width:770px){
+ .origin-schedule-day-overview{display:grid;gap:10px;margin:2px 13px 12px;padding:13px;border:1px solid var(--line);border-radius:12px;background:var(--accent-bg);min-width:0}
+ .origin-schedule-day-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+ .origin-schedule-day-title{display:grid;gap:3px;min-width:0}
+ .origin-schedule-day-title small{color:var(--accent-dark);font-size:10px;font-weight:850;letter-spacing:.08em}
+ .origin-schedule-day-title strong{color:var(--ink);font-size:16px;font-weight:820;line-height:1.4;overflow-wrap:anywhere}
+ .origin-schedule-day-count{display:inline-flex;align-items:center;padding:5px 9px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink-soft);font-size:12px;font-weight:770;font-variant-numeric:tabular-nums;white-space:nowrap}
+ .origin-schedule-day-next-row{display:grid;gap:5px;min-width:0}
+ .origin-schedule-day-next-row>span{font-size:11px;font-weight:760;color:var(--ink-soft)}
+ .origin-schedule-day-next{display:flex;align-items:center;gap:10px;width:100%;min-height:50px;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);text-align:left;cursor:pointer}
+ .origin-schedule-day-next time{flex:none;color:var(--accent-dark);font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+ .origin-schedule-day-next strong{flex:1;min-width:0;color:var(--ink);font-size:13px;font-weight:770;line-height:1.45;overflow-wrap:anywhere}
+ .origin-schedule-day-next svg{flex:none;color:var(--accent-dark)}
+ .origin-schedule-day-empty{margin:0;font-size:13px;line-height:1.6;color:var(--ink-soft)}
+ .origin-schedule-day-actions{display:flex;flex-wrap:wrap;gap:7px}
+ .origin-schedule-day-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:1 1 122px;min-width:0;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-size:12px;font-weight:780;cursor:pointer}
+ .origin-schedule-day-actions button:first-child{color:var(--accent-dark);border-color:var(--accent)}
+ .origin-schedule-day-actions button svg{flex:none}
+ .origin-schedule-day-actions button:hover,.origin-schedule-day-next:hover{border-color:var(--accent);background:var(--hover)}
+ .origin-schedule-day-actions button:focus-visible,.origin-schedule-day-next:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+}
 /* Origin weekly agenda: busy dates show a compact preview with a reversible reveal. */
 .mobile-agenda .agenda-day.origin-agenda-empty{padding-top:8px;padding-bottom:8px;opacity:.88}
 .mobile-agenda .agenda-day.origin-agenda-busy .agenda-day-head{margin-bottom:8px}
@@ -1123,25 +1152,49 @@ function renderCalendar(){
   ?agendaDays.map(({dateKey,events})=>`<section class="origin-agenda-group"><strong>${dateLabel(dateKey)} · ${events.length}件</strong>${events.map(e=>`<button class="origin-agenda-entry" data-action="open" data-kind="events" data-id="${esc(e.id)}" title="${esc(e.title)}"><time>${esc(e.time)}–${esc(e.end)}</time><strong>${esc(e.title)}</strong><small>${esc(e.location||'')}</small>${originScheduleMeta(e)}</button>`).join('')}</section>`).join('')
   :`<div class="origin-schedule-empty">${empty('この週に該当する予定はありません',query||scheduleAssignee!=='all'?'検索や担当者の条件を変更してください。':'上の「予定を追加」から登録できます。')}</div>`;
  const focused=scheduleView==='day'?eventsByDay.get(selectedDay)||[]:[];
- const dayView=scheduleView==='day'?`<div class="origin-day-focus"><div class="origin-day-heading"><div><small>SELECTED DAY</small><h2>${dateLabel(selectedDay)} <span>${focused.length}件</span></h2></div><div class="origin-day-controls"><button type="button" data-action="day-prev" aria-label="前の日へ">${icon('left',17)}</button><button type="button" data-action="day-next" aria-label="次の日へ">${icon('right',17)}</button></div></div><div class="origin-day-items">${focused.length?focused.map(e=>`<button type="button" class="origin-day-entry" data-action="open" data-kind="events" data-id="${esc(e.id)}" title="${esc(e.title)}"><time>${esc(e.time)}–${esc(e.end)}</time><span><strong>${esc(e.title)}</strong>${e.location?`<small>${esc(e.location)}</small>`:''}${originScheduleMeta(e)}</span><span class="origin-day-open">${icon('right',17)}</span></button>`).join(''):empty('この日の予定はありません','ほかの日付を選ぶか、この日に新しい予定を登録してください。')}</div><button class="text-button origin-day-add" data-action="new" data-kind="events" data-date="${selectedDay}">${icon('plus',15)} この日に予定を追加</button></div>`:'';
+ const dayView=scheduleView==='day'?`<div class="origin-day-focus"><div class="origin-day-heading"><div><small>SELECTED DAY</small><h2>${dateLabel(selectedDay)} <span>${focused.length}件</span></h2></div><div class="origin-day-controls"><button type="button" data-action="day-prev" aria-label="前の日へ">${icon('left',17)}</button><button type="button" data-action="day-next" aria-label="次の日へ">${icon('right',17)}</button></div></div><div class="origin-day-items">${focused.length?focused.map(e=>`<button type="button" class="origin-day-entry" data-action="open" data-kind="events" data-id="${esc(e.id)}" title="${esc(e.title)}"><time>${esc(e.time)}–${esc(e.end)}</time><span><strong>${esc(e.title)}</strong>${e.location?`<small>${esc(e.location)}</small>`:''}${originScheduleMeta(e)}</span><span class="origin-day-open">${icon('right',17)}</span></button>`).join(''):empty(scheduleSearchScope==='week'&&(query||scheduleAssignee!=='all')&&weekAll.some(e=>e.date===selectedDay)?'条件に一致する予定はありません':'この日の予定はありません','ほかの日付を選ぶか、検索条件を変更して新しい予定を登録してください。')}</div><button class="text-button origin-day-add" data-action="new" data-kind="events" data-date="${selectedDay}">${icon('plus',15)} この日に予定を追加</button></div>`:'';
  const weekJump=scheduleView==='week'&&calendarRenderedMobile?`<div class="origin-week-jump" role="group" aria-label="週間の日付へ移動">${daysInWeek.map(({date,dateKey,events})=>
    `<button type="button" data-action="schedule-week-focus" data-date="${dateKey}" aria-pressed="${dateKey===selectedDay}" aria-label="${dateLabel(dateKey)}の予定${events.length}件へ移動" class="${dateKey===base?'origin-week-today':''}"><span>${days[date.getDay()]}曜日</span><strong>${date.getMonth()+1}/${date.getDate()}</strong><small>${events.length}件</small></button>`).join('')}</div>`:'';
  const weekFooter=scheduleView==='week'&&calendarRenderedMobile?`<div class="origin-mobile-week-actions" role="group" aria-label="週を移動"><button type="button" data-action="week-prev">${icon('left',16)} 前の週</button><button type="button" data-action="week-next">次の週 ${icon('right',16)}</button></div>`:'';
 
  const focusDay=daysInWeek.find(day=>day.dateKey===selectedDay)||daysInWeek[0];
  const focusEvents=focusDay.events;
+ const dayRegisteredCount=weekAll.filter(e=>e.date===focusDay.dateKey).length;
+ const weekFiltered=scheduleSearchScope==='week'&&(Boolean(query)||scheduleAssignee!=='all');
+ // The current-week board must not claim a date is empty when only its filters hide matches.
+ const scheduleDayEmpty=weekFiltered&&dayRegisteredCount
+   ?'条件に一致する予定はありません':'この日の予定はありません';
+ const mobileDayOverview=scheduleView==='week'&&calendarRenderedMobile?`<section
+   class="origin-schedule-day-overview" data-date="${focusDay.dateKey}" aria-label="選択日の予定概要">
+   <div class="origin-schedule-day-head">
+     <div class="origin-schedule-day-title"><small>SELECTED DAY / 選択日</small>
+       <strong>${esc(dateLabel(focusDay.dateKey))}</strong></div>
+     <span class="origin-schedule-day-count" role="status">${weekFiltered?'一致'+focusEvents.length+'件 / 登録'+dayRegisteredCount+'件':dayRegisteredCount+'件'}</span>
+   </div>
+   ${focusEvents.length?`<div class="origin-schedule-day-next-row"><span>最初の予定</span>
+     <button type="button" class="origin-schedule-day-next" data-action="open" data-kind="events"
+       data-id="${esc(focusEvents[0].id)}" title="${esc(focusEvents[0].title)}">
+       <time>${esc(focusEvents[0].time)}</time><strong>${esc(focusEvents[0].title)}</strong>${icon('right',16)}</button>
+     </div>`:
+     `<p class="origin-schedule-day-empty">${scheduleDayEmpty}</p>`}
+   <div class="origin-schedule-day-actions">
+     <button type="button" data-action="calendar-day" data-date="${focusDay.dateKey}">${icon('calendar',15)} 日別で確認</button>
+     <button type="button" data-action="new" data-kind="events" data-date="${focusDay.dateKey}">${icon('plus',15)} この日に追加</button>
+     ${weekFiltered&&!focusEvents.length&&dayRegisteredCount>0?`<button type="button" data-action="schedule-filter-reset">条件を解除</button>`:''}
+   </div>
+ </section>`:'';
  const weekFocus=scheduleView==='week'&&!calendarRenderedMobile
   ?'<aside class="origin-week-focus" aria-label="選択した日の予定">'
-   +'<div class="origin-week-focus-head"><div><small>DAY FOCUS · 選択日</small><h3>'+esc(dateLabel(focusDay.dateKey))+'<span>'+focusEvents.length+'件</span></h3></div>'
+   +'<div class="origin-week-focus-head"><div><small>DAY FOCUS · 選択日</small><h3>'+esc(dateLabel(focusDay.dateKey))+'<span>'+(weekFiltered?'一致'+focusEvents.length+'件 / 登録'+dayRegisteredCount+'件':focusEvents.length+'件')+'</span></h3></div>'
    +'<button type="button" data-action="calendar-day" data-date="'+focusDay.dateKey+'">日別表示</button></div>'
    +(focusEvents.length?'<div class="origin-week-focus-list">'+focusEvents.map(e=>
     '<button type="button" class="origin-week-focus-entry" data-action="open" data-kind="events" data-id="'+esc(e.id)+'" title="'+esc(e.title)+'">'
     +'<time>'+esc(e.time)+'–'+esc(e.end)+'</time><span><strong>'+esc(e.title)+'</strong><small>'
     +esc([e.location,e.assignee].filter(Boolean).join(' · '))+'</small></span></button>').join('')+'</div>'
-    :'<p class="origin-week-focus-empty">この日の予定はありません。新しい予定を登録できます。</p>')
+    :'<p class="origin-week-focus-empty">'+scheduleDayEmpty+'。'+(weekFiltered&&dayRegisteredCount?'検索・担当者の条件を変更してください。':'新しい予定を登録できます。')+'</p>')
    +'<button type="button" class="origin-week-focus-new" data-action="new" data-kind="events" data-date="'+focusDay.dateKey+'">'
    +icon('plus',15)+' この日に予定を追加</button></aside>':'';
- const calendarBody=scheduleView==='day'?dayView:scheduleView==='agenda'?agenda:`${weekJump}${calendarRenderedMobile?'<div class="mobile-agenda">'+mobile+'</div>':'<div class="origin-week-layout"><div class="origin-week-board"><div class="week-board">'+wide+'</div></div>'+weekFocus+'</div>'}${weekFooter}`;
+ const calendarBody=scheduleView==='day'?dayView:scheduleView==='agenda'?agenda:`${weekJump}${mobileDayOverview}${calendarRenderedMobile?'<div class="mobile-agenda">'+mobile+'</div>':'<div class="origin-week-layout"><div class="origin-week-board"><div class="week-board">'+wide+'</div></div>'+weekFocus+'</div>'}${weekFooter}`;
  const globalPanel=scheduleSearchScope==='all'? `<section class="origin-schedule-global-results" aria-label="全期間の予定検索結果">
    <div class="origin-schedule-global-head"><strong>全期間の検索結果</strong><small role="status">${invalidSchedulePeriod?'期間を確認してください':hasGlobalCriteria?globalResults.length+'件一致'+(globalResults.length>globalVisible.length?' · '+globalVisible.length+'件表示':''):'条件を指定して検索してください'}</small></div>
    ${invalidSchedulePeriod?'<p class="origin-schedule-global-empty" role="alert">開始日が終了日より後です。期間を修正してください。</p>':
@@ -1154,8 +1207,10 @@ function renderCalendar(){
        </article>`).join('')}</div>${globalResults.length>globalVisible.length?`<button type="button" class="origin-schedule-global-more" data-action="schedule-global-more">さらに${Math.min(30,globalResults.length-globalVisible.length)}件表示</button>`:''}`:
       '<p class="origin-schedule-global-empty">一致する予定はありません。検索語や担当者を変更してください。</p>'}
   </section>`:'';
- return `${head('TIME · CALENDAR','予定を見渡す','週全体と選択日の予定を、用途に合わせて切り替えられます。')}
+ return `${head('TIME · CALENDAR','予定を見渡す','週全体と選択日の予定を、用途に合わせて切り替えられます。',`<span>今週 ${weekAll.length}件</span>`)}
  <div class="work-toolbar origin-schedule-toolbar"><div class="calendar-tools"><button data-action="week-prev" aria-label="前の週">${icon('left')}</button><span class="period">${rangeLabel(selectedDay)}</span><button data-action="week-next" aria-label="次の週">${icon('right')}</button></div><div class="origin-calendar-controls">
+  <input type="date" id="originDateJump" aria-label="表示する日付を選ぶ" value="${selectedDay}"/>
+  <div class="origin-schedule-view" role="group" aria-label="予定の表示形式">${[['week','週間'],['agenda','一覧'],['day','日別']].map(([mode,label])=>`<button type="button" data-action="calendar-view" data-value="${mode}" class="${scheduleView===mode?'active':''}" aria-pressed="${scheduleView===mode}">${label}</button>`).join('')}</div>
   <button type="button" class="origin-schedule-filter-toggle" data-action="schedule-filter-toggle" aria-controls="originScheduleFilterPanel" aria-expanded="${scheduleFiltersOpen}" aria-label="予定の検索と絞り込みを${scheduleFiltersOpen?'閉じる':'開く'}">${icon('search',16)} 検索・絞り込み ${filterCount?'<span class="origin-schedule-filter-count">'+filterCount+'件</span>':''}</button>
   <span class="origin-schedule-filter-summary" role="status" aria-live="polite">${scheduleSearchScope==='all'?'全期間 '+globalResults.length+'件':'表示 '+shown.length+' / '+weekAll.length+'件'}</span>
   <div id="originScheduleFilterPanel" class="origin-schedule-filter-panel" data-open="${scheduleFiltersOpen}" role="group" aria-label="予定の検索条件">
@@ -1174,8 +1229,7 @@ function renderCalendar(){
    <select class="select-small" id="originScheduleAssignee" aria-label="予定担当者で絞り込む"><option value="all">全担当者</option>${[...new Set(data.events.map(e=>e.assignee).filter(Boolean))].map(a=>`<option value="${esc(a)}" ${scheduleAssignee===a?'selected':''}>${esc(a)}</option>`).join('')}</select>
   </div>
   ${filterCount?'<button type="button" class="origin-schedule-filter-reset" data-action="schedule-filter-reset" aria-label="予定の検索語・担当者・分類・期間などの条件を解除">条件を解除</button>':''}
-  <input type="date" id="originDateJump" aria-label="表示する日付を選ぶ" value="${selectedDay}"/>
-  <div class="origin-schedule-view" role="group" aria-label="予定の表示形式">${[['week','週間'],['agenda','一覧'],['day','日別']].map(([mode,label])=>`<button type="button" data-action="calendar-view" data-value="${mode}" class="${scheduleView===mode?'active':''}" aria-pressed="${scheduleView===mode}">${label}</button>`).join('')}</div>
+
  </div><div class="spacer"></div><button class="secondary-button" data-action="pick-today">今日に戻る</button><button class="secondary-button" data-action="new" data-kind="events">${icon('plus')} 予定を追加</button></div>
  <section class="surface">${calendarBody}<div class="calendar-footer"><span>予定を押すと詳細を確認できます</span><span>表示 ${shown.length}件 ／ この週 ${weekAll.length}件</span></div></section>${globalPanel}`;
 }
