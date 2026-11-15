@@ -108,7 +108,7 @@ test('Origin 390 mobile shows the active query when advanced filters are collaps
  await expect(criteria).toBeVisible();
  await expect(criteria).toContainText('検索に一致しない文字列');
  await expect(criteria).toContainText('0件');
- await root.locator('[data-action="schedule-filter-reset"]').click();
+ await root.locator('.origin-schedule-toolbar [data-action="schedule-filter-reset"]').click();
  await expect(criteria).toHaveCount(0);
  await expect(root.locator('.origin-schedule-day-overview .origin-schedule-day-count')).toContainText('1件');
  expect(await noHorizontalOverflow(page)).toBeLessThanOrEqual(3);
