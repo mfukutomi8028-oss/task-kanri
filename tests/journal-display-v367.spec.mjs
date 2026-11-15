@@ -5021,3 +5021,36 @@ test('JOURNAL V598 optional today entry does not show when the current day has n
   await expect(schedule.locator('[data-j598-today-shortcut]')).toHaveCount(0);
   await expect(schedule.locator('[data-j425-today]')).toBeVisible();
 });
+
+
+test('JOURNAL V600 many waiting cases never hide the first actionable case, and hidden work remains discoverable',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    const base=(id,title,overrides={})=>({
+      id,title,status:'未着手',priority:'中',assignee:'JournalTester',category:'院内',
+      createdAt:now,updatedAt:now,revision:1,...overrides
+    });
+    const tasks=[
+      ...Array.from({length:6},(_,i)=>base('j600-wait-'+i,'確認待ち '+i,{
+        status:'確認待ち',priority:'緊急',pinned:true,dueDate:'2020-01-01'
+      })),
+      base('j600-active','今すぐ進められる案件',{checklist:[{text:'依頼書を送る',done:false}]}),
+      base('j600-next','次の着手可能な案件')
+    ];
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify(tasks));
+  },{room:ROOM});
+  await boot(page,390);await choose(page,'journal');
+  const today=page.locator('#todayView');
+  const featured=today.locator('.j591-featured-work');
+  await expect(featured).toContainText('今すぐ進められる案件');
+  await expect(featured).toContainText('依頼書を送る');
+  await expect(today.locator('[data-j600-hidden-work]')).toContainText('さらに2件');
+  const more=today.locator('[data-j600-hidden-work] [data-j420-to-tasks]');
+  await expect(more).toBeVisible();
+  await more.click();
+  await expect(page.locator('#boardView .j420-atelier')).toBeVisible();
+  await expect(page.locator('#boardView .j420-atelier-stats')).toContainText('8');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
