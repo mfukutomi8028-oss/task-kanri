@@ -1807,6 +1807,7 @@ function clearTodoPromotionContext() { state.todoPromotionContext = null; }
 function clearTaskDialogContexts() {
   clearTodoPromotionContext();
   state.pendingScheduleTaskLink = "";
+  journalClearTaskSaveFeedbackV607();
 }
 
 function promoteTodo(todo) {
@@ -10063,7 +10064,45 @@ async function confirmTimelineMove() {
   toast("タイムラインへ移動しました");
 }
 
+// JOURNAL V607: keep a failed-save explanation next to the canonical form
+// instead of relying only on the shared 3.2-second toast. No second writer.
+function journalClearTaskSaveFeedbackV607() {
+  const feedback=elements.taskDialog?.querySelector('[data-j607-task-save-feedback]');
+  if(feedback){
+    feedback.textContent='';
+    feedback.hidden=true;
+  }
+}
+function journalShowTaskSaveFeedbackV607(result) {
+  if(!journalTaskV411()||!elements.taskDialog?.open)return;
+  const actions=elements.taskForm?.querySelector('.dialog-actions');
+  if(!actions)return;
+  let feedback=elements.taskDialog.querySelector('[data-j607-task-save-feedback]');
+  if(!feedback){
+    feedback=document.createElement('p');
+    feedback.className='j607-task-save-feedback';
+    feedback.dataset.j607TaskSaveFeedback='';
+    feedback.setAttribute('role','alert');
+    feedback.setAttribute('aria-atomic','true');
+    feedback.tabIndex=-1;
+    actions.before(feedback);
+  }
+  const error=result?.error;
+  feedback.textContent=['revision-or-relation-mismatch','remote-content-changed','already-deleted','conflict']
+    .includes(error)
+    ? '他の更新と競合したため保存できませんでした。入力内容はこの画面に残っています。閉じると未保存分は消えるため、必要な内容を控えてから閉じ、最新の案件を確認して編集し直してください。'
+    : ['network-or-read-failure','write-not-available'].includes(error)
+      ? '通信状態のため保存できませんでした。入力内容はこの画面に残っています。接続状態を確認し、回復してから再試行してください。'
+      : '保存できませんでした。入力内容はこの画面に残っています。状態を確認し、必要なら再試行してください。';
+  feedback.hidden=false;
+  // Native dialog stays open. Move only the error announcement into focus;
+  // do not clear any inputs, reset the editor, or change the selected case.
+  feedback.focus({preventScroll:true});
+  feedback.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+}
+
 function openTaskDialog(task = null, options = {}) {
+  journalClearTaskSaveFeedbackV607();
   clearTodoPromotionContext();
   if (task || !options.preserveScheduleLink) state.pendingScheduleTaskLink = "";
   elements.taskDialogTitle.textContent = task ? "タスクを編集" : "新しいタスク";
@@ -10165,7 +10204,9 @@ async function saveTaskFromForm() {
   if (!saveResult.ok) {
     // Keep the original promotion intent and unsaved form. The user may
     // cancel/reopen on conflict, without accidentally creating a stray task.
-    return showWriteFailure(saveResult, "タスクを保存できませんでした。入力内容はそのままです。");
+    showWriteFailure(saveResult, "タスクを保存できませんでした。入力内容はそのままです。");
+    journalShowTaskSaveFeedbackV607(saveResult);
+    return;
   }
   state.pendingScheduleTaskLink = "";
   state.selectedId = id;
