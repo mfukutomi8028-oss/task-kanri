@@ -2562,8 +2562,12 @@ function journalTodayV420() {
   const todayTasks=all.filter(isDueToday).sort(compareSmartTasks);
   const important=all.filter(t=>!(/保留/.test(t.status)) && (isOverdue(t)||isDueToday(t)||t.pinned||['緊急','高'].includes(t.priority)))
     .sort(compareSmartTasks);
-  const top=important.concat(all.filter(t=>!important.includes(t)).sort(compareSmartTasks)).slice(0,6);
-  const leadTaskV591=top.find(task=>!journalWorkIsWaitingV591(task))||top[0]||null;
+  // Keep actionable cases ahead of waiting cases before applying the six-card limit.
+  const orderedTasksV600=important.concat(all.filter(t=>!important.includes(t)).sort(compareSmartTasks));
+  const top=orderedTasksV600.filter(task=>!journalWorkIsWaitingV591(task))
+    .concat(orderedTasksV600.filter(journalWorkIsWaitingV591)).slice(0,6);
+  const hiddenWorkCountV600=Math.max(0,all.length-top.length);
+  const leadTaskV591=top[0]||null;
   const followingTasksV591=top.filter(task=>task.id!==leadTaskV591?.id);
   const alerts=getActivityItems().filter(x=>x.important).slice(0,4);
   const todos=visibleTodos().filter(x=>!x.completed).slice(0,4);
@@ -2610,6 +2614,7 @@ function journalTodayV420() {
             <div class="j420-note-grid">${followingTasksV591.slice(0,2).map((task,index)=>journalTodayTaskCardV420(task,index+1)).join('')}</div>
           </div>`:''}
           ${followingTasksV591.length>2?`<details class="j-today-more" data-journal-today-more ${journalTodayMoreOpen?'open':''}><summary>ほかの進行中の案件（${followingTasksV591.length-2}件）</summary><div class="j420-note-grid">${followingTasksV591.slice(2).map((task,index)=>journalTodayTaskCardV420(task,index+3)).join('')}</div></details>`:''}
+          ${hiddenWorkCountV600?`<div class="j600-hidden-work" data-j600-hidden-work><span>さらに${hiddenWorkCountV600}件の進行中案件があります</span><button type="button" data-j420-to-tasks>すべての案件を確認 <span aria-hidden="true">→</span></button></div>`:''}
           <button type="button" class="j420-add-task" data-j420-create-task>＋ 新しい案件を書き込む</button>
           <div class="j420-stationery j425-today-stationery" aria-hidden="true"><img class="j440-today-bookmark" src="./assets/journal-bookmark-seal-v440.svg" alt="" decoding="async"></div>
         </section>
@@ -2635,7 +2640,9 @@ function journalTodayV420() {
   root.querySelector('[data-j420-create-task]')?.addEventListener('click',()=>openTaskDialog());
   root.querySelector('[data-j420-show-activity]')?.addEventListener('click',openActivityDialog);
   root.querySelector('[data-j420-clear-filters]')?.addEventListener('click',()=>elements.resetFilters.click());
-  root.querySelector('[data-j420-to-tasks]')?.addEventListener('click',()=>{state.layout='tasks';state.taskLayout='board';render()});
+  root.querySelectorAll('[data-j420-to-tasks]').forEach(button=>button.addEventListener('click',()=>{
+    state.layout='tasks';state.taskLayout='board';render();
+  }));
   root.querySelector('[data-j420-to-todos]')?.addEventListener('click',()=>{state.layout='todos';render()});
 }
 
