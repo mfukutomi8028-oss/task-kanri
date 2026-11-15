@@ -7662,3 +7662,27 @@ html[data-wb-display="journal"] :is(
     transition:none!important;animation:none!important;transform:none!important;
   }
 }
+
+/* V600: a compact index to work beyond the six visible Today records. */
+html[data-wb-display="journal"] .j600-hidden-work {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:8px 14px;margin:14px 0 3px;padding:12px 14px;
+  border-top:1px solid #d5dccf;border-bottom:1px solid #d5dccf;
+  color:#526553;font:600 13px/1.6 var(--j-text);
+}
+html[data-wb-display="journal"] .j600-hidden-work button {
+  min-height:44px;padding:8px 11px;border:1px solid #75957a;
+  border-radius:3px;background:#f8faf4;color:#355a40;
+  cursor:pointer;font:750 13px/1.5 var(--j-text);
+}
+@media (hover:hover) and (pointer:fine) {
+  html[data-wb-display="journal"] .j600-hidden-work button:hover {
+    background:#e6eee3;border-color:#426e50;
+  }
+}
+html[data-wb-display="journal"] .j600-hidden-work button:focus-visible {
+  outline:2px solid #416e50;outline-offset:3px;
+}
+@media(max-width:390px) {
+  html[data-wb-display="journal"] .j600-hidden-work button {width:100%}
+}
