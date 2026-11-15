@@ -838,10 +838,7 @@ function setupEvents() {
   $("confirmRecurringDelete")?.addEventListener("click", confirmRecurringDelete);
   elements.closeTaskDialog.addEventListener("click", () => { clearTaskDialogContexts(); elements.taskDialog.close(); });
   elements.taskDialog.addEventListener('cancel', clearTaskDialogContexts);
-  elements.taskDialog.addEventListener('close', () => {
-    clearTaskDialogContexts();
-    journalClearTaskSaveFeedbackV607();
-  });
+  elements.taskDialog.addEventListener('close', clearTaskDialogContexts);
   elements.taskForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     await saveTaskFromForm();
@@ -1810,6 +1807,7 @@ function clearTodoPromotionContext() { state.todoPromotionContext = null; }
 function clearTaskDialogContexts() {
   clearTodoPromotionContext();
   state.pendingScheduleTaskLink = "";
+  journalClearTaskSaveFeedbackV607();
 }
 
 function promoteTodo(todo) {
