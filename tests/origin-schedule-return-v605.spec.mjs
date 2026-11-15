@@ -33,7 +33,8 @@ async function seed(page,title){
    if(!event)throw Error('Seed event not found');
    const future=new Date(start);future.setDate(future.getDate()+7);
    const futureDate=[future.getFullYear(),String(future.getMonth()+1).padStart(2,'0'),String(future.getDate()).padStart(2,'0')].join('-');
-   return {id:event.id,originalDate:event.date,futureDate};
+   const originalDate=[start.getFullYear(),String(start.getMonth()+1).padStart(2,'0'),String(start.getDate()).padStart(2,'0')].join('-');
+   return {id:event.id,originalDate,futureDate};
  },title);
 }
 
