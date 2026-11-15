@@ -5263,3 +5263,162 @@ test('JOURNAL V605 remote shrink of 7 to 6 cases moves focus off hidden direct-j
   await page.setViewportSize({width:320,height:800});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+
+test('JOURNAL V607 stale edit of case 18/30 keeps the draft and gives durable conflict recovery guidance',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    const tasks=Array.from({length:30},(_,i)=>({
+      id:'j607-case-'+String(i+1).padStart(2,'0'),
+      title:'J607 案件 '+String(i+1).padStart(2,'0'),
+      status:'対応中',priority:'高',assignee:'JournalTester',category:'院内',
+      description:'編集前の案件概要',dueDate:'',dueTime:'',
+      tags:[],comments:[],checklist:[],pinned:false,
+      createdAt:now-i,updatedAt:now-i,revision:1
+    }));
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify(tasks));
+  },{room:ROOM});
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  const indexToggle=board.locator('[data-j502-toggle-index]');
+  if(await indexToggle.getAttribute('aria-expanded')==='false')await indexToggle.click();
+  await board.locator('[data-j420-view="focus"]').click();
+  const cards=board.locator('[data-j420-task-id]');
+  await expect(cards).toHaveCount(30);
+  await cards.first().click();
+  const note=board.locator('#j494AtelierNote.j494-inline-note');
+  const jump=note.locator('[data-j603-case-jump]');
+  await expect(jump).toBeVisible();
+  await jump.selectOption('j607-case-18');
+  await expect(note.locator('.j420-note-lead h4')).toHaveText('J607 案件 18');
+  const neighbor=await cards.nth(18).locator('.j420-card-content strong').innerText();
+  await note.locator('[data-j420-note-edit]').click();
+  const dialog=page.locator('#taskDialog'),submit=dialog.locator('#taskForm button[type="submit"]');
+  await expect(dialog).toBeVisible();
+  await dialog.locator('#taskTitle').fill('J607 自分が編集中の件名');
+  await dialog.locator('#taskDescription').fill('J607 自分が入力してまだ保存していないメモ');
+
+  // A second update travels through the real canonical revision-checked writer
+  // while the original form still holds its older base revision.
+  const peer=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    const task=s.tasks.find(x=>x.id==='j607-case-18');
+    return bridge.dispatch({
+      type:'task.update',id:task.id,revision:task.revision,
+      ownerRoom:s.roomId,ownerUser:s.currentUser,
+      title:'J607 別の利用者が更新した件名',description:task.description,
+      status:task.status,priority:'中',category:task.category,assignee:task.assignee,
+      tags:task.tags.join(', '),checklist:task.checklist.map(x=>x.text).join('\n'),
+      dueDate:task.dueDate,dueTime:task.dueTime
+    });
+  });
+  expect(peer.ok).toBe(true);
+  await expect(cards).toHaveCount(29);
+  await submit.click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#taskTitle')).toHaveValue('J607 自分が編集中の件名');
+  await expect(dialog.locator('#taskDescription')).toHaveValue('J607 自分が入力してまだ保存していないメモ');
+  const feedback=dialog.locator('[data-j607-task-save-feedback]');
+  await expect(feedback).toBeVisible();
+  await expect(feedback).toHaveAttribute('role','alert');
+  await expect(feedback).toContainText('入力内容はこの画面に残っています');
+  await expect(feedback).toContainText('最新の案件');
+  await expect(feedback).toBeFocused();
+  await expect.poll(()=>page.evaluate(()=>document.querySelector('#toast')?.hidden)).toBe(true);
+  await expect(feedback).toBeVisible();
+  const current=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.id==='j607-case-18'));
+  expect(current.title).toBe('J607 別の利用者が更新した件名');
+  expect(current.revision).toBe(2);
+  // The existing dialog lifecycle protects unsaved edits with a native
+  // discard confirmation. A rejected confirmation must keep the draft.
+  page.once('dialog',async confirmation=>{
+    expect(confirmation.type()).toBe('confirm');
+    await confirmation.dismiss();
+  });
+  await dialog.locator('#closeTaskDialog').click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#taskTitle')).toHaveValue('J607 自分が編集中の件名');
+  // Explicitly discard the failed draft, then return to the neighboring note.
+  page.once('dialog',async confirmation=>{
+    expect(confirmation.type()).toBe('confirm');
+    await confirmation.accept();
+  });
+  await dialog.locator('#closeTaskDialog').click();
+  await expect(dialog).toBeHidden();
+  await expect(board.locator('[data-j420-view="focus"]')).toHaveAttribute('aria-pressed','true');
+  await expect(note).toBeVisible();
+  await expect(note.locator('.j420-note-lead h4')).toHaveText(neighbor);
+  await expect(note.locator('.j420-note-lead h4')).toBeFocused();
+  for(const width of [320,390]){
+    await page.setViewportSize({width,height:800});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+      .toBeLessThanOrEqual(2);
+  }
+});
+
+test('JOURNAL V607 unavailable shared write keeps case 12/20 and explains retry without stale notice',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    const tasks=Array.from({length:20},(_,i)=>({
+      id:'j607-offline-'+String(i+1).padStart(2,'0'),
+      title:'J607 未接続 '+String(i+1).padStart(2,'0'),
+      status:'対応中',priority:'高',assignee:'JournalTester',category:'院内',
+      description:'旧メモ',dueDate:'',dueTime:'',
+      tags:[],comments:[],checklist:[],pinned:false,
+      createdAt:now-i,updatedAt:now-i,revision:1
+    }));
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify(tasks));
+  },{room:ROOM});
+  await boot(page,320);
+  // Exercise the real connection-mode write guard, not a mock of saveTaskFromForm.
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch(),source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      "window.__journalV607Connection = mode => setConnectionMode(mode);\nfunction scheduleSubscribedRender() {"
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView'),cards=board.locator('[data-j420-task-id]');
+  await expect(cards).toHaveCount(20);
+  await cards.first().click();
+  const note=board.locator('#j494AtelierNote.j494-inline-note');
+  await note.locator('[data-j603-case-jump]').selectOption('j607-offline-12');
+  await note.locator('[data-j420-note-edit]').click();
+  const dialog=page.locator('#taskDialog'),submit=dialog.locator('#taskForm button[type="submit"]');
+  await expect(dialog).toBeVisible();
+  await dialog.locator('#taskDescription').fill('J607 通信障害中の未保存メモ');
+  await page.evaluate(()=>window.__journalV607Connection('remote-degraded'));
+  await submit.click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#taskDescription')).toHaveValue('J607 通信障害中の未保存メモ');
+  const feedback=dialog.locator('[data-j607-task-save-feedback]');
+  await expect(feedback).toBeVisible();
+  await expect(feedback).toContainText('通信');
+  await expect(feedback).toContainText('再試行');
+  await expect(feedback).toBeFocused();
+  const unsaved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.id==='j607-offline-12'));
+  expect(unsaved.description).toBe('旧メモ');
+  expect(unsaved.revision).toBe(1);
+  await page.evaluate(()=>window.__journalV607Connection('local-only'));
+  await submit.click();
+  await expect(dialog).toBeHidden();
+  const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.id==='j607-offline-12'));
+  expect(saved.description).toBe('J607 通信障害中の未保存メモ');
+  expect(saved.revision).toBe(2);
+  await note.locator('[data-j420-note-edit]').click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('[data-j607-task-save-feedback]')).toBeHidden();
+  await dialog.locator('#closeTaskDialog').click();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+});
