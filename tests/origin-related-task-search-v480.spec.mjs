@@ -53,6 +53,15 @@ test('Origin related task search keeps selection, and unlink changes only the sc
   // A generic first match selects the hidden PC calendar button on phones.
   // Click the displayed mobile agenda record to test the user's actual path.
   await expect(host.locator('.week-board')).toBeHidden();
+  const savedDate=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot()
+    .schedules.find(item=>item.id===id)?.date,saved);
+  expect(savedDate).toBeTruthy();
+  const dateRow=host.locator('.mobile-agenda .agenda-day[data-date="'+savedDate+'"]');
+  await expect(dateRow).toBeVisible();
+  // Ver.607's phone week intentionally folds dates other than the active day.
+  // Follow the user's actual day-focus control before opening its saved event.
+  const openDay=dateRow.locator('.agenda-day-head [data-action="schedule-week-focus"]');
+  if(await openDay.count())await openDay.click();
   const mobileEvent=host.locator('.mobile-agenda .agenda-entry[data-action="open"][data-kind="events"][data-id="'+saved+'"]');
   await expect(mobileEvent).toBeVisible();
   await mobileEvent.click();
