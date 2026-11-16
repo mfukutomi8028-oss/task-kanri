@@ -990,6 +990,13 @@ function renderTasks(){
  <section class="surface work-collection origin-task-collection origin-task-layout-${taskLayoutMode} ${taskDensity==='compact'?'origin-tasks-compact':''}" ${taskLayoutMode==='board'?'data-origin-scroll-key="task-board"':''}>${groupList||originTaskEmptyState()}</section>
  <p class="quiet-small origin-task-tip">件名から詳細を確認できます。チェックは一括選択用です。</p>`;
 }
+// Clear Origin-only view state; keep canonical tasks and the user's active view intact.
+function resetOriginTaskFilters(mode='active'){
+ taskQuery='';taskFilter=mode;taskStatusChoice='';
+ taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();
+ render();
+ $('#originTaskQuery')?.focus({preventScroll:true});
+}
 function originTaskEmptyState(){
  const hasTasks=data.tasks.length>0;
  const searching=Boolean(taskQuery.trim()||taskStatusChoice||taskFilter!=='active');
@@ -3747,13 +3754,8 @@ if(a==='task-done'){toggleTaskDone(id,el);return}
    }
    return render();
  }
- if(a==='task-reset'||a==='task-empty-all'){
-  taskQuery='';taskFilter=a==='task-empty-all'?'all':'active';taskStatusChoice='';
-  taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();
-  render();
-  $('#originTaskQuery')?.focus({preventScroll:true});
-  return;
- }
+ if(a==='task-reset')return resetOriginTaskFilters('active');
+ if(a==='task-empty-all')return resetOriginTaskFilters('all');
  if(a==='filter-status'){taskStatusChoice=taskStatusChoice===el.dataset.status?'':el.dataset.status;taskFilter='all';taskVisibleLimits.clear();selectedBulk.clear();return render()}
  if(a==='memo-load-more'||a==='memo-show-all'){
   if(view!=='notes'||!$('#workspace .origin-memo-more'))return;
