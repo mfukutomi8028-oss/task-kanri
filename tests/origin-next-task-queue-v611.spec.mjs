@@ -96,8 +96,9 @@ test('Origin task action queue starts an unstarted task using canonical status-o
   return {title:task.title,description:task.description,priority:task.priority,
    dueDate:task.dueDate,checklist:task.checklist,revision:task.revision,status:task.status};
  },id);
- expect(after).toMatchObject({...before,status:'対応中'});
- expect(after.revision).toBeGreaterThan(before.revision);
+ const {revision,...unchanged}=before;
+ expect(after).toMatchObject({...unchanged,status:'対応中'});
+ expect(after.revision).toBeGreaterThan(revision);
  await expect(card.locator('[data-action="task-next-start"]')).toHaveCount(0);
  await card.locator('.origin-next-task-title').click();
  await expect(root.locator('#sheet')).toContainText('着手する設備点検');
