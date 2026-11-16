@@ -38,7 +38,9 @@ async function seedTasks(page,items){
     title:record.title,description:'入力を保持する説明 '+record.title,
     status:record.status||'未着手',priority:record.priority||'中',
     assignee:s.users?.[0]||s.currentUser,category:s.categories[0],requester:'',tags:'',
-    checklist:'検証手順',dueDate:dateOffset(record.days),
+    checklist:record.checklist??'検証手順',
+    checklistDone:record.checklistDone??String(record.checklist??'検証手順').split('\n').filter(Boolean).map(()=>false),
+    dueDate:dateOffset(record.days),
     dueTime:'14:00',pinned:false
    });
    if(!result?.ok)throw Error('task.create '+JSON.stringify(result));
@@ -146,5 +148,67 @@ for(const width of [320,390,1280]){
    expect(await action.evaluate(el=>getComputedStyle(el).outlineStyle)).not.toBe('none');
   }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
+ });
+}
+
+
+test('Origin task queue and list expose the first unfinished check and honest progress without editing data',async({page})=>{
+ test.setTimeout(90000);
+ const root=await launch(page,1366,'next-check');
+ const ids=await seedTasks(page,[
+  {title:'院内端末の点検を進める',days:0,priority:'高',
+   checklist:'済：現状を確認\n次：設定差分を確認\n後：所管部署へ回答',checklistDone:[true,false,false]},
+  {title:'確認作業が完了した案件',days:1,
+   checklist:'端末を確認\n利用者へ連絡',checklistDone:[true,true]},
+  {title:'手順が未登録の案件',days:2,checklist:''}
+ ]);
+ const before=await page.evaluate(()=>
+  JSON.stringify(window.WorkBoardPaletteBridge.readSnapshot().tasks));
+ const first=root.locator('.origin-next-task-card[data-id="'+ids[0]+'"]');
+ await expect(first.locator('.origin-next-task-checks')).toBeVisible();
+ await expect(first.locator('.origin-next-task-step')).toContainText('次：設定差分を確認');
+ await expect(first.locator('.origin-next-task-step')).not.toContainText('済：現状を確認');
+ await expect(first.locator('.origin-next-task-progress')).toContainText('1 / 3 完了');
+ await expect(first.locator('progress.origin-next-task-meter')).toHaveAttribute('value','1');
+ await expect(first.locator('progress.origin-next-task-meter')).toHaveAttribute('max','3');
+ const second=root.locator('.origin-next-task-card[data-id="'+ids[1]+'"]');
+ await expect(second.locator('.origin-next-task-step')).toContainText('すべて完了');
+ await expect(second.locator('progress.origin-next-task-meter')).toHaveAttribute('value','2');
+ const third=root.locator('.origin-next-task-card[data-id="'+ids[2]+'"]');
+ await expect(third.locator('.origin-next-task-checks')).toHaveCount(0);
+ const rows=root.locator('.origin-task-collection .item-row');
+ await expect(rows.nth(0).locator('.origin-task-progress-pill')).toContainText('残り2件');
+ await expect(rows.nth(1).locator('.origin-task-progress-pill')).toContainText('2 / 2 完了');
+ await expect(rows.nth(2).locator('.origin-task-progress-pill')).toHaveCount(0);
+ await root.locator('.origin-density-button').click();
+ await expect(root.locator('.origin-task-collection')).not.toHaveClass(/origin-tasks-compact/);
+ await expect(root.locator('.origin-task-collection .item-row').nth(0)
+   .locator('.origin-task-insight-next')).toContainText('次：設定差分を確認');
+ await expect(root.locator('.origin-task-collection .item-row').nth(1)
+   .locator('.origin-task-insight-next')).toContainText('すべて完了');
+ expect(await page.evaluate(()=>
+  JSON.stringify(window.WorkBoardPaletteBridge.readSnapshot().tasks))).toBe(before);
+});
+
+for(const width of [320,390]){
+ test('Origin unfinished checklist preview remains readable without horizontal overflow at '+width+'px',async({page})=>{
+  test.setTimeout(90000);
+  const root=await launch(page,width,'next-check-mobile');
+  await seedTasks(page,[{
+   title:'少し長いタイトルのタスクを確認し作業手順を整理する'.repeat(2),
+   days:0,priority:'高',
+   checklist:'完了した作業\n未完了：設定と現在の仕様を詳しく突き合わせる'.repeat(3),
+   checklistDone:[true,false,false,false]
+  }]);
+  const card=root.locator('.origin-next-task-card').first();
+  await expect(card.locator('.origin-next-task-step')).toBeVisible();
+  await expect(card.locator('.origin-next-task-meter')).toBeVisible();
+  const visible=await card.evaluate(el=>{
+   const outer=el.getBoundingClientRect(),preview=el.querySelector('.origin-next-task-step').getBoundingClientRect();
+   return {inCard:preview.top>=outer.top-1&&preview.bottom<=outer.bottom+1,width:outer.width};
+  });
+  expect(visible.inCard).toBe(true);
+  expect(visible.width).toBeLessThanOrEqual(width);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(3);
  });
 }
