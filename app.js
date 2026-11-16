@@ -7164,8 +7164,8 @@ let journalAtelierReaderAnchorV556=null;
 let journalAtelierReaderScrollFrameV556=null;
 let journalAtelierReaderResizeFrameV556=null;
 const journalAtelierReaderSectionsV556=[
-  '.j553-atelier-pager','.j420-note-lead','.j420-note-description',
-  '.j420-note-checks','.j420-next-step'
+  '.j553-atelier-pager','.j420-note-lead','.j420-next-step',
+  '.j420-note-checks','.j420-note-description'
 ];
 function journalCaptureAtelierReaderAnchorV556(){
   if(!journalTaskV411()||state.layout!=='tasks'||state.taskLayout!=='board'
