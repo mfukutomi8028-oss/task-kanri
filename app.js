@@ -13131,12 +13131,62 @@ async function savePaletteNextTaskV370(command) {
   return result.ok ? { ok: true, id } : result;
 }
 
-// Presentation-only entry points for JOURNAL's record shelf. They do not
-// change the active page, search conditions, or data ownership.
+// JOURNAL presentation/navigation boundary. Read-only task selection and
+// explicit return to a saved calendar context; never owns or writes records.
 window.WorkBoardJournalNavigation = Object.freeze({
   openTask(id) {
     if (!journalTaskV411() || !state.tasks.some(t => t.id === id)) return false;
     selectTask(id);
+    return true;
+  },
+  // V616: capture the canonical display controls before navigateToTask resets
+  // task filters. The JOURNAL return bookmark stores this in memory only.
+  captureScheduleReturnV616() {
+    if (!journalTaskV411() || state.layout !== 'schedule') return null;
+    return {
+      room: ROOM_ID, user: getCurrentUser(), scope: state.scope,
+      mode: journalScheduleStateV425.mode,
+      anchor: journalScheduleStateV425.anchor,
+      previewId: journalSchedulePreviewIdV459,
+      categoryView: journalScheduleCategoryV430,
+      filters: {
+        search: elements.searchInput.value,
+        assignee: elements.assigneeFilter.value,
+        status: elements.statusFilter.value,
+        priority: elements.priorityFilter.value,
+        category: elements.categoryFilter.value,
+        overdue: elements.overdueOnly.checked,
+        today: elements.todayOnly.checked,
+        pin: elements.pinOnly.checked,
+        favorite: Boolean(elements.favoriteOnly?.checked)
+      }
+    };
+  },
+  // Called only by an explicit "return to schedule" action. The canonical
+  // sidebar navigation performs the one subsequent render.
+  restoreScheduleReturnV616(saved) {
+    if (!journalTaskV411() || !saved || saved.room !== ROOM_ID
+      || saved.user !== getCurrentUser()
+      || !['day','week','month','list'].includes(saved.mode)
+      || typeof saved.anchor !== 'string' || saved.anchor.length > 10
+      || !saved.filters || typeof saved.filters.search !== 'string') return false;
+    const f = saved.filters;
+    state.scope = saved.scope;
+    elements.searchInput.value = f.search;
+    elements.assigneeFilter.value = f.assignee;
+    elements.statusFilter.value = f.status;
+    elements.priorityFilter.value = f.priority;
+    elements.categoryFilter.value = f.category;
+    elements.overdueOnly.checked = Boolean(f.overdue);
+    elements.todayOnly.checked = Boolean(f.today);
+    elements.pinOnly.checked = Boolean(f.pin);
+    if (elements.favoriteOnly) elements.favoriteOnly.checked = Boolean(f.favorite);
+    journalScheduleStateV425.mode = saved.mode;
+    journalScheduleStateV425.anchor = saved.anchor;
+    journalScheduleCategoryV430 = saved.categoryView || '';
+    // A schedule removed while reading its task cannot leave a stale preview.
+    const id = String(saved.previewId || '');
+    journalSchedulePreviewIdV459 = state.schedules.some(s => s.id === id) ? id : '';
     return true;
   }
 });
