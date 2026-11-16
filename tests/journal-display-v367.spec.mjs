@@ -5751,3 +5751,35 @@ for (const width of [320, 1366]) {
     await expect(view.locator('.work-memo-grid-v167 > .work-memo-card-v167')).toHaveCount(2);
   });
 }
+
+
+test('JOURNAL V619 saved task detail keeps the origin memo bookmark clickable on a phone',async({page})=>{
+  test.setTimeout(120000);
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="memo"]').click();
+  const view=page.locator('#workMemoViewV167');
+  await view.locator('[data-memo-new]').first().click();
+  await page.locator('#workMemoTitleV167').fill('V619 作業依頼の原本');
+  await page.locator('#workMemoBodyV167').fill('作業内容を確認する');
+  await page.locator('#workMemoFormV167 button[type="submit"]').click();
+  await expect(page.locator('#workMemoDialogV167')).toBeHidden();
+  await view.locator('.work-memo-card-v167').first().click();
+  const reader=view.locator('.j592-memo-reading-desk');
+  await expect(reader.locator('h3')).toHaveText('V619 作業依頼の原本');
+  await reader.locator('.j425-memo-reader-actions button').filter({hasText:'タスク化'}).click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await expect(page.locator('#taskTitle')).toHaveValue('V619 作業依頼の原本');
+  await page.locator('#taskForm button[type="submit"]').click();
+  await expect(page.locator('#taskDialog')).toBeHidden();
+  await expect(page.locator('.detail-panel')).toHaveClass(/open/);
+  const back=page.locator('.detail-panel.open .j594-return-bookmark [data-j594-return]');
+  await expect(back).toBeVisible();
+  await expect(back).toContainText('元のメモへ');
+  await back.click({timeout:8000});
+  await expect(view).toBeVisible();
+  await expect(reader.locator('h3')).toHaveText('V619 作業依頼の原本');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+  const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
+  expect(saved.tasks.some(t=>t.title==='V619 作業依頼の原本')).toBe(true);
+});
