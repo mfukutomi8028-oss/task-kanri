@@ -5511,7 +5511,7 @@ test('JOURNAL V611 desktop folio keeps the work-first order and readable expanda
     }]));
   },{room:ROOM});
   await boot(page,1366);await choose(page,'journal');
-  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
   const board=page.locator('#boardView');
   await board.locator('[data-j420-task-id="j611-desktop"]').click();
   const note=board.locator('#j494AtelierNote.j562-desk-open');
