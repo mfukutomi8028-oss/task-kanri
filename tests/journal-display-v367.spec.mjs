@@ -6071,3 +6071,50 @@ test('JOURNAL V628 hides a memo-to-task return bookmark after a programmatic use
   await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('JournalTester'));
   await expect(bookmark).toBeHidden();
 });
+
+
+for (const width of [390, 1366]) {
+  test('JOURNAL preserves a focused return bookmark across canonical navigation redraw at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await page.addInitScript(({room})=>{
+      const now=Date.now(),d=new Date();
+      const dueDate=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+      localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+      localStorage.setItem('system-task-tasks:'+room,JSON.stringify([{
+        id:'j630-bookmark',title:'J630 再描画時のしおり',status:'対応中',priority:'中',
+        assignee:'JournalTester',category:'院内',description:'操作位置を維持',
+        dueDate,checklist:[],tags:[],comments:[],pinned:false,
+        revision:1,createdAt:now,updatedAt:now
+      }]));
+    },{room:ROOM});
+    await boot(page,width);await choose(page,'journal');
+    const tabs=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(tabs+' [data-journal-route="schedule"]').click();
+    const source=page.locator('#scheduleView .j425-schedule-footnotes [data-related-task-id="j630-bookmark"]');
+    await expect(source).toBeVisible();
+    await source.focus();await page.keyboard.press('Enter');
+    await expect(page.locator('body')).toHaveClass(/task-mode/);
+    const bookmark=page.locator('.j594-return-bookmark [data-j594-return]');
+    await expect(bookmark).toBeVisible();
+    await bookmark.focus();
+    const original=await bookmark.evaluate(node=>{node.dataset.j630Identity='original';return node.isConnected;});
+    expect(original).toBeTruthy();
+    // Canonical body-class updates schedule navigation sync even without
+    // changing the current JOURNAL route or bookmarked task.
+    await page.evaluate(async()=>{
+      document.body.classList.toggle('j630-refresh-signal');
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    });
+    await expect(bookmark).toBeVisible();
+    await expect(bookmark).toBeFocused();
+    await expect(bookmark).toHaveAttribute('data-j630-identity','original');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#scheduleView')).toBeVisible();
+    await expect(source).toBeFocused();
+    await expect(bookmark).toBeHidden();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+    const task=await page.evaluate(()=>
+      window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id==='j630-bookmark'));
+    expect(task.revision).toBe(1);
+  });
+}
