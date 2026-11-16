@@ -332,7 +332,7 @@
 .origin-tool-list{display:grid;gap:8px}
 .origin-tool-row{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);text-align:left}
 .origin-tool-row span{min-width:0;overflow-wrap:anywhere}.origin-tool-row small{display:block;color:var(--muted);margin-top:6px}
-.origin-tool-search{margin-bottom:16px}.origin-layout-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:0}\n.origin-task-command{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px;margin:0 0 12px;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}\n.origin-task-command .origin-task-tools{margin:0;min-width:0;gap:8px}\n.origin-task-command .origin-task-tools>input{min-width:0;max-width:420px;min-height:44px;background:var(--bg);font-size:14px}\n.origin-task-command .origin-task-tools select,.origin-task-command .origin-density-button{min-height:44px}\n.origin-task-command .origin-layout-controls{margin:0;justify-content:flex-end;gap:8px;min-width:0}\n.origin-task-command .origin-layout-controls .tab-pills{background:var(--bg)}\n.origin-task-view-state{display:inline-flex;align-items:center;gap:7px;min-height:28px;padding:5px 9px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--muted);font-size:12px;font-weight:700;line-height:1.4;white-space:nowrap}\n.origin-task-view-state::before{content:'';width:7px;height:7px;flex:none;border-radius:50%;background:var(--muted)}\n.origin-task-view-state[data-state='saved']{color:var(--ink)}\n.origin-task-view-state[data-state='saved']::before{background:var(--accent)}\n.origin-task-view-state[data-state='changed']{background:var(--warn-bg);border-color:var(--warn);color:var(--ink)}\n.origin-task-view-state[data-state='changed']::before{background:var(--warn)}\n.origin-task-view-state[data-state='saving']::before{background:var(--accent)}\n@media(max-width:1050px){.origin-task-command{grid-template-columns:minmax(0,1fr)}.origin-task-command .origin-layout-controls{justify-content:flex-start}}\n@media(max-width:770px){.origin-task-command{padding:10px 11px;gap:8px}.origin-task-command .origin-task-tools>input{flex:1 1 175px;min-width:0;max-width:none;font-size:16px}.origin-task-command .origin-layout-controls{justify-content:space-between;flex-wrap:wrap}}
+.origin-tool-search{margin-bottom:16px}.origin-layout-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:0}\n.origin-task-command{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px;margin:0 0 12px;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}\n.origin-task-command .origin-task-tools{margin:0;min-width:0;gap:8px}\n.origin-task-command .origin-task-tools>input{min-width:0;max-width:420px;min-height:44px;background:var(--bg);font-size:14px}\n.origin-task-command .origin-task-tools select,.origin-task-command .origin-density-button{min-height:44px}\n.origin-task-command .origin-layout-controls{margin:0;justify-content:flex-end;gap:8px;min-width:0}\n.origin-task-command .origin-layout-controls .tab-pills{background:var(--bg)}\n.origin-task-view-state{display:inline-flex;align-items:center;gap:7px;min-height:28px;padding:5px 9px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--muted);font-size:12px;font-weight:700;line-height:1.4;white-space:nowrap}\n.origin-task-view-state::before{content:'';width:7px;height:7px;flex:none;border-radius:50%;background:var(--muted)}\n.origin-task-view-state[data-state='saved']{color:var(--ink)}\n.origin-task-view-state[data-state='saved']::before{background:var(--accent)}\n.origin-task-view-state[data-state='changed']{background:var(--warn-bg);border-color:var(--warn);color:var(--ink)}\n.origin-task-view-state[data-state='changed']::before{background:var(--warn)}\n.origin-task-view-state[data-state='saving']::before{background:var(--accent)}\n.origin-task-view-state[data-state='failed']{background:var(--warn-bg);border-color:var(--warn);color:var(--ink)}\n.origin-task-view-state[data-state='failed']::before{background:var(--warn)}\n@media(max-width:1050px){.origin-task-command{grid-template-columns:minmax(0,1fr)}.origin-task-command .origin-layout-controls{justify-content:flex-start}}\n@media(max-width:770px){.origin-task-command{padding:10px 11px;gap:8px}.origin-task-command .origin-task-tools>input{flex:1 1 175px;min-width:0;max-width:none;font-size:16px}.origin-task-command .origin-layout-controls{justify-content:space-between;flex-wrap:wrap}}
 .origin-stats-scroll{overflow:auto}.origin-stats{width:100%;border-collapse:collapse;font-size:13px}.origin-stats th,.origin-stats td{text-align:left;padding:12px;border-bottom:1px solid var(--line)}
 .origin-task-layout-board{display:flex;overflow-x:auto;gap:14px;padding:14px;background:var(--bg);scrollbar-width:thin}
 .origin-task-layout-board>.origin-task-group{flex:0 0 292px;max-width:100%;min-width:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper)}
@@ -930,7 +930,7 @@ function originTaskChecklistSummary(task){
 // Keep page state in memory only; no storage or changes to the canonical task model.
 let taskLayoutMode='list',originPrefsUser='';
 const TASK_RENDER_BATCH=24;
-let originTaskViewSaving=false;
+let originTaskViewSaving=false,originTaskViewSaveFailed=false;
 // Use only the three settings that the view-saving action actually persists.
 function originSavedTaskViewValues(prefs){
  const layout=['list','board','timeline'].includes(prefs?.taskLayout)?prefs.taskLayout:'list';
@@ -942,6 +942,7 @@ function originTaskViewSaveState(){
  if(originTaskViewSaving)return {key:'saving',label:'保存中…'};
  const w=window.WorkBoardWorkflowV152;
  if(!w?.dependencyStateReady()||originPrefsUser!==snapshot.currentUser)return {key:'loading',label:'確認中'};
+ if(originTaskViewSaveFailed)return {key:'failed',label:'保存できませんでした · 再試行できます'};
  const prefs=w.workflow.savedViews?.['origin-'+w.userKey()];
  if(!prefs)return {key:'unsaved',label:'未保存'};
  const saved=originSavedTaskViewValues(prefs);
@@ -956,7 +957,7 @@ function updateOriginTaskViewSaveState(){
 }
 function restoreOriginTaskView(){
  const w=window.WorkBoardWorkflowV152;if(!w?.dependencyStateReady()||originPrefsUser===snapshot.currentUser)return;
- originPrefsUser=snapshot.currentUser;
+ originPrefsUser=snapshot.currentUser;originTaskViewSaveFailed=false;
  const prefs=w.workflow.savedViews?.['origin-'+w.userKey()];
  // A user without saved preferences must not inherit the previous user's view.
  const saved=originSavedTaskViewValues(prefs);
@@ -965,13 +966,15 @@ function restoreOriginTaskView(){
 async function saveOriginTaskView(){
  if(busy)return;
  const w=window.WorkBoardWorkflowV152;if(!w)return;
- busy=true;originTaskViewSaving=true;updateOriginTaskViewSaveState();
+ busy=true;originTaskViewSaving=true;originTaskViewSaveFailed=false;updateOriginTaskViewSaveState();
  try{
   const id='origin-'+w.userKey();
   const result=await w.writeSavedView(id,{taskLayout:taskLayoutMode,taskGrouping,columnSort:{key:taskSortMode,direction:'asc'},updatedAt:Date.now()},w.workflow.savedViews?.[id]||null);
+  originTaskViewSaveFailed=!result?.ok;
   notify(result?.ok?'表示方法・並び順・まとめ方を保存しました。':'保存できませんでした。接続状態を確認してください。');
  }catch(error){
   console.warn('Origin view preference save failed',error);
+  originTaskViewSaveFailed=true;
   notify('保存できませんでした。接続状態を確認してください。');
  }finally{
   originTaskViewSaving=false;busy=false;updateOriginTaskViewSaveState();
@@ -3419,7 +3422,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    }).finally(()=>{busy=false});
  }
  if(['task-archive','archive-restore'].includes(a))return originSidecarAction(el);
- if(a==='task-layout'){if(!['list','board','timeline'].includes(value))return;taskLayoutMode=value;if(value==='board')taskGrouping='status';if(value==='timeline')taskGrouping='deadline';taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();return render();}
+ if(a==='task-layout'){if(!['list','board','timeline'].includes(value))return;originTaskViewSaveFailed=false;taskLayoutMode=value;if(value==='board')taskGrouping='status';if(value==='timeline')taskGrouping='deadline';taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();return render();}
  if(a==='task-view-save')return saveOriginTaskView();
  if(a==='tool-tab'){if(!['templates','archive','knowledge','insights','settings'].includes(value))return;originTool=value;originToolQuery='';originToolLimit=60;return render();}
  if(a==='tool-more'){originToolLimit+=60;return render();}
@@ -3969,8 +3972,8 @@ mount.addEventListener('change',e=>{
  }
  if(t.id==='originFullSearchSort'){originFullSearchSort=['relevance','title'].includes(t.value)?t.value:'relevance';originFullSearchLimit=30;render();$('#originFullSearchSort')?.focus({preventScroll:true});return}
  if(t.id==='originMemoSort'){memoSort=['updated','title','category'].includes(t.value)?t.value:'updated';memoVisibleLimit=MEMO_RENDER_BATCH;render();return}
- if(t.id==='groupSelect'){taskGrouping=t.value;taskVisibleLimits.clear();selectedBulk.clear();render();return}
- if(t.id==='originTaskSort'){taskSortMode=['due','priority','updated'].includes(t.value)?t.value:'due';taskVisibleLimits.clear();selectedBulk.clear();render();return}
+ if(t.id==='groupSelect'){originTaskViewSaveFailed=false;taskGrouping=t.value;taskVisibleLimits.clear();selectedBulk.clear();render();return}
+ if(t.id==='originTaskSort'){originTaskViewSaveFailed=false;taskSortMode=['due','priority','updated'].includes(t.value)?t.value:'due';taskVisibleLimits.clear();selectedBulk.clear();render();return}
   if(t.dataset.action==='task-inline-status'){updateOriginInlineStatus(t);return}
  if(t.dataset.action==='task-check'){taskCheckToggle(t);return}
  if(t.dataset.action==='todo-check'){toggleTodo(t.dataset.id,t.checked);return}
