@@ -7565,8 +7565,8 @@ function journalAtelierNoteV420(t){
       <div class="j611-note-check-header"><strong>チェック項目</strong><small>${p.done}/${p.total} 完了 · 残り${pending.length}件</small></div>
       ${p.total?`<progress class="j611-note-progress" value="${p.done}" max="${p.total}" aria-label="チェック項目の完了状況"></progress>
         ${pending.length?`<ul class="j611-note-pending-list">${rows(pending.slice(0,4))}</ul>`:'<p class="j611-note-all-done">チェック項目はすべて完了しています。</p>'}
-        ${pending.length>4?`<details class="j611-note-remaining-extra"><summary>残り${pending.length-4}件を表示</summary><ul>${rows(pending.slice(4))}</ul></details>`:''}
-        ${completed.length?`<details class="j611-note-completed-extra"><summary>完了済み${completed.length}件を表示</summary><ul>${rows(completed)}</ul></details>`:''}
+        ${pending.length>4?`<details class="j611-note-remaining-extra" data-j611-note-section="remaining"><summary data-j611-note-disclosure="remaining">残り${pending.length-4}件を表示</summary><ul>${rows(pending.slice(4))}</ul></details>`:''}
+        ${completed.length?`<details class="j611-note-completed-extra" data-j611-note-section="completed"><summary data-j611-note-disclosure="completed">完了済み${completed.length}件を表示</summary><ul>${rows(completed)}</ul></details>`:''}
       `:'<p class="j611-note-empty">チェック項目はまだありません。</p>'}
     </div>
     <div class="j420-note-description"><strong>案件の要約</strong><p>${escapeHtml(t.description||'詳しい内容はまだ登録されていません。')}</p></div>
@@ -7616,7 +7616,7 @@ const journalTaskSyncAttrsV530 = {
     'data-j420-log-task','data-j420-layout','data-j420-new-task',
     'data-j520-empty-reset','data-j520-empty-new','data-j420-note-detail',
     'data-j420-note-edit','data-j494-atelier-back','data-j553-case-step',
-    'data-j603-case-jump'],
+    'data-j603-case-jump','data-j611-note-disclosure'],
   list:['data-j425-row','data-j425-query','data-j425-sort','data-j565-reserved-open',
     'data-j430-facet','data-j425-due','data-j425-preset',
     'data-j425-task-layout','data-j425-new-task','data-j447-toggle-filters',
@@ -7708,10 +7708,16 @@ function journalCaptureTaskPageSyncAnchorV530(layout){
     &&journalAtelierReaderAnchorV556?.id===selected
     &&journalAtelierReaderAnchorV556.width===window.innerWidth
     ?{...journalAtelierReaderAnchorV556}:null;
+  // A subscribed repaint must not collapse an expanded reading section.
+  // This is a transient view snapshot, never part of the shared task record.
+  const openNoteSectionsV611=layout==='board'
+    ?[...root.querySelectorAll('#j494AtelierNote details[data-j611-note-section][open]')]
+      .map(node=>node.dataset.j611NoteSection)
+    :[];
   return {token,layout,focus,anchor:journalTaskSyncDescriptorV530(root,layout,anchorNode),
     top:anchorNode?.getBoundingClientRect().top??null,width:window.innerWidth,search,
     order,selected,inlineReader,rowTop:selectedRow?.getBoundingClientRect().top??null,
-    atelierInlineReaderV552,readerAnchorV556,
+    atelierInlineReaderV552,readerAnchorV556,openNoteSectionsV611,
     focusWasVisibleV556:Boolean(active&&visible(active))};
 }
 function journalNearestSurvivingTaskV532(snapshot,available){
@@ -7732,6 +7738,13 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
       ||state.layout!=='tasks'||state.taskLayout!==snapshot.layout)return;
     const root=snapshot.layout==='board'?elements.boardView:elements.listView;
     if(root.hidden)return;
+    if(snapshot.layout==='board'&&snapshot.selected===journalAtelierSelectedV420){
+      for(const section of snapshot.openNoteSectionsV611||[]){
+        const disclosure=root.querySelector(
+          '#j494AtelierNote details[data-j611-note-section="'+section+'"]');
+        if(disclosure)disclosure.open=true;
+      }
+    }
     // If a different control gained focus after the snapshot, leave it alone.
     const current=document.activeElement;
     if(current&&current!==document.body&&current!==document.documentElement
