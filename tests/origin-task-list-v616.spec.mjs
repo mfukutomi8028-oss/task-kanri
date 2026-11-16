@@ -156,7 +156,13 @@ for(const width of [320,390,1366]){
   await expect(root.locator('.origin-task-collection .item-row')).toHaveCount(1);
 
   await root.locator('.origin-task-collection [data-action="task-inline-status"]').selectOption('対応中');
+  // The canonical task.complete action asks for an optional completion memo.
+  // Playwright dismisses unhandled dialogs, which cancels the write.
+  page.once('dialog',dialog=>{void dialog.accept('回帰検査で完了')});
   await root.locator('.origin-task-collection [data-action="task-done"]').click();
+  await expect.poll(()=>page.evaluate(()=>
+   window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.title==='閲覧対象の点検記録')?.completed
+  )).toBe(true);
   await expect(status).toContainText('進行中のタスクはありません');
   await status.getByRole('button',{name:'すべてのタスクを表示'}).click();
   await expect(root.locator('.origin-task-collection .item-row')).toHaveCount(1);
