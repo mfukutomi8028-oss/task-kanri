@@ -7761,7 +7761,7 @@ html[data-wb-display="journal"] #boardView .j611-note-progress::-webkit-progress
   border-radius:20px;background:var(--j-accent);
 }
 html[data-wb-display="journal"] #boardView .j611-note-pending-list li,
-html[data-wb-display="journal"] #boardView .j611-note-checks-extra li {
+html[data-wb-display="journal"] #boardView .j420-note-checks details li {
   min-width:0;overflow-wrap:anywhere;color:var(--j-ink);
   font-size:12px;line-height:1.65;gap:7px;
 }
