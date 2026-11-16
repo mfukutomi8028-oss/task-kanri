@@ -809,6 +809,41 @@ function restoreOriginFocus(metadata){
    try{target.setSelectionRange(...metadata.selection)}catch{}
  }
 }
+// Preserve the actual task being read when switching list, board and timeline.
+function captureOriginTaskLayoutAnchor(){
+ if(view!=='tasks'||panelOpen)return null;
+ const collection=$('#workspace .origin-task-collection');
+ if(!collection)return null;
+ const headerBottom=Math.max(0,$('.header')?.getBoundingClientRect().bottom||0);
+ const guide=Math.max(headerBottom+52,Math.min(210,window.innerHeight*.24));
+ const cards=Array.from(collection.querySelectorAll('.item-name[data-action="open"][data-kind="tasks"]'))
+  .filter(card=>card.getClientRects().length)
+  .map(card=>({card,row:card.closest('.item-row')}))
+  .filter(item=>item.row&&item.row.getBoundingClientRect().bottom>headerBottom
+    &&item.row.getBoundingClientRect().top<window.innerHeight);
+ const current=cards.sort((a,b)=>Math.abs(a.row.getBoundingClientRect().top-guide)
+   -Math.abs(b.row.getBoundingClientRect().top-guide))[0];
+ return current?{id:current.card.dataset.id,top:current.row.getBoundingClientRect().top,
+   user:snapshot.currentUser,room:snapshot.roomId}:null;
+}
+function restoreOriginTaskLayoutAnchor(anchor){
+ if(!anchor||view!=='tasks'||panelOpen
+   ||anchor.user!==snapshot.currentUser||anchor.room!==snapshot.roomId)return;
+ // Reuse the existing detail-return revealer for collapsed and paginated groups.
+ const card=revealOriginReturnCard('tasks',anchor.id);
+ const row=originReturnRow('tasks',card);
+ if(!row)return;
+ const max=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+ const target=window.scrollY+row.getBoundingClientRect().top-anchor.top;
+ window.scrollTo({top:Math.max(0,Math.min(max,target)),behavior:'instant'});
+ // A desktop board can place the same card outside its horizontal viewport.
+ const board=row.closest('.origin-task-layout-board');
+ if(board){
+  const frame=board.getBoundingClientRect(),bounds=row.getBoundingClientRect();
+  if(bounds.left<frame.left||bounds.right>frame.right)
+   row.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
+ }
+}
 function render(){
  const focus= captureOriginFocus();
  // Preserve a typed quick ToDo across canonical subscription updates.
@@ -3422,7 +3457,17 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    }).finally(()=>{busy=false});
  }
  if(['task-archive','archive-restore'].includes(a))return originSidecarAction(el);
- if(a==='task-layout'){if(!['list','board','timeline'].includes(value))return;originTaskViewSaveFailed=false;taskLayoutMode=value;if(value==='board')taskGrouping='status';if(value==='timeline')taskGrouping='deadline';taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();return render();}
+ if(a==='task-layout'){
+  if(!['list','board','timeline'].includes(value)||taskLayoutMode===value)return;
+  const anchor=captureOriginTaskLayoutAnchor();
+  originTaskViewSaveFailed=false;taskLayoutMode=value;
+  if(value==='board')taskGrouping='status';
+  if(value==='timeline')taskGrouping='deadline';
+  taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();
+  render();
+  restoreOriginTaskLayoutAnchor(anchor);
+  return;
+ }
  if(a==='task-view-save')return saveOriginTaskView();
  if(a==='tool-tab'){if(!['templates','archive','knowledge','insights','settings'].includes(value))return;originTool=value;originToolQuery='';originToolLimit=60;return render();}
  if(a==='tool-more'){originToolLimit+=60;return render();}
