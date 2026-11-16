@@ -30,7 +30,7 @@ async function seed(page){
     description:'表示切替でも操作位置を失わない',status:'未着手',priority:'中',
     assignee:s.currentUser,category:s.categories[0],requester:'',tags:'',
     checklist:'確認手順',checklistDone:[false],
-    dueDate:new Date(Date.now()+3*86400000).toLocaleDateString('en-CA'),dueTime:'14:00',pinned:false});
+    dueDate:(()=>{const day=new Date();day.setDate(day.getDate()+3);return [day.getFullYear(),String(day.getMonth()+1).padStart(2,'0'),String(day.getDate()).padStart(2,'0')].join('-')})(),dueTime:'14:00',pinned:false});
    if(!result?.ok)throw Error('task.create failed '+JSON.stringify(result));
    ids.push(result.id);
   }
