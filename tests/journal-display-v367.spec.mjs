@@ -5793,3 +5793,42 @@ test('JOURNAL V619 saved task detail keeps the origin memo bookmark clickable on
   const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
   expect(saved.tasks.some(t=>t.title==='V619 作業依頼の原本')).toBe(true);
 });
+
+
+for (const width of [390, 1366]) {
+  test('JOURNAL V621 restores keyboard focus to the source memo-reference action at '+width+'px', async({page})=>{
+    test.setTimeout(120000);
+    await boot(page,width);await choose(page,'journal');
+    const tabs=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(tabs+' [data-journal-route="tasks"]').click();
+    const board=page.locator('#boardView');
+    await board.locator('[data-j420-new-task]').click();
+    const title='V621 往復フォーカスの確認 '+width;
+    await page.locator('#taskTitle').fill(title);
+    await page.locator('#taskForm button[type="submit"]').click();
+    await expect(page.locator('#taskDialog')).toBeHidden();
+    await dismissSavedTaskDetailForTest(page);
+    const card=board.locator('[data-j420-task-id]').filter({hasText:title});
+    await expect(card).toBeVisible();
+    await card.click();
+    const openMemo=board.locator('#j494AtelierNote [data-j594-open-memo]');
+    await expect(openMemo).toBeVisible();
+    await openMemo.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#workMemoViewV167')).toBeVisible();
+    const back=page.locator('.j594-return-bookmark [data-j594-return]');
+    await expect(back).toBeVisible();
+    await back.focus();
+    await page.keyboard.press('Enter');
+    await expect(board).toBeVisible();
+    await expect(board.locator('#j494AtelierNote')).toContainText(title);
+    const restored=board.locator('#j494AtelierNote [data-j594-open-memo]');
+    await expect(restored).toBeVisible();
+    // The origin action is recreated after navigating back; keyboard users
+    // must not be stranded on a hidden/detached return bookmark.
+    await expect(restored).toBeFocused();
+    await expect(back).toBeHidden();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+      .toBeLessThanOrEqual(2);
+  });
+}
