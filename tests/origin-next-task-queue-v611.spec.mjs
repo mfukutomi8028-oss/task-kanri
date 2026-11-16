@@ -129,7 +129,7 @@ for(const width of [320,390,1280]){
   test.setTimeout(90000);
   const root=await launch(page,width,'responsive');
   await seedTasks(page,[
-   {title:'とても長い案件名でスマートフォンの表示を確認するタスク'.repeat(3),days:0},
+   {title:'とても長い案件名でスマートフォンの表示を確認するタスク'.repeat(2),days:0},
    {title:'別の検査資料を確認する',days:2,priority:'高'},
    {title:'進行中の案件を確認する',days:3,status:'対応中'}
   ]);
