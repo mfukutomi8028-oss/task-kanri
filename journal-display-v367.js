@@ -2309,8 +2309,15 @@
     if (window.WORK_BOARD_CORE_READY) queueMicrotask(replayInitialJournalNavigation);
     else window.addEventListener('workboard:core-ready', replayInitialJournalNavigation, { once: true });
   }
-  document.getElementById('currentUserSelect')?.addEventListener('change', () => {
-    // Never show a previous user's note selection in a different account.
+  // User changes may arrive through the canonical bridge without a change
+  // event on the Classic selector. Reset JOURNAL's temporary UI state for an
+  // actual owner change only; ordinary redraws must keep the return bookmark
+  // and its keyboard focus intact.
+  let journalTransientOwnerV628=journalReturnOwnerV594();
+  function resetJournalTransientOnOwnerChangeV628(){
+    const owner=journalReturnOwnerV594();
+    if(owner===journalTransientOwnerV628)return;
+    journalTransientOwnerV628=owner;
     journalReturnV594=null;
     syncJournalReturnV594();
     journalMemoSelectedV425='';
@@ -2319,7 +2326,10 @@
     journalMemoClosedGroupsV450.clear();
     journalMemoFastenerByIdV430.clear();
     queueMicrotask(() => applyTheme(loadTheme(), false));
-  });
+  }
+  document.getElementById('currentUserSelect')?.addEventListener(
+    'change',resetJournalTransientOnOwnerChangeV628);
+  window.WorkBoardPaletteBridge?.subscribe(resetJournalTransientOnOwnerChangeV628);
   window.addEventListener('storage', event => {
     if (event.key === null || event.key === storageKey() || event.key === 'systemTaskUser'
       || event.key === 'systemTaskRoomId') {
