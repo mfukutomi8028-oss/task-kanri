@@ -1342,6 +1342,18 @@
           .find(node=>node.dataset.j420TaskId===origin.id);
         if(card)card.click();
         else window.WorkBoardJournalNavigation?.openTask(origin.id);
+        // V621: after the canonical desk redraw, restore focus to the
+        // action that opened the memo. The old bookmark has been hidden,
+        // so leaving focus on it strands keyboard users.
+        requestAnimationFrame(()=>{
+          if(!isJournal()||canonicalRoute()!=='tasks'
+            ||journalReturnOwnerV594()!==origin.owner)return;
+          const selected=board?.querySelector('[data-j420-task-id].is-selected');
+          if(selected?.dataset.j420TaskId!==origin.id)return;
+          const action=board.querySelector('#j494AtelierNote [data-j594-open-memo]');
+          if(action?.getClientRects().length)action.focus({preventScroll:true});
+          else selected.focus({preventScroll:true});
+        });
       }
       if(origin.width===window.innerWidth&&Number.isFinite(origin.top)){
         requestAnimationFrame(()=>{
