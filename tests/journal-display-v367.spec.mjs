@@ -5867,3 +5867,47 @@ for (const width of [390, 1366]) {
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   });
 }
+
+
+for (const width of [320, 1366]) {
+  test('JOURNAL V625 returns to the exact related-task shortcut after a schedule round trip at '+width+'px', async({page})=>{
+    test.setTimeout(120000);
+    await page.addInitScript(({room})=>{
+      const now=Date.now(), date=new Date();
+      const dueDate=[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
+      localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+      localStorage.setItem('system-task-tasks:'+room,JSON.stringify([{
+        id:'j625-related',title:'J625 復帰先を確認する',status:'対応中',priority:'中',
+        assignee:'JournalTester',category:'院内',description:'予定画面へ復帰',
+        dueDate,checklist:[],tags:[],comments:[],pinned:false,
+        revision:1,createdAt:now,updatedAt:now
+      }]));
+    },{room:ROOM});
+    await boot(page,width);await choose(page,'journal');
+    const nav=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(nav+' [data-journal-route="schedule"]').click();
+    const view=page.locator('#scheduleView');
+    const footnote=view.locator('.j425-schedule-footnotes [data-related-task-id="j625-related"]');
+    const sidebar=view.locator('.j425-schedule-sidebar [data-related-task-id="j625-related"]');
+    await expect(footnote).toBeVisible();
+    const source=width===1366?sidebar:footnote;
+    await expect(source).toBeVisible();
+    await source.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('body')).toHaveClass(/task-mode/);
+    const back=page.locator('.j594-return-bookmark [data-j594-return]');
+    await expect(back).toBeVisible();
+    await back.focus();
+    await page.keyboard.press('Enter');
+    await expect(view).toBeVisible();
+    await expect(back).toBeHidden();
+    // The task appears in both schedule sections on desktop.
+    // Returning must not put keyboard focus on the other copy.
+    await expect(source).toBeFocused();
+    if(width===1366)await expect(footnote).not.toBeFocused();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+    const task=await page.evaluate(()=>
+      window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id==='j625-related'));
+    expect(task.revision).toBe(1);
+  });
+}

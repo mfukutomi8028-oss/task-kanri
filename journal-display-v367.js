@@ -1319,13 +1319,20 @@
         const view=document.getElementById('scheduleView');
         const entries=[...(view?.querySelectorAll('[data-j459-review],[data-schedule-id]')||[])];
         const original=origin.scheduleId;
-        const focus=entries.find(node=>node.dataset.j459Review===original
-          &&node.getClientRects().length)
+        // The same related task can appear in the planner and the reading rail.
+        // Restore the actual entry region, not the first matching task ID.
+        const related=[...(view?.querySelectorAll('[data-related-task-id]')||[])]
+          .filter(node=>node.dataset.relatedTaskId===origin.id && node.getClientRects().length);
+        const source=related.find(node=>origin.scheduleSourceRegion==='sidebar'
+          ?Boolean(node.closest('.j425-schedule-sidebar'))
+          :origin.scheduleSourceRegion==='footnotes'
+            ?Boolean(node.closest('.j425-schedule-footnotes')):false);
+        const focus=source
+          ||entries.find(node=>node.dataset.j459Review===original
+            &&node.getClientRects().length)
           ||entries.find(node=>node.dataset.scheduleId===original
             &&node.getClientRects().length)
-          ||[...(view?.querySelectorAll('[data-related-task-id]')||[])]
-            .find(node=>node.dataset.relatedTaskId===origin.id
-              &&node.getClientRects().length)
+          ||related[0]
           ||view?.querySelector('[data-j425-today]');
         focus?.focus({preventScroll:true});
         if(focus&&origin.width!==window.innerWidth)
@@ -1453,6 +1460,9 @@
       journalReturnV594.scheduleId=fromDialog
         ?String(document.getElementById('scheduleId')?.value||'')
         :String(source.closest('[data-schedule-id]')?.dataset.scheduleId||'');
+      journalReturnV594.scheduleSourceRegion=fromDialog?''
+        :source.closest('.j425-schedule-sidebar')?'sidebar'
+        :source.closest('.j425-schedule-footnotes')?'footnotes':'';
       return;
     }
     if(route==='memo'){
