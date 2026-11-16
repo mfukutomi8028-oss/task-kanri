@@ -135,3 +135,31 @@ test('Origin empty task list has no queue while retaining task creation',async({
  await expect(root.locator('.origin-page-primary[data-action="new"][data-kind="tasks"]')).toBeVisible();
  await expect(root.locator('#originTaskQuery')).toBeVisible();
 });
+
+
+for(const width of [320,390,1366]){
+ test('Origin '+width+'px empty task list gives an actionable reason and recovery',async({page})=>{
+  test.setTimeout(90000);
+  const root=await launch(page,width,'empty-recovery');
+  const status=root.locator('.origin-task-collection .origin-task-empty');
+  await expect(status).toContainText('タスクはまだ登録されていません');
+  await status.getByRole('button',{name:'タスクを追加'}).click();
+  await expect(root.locator('#editForm')).toHaveAttribute('data-kind','tasks');
+  await root.locator('#sheet .sheet-close').click();
+
+  await seedTasks(page,[{title:'閲覧対象の点検記録',days:0,status:'未着手'}]);
+  await root.locator('#originTaskQuery').fill('一致しない語句');
+  await expect(status).toContainText('条件に一致するタスクはありません');
+  await status.getByRole('button',{name:'条件を解除'}).click();
+  await expect(root.locator('#originTaskQuery')).toBeFocused();
+  await expect(root.locator('#originTaskQuery')).toHaveValue('');
+  await expect(root.locator('.origin-task-collection .item-row')).toHaveCount(1);
+
+  await root.locator('.origin-task-collection [data-action="task-inline-status"]').selectOption('対応中');
+  await root.locator('.origin-task-collection [data-action="task-done"]').click();
+  await expect(status).toContainText('進行中のタスクはありません');
+  await status.getByRole('button',{name:'すべてのタスクを表示'}).click();
+  await expect(root.locator('.origin-task-collection .item-row')).toHaveCount(1);
+  await expect(root.locator('.origin-task-collection .item-row')).toContainText('閲覧対象の点検記録');
+ });
+}
