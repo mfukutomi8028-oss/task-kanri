@@ -934,9 +934,10 @@ function restoreOriginTaskView(){
  const w=window.WorkBoardWorkflowV152;if(!w?.dependencyStateReady()||originPrefsUser===snapshot.currentUser)return;
  originPrefsUser=snapshot.currentUser;
  const prefs=w.workflow.savedViews?.['origin-'+w.userKey()];
+ // A user without saved preferences must not inherit the previous user's view.
  taskLayoutMode=['list','board','timeline'].includes(prefs?.taskLayout)?prefs.taskLayout:'list';
- if(['due','priority','updated'].includes(prefs?.columnSort?.key))taskSortMode=prefs.columnSort.key;
- if(taskLayoutMode==='board')taskGrouping='status';else if(taskLayoutMode==='timeline')taskGrouping='deadline';
+ taskSortMode=['due','priority','updated'].includes(prefs?.columnSort?.key)?prefs.columnSort.key:'due';
+ taskGrouping=taskLayoutMode==='board'?'status':'deadline';
 }
 async function saveOriginTaskView(){
  if(busy)return;const w=window.WorkBoardWorkflowV152;if(!w)return;
