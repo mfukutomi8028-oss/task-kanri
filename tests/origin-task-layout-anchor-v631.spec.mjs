@@ -43,6 +43,7 @@ for(const width of [390,1366]){
   const ids=await seed(page);
   const original=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks
    .map(t=>({id:t.id,revision:t.revision,status:t.status})));
+  if(width<768)await root.locator('[data-action="task-advanced-toggle"]').click();
   await root.locator('#groupSelect').selectOption('status');
   await root.locator('#originTaskSort').selectOption('updated');
   const list=root.locator('.origin-task-collection');
