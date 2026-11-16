@@ -5422,3 +5422,127 @@ test('JOURNAL V607 unavailable shared write keeps case 12/20 and explains retry 
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(2);
 });
+
+
+
+test('JOURNAL V611 notebook surfaces incomplete work before long notes and reveals all checks on demand',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    const finished=Array.from({length:6},(_,i)=>({
+      text:'完了済み項目 '+String(i+1).padStart(2,'0'),done:true
+    }));
+    const pending=Array.from({length:6},(_,i)=>({
+      text:'未完了項目 '+String(i+1).padStart(2,'0')+'：院内の機器と設定を確認する',done:false
+    }));
+    const common={status:'対応中',priority:'高',assignee:'JournalTester',
+      category:'院内',tags:[],comments:[],pinned:false,createdAt:now,updatedAt:now,revision:1};
+    const tasks=[
+      {...common,id:'j611-priority',title:'J611 先に着手する仕事を探す案件',
+        description:'この案件の詳しい引継ぎ内容。'.repeat(100),
+        checklist:[...finished,...pending]},
+      {...common,id:'j611-empty',title:'J611 チェック項目なし',
+        description:'チェック項目は登録されていない。',checklist:[]}
+    ];
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify(tasks));
+  },{room:ROOM});
+  await boot(page,390);
+  // Exercise a real subscribed repaint, not a mock of the notebook renderer.
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch(),source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      'window.__journalV611Notify = () => scheduleSubscribedRender();\nfunction scheduleSubscribedRender() {'
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  await board.locator('[data-j420-task-id="j611-priority"]').click();
+  const note=board.locator('#j494AtelierNote.j494-inline-note');
+  await expect(note).toBeVisible();
+  const sections=await note.locator('.j420-note-card>div')
+    .evaluateAll(nodes=>nodes.map(node=>node.className));
+  expect(sections).toEqual([
+    'j420-note-lead','j420-next-step','j420-note-checks','j420-note-description'
+  ]);
+  await expect(note.locator('.j420-next-step')).toContainText('未完了項目 01');
+  await expect(note.locator('.j611-note-progress')).toHaveAttribute('value','6');
+  await expect(note.locator('.j611-note-progress')).toHaveAttribute('max','12');
+  await expect(note.locator('.j611-note-pending-list>li')).toHaveCount(4);
+  await expect(note.locator('.j611-note-pending-list>li').first()).toContainText('未完了項目 01');
+  await expect(note.locator('.j611-note-pending-list')).not.toContainText('完了済み項目');
+  const more=note.locator('.j611-note-remaining-extra');
+  const done=note.locator('.j611-note-completed-extra');
+  await expect(more.locator('summary')).toContainText('残り2件');
+  await expect(done.locator('summary')).toContainText('完了済み6件');
+  await expect(more.locator('li').first()).toBeHidden();
+  await more.locator('summary').click();
+  await expect(more.locator('li')).toHaveCount(2);
+  await expect(more.locator('li').first()).toBeVisible();
+  await done.locator('summary').focus();
+  await done.locator('summary').press('Enter');
+  await expect(done.locator('li')).toHaveCount(6);
+  await expect(done.locator('li').first()).toBeVisible();
+  const priorSummary=await done.locator('summary').elementHandle();
+  await page.evaluate(()=>window.__journalV611Notify());
+  await expect.poll(()=>priorSummary.evaluate(el=>el.isConnected)).toBe(false);
+  await expect(more).toHaveAttribute('open','');
+  await expect(done).toHaveAttribute('open','');
+  await expect(done.locator('summary')).toBeFocused();
+  // A native summary must remain reachable by Tab after a remote repaint.
+  await expect(done.locator('summary')).toHaveJSProperty('tabIndex',0);
+  const touch=await done.locator('summary').evaluate(el=>el.getBoundingClientRect().height);
+  expect(touch).toBeGreaterThanOrEqual(43.5);
+  for(const width of [320,390]){
+    await page.setViewportSize({width,height:900});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+      .toBeLessThanOrEqual(2);
+  }
+  const current=await page.evaluate(()=>
+    window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id==='j611-priority'));
+  expect(current.revision).toBe(1);
+  expect(current.checklist).toHaveLength(12);
+  await note.locator('[data-j494-atelier-back]').click();
+  await expect(note).toBeHidden();
+  await board.locator('[data-j420-task-id="j611-empty"]').click();
+  await expect(note).toBeVisible();
+  await expect(note.locator('.j611-note-progress')).toHaveCount(0);
+  await expect(note.locator('.j611-note-remaining-extra')).toHaveCount(0);
+  await expect(note.locator('.j611-note-completed-extra')).toHaveCount(0);
+  await expect(note.locator('.j420-note-checks')).toContainText('チェック項目はまだありません');
+});
+
+test('JOURNAL V611 desktop folio keeps the work-first order and readable expandable checks',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify([{
+      id:'j611-desktop',title:'J611 PCの案件ノート',
+      description:'案件の概要をデスクトップでも読む。',
+      checklist:[{text:'完了した対応',done:true},{text:'次に実施する確認',done:false}],
+      status:'対応中',priority:'中',assignee:'JournalTester',category:'院内',
+      tags:[],comments:[],pinned:false,revision:1,createdAt:now,updatedAt:now
+    }]));
+  },{room:ROOM});
+  await boot(page,1366);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
+  const board=page.locator('#boardView');
+  await board.locator('[data-j420-task-id="j611-desktop"]').click();
+  const note=board.locator('#j494AtelierNote.j562-desk-open');
+  await expect(note).toBeVisible();
+  await expect(note.locator('.j611-note-pending-list>li')).toHaveCount(1);
+  await expect(note.locator('.j611-note-pending-list')).toContainText('次に実施する確認');
+  await note.locator('.j611-note-completed-extra summary').click();
+  await expect(note.locator('.j611-note-completed-extra li')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(2);
+  await note.locator('[data-j562-close-desk]').click();
+  await expect(note).toBeHidden();
+  await expect(board.locator('[data-j420-task-id="j611-desktop"]')).toBeFocused();
+});
