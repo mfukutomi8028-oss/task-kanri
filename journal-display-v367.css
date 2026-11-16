@@ -7845,3 +7845,28 @@ html[data-wb-display="journal"] #listView .j425-index-preview>.j430-next-work p 
     font-size:12px;line-height:1.6;
   }
 }
+
+/* JOURNAL V616: return is the same bookmark even inside the modal folio.
+   Keep it below the sticky folio header, not behind the modal overlay. */
+html[data-wb-display="journal"] .app-shell.detail-open .detail-panel.open
+  >.j594-return-bookmark:not([hidden]){
+  position:sticky;top:54px;z-index:8;
+  margin:0;padding:9px clamp(12px,2.6vw,22px);
+  border-left:0;border-right:0;border-top:0;
+  border-bottom:1px solid var(--j-border);border-radius:0;
+  background:var(--j-paper-alt);
+}
+html[data-wb-display="journal"] .detail-panel>.j594-return-bookmark p {
+  font-size:12px;line-height:1.5;
+}
+@media(max-width:760px){
+  html[data-wb-display="journal"] .detail-panel>.j594-return-bookmark:not([hidden]){
+    gap:5px;padding:8px 12px;
+  }
+  html[data-wb-display="journal"] .detail-panel>.j594-return-bookmark p{
+    flex:1 1 100%;font-size:11px;
+  }
+  html[data-wb-display="journal"] .detail-panel>.j594-return-bookmark button{
+    flex:1 1 100%;min-height:44px;
+  }
+}
