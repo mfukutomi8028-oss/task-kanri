@@ -6012,3 +6012,62 @@ for(const [startWidth,endWidth,sourceRegion] of [
     expect(task.revision).toBe(1);
   });
 }
+
+
+test('JOURNAL V628 hides a schedule return bookmark when the active user changes through the canonical bridge',async({page})=>{
+  test.setTimeout(120000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now(),date=new Date();
+    const dueDate=[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester','別の利用者']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify([{
+      id:'j628-linked',title:'J628 利用者を切替える前の案件',status:'対応中',priority:'中',
+      assignee:'JournalTester',category:'院内',description:'復帰しおりを確認',dueDate,
+      checklist:[],tags:[],comments:[],pinned:false,revision:1,createdAt:now,updatedAt:now
+    }]));
+  },{room:ROOM});
+  await boot(page,1366);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  const source=page.locator('#scheduleView .j425-schedule-footnotes [data-related-task-id="j628-linked"]');
+  await expect(source).toBeVisible();
+  await source.focus();await page.keyboard.press('Enter');
+  await expect(page.locator('body')).toHaveClass(/task-mode/);
+  const bookmark=page.locator('.j594-return-bookmark [data-j594-return]');
+  await expect(bookmark).toBeVisible();
+  const result=await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('別の利用者'));
+  expect(result).toMatchObject({ok:true,changed:true,user:'別の利用者'});
+  await expect(bookmark).toBeHidden();
+  // An obsolete bookmark must never reappear on switching back or rerender.
+  await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('JournalTester'));
+  await expect(bookmark).toBeHidden();
+  const snapshot=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
+  expect(snapshot.tasks.find(t=>t.id==='j628-linked').revision).toBe(1);
+});
+
+test('JOURNAL V628 hides a memo-to-task return bookmark after a programmatic user switch',async({page})=>{
+  test.setTimeout(120000);
+  await page.addInitScript(({room})=>{
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester','別の利用者']));
+  },{room:ROOM});
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="memo"]').click();
+  const view=page.locator('#workMemoViewV167');
+  await view.locator('[data-memo-new]').first().click();
+  await page.locator('#workMemoTitleV167').fill('J628 元の利用者のメモ');
+  await page.locator('#workMemoBodyV167').fill('タスク化の後に利用者を切替える');
+  await page.locator('#workMemoFormV167 button[type="submit"]').click();
+  await expect(page.locator('#workMemoDialogV167')).toBeHidden();
+  await view.locator('.work-memo-card-v167').filter({hasText:'J628 元の利用者のメモ'}).click();
+  const source=view.locator('.j592-memo-reading-desk [data-journal-memo-task-action]');
+  await expect(source).toBeVisible();
+  await source.click();
+  await expect(page.locator('#taskDialog')).toBeVisible();
+  await page.locator('#closeTaskDialog').click();
+  const bookmark=page.locator('.j594-return-bookmark [data-j594-return]');
+  await expect(bookmark).toBeVisible();
+  const result=await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('別の利用者'));
+  expect(result).toMatchObject({ok:true,changed:true,user:'別の利用者'});
+  await expect(bookmark).toBeHidden();
+  await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('JournalTester'));
+  await expect(bookmark).toBeHidden();
+});
