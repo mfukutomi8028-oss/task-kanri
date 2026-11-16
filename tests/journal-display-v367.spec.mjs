@@ -5601,3 +5601,95 @@ test('JOURNAL V614 index shows next unfinished action before long descriptions w
     '完了済みの旧作業','まず院内端末を確認する','次に結果を記録する'
   ]);
 });
+
+
+for (const width of [390,1366]) {
+  test('JOURNAL V616 schedule to related task returns to the same day, search and paper preview at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await page.addInitScript(({room})=>{
+      const now=Date.now(), d=new Date();
+      const iso=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+      const start=new Date(d.getFullYear(),d.getMonth(),d.getDate(),10,0);
+      const end=new Date(start.getTime()+45*60000);
+      localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+      localStorage.setItem('system-task-tasks:'+room,JSON.stringify([{
+        id:'j616-linked',title:'J616 担当タスク',status:'対応中',priority:'高',
+        assignee:'JournalTester',category:'院内',description:'復帰する前に確認する',
+        checklist:[{text:'当日の確認',done:false}],tags:[],comments:[],
+        pinned:false,revision:1,createdAt:now,updatedAt:now,dueDate:iso
+      }]));
+      localStorage.setItem('system-task-schedules:'+room,JSON.stringify([{
+        id:'j616-schedule',title:'J616 予定の確認',assignee:'JournalTester',
+        category:'院内',startAt:start.toISOString(),endAt:end.toISOString(),
+        relatedTaskId:'j616-linked',location:'会議室',memo:'元の予定メモ',
+        revision:1,createdAt:now,updatedAt:now
+      }]));
+    },{room:ROOM});
+    await boot(page,width);await choose(page,'journal');
+    const nav=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(nav+' [data-journal-route="schedule"]').click();
+    const schedule=page.locator('#scheduleView');
+    await schedule.locator('[data-j425-mode="day"]').click();
+    await page.locator('#wbJournalSearchV393').fill('J616 予定');
+    const record=schedule.locator('[data-j459-record="j616-schedule"]');
+    await expect(record).toBeVisible();
+    await record.locator('[data-j459-review]').click();
+    await expect(schedule.locator('#j459SchedulePreview')).toContainText('J616 予定の確認');
+    await record.locator('[data-schedule-id="j616-schedule"]').click();
+    const dialog=page.locator('#scheduleDialog');
+    await expect(dialog).toBeVisible();
+    await dialog.locator('#openRelatedTaskFromSchedule').click();
+    await expect(page.locator('body')).toHaveClass(/task-mode/);
+    const back=page.locator('.j594-return-bookmark [data-j594-return]');
+    await expect(back).toBeVisible();
+    await expect(back).toHaveText('← 元の予定へ');
+    await back.click();
+    await expect(page.locator('body')).toHaveClass(/schedule-mode/);
+    await expect(schedule.locator('[data-j425-mode="day"]')).toHaveAttribute('aria-pressed','true');
+    await expect(page.locator('#wbJournalSearchV393')).toHaveValue('J616 予定');
+    await expect(schedule.locator('[data-j459-record="j616-schedule"]')).toBeVisible();
+    await expect(schedule.locator('#j459SchedulePreview')).toContainText('J616 予定の確認');
+    await expect(back).toBeHidden();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+    const snapshot=await page.evaluate(()=>{
+      const s=window.WorkBoardPaletteBridge.readSnapshot();
+      return {task:s.tasks.find(t=>t.id==='j616-linked'),
+        schedule:s.schedules.find(x=>x.id==='j616-schedule')};
+    });
+    expect(snapshot.task.revision).toBe(1);
+    expect(snapshot.task.checklist[0].done).toBe(false);
+    expect(snapshot.schedule.revision).toBe(1);
+    expect(snapshot.schedule.relatedTaskId).toBe('j616-linked');
+  });
+}
+
+test('JOURNAL V616 weekly related-task link returns to the same calendar without losing the task origin at 320px',async({page})=>{
+  test.setTimeout(120000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now(),d=new Date();
+    const iso=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify([{
+      id:'j616-week-task',title:'J616 期限タスク',status:'対応中',priority:'中',
+      assignee:'JournalTester',category:'院内',description:'週間で確認',
+      dueDate:iso,checklist:[],tags:[],comments:[],pinned:false,
+      revision:1,createdAt:now,updatedAt:now
+    }]));
+  },{room:ROOM});
+  await boot(page,320);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="schedule"]').click();
+  const schedule=page.locator('#scheduleView');
+  await expect(schedule.locator('[data-j425-mode="week"]')).toHaveAttribute('aria-pressed','true');
+  const related=schedule.locator('.j425-schedule-footnotes [data-related-task-id="j616-week-task"]');
+  await expect(related).toBeVisible();
+  await related.click();
+  await expect(page.locator('body')).toHaveClass(/task-mode/);
+  const back=page.locator('.j594-return-bookmark [data-j594-return]');
+  await expect(back).toBeVisible();
+  await back.click();
+  await expect(schedule).toBeVisible();
+  await expect(schedule.locator('[data-j425-mode="week"]')).toHaveAttribute('aria-pressed','true');
+  await expect(schedule.locator('.j425-schedule-footnotes [data-related-task-id="j616-week-task"]')).toBeVisible();
+  await expect(back).toBeHidden();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
