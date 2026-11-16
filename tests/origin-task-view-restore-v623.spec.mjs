@@ -186,3 +186,49 @@ test('Origin reflects another saved-view update without rewriting an unsaved scr
   await root.locator('#groupSelect').selectOption('status');
   await expect(state).toHaveAttribute('data-state','saved');
 });
+
+for(const width of [390,1366]){
+  test('Origin '+width+'px keeps failed display-setting saves visible until retry or edit',async({page})=>{
+    test.setTimeout(90000);
+    const root=await launch(page,width,'failed-save');
+    const state=root.locator('#originTaskViewState');
+    await root.locator('[data-action="task-layout"][data-value="board"]').click();
+    if(width<768)await root.locator('[data-action="task-advanced-toggle"]').click();
+    await root.locator('#originTaskSort').selectOption('priority');
+    await page.evaluate(()=>{
+      const w=window.WorkBoardWorkflowV152;
+      window.__originOriginalViewWriter=w.writeSavedView;
+      w.writeSavedView=async()=>({ok:false,conflict:true});
+    });
+    await root.locator('[data-action="task-view-save"]').click();
+    await expect(state).toHaveAttribute('data-state','failed');
+    await expect(state).toContainText('保存できませんでした');
+    await expect(root.locator('[data-action="task-view-save"]')).toBeEnabled();
+    await root.locator('#originTaskSort').selectOption('updated');
+    await expect(state).toHaveAttribute('data-state','unsaved');
+    await page.evaluate(()=>{
+      const w=window.WorkBoardWorkflowV152;
+      w.writeSavedView=window.__originOriginalViewWriter;
+    });
+    await root.locator('[data-action="task-view-save"]').click();
+    await expect(state).toHaveAttribute('data-state','saved');
+    await expect.poll(()=>page.evaluate(()=>{
+      const w=window.WorkBoardWorkflowV152;
+      return w.workflow.savedViews['origin-'+w.userKey()]?.columnSort?.key;
+    })).toBe('updated');
+  });
+}
+
+test('Origin save failure state is cleared when switching users',async({page})=>{
+  test.setTimeout(90000);
+  const root=await launch(page,390,'failure-user-switch');
+  const state=root.locator('#originTaskViewState');
+  await page.evaluate(()=>{
+    const w=window.WorkBoardWorkflowV152;
+    w.writeSavedView=async()=>{throw new Error('simulated network failure')};
+  });
+  await root.locator('[data-action="task-view-save"]').click();
+  await expect(state).toHaveAttribute('data-state','failed');
+  await chooseUser(root,'森井');
+  await expect(state).toHaveAttribute('data-state','unsaved');
+});
