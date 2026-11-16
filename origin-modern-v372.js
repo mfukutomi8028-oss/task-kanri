@@ -987,8 +987,24 @@ function renderTasks(){
  <div class="work-toolbar origin-task-toolbar" data-mobile-advanced="${taskAdvancedOpen}"><div class="tab-pills" data-origin-scroll-key="task-tabs" role="group" aria-label="タスクの表示条件">${filterOptions.map(([id,label])=>`<button type="button" class="${taskFilter===id?'active':''}" data-action="task-filter" data-value="${id}" aria-pressed="${taskFilter===id}">${label}</button>`).join('')}</div></div>
  <div class="origin-task-summary"><span>表示 ${visible.length}件 ／ 全体 ${data.tasks.length}件${renderedCount<visible.length?' · 画面に'+renderedCount+'件':''}${selectedBulk.size?' · '+selectedBulk.size+'件選択中':''}${taskFilterSummary?`<span class="origin-filter-current">${taskFilterSummary}</span>`:''}</span>${filtered?'<button type="button" data-action="task-reset">絞り込みを解除</button>':''}</div>
  ${selectedBulk.size?`<div class="bulkbar">${icon('check',16)} ${selectedBulk.size}件選択中 <div class="spacer"></div><button data-action="bulk-done">まとめて完了</button><button data-action="bulk-clear">選択解除</button></div>`:''}
- <section class="surface work-collection origin-task-collection origin-task-layout-${taskLayoutMode} ${taskDensity==='compact'?'origin-tasks-compact':''}" ${taskLayoutMode==='board'?'data-origin-scroll-key="task-board"':''}>${groupList||empty('表示するタスクがありません','絞り込みを解除するか、新しくタスクを登録してください。')}</section>
+ <section class="surface work-collection origin-task-collection origin-task-layout-${taskLayoutMode} ${taskDensity==='compact'?'origin-tasks-compact':''}" ${taskLayoutMode==='board'?'data-origin-scroll-key="task-board"':''}>${groupList||originTaskEmptyState()}</section>
  <p class="quiet-small origin-task-tip">件名から詳細を確認できます。チェックは一括選択用です。</p>`;
+}
+function originTaskEmptyState(){
+ const hasTasks=data.tasks.length>0;
+ const searching=Boolean(taskQuery.trim()||taskStatusChoice||taskFilter!=='active');
+ const label=!hasTasks?'タスクはまだ登録されていません'
+   :searching?'条件に一致するタスクはありません':'進行中のタスクはありません';
+ const detail=!hasTasks?'最初のタスクを登録すると、期限や担当者をここで管理できます。'
+   :searching?'検索語や表示条件を変更するか、すべてのタスクを確認してください。'
+   :'すべて完了、または開始前のタスクのみです。すべてのタスクから確認できます。';
+ const action=!hasTasks
+   ?'<button type="button" class="secondary-button" data-action="new" data-kind="tasks">タスクを追加</button>'
+   :searching
+     ?'<button type="button" class="secondary-button" data-action="task-reset">条件を解除</button>'
+     :'<button type="button" class="secondary-button" data-action="task-empty-all">すべてのタスクを表示</button>';
+ return '<div class="empty origin-task-empty" role="status">'+icon('layers',28)
+  +'<strong>'+label+'</strong><p>'+detail+'</p>'+action+'</div>';
 }
 function taskRow(t){
  const urgent=!t.completed&&t.due&&t.due<base;
@@ -3731,7 +3747,13 @@ if(a==='task-done'){toggleTaskDone(id,el);return}
    }
    return render();
  }
- if(a==='task-reset'){taskQuery='';taskFilter='active';taskStatusChoice='';taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();return render()}
+ if(a==='task-reset'||a==='task-empty-all'){
+  taskQuery='';taskFilter=a==='task-empty-all'?'all':'active';taskStatusChoice='';
+  taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();
+  render();
+  $('#originTaskQuery')?.focus({preventScroll:true});
+  return;
+ }
  if(a==='filter-status'){taskStatusChoice=taskStatusChoice===el.dataset.status?'':el.dataset.status;taskFilter='all';taskVisibleLimits.clear();selectedBulk.clear();return render()}
  if(a==='memo-load-more'||a==='memo-show-all'){
   if(view!=='notes'||!$('#workspace .origin-memo-more'))return;
