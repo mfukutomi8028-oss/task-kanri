@@ -5771,6 +5771,16 @@ test('JOURNAL V619 saved task detail keeps the origin memo bookmark clickable on
   await expect(page.locator('#taskTitle')).toHaveValue('V619 作業依頼の原本');
   await page.locator('#taskForm button[type="submit"]').click();
   await expect(page.locator('#taskDialog')).toBeHidden();
+  // Task creation can return to the desk without opening the detail modal.
+  // Follow the actual user flow: select the saved task and open its detail.
+  const board=page.locator('#boardView');
+  const card=board.locator('[data-j420-task-id]').filter({hasText:'V619 作業依頼の原本'});
+  await expect(card).toBeVisible();
+  await card.click();
+  const detail=board.locator('#j494AtelierNote [data-j420-note-detail]');
+  await expect(detail).toBeVisible();
+  await detail.scrollIntoViewIfNeeded();
+  await detail.click();
   await expect(page.locator('.detail-panel')).toHaveClass(/open/);
   const back=page.locator('.detail-panel.open .j594-return-bookmark [data-j594-return]');
   await expect(back).toBeVisible();
