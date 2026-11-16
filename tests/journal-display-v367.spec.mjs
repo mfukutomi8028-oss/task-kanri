@@ -5643,7 +5643,8 @@ for (const width of [390,1366]) {
     const back=page.locator('.j594-return-bookmark [data-j594-return]');
     await expect(back).toBeVisible();
     await expect(back).toHaveText('← 元の予定へ');
-    await back.click();
+    await expect(page.locator('.detail-panel.open .j594-return-bookmark [data-j594-return]')).toBeVisible();
+    await back.click({timeout:8000});
     await expect(page.locator('body')).toHaveClass(/schedule-mode/);
     await expect(schedule.locator('[data-j425-mode="day"]')).toHaveAttribute('aria-pressed','true');
     await expect(page.locator('#wbJournalSearchV393')).toHaveValue('J616 予定');
@@ -5686,7 +5687,8 @@ test('JOURNAL V616 weekly related-task link returns to the same calendar without
   await expect(page.locator('body')).toHaveClass(/task-mode/);
   const back=page.locator('.j594-return-bookmark [data-j594-return]');
   await expect(back).toBeVisible();
-  await back.click();
+  await expect(page.locator('.detail-panel.open .j594-return-bookmark [data-j594-return]')).toBeVisible();
+  await back.click({timeout:8000});
   await expect(schedule).toBeVisible();
   await expect(schedule.locator('[data-j425-mode="week"]')).toHaveAttribute('aria-pressed','true');
   await expect(schedule.locator('.j425-schedule-footnotes [data-related-task-id="j616-week-task"]')).toBeVisible();
