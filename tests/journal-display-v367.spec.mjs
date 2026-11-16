@@ -5911,3 +5911,104 @@ for (const width of [320, 1366]) {
     expect(task.revision).toBe(1);
   });
 }
+
+
+test('JOURNAL V626 keeps the desktop schedule sidebar reading position after a related-task round trip',async({page})=>{
+  test.setTimeout(120000);
+  await page.addInitScript(({room})=>{
+    const day=new Date(),now=Date.now();
+    const iso=[day.getFullYear(),String(day.getMonth()+1).padStart(2,'0'),String(day.getDate()).padStart(2,'0')].join('-');
+    const schedules=Array.from({length:25},(_,i)=>{
+      const start=new Date(day.getFullYear(),day.getMonth(),day.getDate(),8+Math.floor(i/3),(i%3)*20);
+      return {id:'j626-schedule-'+i,title:'J626 本日の予定 '+i,
+        assignee:'JournalTester',category:'院内',startAt:start.toISOString(),
+        endAt:new Date(start.getTime()+15*60000).toISOString(),
+        relatedTaskId:'',location:'会議室',memo:'確認',
+        revision:1,createdAt:now,updatedAt:now};
+    });
+    const task={id:'j626-linked',title:'J626 サイドバーから開く案件',status:'対応中',
+      priority:'中',assignee:'JournalTester',category:'院内',description:'復帰前の閲覧位置を保持',
+      dueDate:iso,checklist:[],tags:[],comments:[],pinned:false,
+      revision:1,createdAt:now,updatedAt:now};
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify([task]));
+    localStorage.setItem('system-task-schedules:'+room,JSON.stringify(schedules));
+  },{room:ROOM});
+  await boot(page,1366);await choose(page,'journal');
+  await page.locator('.wb-journal-tabs-v367 [data-journal-route="schedule"]').click();
+  const schedule=page.locator('#scheduleView');
+  const rail=schedule.locator('.j425-schedule-sidebar');
+  const source=rail.locator('[data-related-task-id="j626-linked"]');
+  await expect(rail.locator('.j425-side-schedule-list [data-schedule-id]')).toHaveCount(25);
+  await expect(source).toBeVisible();
+  const maxScroll=await rail.evaluate(el=>el.scrollHeight-el.clientHeight);
+  expect(maxScroll).toBeGreaterThan(100);
+  await source.scrollIntoViewIfNeeded();
+  await source.focus();
+  const readingTop=await rail.evaluate(el=>el.scrollTop);
+  expect(readingTop).toBeGreaterThan(100);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('body')).toHaveClass(/task-mode/);
+  const back=page.locator('.j594-return-bookmark [data-j594-return]');
+  await expect(back).toBeVisible();
+  await back.focus();await page.keyboard.press('Enter');
+  await expect(schedule).toBeVisible();
+  await expect(source).toBeFocused();
+  await expect(back).toBeHidden();
+  const restoredTop=await rail.evaluate(el=>el.scrollTop);
+  expect(Math.abs(restoredTop-readingTop)).toBeLessThanOrEqual(3);
+  const position=await rail.evaluate(el=>{
+    const r=el.getBoundingClientRect();
+    const focused=document.activeElement?.getBoundingClientRect();
+    return {within:Boolean(focused&&focused.top>=r.top-2&&focused.bottom<=r.bottom+2),
+      horizontalOverflow:document.documentElement.scrollWidth-innerWidth};
+  });
+  expect(position.within).toBe(true);
+  expect(position.horizontalOverflow).toBeLessThanOrEqual(2);
+  const snapshot=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
+  expect(snapshot.tasks.find(t=>t.id==='j626-linked').revision).toBe(1);
+  expect(snapshot.schedules).toHaveLength(25);
+});
+
+for(const [startWidth,endWidth,sourceRegion] of [
+  [1366,390,'sidebar'],[390,1366,'footnotes']
+]){
+  test('JOURNAL V626 keeps the original schedule task shortcut visible after resizing '+startWidth+' to '+endWidth+'px',async({page})=>{
+    test.setTimeout(120000);
+    await page.addInitScript(({room})=>{
+      const date=new Date(),now=Date.now();
+      const iso=[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
+      const task={id:'j626-responsive',title:'J626 横幅変更後に戻る',status:'対応中',
+        priority:'中',assignee:'JournalTester',category:'院内',
+        dueDate:iso,description:'元の操作元へ戻る',checklist:[],tags:[],comments:[],
+        pinned:false,revision:1,createdAt:now,updatedAt:now};
+      localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+      localStorage.setItem('system-task-tasks:'+room,JSON.stringify([task]));
+    },{room:ROOM});
+    await boot(page,startWidth);await choose(page,'journal');
+    const nav=startWidth<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(nav+' [data-journal-route="schedule"]').click();
+    const schedule=page.locator('#scheduleView');
+    const source=schedule.locator('.j425-schedule-'+sourceRegion+' [data-related-task-id="j626-responsive"]');
+    await expect(source).toBeVisible();
+    await source.focus();await page.keyboard.press('Enter');
+    await expect(page.locator('body')).toHaveClass(/task-mode/);
+    await page.setViewportSize({width:endWidth,height:900});
+    const back=page.locator('.j594-return-bookmark [data-j594-return]');
+    await expect(back).toBeVisible();
+    await back.focus();await page.keyboard.press('Enter');
+    await expect(schedule).toBeVisible();
+    await expect(source).toBeFocused();
+    await expect(back).toBeHidden();
+    const visible=await source.evaluate(el=>{
+      const r=el.getBoundingClientRect();
+      const dock=document.querySelector('#wbJournalDockV367');
+      const limit=dock?.getClientRects().length?dock.getBoundingClientRect().top:innerHeight;
+      return r.top>=-2&&r.bottom<=limit+2&&document.documentElement.scrollWidth-innerWidth<=2;
+    });
+    expect(visible).toBe(true);
+    const task=await page.evaluate(()=>
+      window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id==='j626-responsive'));
+    expect(task.revision).toBe(1);
+  });
+}
