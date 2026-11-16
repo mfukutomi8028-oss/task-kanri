@@ -5832,3 +5832,38 @@ for (const width of [390, 1366]) {
       .toBeLessThanOrEqual(2);
   });
 }
+
+
+for (const width of [390, 1366]) {
+  test('JOURNAL returns keyboard focus to the memo task action at '+width+'px', async({page})=>{
+    test.setTimeout(120000);
+    await boot(page,width);await choose(page,'journal');
+    const tabs=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(tabs+' [data-journal-route="memo"]').click();
+    const view=page.locator('#workMemoViewV167');
+    const title='JOURNAL task-action focus '+width;
+    await view.locator('[data-memo-new]').first().click();
+    await page.locator('#workMemoTitleV167').fill(title);
+    await page.locator('#workMemoBodyV167').fill('Return to the exact memo action');
+    await page.locator('#workMemoFormV167 button[type="submit"]').click();
+    await expect(page.locator('#workMemoDialogV167')).toBeHidden();
+    await view.locator('.work-memo-card-v167').filter({hasText:title}).click();
+    const reader=view.locator('.j592-memo-reading-desk');
+    await expect(reader.locator('h3')).toHaveText(title);
+    const source=reader.locator('[data-journal-memo-task-action]');
+    await expect(source).toBeVisible();
+    await source.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#taskDialog')).toBeVisible();
+    await page.locator('#closeTaskDialog').click();
+    const back=page.locator('.j594-return-bookmark [data-j594-return]');
+    await expect(back).toBeVisible();
+    await back.focus();
+    await page.keyboard.press('Enter');
+    await expect(view).toBeVisible();
+    await expect(reader.locator('h3')).toHaveText(title);
+    await expect(source).toBeFocused();
+    await expect(back).toBeHidden();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  });
+}
