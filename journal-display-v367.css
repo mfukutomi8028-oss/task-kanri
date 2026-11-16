@@ -7811,3 +7811,37 @@ html[data-wb-display="journal"] #boardView .j611-note-all-done {
     font-size:13px;
   }
 }
+
+/* JOURNAL V614: the first unfinished step is the reading cue, not another
+   clickable control. Keep the paper-like density on both index layouts. */
+html[data-wb-display="journal"] #listView .j425-index-record-main>.j614-index-next {
+  display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  white-space:normal!important;overflow:hidden!important;overflow-wrap:anywhere;
+  margin:5px 0 1px;padding:5px 8px;
+  border-left:2px solid var(--j-accent);border-radius:2px;
+  background:var(--j-soft);color:var(--j-ink);
+  font:650 12px/1.55 var(--j-text);
+}
+html[data-wb-display="journal"] #listView .j614-index-next>span {
+  margin-right:7px;color:var(--j-muted);
+  font-size:11px;font-weight:750;
+}
+html[data-wb-display="journal"] #listView .j614-index-next.is-complete {
+  background:transparent;border-left-color:var(--j-border);color:var(--j-muted);
+}
+html[data-wb-display="journal"] #listView .j425-index-record-main>.j614-index-description {
+  color:var(--j-muted);
+}
+html[data-wb-display="journal"] #listView .j425-index-preview>.j430-next-work {
+  margin:10px 0 12px;
+  border-left:3px solid var(--j-accent);
+  background:var(--j-soft);
+}
+html[data-wb-display="journal"] #listView .j425-index-preview>.j430-next-work p {
+  font-size:13px;line-height:1.65;overflow-wrap:anywhere;
+}
+@media(max-width:760px) {
+  html[data-wb-display="journal"] #listView .j425-index-record-main>.j614-index-next {
+    font-size:12px;line-height:1.6;
+  }
+}
