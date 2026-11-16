@@ -807,6 +807,7 @@
     const actions=document.createElement('div');actions.className='j425-memo-reader-actions';
     for(const [caption,selector] of [['編集','[data-memo-edit]'],['コピー','[data-memo-copy]'],['タスク化','[data-memo-task]']]){
       const btn=document.createElement('button');btn.type='button';btn.textContent=caption;
+      if(selector==='[data-memo-task]')btn.dataset.journalMemoTaskAction='';
       if(selector==='[data-memo-copy]')btn.className='j592-reader-primary';
       btn.addEventListener('click',()=>card.querySelector(selector)?.click());actions.append(btn);
     }
@@ -1334,8 +1335,19 @@
         const spread=document.querySelector('#workMemoViewV167 .j425-memo-spread');
         const card=[...(spread?.querySelectorAll('.work-memo-card-v167')||[])]
           .find(node=>node.dataset.memoSortId===origin.id);
-        if(card)selectMemoForReadingV451(spread,card);
-        else spread?.querySelector('[data-j450-memo-find],.j-memo-index-heading-v383')?.focus?.({preventScroll:true});
+        if(card){
+          selectMemoForReadingV451(spread,card);
+          // The canonical reader focuses itself on the next frame. Restore
+          // the originating action after that redraw without moving the page.
+          requestAnimationFrame(()=>requestAnimationFrame(()=>{
+            if(!isJournal()||canonicalRoute()!=='memo'
+              ||journalReturnOwnerV594()!==origin.owner)return;
+            const selected=spread?.querySelector('.work-memo-card-v167.j425-memo-selected');
+            if(selected?.dataset.memoSortId!==origin.id)return;
+            const action=spread.querySelector('.j425-memo-reader [data-journal-memo-task-action]');
+            if(action?.getClientRects().length)action.focus({preventScroll:true});
+          }));
+        }else spread?.querySelector('[data-j450-memo-find],.j-memo-index-heading-v383')?.focus?.({preventScroll:true});
       }else{
         const board=document.getElementById('boardView');
         const card=[...(board?.querySelectorAll('[data-j420-task-id]')||[])]
