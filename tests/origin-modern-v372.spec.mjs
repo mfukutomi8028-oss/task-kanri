@@ -2518,7 +2518,9 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
    width:button.getBoundingClientRect().width,height:button.getBoundingClientRect().height,
    display:getComputedStyle(button).display
  }));
- expect(taskEditHit).toMatchObject({width:44,height:44,display:'flex'});
+ expect(taskEditHit.width).toBeGreaterThanOrEqual(64);
+ expect(taskEditHit.height).toBeGreaterThanOrEqual(44);
+ expect(taskEditHit.display).toBe('flex');
  await task.locator('[data-action="list-quick-edit"]').click();
  const taskForm=sheet.locator('#editForm[data-kind="tasks"]');
  await expect(taskForm).toBeVisible();

@@ -209,3 +209,79 @@ test('Origin board keeps horizontal position when task controls rerender the wor
   expect(end).toBeGreaterThanOrEqual(start-3);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(3);
 });
+
+
+test('Origin compact rows show task priorities and checklist progress without expanding work briefs',async({page})=>{
+  test.setTimeout(90000);
+  const {host,rows}=await openOrigin(page,1366,'compact-context');
+  const row=rows.first();
+  await expect(host.locator('.origin-task-collection')).toHaveClass(/origin-tasks-compact/);
+  await expect(row.locator('.row-under .origin-task-meta')).toBeVisible();
+  await expect(row.locator('.row-under .origin-task-meta')).toContainText('高優先');
+  await expect(row.locator('.row-under .origin-task-progress-pill')).toBeVisible();
+  await expect(row.locator('.row-under .origin-task-progress-pill')).toContainText('残り3件');
+  await expect(row.locator('.origin-task-insight')).toBeHidden();
+  const compactHeight=await row.evaluate(el=>el.getBoundingClientRect().height);
+  await host.locator('[data-action="task-density"]').click();
+  await expect(host.locator('.origin-task-collection')).not.toHaveClass(/origin-tasks-compact/);
+  await expect(row.locator('.origin-task-insight-description')).toBeVisible();
+  await expect(row.locator('.origin-task-insight-next')).toContainText('事前確認');
+  const detailedHeight=await row.evaluate(el=>el.getBoundingClientRect().height);
+  expect(detailedHeight).toBeGreaterThan(compactHeight+20);
+  await expect(row.locator('[data-action="task-done"]')).toBeVisible();
+  await expect(row.locator('[data-action="list-quick-edit"]')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
+});
+
+for(const width of [320,390,1366]){
+  test('Origin display density control reports its current mode and switches at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    const {host}=await openOrigin(page,width,'density-state');
+    if(width<768)await host.locator('[data-action="task-advanced-toggle"]').click();
+    const density=host.locator('[data-action="task-density"]');
+    await expect(density).toBeVisible();
+    await expect(density).toContainText('表示：コンパクト');
+    await expect(density).toHaveAttribute('aria-pressed','false');
+    await expect(density).toHaveAttribute('aria-label',/現在.*コンパクト.*詳細表示/);
+    await density.click();
+    await expect(host.locator('.origin-task-collection')).not.toHaveClass(/origin-tasks-compact/);
+    await expect(density).toContainText('表示：詳細');
+    await expect(density).toHaveAttribute('aria-pressed','true');
+    await expect(density).toHaveAttribute('aria-label',/現在.*詳細.*コンパクト表示/);
+    await density.click();
+    await expect(host.locator('.origin-task-collection')).toHaveClass(/origin-tasks-compact/);
+    await expect(density).toContainText('表示：コンパクト');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
+  });
+}
+
+for(const width of [320,390]){
+  test('Origin mobile task actions show a readable edit label and fit the row at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    const {host,rows}=await openOrigin(page,width,'edit-label');
+    const row=rows.first();
+    const edit=row.locator('[data-action="list-quick-edit"]');
+    const status=row.locator('[data-action="task-inline-status"]');
+    const done=row.locator('[data-action="task-done"]');
+    await expect(edit.locator('.origin-task-edit-label')).toBeVisible();
+    await expect(edit).toContainText('編集');
+    await expect(status).toBeVisible();
+    await expect(done).toBeVisible();
+    const boxes=await row.evaluate(el=>{
+      const outer=el.getBoundingClientRect();
+      const nodes=['task-inline-status','list-quick-edit','task-done']
+        .map(name=>el.querySelector('[data-action="'+name+'"]').getBoundingClientRect());
+      return {outside:nodes.some(r=>r.left<outer.left-1||r.right>outer.right+1),
+        overlaps:nodes.some((a,i)=>nodes.slice(i+1).some(b=>
+          a.left<b.right-1&&a.right>b.left+1&&a.top<b.bottom-1&&a.bottom>b.top+1)),
+        sizes:nodes.map(r=>({w:r.width,h:r.height}))};
+    });
+    expect(boxes.outside).toBe(false);
+    expect(boxes.overlaps).toBe(false);
+    expect(boxes.sizes.every(b=>b.h>=44&&b.w>=44)).toBe(true);
+    expect(boxes.sizes[1].w).toBeGreaterThanOrEqual(64);
+    await edit.click();
+    await expect(host.locator('#sheet #editForm[data-kind="tasks"]')).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
+  });
+}
