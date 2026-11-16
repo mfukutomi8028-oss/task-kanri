@@ -6118,3 +6118,43 @@ for (const width of [390, 1366]) {
     expect(task.revision).toBe(1);
   });
 }
+
+
+for (const width of [390, 1366]) {
+  test('JOURNAL restores page-tab focus when a focused return bookmark is invalidated by user switch at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await page.addInitScript(({room})=>{
+      const now=Date.now(),d=new Date();
+      const dueDate=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+      localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester','別の利用者']));
+      localStorage.setItem('system-task-tasks:'+room,JSON.stringify([{
+        id:'j632-bookmark',title:'J632 利用者切替とフォーカス',status:'対応中',priority:'中',
+        assignee:'JournalTester',category:'院内',description:'キーボード導線を確認',
+        dueDate,checklist:[],tags:[],comments:[],pinned:false,
+        revision:1,createdAt:now,updatedAt:now
+      }]));
+    },{room:ROOM});
+    await boot(page,width);await choose(page,'journal');
+    const tabs=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(tabs+' [data-journal-route="schedule"]').click();
+    const source=page.locator('#scheduleView .j425-schedule-footnotes [data-related-task-id="j632-bookmark"]');
+    await expect(source).toBeVisible();
+    await source.focus();await page.keyboard.press('Enter');
+    await expect(page.locator('body')).toHaveClass(/task-mode/);
+    const bookmark=page.locator('.j594-return-bookmark [data-j594-return]');
+    await expect(bookmark).toBeVisible();
+    await bookmark.focus();
+    await expect(bookmark).toBeFocused();
+    const result=await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('別の利用者'));
+    expect(result).toMatchObject({ok:true,changed:true,user:'別の利用者'});
+    await expect(bookmark).toBeHidden();
+    await expect(page.locator(tabs+' [data-journal-route="tasks"]')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('body')).toHaveClass(/task-mode/);
+    await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('JournalTester'));
+    await expect(bookmark).toBeHidden();
+    const task=await page.evaluate(()=>
+      window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id==='j632-bookmark'));
+    expect(task.revision).toBe(1);
+  });
+}
