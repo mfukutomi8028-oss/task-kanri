@@ -195,3 +195,13 @@ for(const width of [320,390,1280]){
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
   });
 }
+
+
+test('Today keeps the three existing sections without a duplicated briefing',async({page})=>{
+  const root=await launch(page,'origin-today-no-duplicate-briefing');
+  await expect(root.locator('.origin-day-briefing')).toHaveCount(0);
+  await expect(root.getByRole('heading',{name:/先に進めたいこと/})).toBeVisible();
+  await expect(root.getByRole('heading',{name:/今日の予定/})).toBeVisible();
+  await expect(root.getByRole('heading',{name:/個人ToDo/})).toBeVisible();
+  await expect(root.locator('.origin-today-shortcuts button')).toHaveCount(3);
+});
