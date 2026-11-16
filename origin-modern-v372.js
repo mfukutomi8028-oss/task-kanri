@@ -809,8 +809,8 @@ function restoreOriginFocus(metadata){
    try{target.setSelectionRange(...metadata.selection)}catch{}
  }
 }
-// Preserve the actual task being read when switching list, board and timeline.
-function captureOriginTaskLayoutAnchor(){
+// Preserve the actual task being read during task presentation changes.
+function captureOriginTaskViewAnchor(){
  if(view!=='tasks'||panelOpen)return null;
  const collection=$('#workspace .origin-task-collection');
  if(!collection)return null;
@@ -826,7 +826,7 @@ function captureOriginTaskLayoutAnchor(){
  return current?{id:current.card.dataset.id,top:current.row.getBoundingClientRect().top,
    user:snapshot.currentUser,room:snapshot.roomId}:null;
 }
-function restoreOriginTaskLayoutAnchor(anchor){
+function restoreOriginTaskViewAnchor(anchor){
  if(!anchor||view!=='tasks'||panelOpen
    ||anchor.user!==snapshot.currentUser||anchor.room!==snapshot.roomId)return;
  // Reuse the existing detail-return revealer for collapsed and paginated groups.
@@ -843,6 +843,13 @@ function restoreOriginTaskLayoutAnchor(anchor){
   if(bounds.left<frame.left||bounds.right>frame.right)
    row.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
  }
+}
+// Use a single Origin-only restoration path for layout, sort, grouping and density.
+function renderOriginTaskViewKeepingAnchor(change){
+ const anchor=captureOriginTaskViewAnchor();
+ change();
+ render();
+ restoreOriginTaskViewAnchor(anchor);
 }
 function render(){
  const focus= captureOriginFocus();
@@ -3459,14 +3466,12 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  if(['task-archive','archive-restore'].includes(a))return originSidecarAction(el);
  if(a==='task-layout'){
   if(!['list','board','timeline'].includes(value)||taskLayoutMode===value)return;
-  const anchor=captureOriginTaskLayoutAnchor();
-  originTaskViewSaveFailed=false;taskLayoutMode=value;
-  if(value==='board')taskGrouping='status';
-  if(value==='timeline')taskGrouping='deadline';
-  taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();
-  render();
-  restoreOriginTaskLayoutAnchor(anchor);
-  return;
+  return renderOriginTaskViewKeepingAnchor(()=>{
+   originTaskViewSaveFailed=false;taskLayoutMode=value;
+   if(value==='board')taskGrouping='status';
+   if(value==='timeline')taskGrouping='deadline';
+   taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();
+  });
  }
  if(a==='task-view-save')return saveOriginTaskView();
  if(a==='tool-tab'){if(!['templates','archive','knowledge','insights','settings'].includes(value))return;originTool=value;originToolQuery='';originToolLimit=60;return render();}
@@ -3841,7 +3846,9 @@ if(a==='task-done'){toggleTaskDone(id,el);return}
   return;
  }
  if(a==='task-filter'){taskFilter=value;taskStatusChoice='';taskVisibleLimits.clear();selectedBulk.clear();return render()}
- if(a==='task-density'){taskDensity=taskDensity==='compact'?'comfortable':'compact';return render()}
+ if(a==='task-density')return renderOriginTaskViewKeepingAnchor(()=>{
+  taskDensity=taskDensity==='compact'?'comfortable':'compact';
+ })
  if(a==='task-load-more'||a==='task-show-all'){
   const groupKey=el.dataset.value||'',rowGroup=el.closest('.origin-task-group-rows');
   if(!rowGroup||rowGroup.hidden||rowGroup.dataset.groupKey!==groupKey
@@ -4017,8 +4024,20 @@ mount.addEventListener('change',e=>{
  }
  if(t.id==='originFullSearchSort'){originFullSearchSort=['relevance','title'].includes(t.value)?t.value:'relevance';originFullSearchLimit=30;render();$('#originFullSearchSort')?.focus({preventScroll:true});return}
  if(t.id==='originMemoSort'){memoSort=['updated','title','category'].includes(t.value)?t.value:'updated';memoVisibleLimit=MEMO_RENDER_BATCH;render();return}
- if(t.id==='groupSelect'){originTaskViewSaveFailed=false;taskGrouping=t.value;taskVisibleLimits.clear();selectedBulk.clear();render();return}
- if(t.id==='originTaskSort'){originTaskViewSaveFailed=false;taskSortMode=['due','priority','updated'].includes(t.value)?t.value:'due';taskVisibleLimits.clear();selectedBulk.clear();render();return}
+ if(t.id==='groupSelect'){
+  if(!['deadline','status','assignee'].includes(t.value)||taskGrouping===t.value)return;
+  return renderOriginTaskViewKeepingAnchor(()=>{
+   originTaskViewSaveFailed=false;taskGrouping=t.value;
+   taskVisibleLimits.clear();selectedBulk.clear();
+  });
+ }
+ if(t.id==='originTaskSort'){
+  if(!['due','priority','updated'].includes(t.value)||taskSortMode===t.value)return;
+  return renderOriginTaskViewKeepingAnchor(()=>{
+   originTaskViewSaveFailed=false;taskSortMode=t.value;
+   taskVisibleLimits.clear();selectedBulk.clear();
+  });
+ }
   if(t.dataset.action==='task-inline-status'){updateOriginInlineStatus(t);return}
  if(t.dataset.action==='task-check'){taskCheckToggle(t);return}
  if(t.dataset.action==='todo-check'){toggleTodo(t.dataset.id,t.checked);return}
