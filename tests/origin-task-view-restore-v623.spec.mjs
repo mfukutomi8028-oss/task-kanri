@@ -43,6 +43,9 @@ for(const width of [390,1366]){
     await expect.poll(()=>page.evaluate(()=>
       window.WorkBoardWorkflowV152.workflow.savedViews['origin-'+window.WorkBoardWorkflowV152.userKey()]?.columnSort?.key
     )).toBe('priority');
+    await expect.poll(()=>page.evaluate(()=>
+      window.WorkBoardWorkflowV152.workflow.savedViews['origin-'+window.WorkBoardWorkflowV152.userKey()]?.taskGrouping
+    )).toBe('assignee');
 
     // The other user has no saved preferences. Default state must be independent.
     await chooseUser(root,'森井');
@@ -51,18 +54,18 @@ for(const width of [390,1366]){
     await expect(root.locator('#groupSelect')).toHaveValue('deadline');
     await expect(root.locator('#originTaskQuery')).toHaveValue('');
 
-    // Returning to the saved user's view restores layout and sort; grouping follows layout defaults.
+    // Returning to the saved user restores all three explicitly saved settings.
     await chooseUser(root,'福冨');
     await expect(root.locator('[data-action="task-layout"][data-value="board"]')).toHaveAttribute('aria-pressed','true');
     await expect(root.locator('#originTaskSort')).toHaveValue('priority');
-    await expect(root.locator('#groupSelect')).toHaveValue('status');
+    await expect(root.locator('#groupSelect')).toHaveValue('assignee');
     await page.reload({waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
     await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
     await root.locator((width<768?'#mobileNav':'#desktopNav')+' [data-route="tasks"]').click();
     await expect(root.locator('[data-action="task-layout"][data-value="board"]')).toHaveAttribute('aria-pressed','true');
     await expect(root.locator('#originTaskSort')).toHaveValue('priority');
-    await expect(root.locator('#groupSelect')).toHaveValue('status');
+    await expect(root.locator('#groupSelect')).toHaveValue('assignee');
   });
 }
 
@@ -101,4 +104,23 @@ test('Origin task filtering survives layout, sort and navigation changes without
   const after=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks
     .map(t=>({id:t.id,revision:t.revision,completed:t.completed})));
   expect(after).toEqual(original);
+});
+
+test('Origin restores legacy saved view without grouping using layout default',async({page})=>{
+  test.setTimeout(90000);
+  const root=await launch(page,390,'legacy-grouping');
+  const result=await page.evaluate(async()=>{
+    const w=window.WorkBoardWorkflowV152, id='origin-'+w.userKey();
+    return w.writeSavedView(id,{
+      taskLayout:'board',columnSort:{key:'updated',direction:'asc'},updatedAt:Date.now()
+    },w.workflow.savedViews?.[id]||null);
+  });
+  expect(result.ok).toBe(true);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
+  await root.locator('#mobileNav [data-route="tasks"]').click();
+  await expect(root.locator('[data-action="task-layout"][data-value="board"]')).toHaveAttribute('aria-pressed','true');
+  await expect(root.locator('#originTaskSort')).toHaveValue('updated');
+  await expect(root.locator('#groupSelect')).toHaveValue('status');
 });

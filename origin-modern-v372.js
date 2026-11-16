@@ -937,12 +937,12 @@ function restoreOriginTaskView(){
  // A user without saved preferences must not inherit the previous user's view.
  taskLayoutMode=['list','board','timeline'].includes(prefs?.taskLayout)?prefs.taskLayout:'list';
  taskSortMode=['due','priority','updated'].includes(prefs?.columnSort?.key)?prefs.columnSort.key:'due';
- taskGrouping=taskLayoutMode==='board'?'status':'deadline';
+ taskGrouping=['deadline','status','assignee'].includes(prefs?.taskGrouping)?prefs.taskGrouping:(taskLayoutMode==='board'?'status':'deadline');
 }
 async function saveOriginTaskView(){
  if(busy)return;const w=window.WorkBoardWorkflowV152;if(!w)return;
  busy=true;
- try{const id='origin-'+w.userKey(),result=await w.writeSavedView(id,{taskLayout:taskLayoutMode,columnSort:{key:taskSortMode,direction:'asc'},updatedAt:Date.now()},w.workflow.savedViews?.[id]||null);notify(result?.ok?'表示方法と並び順を保存しました。':'保存できませんでした。接続状態を確認してください。');}
+ try{const id='origin-'+w.userKey(),result=await w.writeSavedView(id,{taskLayout:taskLayoutMode,taskGrouping,columnSort:{key:taskSortMode,direction:'asc'},updatedAt:Date.now()},w.workflow.savedViews?.[id]||null);notify(result?.ok?'表示方法・並び順・まとめ方を保存しました。':'保存できませんでした。接続状態を確認してください。');}
  finally{busy=false}
 }
 function renderTasks(){
@@ -1007,7 +1007,7 @@ function renderTasks(){
  <button type="button" class="origin-density-button" data-action="task-density" aria-pressed="${taskDensity!=='compact'}" aria-label="${taskDensity==='compact'?'現在はコンパクト表示です。詳細表示に切り替える':'現在は詳細表示です。コンパクト表示に切り替える'}" title="${taskDensity==='compact'?'説明や次のチェック項目を含む詳細表示に切り替えます':'必要な情報だけのコンパクト表示に切り替えます'}">表示：${taskDensity==='compact'?'コンパクト':'詳細'}</button>
  </div>
 
- <div class="origin-layout-controls"><div class="tab-pills" role="group" aria-label="タスクの表示方法">${[['list','一覧'],['board','ボード'],['timeline','タイムライン']].map(([id,label])=>`<button type="button" data-action="task-layout" data-value="${id}" class="${taskLayoutMode===id?'active':''}" aria-pressed="${taskLayoutMode===id}">${label}</button>`).join('')}</div><button type="button" class="secondary-button" data-action="task-view-save">表示方法と並び順を保存</button></div>
+ <div class="origin-layout-controls"><div class="tab-pills" role="group" aria-label="タスクの表示方法">${[['list','一覧'],['board','ボード'],['timeline','タイムライン']].map(([id,label])=>`<button type="button" data-action="task-layout" data-value="${id}" class="${taskLayoutMode===id?'active':''}" aria-pressed="${taskLayoutMode===id}">${label}</button>`).join('')}</div><button type="button" class="secondary-button" data-action="task-view-save" title="表示方法・並び順・まとめ方を保存します。検索・絞り込み条件は保存しません。" aria-label="表示方法・並び順・まとめ方を保存（検索・絞り込みは対象外）">表示設定を保存</button></div>
  </div>
  <div class="origin-mobile-advanced-switch"><button type="button" data-action="task-advanced-toggle"
   aria-controls="originTaskStatusRail originTaskSort groupSelect" aria-expanded="${taskAdvancedOpen}">
