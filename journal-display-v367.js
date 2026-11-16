@@ -1263,13 +1263,13 @@
   journalReturnBarV594.setAttribute('aria-label','前に開いていた手帳のページ');
   const journalReturnHomeV616=header.querySelector('.wb-journal-navigation-v367');
   journalReturnHomeV616.after(journalReturnBarV594);
-  // V616: the task detail is a true modal folio above the page. Move the ONE
-  // existing bookmark into that folio while it is open; never clone its action.
+  // V619: both schedule and memo origins reuse ONE bookmark inside the
+  // task-detail modal; moving the existing node avoids duplicate actions.
   const journalReturnDetailShellV616=document.querySelector('.app-shell');
   const journalReturnDetailPanelV616=document.querySelector('.detail-panel');
   function journalPositionReturnBookmarkV616(){
     const panel=isJournal()&&!journalReturnBarV594.hidden
-      &&journalReturnV594?.kind==='schedule'
+      &&['schedule','memo'].includes(journalReturnV594?.kind)
       &&journalReturnDetailShellV616?.classList.contains('detail-open')
       &&journalReturnDetailPanelV616?.classList.contains('open')
       ?journalReturnDetailPanelV616:null;
