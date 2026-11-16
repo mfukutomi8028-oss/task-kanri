@@ -6097,7 +6097,7 @@ for (const width of [390, 1366]) {
     const bookmark=page.locator('.j594-return-bookmark [data-j594-return]');
     await expect(bookmark).toBeVisible();
     await bookmark.focus();
-    const original=await bookmark.evaluate(node=>{node.dataset.j630Identity='original';return node;});
+    const original=await bookmark.evaluate(node=>{node.dataset.j630Identity='original';return node.isConnected;});
     expect(original).toBeTruthy();
     // Canonical body-class updates schedule navigation sync even without
     // changing the current JOURNAL route or bookmarked task.
