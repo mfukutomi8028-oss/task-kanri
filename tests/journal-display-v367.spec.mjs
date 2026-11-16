@@ -5546,3 +5546,58 @@ test('JOURNAL V611 desktop folio keeps the work-first order and readable expanda
   await expect(note).toBeHidden();
   await expect(board.locator('[data-j420-task-id="j611-desktop"]')).toBeFocused();
 });
+
+
+test('JOURNAL V614 index shows next unfinished action before long descriptions without changing checklist data',async({page})=>{
+  test.setTimeout(90000);
+  await page.addInitScript(({room})=>{
+    const now=Date.now();
+    const common={status:'対応中',priority:'中',assignee:'JournalTester',
+      category:'院内',tags:[],comments:[],pinned:false,revision:1,createdAt:now,updatedAt:now};
+    localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+    localStorage.setItem('system-task-tasks:'+room,JSON.stringify([
+      {...common,id:'j614-open',title:'J614 未完了を先に示す案件',
+        description:'引継ぎの説明を長く書いた文章。'.repeat(50),
+        checklist:[{text:'完了済みの旧作業',done:true},
+          {text:'まず院内端末を確認する',done:false},
+          {text:'次に結果を記録する',done:false}]},
+      {...common,id:'j614-done',title:'J614 すべて完了',
+        checklist:[{text:'完了した作業',done:true}]},
+      {...common,id:'j614-empty',title:'J614 チェック項目なし',checklist:[]}
+    ]));
+  },{room:ROOM});
+  await boot(page,390);await choose(page,'journal');
+  await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
+  await page.locator('#boardView [data-j420-layout="list"]').click();
+  const list=page.locator('#listView');
+  const active=list.locator('[data-j425-row="j614-open"]');
+  await expect(active.locator('.j614-index-next')).toContainText('まず院内端末を確認する');
+  await expect(active.locator('.j614-index-next')).not.toContainText('完了済みの旧作業');
+  await expect(active.locator('.j425-index-record-main>p').first()).toHaveClass(/j614-index-next/);
+  await active.click();
+  const note=list.locator('.j425-index-preview');
+  await expect(note).toBeVisible();
+  const classes=await note.locator(':scope > section').evaluateAll(nodes=>nodes.map(node=>node.className));
+  expect(classes[0]).toBe('j430-next-work');
+  await expect(note.locator('.j430-next-work')).toContainText('まず院内端末を確認する');
+  const checks=note.locator('.j425-preview-check');
+  await expect(checks).toHaveCount(3);
+  await expect(checks.nth(0)).toContainText('まず院内端末を確認する');
+  await expect(checks.nth(1)).toContainText('次に結果を記録する');
+  await expect(checks.nth(2)).toContainText('完了済みの旧作業');
+  await expect(list.locator('[data-j425-row="j614-done"] .j614-index-next'))
+    .toContainText('すべて完了');
+  await expect(list.locator('[data-j425-row="j614-empty"] .j614-index-next'))
+    .toHaveCount(0);
+  for(const width of [320,390,1366]){
+    await page.setViewportSize({width,height:900});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+      .toBeLessThanOrEqual(2);
+  }
+  const saved=await page.evaluate(()=>
+    window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id==='j614-open'));
+  expect(saved.revision).toBe(1);
+  expect(saved.checklist.map(item=>item.text)).toEqual([
+    '完了済みの旧作業','まず院内端末を確認する','次に結果を記録する'
+  ]);
+});
