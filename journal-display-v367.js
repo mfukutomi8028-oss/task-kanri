@@ -1401,21 +1401,32 @@
       :origin.kind==='memo'||origin.kind==='schedule'?route==='tasks':false));
     journalReturnBarV594.hidden=!show;
     journalPositionReturnBookmarkV616();
-    journalReturnBarV594.replaceChildren();
-    if(!show)return;
-    const text=document.createElement('p');
+    if(!show){
+      journalReturnBarV594.replaceChildren();
+      return;
+    }
+    // Canonical navigation redraws can happen while the bookmark is focused.
+    // Reuse the current button instead of detaching it on every sync.
+    let text=journalReturnBarV594.querySelector('p');
+    if(!text){
+      text=document.createElement('p');
+      journalReturnBarV594.append(text);
+    }
     text.textContent=origin.kind==='task'
       ?'前に見ていた案件ノートへ戻れます。'
       :origin.kind==='schedule'
         ?'元の予定の日付・表示条件・閲覧位置へ戻れます。'
         :'タスク作成前に見ていたメモへ戻れます。';
-    const back=document.createElement('button');
-    back.type='button';
-    back.dataset.j594Return='';
+    let back=journalReturnBarV594.querySelector('[data-j594-return]');
+    if(!back){
+      back=document.createElement('button');
+      back.type='button';
+      back.dataset.j594Return='';
+      back.addEventListener('click',journalReturnToSourceV594);
+      journalReturnBarV594.append(back);
+    }
     back.textContent=origin.kind==='task'?'← 元の案件へ'
       :origin.kind==='schedule'?'← 元の予定へ':'← 元のメモへ';
-    back.addEventListener('click',journalReturnToSourceV594);
-    journalReturnBarV594.append(text,back);
   }
   // Enhance original JOURNAL task actions only. No duplicate record renderer,
   // storage or business handler is introduced.
