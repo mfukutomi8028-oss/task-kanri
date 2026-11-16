@@ -7550,16 +7550,26 @@ function journalAtelierCardV420(t) {
 function journalAtelierNoteV420(t){
   if(!t)return `<div class="j420-note-empty">案件を選択すると、ここに要約と進捗が表示されます。</div>`;
   const p=checklistProgress(t);
-  const next=t.checklist.find(x=>!x.done)?.text;
-  const lines=t.checklist.slice(0,4).map(x=>`<li class="${x.done?'is-done':''}"><span aria-hidden="true">${x.done?'☑':'□'}</span>${escapeHtml(x.text)}</li>`).join('')
-    ||'<li>チェック項目はまだありません。</li>';
+  const pending=t.checklist.filter(item=>!item.done);
+  const completed=t.checklist.filter(item=>item.done);
+  const next=pending[0]?.text;
+  const rows=items=>items.map(item=>
+    `<li class="${item.done?'is-done':''}"><span aria-hidden="true">${item.done?'☑':'□'}</span>${escapeHtml(item.text)}</li>`
+  ).join('');
   return `<div class="j420-note-card">
     <div class="j420-note-lead"><span>案件の概要</span><h4>${escapeHtml(t.title)}</h4><small>${escapeHtml(t.category||'未分類')}　/　${escapeHtml(t.status)}　/　${escapeHtml(t.assignee||'未割当')}</small>
       <div class="j420-note-actions"><button type="button" data-j420-note-detail>全文・コメントを開く</button><button type="button" data-j420-note-edit>編集</button></div>
     </div>
+    <div class="j420-next-step"><span>次の一手</span><p>${escapeHtml(next||(p.total?'チェック項目はすべて完了しました。必要なら詳細を確認してください。':'詳細を開いて次の作業を確認しましょう。'))}</p>${t.dueDate?`<small>期限 ${escapeHtml(t.dueDate)}</small>`:''}</div>
+    <div class="j420-note-checks">
+      <div class="j611-note-check-header"><strong>チェック項目</strong><small>${p.done}/${p.total} 完了 · 残り${pending.length}件</small></div>
+      ${p.total?`<progress class="j611-note-progress" value="${p.done}" max="${p.total}" aria-label="チェック項目の完了状況"></progress>
+        ${pending.length?`<ul class="j611-note-pending-list">${rows(pending.slice(0,4))}</ul>`:'<p class="j611-note-all-done">チェック項目はすべて完了しています。</p>'}
+        ${pending.length>4?`<details class="j611-note-remaining-extra"><summary>残り${pending.length-4}件を表示</summary><ul>${rows(pending.slice(4))}</ul></details>`:''}
+        ${completed.length?`<details class="j611-note-completed-extra"><summary>完了済み${completed.length}件を表示</summary><ul>${rows(completed)}</ul></details>`:''}
+      `:'<p class="j611-note-empty">チェック項目はまだありません。</p>'}
+    </div>
     <div class="j420-note-description"><strong>案件の要約</strong><p>${escapeHtml(t.description||'詳しい内容はまだ登録されていません。')}</p></div>
-    <div class="j420-note-checks"><strong>チェック項目 ${p.done}/${p.total}</strong><ul>${lines}</ul></div>
-    <div class="j420-next-step"><span>次の一手</span><p>${escapeHtml(next||'詳細を開いて次の作業を確認しましょう。')}</p>${t.dueDate?`<small>期限 ${escapeHtml(t.dueDate)}</small>`:''}</div>
   </div>`;
 }
 
