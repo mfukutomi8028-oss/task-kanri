@@ -1399,10 +1399,21 @@
     const route=canonicalRoute();
     const show=Boolean(valid&&(origin.kind==='task'?route==='memo'
       :origin.kind==='memo'||origin.kind==='schedule'?route==='tasks':false));
+    // A user switch can invalidate a bookmark while its return button has
+    // keyboard focus. Capture focus before hiding/removing the button.
+    const focusedReturn=journalReturnBarV594.contains(document.activeElement);
     journalReturnBarV594.hidden=!show;
     journalPositionReturnBookmarkV616();
     if(!show){
       journalReturnBarV594.replaceChildren();
+      // Only move focus if we actually removed the focused control. A
+      // background refresh must not steal focus from the current work.
+      if(focusedReturn&&isJournal()){
+        const route=canonicalRoute();
+        const tabs=window.innerWidth<=860?dockButtons:tabButtons;
+        const currentTab=tabs.get(route);
+        if(currentTab&&!currentTab.disabled)currentTab.focus({preventScroll:true});
+      }
       return;
     }
     // Canonical navigation redraws can happen while the bookmark is focused.
