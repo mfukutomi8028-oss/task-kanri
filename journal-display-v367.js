@@ -1261,7 +1261,29 @@
   journalReturnBarV594.dataset.j594Return='';
   journalReturnBarV594.hidden=true;
   journalReturnBarV594.setAttribute('aria-label','前に開いていた手帳のページ');
-  header.querySelector('.wb-journal-navigation-v367').after(journalReturnBarV594);
+  const journalReturnHomeV616=header.querySelector('.wb-journal-navigation-v367');
+  journalReturnHomeV616.after(journalReturnBarV594);
+  // V616: the task detail is a true modal folio above the page. Move the ONE
+  // existing bookmark into that folio while it is open; never clone its action.
+  const journalReturnDetailShellV616=document.querySelector('.app-shell');
+  const journalReturnDetailPanelV616=document.querySelector('.detail-panel');
+  function journalPositionReturnBookmarkV616(){
+    const panel=isJournal()&&!journalReturnBarV594.hidden
+      &&journalReturnV594?.kind==='schedule'
+      &&journalReturnDetailShellV616?.classList.contains('detail-open')
+      &&journalReturnDetailPanelV616?.classList.contains('open')
+      ?journalReturnDetailPanelV616:null;
+    if(panel){
+      if(journalReturnBarV594.parentElement!==panel)
+        (panel.querySelector('.detail-head')||panel).after(journalReturnBarV594);
+    }else if(journalReturnBarV594.parentElement!==header){
+      journalReturnHomeV616.after(journalReturnBarV594);
+    }
+  }
+  if(journalReturnDetailShellV616)new MutationObserver(journalPositionReturnBookmarkV616)
+    .observe(journalReturnDetailShellV616,{attributes:true,attributeFilter:['class']});
+  if(journalReturnDetailPanelV616)new MutationObserver(journalPositionReturnBookmarkV616)
+    .observe(journalReturnDetailPanelV616,{attributes:true,attributeFilter:['class']});
   const journalReturnOwnerV594=()=>shelfOwnerKey(shelfSnapshot());
   function journalReturnCaptureV594(kind,id) {
     if(!isJournal()||!id||!shelfSnapshot())return;
@@ -1339,6 +1361,7 @@
     const show=Boolean(valid&&(origin.kind==='task'?route==='memo'
       :origin.kind==='memo'||origin.kind==='schedule'?route==='tasks':false));
     journalReturnBarV594.hidden=!show;
+    journalPositionReturnBookmarkV616();
     journalReturnBarV594.replaceChildren();
     if(!show)return;
     const text=document.createElement('p');
