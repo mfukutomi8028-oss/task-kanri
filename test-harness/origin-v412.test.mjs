@@ -430,7 +430,9 @@ test('Origin shows conditions from view-only filter state, not data fields',()=>
 test('Origin task groups mount 24 rows at first and retain full filtered counts',()=>{
  assert.match(origin,/const TASK_RENDER_BATCH=24/);
  assert.match(origin,/taskVisibleLimits=new Map\(\)/);
- assert.match(origin,/const groupEntries=Object\.entries\(groups\)\.map/);
+ assert.match(origin,/const orderedGroups=Object\.entries\(groups\)/);
+ assert.match(origin,/orderedGroups\.sort/);
+ assert.match(origin,/const groupEntries=orderedGroups\.map/);
  assert.match(origin,/const limit=Math\.min\(rows\.length,savedLimit===Infinity/);
  assert.match(origin,/group\.rows\.slice\(0,group\.limit\)\.map\(task=>task\.id\)/);
  assert.match(origin,/for\(const id of selectedBulk\)if\(!selectable\.has\(id\)\)selectedBulk\.delete\(id\)/);
