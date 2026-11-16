@@ -2419,8 +2419,21 @@ function restorePanelReturnPosition(kind,id){
        ?row?.querySelector('[data-action="list-quick-edit"]'):null;
      (quick||resolved).focus({preventScroll:true});
      const top=row?.getBoundingClientRect().top??resolved.getBoundingClientRect().top;
+     // When deleting an entry shortens the page below the desired scroll,
+     // reserve only that missing scroll range for the next actionable row.
+     // This spacer is presentation-only and disappears on the next render.
+     $('#workspace .origin-task-scroll-reserve')?.remove();
+     const desiredScroll=window.scrollY+top-anchor.top;
+     const maximumBefore=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+     if(kind==='tasks'&&view==='tasks'&&desiredScroll>maximumBefore+1){
+       const reserve=document.createElement('div');
+       reserve.className='origin-task-scroll-reserve';
+       reserve.setAttribute('aria-hidden','true');
+       reserve.style.height=Math.ceil(desiredScroll-maximumBefore+2)+'px';
+       $('#workspace').appendChild(reserve);
+     }
      const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
-     const destination=Math.max(0,Math.min(maximum,window.scrollY+top-anchor.top));
+     const destination=Math.max(0,Math.min(maximum,desiredScroll));
      window.scrollTo({top:destination,behavior:'instant'});
      aligned=true;
    }else{
