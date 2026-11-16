@@ -1276,7 +1276,13 @@
     if(!origin||!isJournal()||journalReturnOwnerV594()!==origin.owner){
       syncJournalReturnV594();return;
     }
-    const target=origin.kind==='task'?'tasks':'memo';
+    const target=origin.kind==='task'?'tasks':origin.kind==='schedule'?'schedule':'memo';
+    // V616: restore only view filters/position. The canonical schedule route
+    // performs the render; there is no duplicate schedule or task state.
+    if(origin.kind==='schedule'
+      &&!window.WorkBoardJournalNavigation?.restoreScheduleReturnV616?.(origin.scheduleContext)){
+      syncJournalReturnV594();return;
+    }
     navigate(target);
     // The shared search already belongs to its canonical adapter.
     // Restore the starting keyword before selecting the original record.
@@ -1286,7 +1292,22 @@
     }
     requestAnimationFrame(()=>{
       if(!isJournal()||journalReturnOwnerV594()!==origin.owner||canonicalRoute()!==target)return;
-      if(origin.kind==='memo'){
+      if(origin.kind==='schedule'){
+        const view=document.getElementById('scheduleView');
+        const entries=[...(view?.querySelectorAll('[data-j459-review],[data-schedule-id]')||[])];
+        const original=origin.scheduleId;
+        const focus=entries.find(node=>node.dataset.j459Review===original
+          &&node.getClientRects().length)
+          ||entries.find(node=>node.dataset.scheduleId===original
+            &&node.getClientRects().length)
+          ||[...(view?.querySelectorAll('[data-related-task-id]')||[])]
+            .find(node=>node.dataset.relatedTaskId===origin.id
+              &&node.getClientRects().length)
+          ||view?.querySelector('[data-j425-today]');
+        focus?.focus({preventScroll:true});
+        if(focus&&origin.width!==window.innerWidth)
+          focus.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
+      }else if(origin.kind==='memo'){
         journalMemoSelectedV425=origin.id;
         const spread=document.querySelector('#workMemoViewV167 .j425-memo-spread');
         const card=[...(spread?.querySelectorAll('.work-memo-card-v167')||[])]
@@ -1315,17 +1336,22 @@
     const valid=origin&&isJournal()&&journalReturnOwnerV594()===origin.owner;
     if(origin&&!valid)journalReturnV594=null;
     const route=canonicalRoute();
-    const show=Boolean(valid&&(origin.kind==='task'?route==='memo':route==='tasks'));
+    const show=Boolean(valid&&(origin.kind==='task'?route==='memo'
+      :origin.kind==='memo'||origin.kind==='schedule'?route==='tasks':false));
     journalReturnBarV594.hidden=!show;
     journalReturnBarV594.replaceChildren();
     if(!show)return;
     const text=document.createElement('p');
     text.textContent=origin.kind==='task'
-      ?'前に見ていた案件ノートへ戻れます。':'タスク作成前に見ていたメモへ戻れます。';
+      ?'前に見ていた案件ノートへ戻れます。'
+      :origin.kind==='schedule'
+        ?'元の予定の日付・表示条件・閲覧位置へ戻れます。'
+        :'タスク作成前に見ていたメモへ戻れます。';
     const back=document.createElement('button');
     back.type='button';
     back.dataset.j594Return='';
-    back.textContent=origin.kind==='task'?'← 元の案件へ':'← 元のメモへ';
+    back.textContent=origin.kind==='task'?'← 元の案件へ'
+      :origin.kind==='schedule'?'← 元の予定へ':'← 元のメモへ';
     back.addEventListener('click',journalReturnToSourceV594);
     journalReturnBarV594.append(text,back);
   }
@@ -1362,11 +1388,30 @@
       return;
     }
   });
-  // Capture before the original memo control navigates to the task editor.
+  // Capture the original page *before* canonical handlers change routes or
+  // task-search filters. Support both the appointment editor and week index.
   window.addEventListener('click',event=>{
-    if(!isJournal()||canonicalRoute()!=='memo')return;
-    const source=event.target.closest('[data-memo-task]');
-    if(source)journalReturnCaptureV594('memo',source.dataset.memoTask);
+    if(!isJournal())return;
+    const route=canonicalRoute();
+    if(route==='schedule'){
+      const source=event.target.closest('#scheduleView [data-related-task-id],#openRelatedTaskFromSchedule');
+      if(!source)return;
+      const fromDialog=source.id==='openRelatedTaskFromSchedule';
+      const taskId=String(fromDialog?document.getElementById('scheduleRelatedTask')?.value
+        :source.dataset.relatedTaskId||'');
+      const context=window.WorkBoardJournalNavigation?.captureScheduleReturnV616?.();
+      if(!taskId||!context)return;
+      journalReturnCaptureV594('schedule',taskId);
+      journalReturnV594.scheduleContext=context;
+      journalReturnV594.scheduleId=fromDialog
+        ?String(document.getElementById('scheduleId')?.value||'')
+        :String(source.closest('[data-schedule-id]')?.dataset.scheduleId||'');
+      return;
+    }
+    if(route==='memo'){
+      const source=event.target.closest('[data-memo-task]');
+      if(source)journalReturnCaptureV594('memo',source.dataset.memoTask);
+    }
   },true);
   const journalReturnBoardV594=document.getElementById('boardView');
   if(journalReturnBoardV594)new MutationObserver(journalMemoLinkEnhanceV594)
