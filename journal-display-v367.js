@@ -1317,6 +1317,14 @@
       if(!isJournal()||journalReturnOwnerV594()!==origin.owner||canonicalRoute()!==target)return;
       if(origin.kind==='schedule'){
         const view=document.getElementById('scheduleView');
+        // The desktop reading rail scrolls independently from the page.
+        // Restore its position before focusing the original shortcut. After
+        // a width change, the responsive layout owns the new scroll position.
+        const rail=view?.querySelector('.j425-schedule-sidebar');
+        if(origin.width===window.innerWidth
+          &&Number.isFinite(origin.scheduleSidebarTop)
+          &&rail?.getClientRects().length)
+          rail.scrollTop=origin.scheduleSidebarTop;
         const entries=[...(view?.querySelectorAll('[data-j459-review],[data-schedule-id]')||[])];
         const original=origin.scheduleId;
         // The same related task can appear in the planner and the reading rail.
@@ -1463,6 +1471,8 @@
       journalReturnV594.scheduleSourceRegion=fromDialog?''
         :source.closest('.j425-schedule-sidebar')?'sidebar'
         :source.closest('.j425-schedule-footnotes')?'footnotes':'';
+      journalReturnV594.scheduleSidebarTop=
+        document.querySelector('#scheduleView .j425-schedule-sidebar')?.scrollTop||0;
       return;
     }
     if(route==='memo'){
