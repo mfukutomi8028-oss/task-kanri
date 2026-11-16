@@ -8331,7 +8331,13 @@ let journalIndexReturnAnchorV513=null;
 
 function journalIndexPreviewV425(t,index){
  const p=checklistProgress(t);
- const pending=(t.checklist||[]).find(item=>!item.done);
+ // V614: reorder a display copy only; never change the shared checklist order.
+ const unfinished=(t.checklist||[]).filter(item=>!item.done);
+ const finished=(t.checklist||[]).filter(item=>item.done);
+ const pending=unfinished[0];
+ const previewChecks=[...unfinished,...finished];
+ const nextText=pending?.text
+   ||(p.total?'チェック項目はすべて完了しました。':'チェック項目はまだありません。');
  const notes=(t.comments||[]).filter(item=>String(item.text||'').trim());
  const note=notes.length?notes[notes.length-1]:null;
  return `<div class="j425-index-preview">
@@ -8342,14 +8348,14 @@ function journalIndexPreviewV425(t,index){
      <button type="button" data-j540-case-step="1">次の案件</button>
    </div>
    <h3>${escapeHtml(t.title)}</h3><div class="j425-preview-label">${escapeHtml(t.category||'未分類')}　/　${escapeHtml(t.status)}</div>
+   <section class="j430-next-work"><h4>次の一手</h4><p>${escapeHtml(nextText)}</p></section>
    <dl><div><dt>担当</dt><dd>${escapeHtml(t.assignee||'未割当')}</dd></div>
    <div><dt>優先度</dt><dd>${escapeHtml(t.priority)}</dd></div>
    <div><dt>期限</dt><dd class="${isOverdue(t)?'is-overdue':''}">${escapeHtml(t.dueDate||'期限なし')}${isOverdue(t)?'（期限超過）':''}</dd></div>
    <div><dt>進捗</dt><dd>${p.done} / ${p.total}（${p.percent}%）</dd></div></dl>
    <div class="j425-preview-progress" role="progressbar" aria-label="チェックリストの進捗" aria-valuenow="${p.percent}" aria-valuemin="0" aria-valuemax="100"><span style="width:${p.percent}%"></span></div>
+   <section><h4>チェックリスト（${p.done}/${p.total}）</h4>${previewChecks.slice(0,6).map(item=>`<p class="j425-preview-check ${item.done?'is-done':''}"><span aria-hidden="true">${item.done?'✓':'○'}</span>${escapeHtml(item.text)}</p>`).join('')||'<p>まだチェック項目はありません。</p>'}${p.total>6?`<small>ほか${p.total-6}件は詳細画面で確認できます。</small>`:''}</section>
    <section><h4>概要</h4><p>${escapeHtml(t.description||'説明は登録されていません。')}</p></section>
-   <section><h4>チェックリスト（${p.done}/${p.total}）</h4>${(t.checklist||[]).slice(0,6).map(item=>`<p class="j425-preview-check ${item.done?'is-done':''}"><span aria-hidden="true">${item.done?'✓':'○'}</span>${escapeHtml(item.text)}</p>`).join('')||'<p>まだチェック項目はありません。</p>'}${p.total>6?`<small>ほか${p.total-6}件は詳細画面で確認できます。</small>`:''}</section>
-   <section class="j430-next-work"><h4>次の一手</h4><p>${escapeHtml(pending?.text||'チェックリストの未完了項目はありません。')}</p></section>
    ${note?`<section class="j430-case-note"><h4>直近の作業メモ</h4><p>${escapeHtml(String(note.text).slice(0,220))}</p></section>`:''}
    <p class="j430-case-updated">最終更新：${escapeHtml(formatDateTime(t.updatedAt))}</p>
    <div class="j425-preview-actions"><button type="button" data-j425-preview-detail>詳細を見る</button><button type="button" data-j425-preview-edit>編集する</button></div>
@@ -8466,7 +8472,10 @@ function journalIndexV425(tasks){
     <label class="j425-index-checkbox"><input type="checkbox" data-bulk-id="${escapeHtml(t.id)}" aria-label="${escapeHtml(t.title)}を選択"></label>
     <span class="j425-index-record-number">${String(i+1).padStart(2,'0')}</span>
     <div class="j425-index-record-main"><div class="j425-index-record-top"><span>${escapeHtml(t.category||'未分類')}</span><span class="j425-index-record-status">${escapeHtml(t.status)}</span></div>
-      <strong>${escapeHtml(t.title)}</strong>${String(t.description||'').trim()?`<p>${escapeHtml(String(t.description).trim().slice(0,115))}</p>`:''}</div>
+      <strong>${escapeHtml(t.title)}</strong>${(t.checklist||[]).some(item=>!item.done)
+        ?`<p class="j614-index-next"><span>次の一手</span>${escapeHtml(t.checklist.find(item=>!item.done).text)}</p>`
+        :p.total?`<p class="j614-index-next is-complete"><span>チェック</span>すべて完了</p>`
+        :''}${String(t.description||'').trim()?`<p class="j614-index-description">${escapeHtml(String(t.description).trim().slice(0,115))}</p>`:''}</div>
     <div class="j425-index-record-meta"><small>担当 ${escapeHtml(t.assignee||'未割当')}</small><small>優先 ${escapeHtml(t.priority)}</small><small class="${overdue(t)?'is-overdue':''}">${escapeHtml(t.dueDate||'期限なし')}</small>${p.total?`<div class="j425-index-bar"><span style="width:${p.percent}%"></span></div><small>${p.done}/${p.total} 確認</small>`:''}</div>
     ${favoriteButton(t,'j425-list-star')}
     </article>`};
