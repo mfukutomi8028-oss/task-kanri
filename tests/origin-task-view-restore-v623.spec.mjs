@@ -22,7 +22,8 @@ async function launch(page,width,slug){
 }
 
 async function chooseUser(root,name){
-  await root.locator('#originSettingsToggle').click();
+  if(await root.locator('#originSettingsPanel').evaluate(el=>el.hidden))
+    await root.locator('#originSettingsToggle').click();
   await root.locator('#originUserSelect').selectOption(name);
   await expect(root.locator('#originUserSelect')).toHaveValue(name);
 }
