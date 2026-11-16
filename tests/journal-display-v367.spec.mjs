@@ -5447,7 +5447,19 @@ test('JOURNAL V611 notebook surfaces incomplete work before long notes and revea
     localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
     localStorage.setItem('system-task-tasks:'+room,JSON.stringify(tasks));
   },{room:ROOM});
-  await boot(page,390);await choose(page,'journal');
+  await boot(page,390);
+  // Exercise a real subscribed repaint, not a mock of the notebook renderer.
+  await page.route('**/app.js?v=*',async route=>{
+    const response=await route.fetch(),source=await response.text();
+    expect(source).toContain('function scheduleSubscribedRender() {');
+    await route.fulfill({response,body:source.replace(
+      'function scheduleSubscribedRender() {',
+      'window.__journalV611Notify = () => scheduleSubscribedRender();\nfunction scheduleSubscribedRender() {'
+    )});
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+  await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
   const board=page.locator('#boardView');
   await board.locator('[data-j420-task-id="j611-priority"]').click();
@@ -5476,6 +5488,12 @@ test('JOURNAL V611 notebook surfaces incomplete work before long notes and revea
   await done.locator('summary').press('Enter');
   await expect(done.locator('li')).toHaveCount(6);
   await expect(done.locator('li').first()).toBeVisible();
+  const priorSummary=await done.locator('summary').elementHandle();
+  await page.evaluate(()=>window.__journalV611Notify());
+  await expect.poll(()=>priorSummary.evaluate(el=>el.isConnected)).toBe(false);
+  await expect(more).toHaveAttribute('open','');
+  await expect(done).toHaveAttribute('open','');
+  await expect(done.locator('summary')).toBeFocused();
   const touch=await done.locator('summary').evaluate(el=>el.getBoundingClientRect().height);
   expect(touch).toBeGreaterThanOrEqual(43.5);
   for(const width of [320,390]){
