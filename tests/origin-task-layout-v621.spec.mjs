@@ -38,7 +38,7 @@ async function addTasks(page,records){
     status:item.status||'未着手',priority:item.priority||'中',
     assignee:s.users?.[0]||s.currentUser,category:s.categories[0],
     requester:'',tags:'',dueDate:dateOffset(item.days),dueTime:'14:00',
-    checklist:'設計確認\\n動作確認',checklistDone:[true,false],pinned:false
+    checklist:'設計確認\n動作確認',checklistDone:[true,false],pinned:false
    });
    if(!created?.ok)throw Error(JSON.stringify(created));
    result.push(created.id);
@@ -102,7 +102,7 @@ for(const width of [320,390,1366]){
   test.setTimeout(90000);
   const root=await launch(page,width,'timeline-dates');
   await addTasks(page,[
-   {title:'将来の確認',days:5,priority:'緊急'},
+   {title:'将来の確認',days:5,priority:'高'},
    {title:'期限切れの対応',days:-2,priority:'低'},
    {title:'今日の対応',days:0,priority:'中'},
    {title:'期限なしの棚卸し',days:null,priority:'高'}
