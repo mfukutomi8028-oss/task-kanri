@@ -5695,3 +5695,59 @@ test('JOURNAL V616 weekly related-task link returns to the same calendar without
   await expect(back).toBeHidden();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
+
+
+for (const width of [320, 1366]) {
+  test('JOURNAL V619 memo-to-task bookmark returns to the selected second memo and its index search at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await boot(page,width);await choose(page,'journal');
+    const nav=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(nav+' [data-journal-route="memo"]').click();
+    const view=page.locator('#workMemoViewV167');
+    for(const [title,body] of [
+      ['V619 最初の記録 '+width,'先行するメモ'],
+      ['V619 復帰対象の記録 '+width,'戻ったらこの本文を読む']
+    ]){
+      await view.locator('[data-memo-new]').first().click();
+      await page.locator('#workMemoTitleV167').fill(title);
+      await page.locator('#workMemoBodyV167').fill(body);
+      await page.locator('#workMemoFormV167 button[type="submit"]').click();
+      await expect(page.locator('#workMemoDialogV167')).toBeHidden();
+    }
+    const cards=view.locator('.work-memo-grid-v167 > .work-memo-card-v167');
+    await expect(cards).toHaveCount(2);
+    // The second card must not be replaced by the first when the return
+    // bookmark resolves. Both memo cards are real canonical records.
+    const target=cards.nth(1);
+    const memoId=await target.getAttribute('data-memo-sort-id');
+    const title=(await target.locator('h4').innerText()).trim();
+    await target.click();
+    const reader=view.locator('.j592-memo-reading-desk');
+    await expect(reader.locator('h3')).toHaveText(title);
+    const index=view.locator('[data-journal-memo-index]');
+    if(!(await index.evaluate(node=>node.open)))
+      await index.locator(':scope > summary').click();
+    const refinement=view.locator('.j-memo-index-refinement');
+    if(!(await refinement.evaluate(node=>node.open)))
+      await refinement.locator(':scope > summary').click();
+    await view.locator('[data-j450-memo-find]').fill(title);
+    await expect(view.locator('.j-memo-index-group-v383 li:not([hidden])')).toHaveCount(1);
+    await reader.locator('.j425-memo-reader-actions button').filter({hasText:'タスク化'}).click();
+    await expect(page.locator('#taskDialog')).toBeVisible();
+    await page.locator('#closeTaskDialog').click();
+    const back=page.locator('.j594-return-bookmark [data-j594-return]');
+    await expect(back).toBeVisible();
+    await back.click();
+    await expect(view).toBeVisible();
+    await expect(reader.locator('h3')).toHaveText(title);
+    await expect(view.locator('.work-memo-card-v167[data-memo-sort-id="'+memoId+'"]'))
+      .toHaveAttribute('aria-selected','true');
+    await expect(view.locator('[data-j450-memo-find]')).toHaveValue(title);
+    await expect(view.locator('.j-memo-index-group-v383 li:not([hidden])')).toHaveCount(1);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+      .toBeLessThanOrEqual(2);
+    const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
+    expect(saved.tasks).toHaveLength(0);
+    expect(saved.memos).toHaveLength(2);
+  });
+}
