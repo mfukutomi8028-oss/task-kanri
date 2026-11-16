@@ -1244,13 +1244,12 @@ test('Origin long titles and theme contrast fit at 320, 390 and desktop widths',
        const a=toLight(css.color),b=toLight(css.backgroundColor);
        return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
      });
-     console.log('ORIGIN_CONTRAST_DIAGNOSTIC '+JSON.stringify(await host.locator('#createBtn').evaluate(el=>{
- const css=getComputedStyle(el),h=el.getRootNode().host;
- return {color:css.color,background:css.backgroundColor,hostTheme:h.dataset.theme,
- accent:css.getPropertyValue('--accent'),accentDark:css.getPropertyValue('--accent-dark'),onAccent:css.getPropertyValue('--on-accent'),
- wbMode:document.documentElement.dataset.wbColorMode,wbTheme:document.documentElement.dataset.wbColorTheme};
-}))+ ' ratio='+contrast+' width='+width+' theme='+theme);
-expect(contrast).toBeGreaterThanOrEqual(4.5);
+     expect(contrast).toBeGreaterThanOrEqual(4.5);
+     // A theme change must not animate foreground/background through a low-contrast midpoint.
+     const colorsTransition=await host.locator('#createBtn').evaluate(el=>
+       getComputedStyle(el).transitionProperty.split(',').map(x=>x.trim()));
+     expect(colorsTransition).not.toContain('background-color');
+     expect(colorsTransition).not.toContain('color');
      for(const route of routes){
        const nav=width<=770?'#mobileNav':'#desktopNav';
        await host.locator(nav+' [data-route="'+route+'"]').click();
@@ -3277,13 +3276,9 @@ test('Origin task deletion from a filtered list keeps the next edit reachable',a
  const removedId=await rows.first().locator('[data-action="list-quick-edit"]').getAttribute('data-id');
  const nextId=await rows.nth(1).locator('[data-action="list-quick-edit"]').getAttribute('data-id');
  const nextTitle=await rows.nth(1).locator('.item-name').innerText();
- const beforeTop=await rows.first().evaluate(el=>el.getBoundingClientRect().top);
- console.log('ORIGIN_RETURN_BEFORE '+JSON.stringify(await rows.first().evaluate(el=>({
- top:el.getBoundingClientRect().top,y:window.scrollY,windowHeight:innerHeight,
- queueHeight:el.getRootNode().querySelector('.origin-next-task-queue')?.getBoundingClientRect().height,
- docHeight:document.documentElement.scrollHeight
- }))));
+ // Playwright may scroll a lower row into view before clicking; record the actual operating position.
  await rows.first().locator('[data-action="list-quick-edit"]').click();
+ const beforeTop=await rows.first().evaluate(el=>el.getBoundingClientRect().top);
  await expect(host.locator('#editForm[data-kind="tasks"]')).toBeVisible();
  page.on('dialog',dialog=>{void dialog.accept()});
  await host.locator('#sheet [data-action="delete"][data-kind="tasks"]').click();
@@ -3291,11 +3286,6 @@ test('Origin task deletion from a filtered list keeps the next edit reachable',a
  const next=host.locator('.origin-task-collection [data-action="list-quick-edit"][data-id="'+nextId+'"]');
  await expect(next).toBeFocused();
  const afterTop=await rows.first().evaluate(el=>el.getBoundingClientRect().top);
- console.log('ORIGIN_RETURN_AFTER '+JSON.stringify(await rows.first().evaluate(el=>({
- top:el.getBoundingClientRect().top,y:window.scrollY,windowHeight:innerHeight,
- queueHeight:el.getRootNode().querySelector('.origin-next-task-queue')?.getBoundingClientRect().height,
- docHeight:document.documentElement.scrollHeight
- }))));
  expect(Math.abs(afterTop-beforeTop)).toBeLessThanOrEqual(130);
  await expect(query).toHaveValue('復帰確認タスク');
  await next.click();
