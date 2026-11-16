@@ -29,7 +29,8 @@ async function seed(page){
     revision:0,title:'画面位置保持 '+String(i+1).padStart(2,'0'),
     description:'表示切替でも操作位置を失わない',status:'未着手',priority:'中',
     assignee:s.currentUser,category:s.categories[0],requester:'',tags:'',
-    checklist:'',dueDate:'',dueTime:'',pinned:false});
+    checklist:'確認手順',checklistDone:[false],
+    dueDate:new Date(Date.now()+3*86400000).toLocaleDateString('en-CA'),dueTime:'14:00',pinned:false});
    if(!result?.ok)throw Error('task.create failed '+JSON.stringify(result));
    ids.push(result.id);
   }
