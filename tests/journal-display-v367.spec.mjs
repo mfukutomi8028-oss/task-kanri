@@ -5494,6 +5494,8 @@ test('JOURNAL V611 notebook surfaces incomplete work before long notes and revea
   await expect(more).toHaveAttribute('open','');
   await expect(done).toHaveAttribute('open','');
   await expect(done.locator('summary')).toBeFocused();
+  // A native summary must remain reachable by Tab after a remote repaint.
+  await expect(done.locator('summary')).toHaveJSProperty('tabIndex',0);
   const touch=await done.locator('summary').evaluate(el=>el.getBoundingClientRect().height);
   expect(touch).toBeGreaterThanOrEqual(43.5);
   for(const width of [320,390]){

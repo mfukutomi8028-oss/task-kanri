@@ -7818,7 +7818,7 @@ function journalRestoreTaskPageSyncAnchorV530(snapshot){
         ||root.querySelector(snapshot.layout==='board'?'[data-j420-search]':'[data-j425-query]');
     }
     if(!target)return;
-    if(!target.matches('button,input,select,a,[tabindex]'))target.tabIndex=-1;
+    if(!target.matches('button,input,select,a,summary,[tabindex]'))target.tabIndex=-1;
     target.focus({preventScroll:true});
     if(snapshot.search&&target.matches('[data-j420-search],[data-j425-query]')){
       if(target.value!==snapshot.search.value)target.value=snapshot.search.value;
