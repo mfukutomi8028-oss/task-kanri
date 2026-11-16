@@ -1030,7 +1030,7 @@ function renderTasks(){
  <div class="work-toolbar origin-task-toolbar" data-mobile-advanced="${taskAdvancedOpen}"><div class="tab-pills" data-origin-scroll-key="task-tabs" role="group" aria-label="タスクの表示条件">${filterOptions.map(([id,label])=>`<button type="button" class="${taskFilter===id?'active':''}" data-action="task-filter" data-value="${id}" aria-pressed="${taskFilter===id}">${label}</button>`).join('')}</div></div>
  <div class="origin-task-summary"><span>表示 ${visible.length}件 ／ 全体 ${data.tasks.length}件${renderedCount<visible.length?' · 画面に'+renderedCount+'件':''}${selectedBulk.size?' · '+selectedBulk.size+'件選択中':''}${taskFilterSummary?`<span class="origin-filter-current">${taskFilterSummary}</span>`:''}</span>${filtered?'<button type="button" data-action="task-reset">絞り込みを解除</button>':''}</div>
  ${selectedBulk.size?`<div class="bulkbar">${icon('check',16)} ${selectedBulk.size}件選択中 <div class="spacer"></div><button data-action="bulk-done">まとめて完了</button><button data-action="bulk-clear">選択解除</button></div>`:''}
- <section class="surface work-collection origin-task-collection origin-task-layout-${taskLayoutMode} ${taskDensity==='compact'?'origin-tasks-compact':''}">${groupList||empty('表示するタスクがありません','絞り込みを解除するか、新しくタスクを登録してください。')}</section>
+ <section class="surface work-collection origin-task-collection origin-task-layout-${taskLayoutMode} ${taskDensity==='compact'?'origin-tasks-compact':''}" ${taskLayoutMode==='board'?'data-origin-scroll-key="task-board"':''}>${groupList||empty('表示するタスクがありません','絞り込みを解除するか、新しくタスクを登録してください。')}</section>
  <p class="quiet-small origin-task-tip">件名から詳細を確認できます。チェックは一括選択用です。</p>`;
 }
 function taskRow(t){
@@ -2908,6 +2908,47 @@ async function toggleTodo(id){
  }
  restoreOriginTodoListReturn(listReturn,{sameItem:!saved});
 }
+// Preserve keyboard context for task row actions without changing canonical data.
+function captureOriginTaskRowAction(id,control){
+ if(view!=='tasks'||panelOpen||!control?.closest('.origin-task-collection .item-row'))return null;
+ const row=control.closest('.item-row');
+ const order=Array.from($('#workspace .origin-task-collection')?.querySelectorAll('.item-row .item-name[data-kind="tasks"]')||[])
+   .filter(el=>el.getClientRects().length).map(el=>el.dataset.id);
+ if(!order.includes(id))return null;
+ return {id,action:control.dataset.action,order,top:row.getBoundingClientRect().top,
+   filter:taskFilter,status:taskStatusChoice,query:taskQuery,group:taskGrouping,layout:taskLayoutMode};
+}
+function restoreOriginTaskRowAction(anchor){
+ if(!anchor||view!=='tasks'||panelOpen
+   ||taskFilter!==anchor.filter||taskStatusChoice!==anchor.status
+   ||taskQuery!==anchor.query||taskGrouping!==anchor.group||taskLayoutMode!==anchor.layout)return;
+ const index=anchor.order.indexOf(anchor.id);
+ const ids=[anchor.id,...anchor.order.slice(index+1),...anchor.order.slice(0,index).reverse()];
+ const card=ids.map(candidate=>originReturnCard('tasks',candidate)).find(Boolean);
+ if(!card){
+   // All matching records may be gone; keep the user's query rather than resetting it.
+   const input=$('#originTaskQuery');
+   if(input?.getClientRects().length){
+     input.focus({preventScroll:true});
+     input.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
+   }
+   return;
+ }
+ const row=originReturnRow('tasks',card);
+ const sameStatus=anchor.action==='task-inline-status'&&card.dataset.id===anchor.id;
+ const control=sameStatus?row?.querySelector('[data-action="task-inline-status"]'):null;
+ (control||card).focus({preventScroll:true});
+ const desired=window.scrollY+row.getBoundingClientRect().top-anchor.top;
+ const maximum=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+ window.scrollTo({top:Math.max(0,Math.min(maximum,desired)),behavior:'instant'});
+ // A regrouped board card may now be in a different horizontally-scrolled column.
+ const board=row.closest('.origin-task-layout-board');
+ if(board){
+   const bounds=board.getBoundingClientRect(),item=row.getBoundingClientRect();
+   if(item.left<bounds.left||item.right>bounds.right)
+     row.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
+ }
+}
 // The same canonical status writer backs both the existing select and one-tap start.
 async function setOriginTaskStatus(id,status,control=null,label='状態を変更しました'){
  const task=findItem('tasks',id);
@@ -2917,6 +2958,7 @@ async function setOriginTaskStatus(id,status,control=null,label='状態を変更
  }
  if(task.status===status)return true;
  const previous=task.status;
+ const returnAnchor=captureOriginTaskRowAction(id,control);
  if(control)control.disabled=true;
  try{
    const ok=await send({type:'task.status',id,status},label);
@@ -2924,12 +2966,14 @@ async function setOriginTaskStatus(id,status,control=null,label='状態を変更
      if(control.tagName==='SELECT')control.value=previous;
      control.disabled=false;
    }
+   restoreOriginTaskRowAction(returnAnchor);
    return Boolean(ok);
  }catch(error){
    if(control?.isConnected){
      if(control.tagName==='SELECT')control.value=previous;
      control.disabled=false;
    }
+   restoreOriginTaskRowAction(returnAnchor);
    notify('状態を変更できませんでした。最新の内容を確認してください。');
    return false;
  }
@@ -2937,11 +2981,13 @@ async function setOriginTaskStatus(id,status,control=null,label='状態を変更
 function updateOriginInlineStatus(select){
  return setOriginTaskStatus(select.dataset.id,select.value,select);
 }
-async function toggleTaskDone(id){
+async function toggleTaskDone(id,control=null){
  const t=findItem('tasks',id);if(!t)return;
+ const returnAnchor=captureOriginTaskRowAction(id,control);
  const type=t.completed?'task.reopen':'task.complete';
  const saved=await send({type,id},type==='task.complete'?'タスクを完了しました':'タスクを再開しました');
  if(saved)refreshDetailAfterStatusWrite('tasks',id,'task-done');
+ restoreOriginTaskRowAction(returnAnchor);
 }
 function closeSearch(clear=false){
  const sr=$('#searchResults'),input=$('#originSearchInput');
@@ -3700,7 +3746,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    (title||$('#originTaskQuery'))?.focus({preventScroll:true});
  });
 }
-if(a==='task-done'){toggleTaskDone(id);return}
+if(a==='task-done'){toggleTaskDone(id,el);return}
  if(a==='todo-toggle'){toggleTodo(id);return}
  if(a==='pick-day'){selectedDay=el.dataset.date;return render()}
  if(a==='pick-today'){selectedDay=base;return render()}
