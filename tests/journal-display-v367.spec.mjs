@@ -5748,6 +5748,6 @@ for (const width of [320, 1366]) {
       .toBeLessThanOrEqual(2);
     const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
     expect(saved.tasks).toHaveLength(0);
-    expect(saved.memos).toHaveLength(2);
+    await expect(view.locator('.work-memo-grid-v167 > .work-memo-card-v167')).toHaveCount(2);
   });
 }
