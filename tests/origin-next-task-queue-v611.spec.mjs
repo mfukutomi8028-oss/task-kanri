@@ -38,7 +38,9 @@ async function seedTasks(page,items){
     title:record.title,description:'入力を保持する説明 '+record.title,
     status:record.status||'未着手',priority:record.priority||'中',
     assignee:s.users?.[0]||s.currentUser,category:s.categories[0],requester:'',tags:'',
-    checklist:record.checklist??'検証手順',checklistDone:record.checklistDone||[],dueDate:dateOffset(record.days),
+    checklist:record.checklist??'検証手順',
+    checklistDone:record.checklistDone??String(record.checklist??'検証手順').split('\n').filter(Boolean).map(()=>false),
+    dueDate:dateOffset(record.days),
     dueTime:'14:00',pinned:false
    });
    if(!result?.ok)throw Error('task.create '+JSON.stringify(result));
