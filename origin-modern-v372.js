@@ -334,13 +334,29 @@
 .origin-tool-row span{min-width:0;overflow-wrap:anywhere}.origin-tool-row small{display:block;color:var(--muted);margin-top:6px}
 .origin-tool-search{margin-bottom:16px}.origin-layout-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:0}\n.origin-task-command{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px;margin:0 0 12px;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}\n.origin-task-command .origin-task-tools{margin:0;min-width:0;gap:8px}\n.origin-task-command .origin-task-tools>input{min-width:0;max-width:420px;min-height:44px;background:var(--bg);font-size:14px}\n.origin-task-command .origin-task-tools select,.origin-task-command .origin-density-button{min-height:44px}\n.origin-task-command .origin-layout-controls{margin:0;justify-content:flex-end;gap:8px;min-width:0}\n.origin-task-command .origin-layout-controls .tab-pills{background:var(--bg)}\n@media(max-width:1050px){.origin-task-command{grid-template-columns:minmax(0,1fr)}.origin-task-command .origin-layout-controls{justify-content:flex-start}}\n@media(max-width:770px){.origin-task-command{padding:10px 11px;gap:8px}.origin-task-command .origin-task-tools>input{flex:1 1 175px;min-width:0;max-width:none;font-size:16px}.origin-task-command .origin-layout-controls{justify-content:space-between;flex-wrap:wrap}}
 .origin-stats-scroll{overflow:auto}.origin-stats{width:100%;border-collapse:collapse;font-size:13px}.origin-stats th,.origin-stats td{text-align:left;padding:12px;border-bottom:1px solid var(--line)}
-.origin-task-layout-board{display:flex;overflow-x:auto;gap:14px;padding:14px;background:var(--bg)}
-.origin-task-layout-board>.origin-task-group{flex:0 0 292px;max-width:100%;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper)}
-.origin-task-layout-board .item-row{grid-template-columns:22px minmax(0,1fr);gap:9px;padding:13px}
+.origin-task-layout-board{display:flex;overflow-x:auto;gap:14px;padding:14px;background:var(--bg);scrollbar-width:thin}
+.origin-task-layout-board>.origin-task-group{flex:0 0 292px;max-width:100%;min-width:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper)}
+.origin-task-layout-board .item-row{grid-template-columns:22px minmax(0,1fr);gap:9px;padding:13px;transition:background-color .15s ease}
 .origin-task-layout-board .item-assignee,.origin-task-layout-board .item-date{display:none}
-.origin-task-layout-board .row-last{grid-column:2;justify-content:flex-start}.origin-task-layout-board .group-title{padding:12px}
-.origin-task-layout-timeline>.origin-task-group{margin:0 14px 16px;border-left:3px solid var(--accent-bg);padding-left:10px}
-.origin-task-layout-timeline .group-title{background:var(--accent-bg);border-radius:8px;border:0}
+.origin-task-layout-board .row-last{grid-column:2;justify-content:flex-start;flex-wrap:wrap}
+.origin-task-layout-board .row-last .origin-task-inline-status{min-width:0;flex:1 1 118px}
+.origin-task-layout-board .group-title{padding:12px;background:var(--paper)}
+.origin-task-layout-board .origin-task-mobile-due,.origin-task-layout-board .origin-task-mobile-assignee{display:none!important}
+.origin-task-layout-board .origin-board-facts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:9px}
+.origin-task-layout-board .origin-board-facts>span{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;padding:7px 8px;border:1px solid var(--line-soft);border-radius:9px;background:var(--bg);color:var(--muted);font-size:11px}
+.origin-task-layout-board .origin-board-facts strong{display:block;max-width:100%;overflow-wrap:anywhere;color:var(--ink);font-size:12px;line-height:1.5;font-weight:760}
+.origin-task-layout-board .origin-board-due.urgent strong{color:var(--red)}
+@media(hover:hover){.origin-task-layout-board .item-row:hover{background:var(--hover)}}
+@media(prefers-reduced-motion:reduce){.origin-task-layout-board .item-row{transition:none}}
+@media(max-width:770px){.origin-task-layout-board{display:grid;grid-template-columns:minmax(0,1fr);overflow:visible;gap:12px;padding:10px}.origin-task-layout-board>.origin-task-group{width:100%;max-width:none}.origin-task-layout-board .row-last{grid-column:1/-1}}
+.origin-task-layout-timeline{display:block;padding:14px 12px 14px 18px}
+.origin-task-layout-timeline>.origin-task-group{position:relative;margin:0 0 0 9px;padding:0 0 18px 18px;border-left:2px solid var(--line)}
+.origin-task-layout-timeline>.origin-task-group:last-child{padding-bottom:0}
+.origin-task-layout-timeline>.origin-task-group::before{content:'';position:absolute;top:18px;left:-7px;width:12px;height:12px;border:3px solid var(--paper);border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--line)}
+.origin-task-layout-timeline .group-title{background:var(--accent-bg);border-radius:10px;border:1px solid var(--line);padding:3px 10px}
+.origin-task-layout-timeline .origin-task-group-toggle{min-height:44px}
+.origin-task-layout-timeline .item-row{border-bottom:1px solid var(--line-soft)}
+@media(max-width:770px){.origin-task-layout-timeline{padding:10px 8px 12px 11px}.origin-task-layout-timeline>.origin-task-group{margin-left:7px;padding-left:13px}.origin-task-layout-timeline .group-title{padding:3px 8px}}
 .origin-management{margin-bottom:28px}.origin-management input{max-width:100%;min-width:0;min-height:42px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)}
 .origin-series-delete{margin-top:20px;border-color:var(--red)}.origin-series-delete input[type="radio"]{width:18px;min-height:18px}.origin-series-delete label{display:flex;align-items:center;gap:8px;min-height:44px}
 .origin-batch-weekdays{display:flex;flex-wrap:wrap;gap:8px}
@@ -891,6 +907,8 @@ function taskVisible(){
  ).sort(taskDisplaySort);
 }
 function originTaskGroupName(task){
+ // Timeline uses exact due keys, avoiding collisions between years.
+ if(taskLayoutMode==='timeline'&&taskGrouping==='deadline')return task.due||'期限未設定';
  if(taskGrouping==='status')return task.status||'状態未設定';
  if(taskGrouping==='assignee')return task.assignee||'担当者未設定';
  if(task.completed)return '完了した仕事';
@@ -934,8 +952,16 @@ function renderTasks(){
   const name=originTaskGroupName(task);
   (groups[name]??=[]).push(task);
  }
+ // Keep status columns stable, and due-date groups chronological regardless of row sort.
+ const orderedGroups=Object.entries(groups);
+ if(taskLayoutMode==='board'&&taskGrouping==='status'){
+  const rank=name=>{const index=snapshot.statuses.indexOf(name);return index<0?Infinity:index;};
+  orderedGroups.sort(([a],[b])=>rank(a)-rank(b)||a.localeCompare(b,'ja'));
+ }else if(taskLayoutMode==='timeline'&&taskGrouping==='deadline'){
+  orderedGroups.sort(([a],[b])=>a==='期限未設定'?1:b==='期限未設定'?-1:a.localeCompare(b));
+ }
  // Group counts refer to all filtered tasks; only mounted rows are selectable.
- const groupEntries=Object.entries(groups).map(([name,rows],index)=>{
+ const groupEntries=orderedGroups.map(([name,rows],index)=>{
   const groupKey=taskGrouping+'|'+name,collapsed=taskCollapsedGroups.has(groupKey);
   const savedLimit=taskVisibleLimits.get(groupKey);
   const limit=Math.min(rows.length,savedLimit===Infinity?rows.length:
@@ -948,10 +974,13 @@ function renderTasks(){
  const renderedCount=groupEntries.reduce((n,group)=>n+(group.collapsed?0:group.limit),0);
  const groupList=groupEntries.map(({name,rows,index,groupKey,collapsed,limit})=>{
   const remaining=rows.length-limit,shown=rows.slice(0,limit);
-  return `<section class="origin-task-group"><div class="group-title"><button type="button" class="origin-task-group-toggle"
+  const dated=taskLayoutMode==='timeline'&&taskGrouping==='deadline';
+  const dueKey=dated?(rows[0]?.due||''):null;
+  const title=dated&&dueKey?'期限 '+dateLabel(dueKey):name;
+  return `<section class="origin-task-group" ${dated?`data-origin-date="${esc(dueKey)}"`:''}><div class="group-title"><button type="button" class="origin-task-group-toggle"
    data-action="task-group-toggle" data-value="${esc(groupKey)}" aria-expanded="${!collapsed}"
    aria-controls="originTaskGroup${index}"><span aria-hidden="true">${icon('chevron',16)}</span>
-   <strong>${esc(name)}</strong><span class="origin-group-count">${rows.length}件</span></button></div>
+   <strong>${esc(title)}</strong><span class="origin-group-count">${rows.length}件</span></button></div>
    <div class="origin-task-group-rows" id="originTaskGroup${index}"
      data-group-key="${esc(groupKey)}" ${collapsed?'hidden':''}>
    ${shown.map(taskRow).join('')}
@@ -1028,7 +1057,7 @@ function taskRow(t){
   checklist.length?`<span>チェックリスト ${doneChecks} / ${checklist.length}</span>`:'',
   ...tags.map(tag=>`<span>#${esc(tag)}</span>`)
  ].filter(Boolean);
- const progressPill=taskLayoutMode==='list'&&checklistProgress
+ const progressPill=checklistProgress
   ?'<span class="origin-task-progress-pill" data-complete="'+(checklistProgress.remaining===0)+'" aria-label="チェックリスト '+checklistProgress.done+' / '+checklistProgress.total+' 完了">'+(checklistProgress.remaining?'残り'+checklistProgress.remaining+'件':checklistProgress.done+' / '+checklistProgress.total+' 完了')+'</span>'
   :'';
  const nextLine=taskLayoutMode==='list'&&checklistProgress
@@ -1036,7 +1065,11 @@ function taskRow(t){
   :'';
  const insight=notes||facts.length
   ?`<div class="origin-task-insight">${nextLine}${notes?`<p class="origin-task-insight-description">${esc(notes)}</p>`:''}${facts.length?`<div class="origin-task-insight-meta">${facts.join('')}</div>`:''}</div>`:'';
- return `<div class="item-row"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}" title="${esc(t.title)}" aria-label="${esc(t.title)}の詳細を開く"><span class="origin-task-title-text">${esc(t.title)}</span><span class="origin-task-detail-arrow" aria-hidden="true">${icon('right',14)}</span></button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}${progressPill}<span class="origin-task-mobile-assignee">${esc(t.assignee||'担当未設定')}</span></div>${insight}</div><span class="item-assignee"><span class="origin-task-fact-label">担当</span><strong>${esc(t.assignee||'未設定')}</strong></span><span class="item-date ${urgent?'urgent':''}"><span class="origin-task-fact-label">期限</span><strong>${esc(dateText)}</strong></span><div class="row-last">${statusSelect}<button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="tasks" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を編集" title="タスクを編集">${icon('edit',15)}<span class="origin-task-edit-label">編集</span></button><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
+ // Board columns hide the desktop side facts, so show them inside each card.
+ const boardFacts=taskLayoutMode==='board'
+  ?`<div class="origin-board-facts"><span class="origin-board-assignee">担当<strong>${esc(t.assignee||'担当未設定')}</strong></span><span class="origin-board-due ${urgent?'urgent':''}">期限<strong>${esc(dateText)}</strong></span></div>`
+  :'';
+ return `<div class="item-row"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}" title="${esc(t.title)}" aria-label="${esc(t.title)}の詳細を開く"><span class="origin-task-title-text">${esc(t.title)}</span><span class="origin-task-detail-arrow" aria-hidden="true">${icon('right',14)}</span></button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}${progressPill}<span class="origin-task-mobile-assignee">${esc(t.assignee||'担当未設定')}</span></div>${boardFacts}${insight}</div><span class="item-assignee"><span class="origin-task-fact-label">担当</span><strong>${esc(t.assignee||'未設定')}</strong></span><span class="item-date ${urgent?'urgent':''}"><span class="origin-task-fact-label">期限</span><strong>${esc(dateText)}</strong></span><div class="row-last">${statusSelect}<button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="tasks" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を編集" title="タスクを編集">${icon('edit',15)}<span class="origin-task-edit-label">編集</span></button><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
 }
 // Pending and completed ToDos use bounded initial rendering, like tasks and notes.
 const TODO_RENDER_BATCH=24;
