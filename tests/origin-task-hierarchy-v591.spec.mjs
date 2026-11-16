@@ -119,3 +119,93 @@ for(const width of [390,1366]){
     await expect(host.locator('#overlay')).toBeHidden();
   });
 }
+
+
+for(const width of [390,1366]){
+  test('Origin inline task status keeps keyboard context after regrouping at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    const {host,seeded}=await openOrigin(page,width,'status-return');
+    if(width<768)await host.locator('[data-action="task-advanced-toggle"]').click();
+    await host.locator('#groupSelect').selectOption('status');
+    const select=host.locator('.origin-task-collection [data-action="task-inline-status"][data-id="'+seeded[0]+'"]');
+    await select.focus();
+    await select.selectOption('対応中');
+    await expect.poll(()=>page.evaluate(id=>
+      window.WorkBoardPaletteBridge.readSnapshot().tasks.find(task=>task.id===id)?.status,seeded[0]
+    )).toBe('対応中');
+    await expect(select).toBeFocused();
+    await expect(select).toHaveValue('対応中');
+    const groupName=await select.evaluate(el=>el.closest('.origin-task-group')?.querySelector('.group-title')?.textContent||'');
+    expect(groupName).toContain('対応中');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(3);
+  });
+
+  test('Origin task completion keeps the next actionable row focused at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    const {host,seeded}=await openOrigin(page,width,'done-return');
+    const done=host.locator('.origin-task-collection [data-action="task-done"][data-id="'+seeded[2]+'"]');
+    await done.focus();
+    // The canonical task.complete action requests an optional completion memo.
+    page.once('dialog',dialog=>dialog.accept(''));
+    await done.click();
+    await expect.poll(()=>page.evaluate(id=>
+      window.WorkBoardPaletteBridge.readSnapshot().tasks.find(task=>task.id===id)?.completed,seeded[2]
+    )).toBe(true);
+    await expect(host.locator('.origin-task-collection [data-action="task-done"][data-id="'+seeded[2]+'"]')).toHaveCount(0);
+    await expect(host.locator('.origin-task-collection .item-name[data-id="'+seeded[1]+'"]')).toBeFocused();
+    await expect(host.locator('.origin-task-toolbar [data-action="task-filter"][data-value="active"]')).toHaveAttribute('aria-pressed','true');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(3);
+  });
+}
+
+test('Origin returns focus to filtered neighbor or search when a task leaves the results',async({page})=>{
+  test.setTimeout(90000);
+  const {host,seeded}=await openOrigin(page,1366,'filtered-return');
+  await host.locator('.status-rail [data-action="filter-status"][data-status="未着手"]').click();
+  const select=host.locator('.origin-task-collection [data-action="task-inline-status"][data-id="'+seeded[0]+'"]');
+  await select.selectOption('対応中');
+  await expect.poll(()=>page.evaluate(id=>
+    window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id===id)?.status,seeded[0]
+  )).toBe('対応中');
+  await expect(select).toHaveCount(0);
+  await expect(host.locator('.origin-task-collection .item-name[data-id="'+seeded[1]+'"]')).toBeFocused();
+  await expect(host.locator('.status-rail [data-action="filter-status"][data-status="未着手"]')).toHaveAttribute('aria-pressed','true');
+  const search=host.locator('#originTaskQuery');
+  await search.fill('ネットワーク機器');
+  await expect(host.locator('.origin-task-collection .item-row')).toHaveCount(1);
+  page.once('dialog',dialog=>dialog.accept(''));
+  await host.locator('.origin-task-collection [data-action="task-done"][data-id="'+seeded[2]+'"]').click();
+  await expect.poll(()=>page.evaluate(id=>
+    window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id===id)?.completed,seeded[2]
+  )).toBe(true);
+  await expect(host.locator('.origin-task-collection .item-row')).toHaveCount(0);
+  await expect(search).toHaveValue('ネットワーク機器');
+  await expect(search).toBeFocused();
+});
+
+test('Origin board keeps horizontal position when task controls rerender the workspace',async({page})=>{
+  test.setTimeout(90000);
+  const {host,seeded}=await openOrigin(page,390,'board-scroll');
+  const result=await page.evaluate(async ids=>{
+    const bridge=window.WorkBoardPaletteBridge;
+    return Promise.all([
+      bridge.dispatch({type:'task.status',id:ids[1],status:'対応中'}),
+      bridge.dispatch({type:'task.status',id:ids[2],status:'確認待ち'})
+    ]);
+  },seeded);
+  expect(result.every(x=>x?.ok)).toBe(true);
+  await host.locator('[data-action="task-layout"][data-value="board"]').click();
+  const board=host.locator('.origin-task-collection.origin-task-layout-board');
+  await expect(board.locator('.origin-task-group')).toHaveCount(3);
+  const start=await board.evaluate(el=>{
+    if(el.scrollWidth<=el.clientWidth+50)throw Error('Expected board to overflow horizontally');
+    el.scrollLeft=125;
+    return el.scrollLeft;
+  });
+  expect(start).toBeGreaterThan(50);
+  await host.locator('[data-action="task-advanced-toggle"]').click();
+  await host.locator('[data-action="task-density"]').click();
+  const end=await board.evaluate(el=>el.scrollLeft);
+  expect(end).toBeGreaterThanOrEqual(start-3);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(3);
+});
