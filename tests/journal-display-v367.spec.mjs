@@ -6534,3 +6534,71 @@ test('JOURNAL V646 preserves a safe Today focus after saving an appointment from
   expect(stored.revision).toBe(3);
   expect(stored.title).toBe('通知から確認した予定');
 });
+
+
+for (const width of [390,1366]) {
+  test('JOURNAL V648 returns to a visible task action when the bookmarked case was deleted at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await page.addInitScript(({room})=>{
+      const now=Date.now();
+      const date=new Date();
+      const dueDate=[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
+      localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
+      localStorage.setItem('system-task-tasks:'+room,JSON.stringify([{
+        id:'j648-removed',title:'J648 削除前の案件',status:'対応中',
+        priority:'中',assignee:'JournalTester',category:'院内',
+        description:'メモ参照中に変更される',dueDate,
+        checklist:[],tags:[],comments:[],pinned:false,
+        revision:1,createdAt:now,updatedAt:now
+      }]));
+    },{room:ROOM});
+    await boot(page,width);
+    await choose(page,'journal');
+    const nav=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(nav+' [data-journal-route="tasks"]').click();
+    const board=page.locator('#boardView');
+    const card=board.locator('[data-j420-task-id="j648-removed"]');
+    await expect(card).toBeVisible();
+    await card.click();
+    const reference=board.locator('#j494AtelierNote [data-j594-open-memo]');
+    await expect(reference).toBeVisible();
+    await reference.click();
+    await expect(page.locator('#workMemoViewV167')).toBeVisible();
+    const bookmark=page.locator('.j594-return-bookmark [data-j594-return]');
+    await expect(bookmark).toBeVisible();
+
+    // The canonical, revision-checked writer deletes the source while its
+    // bookmark is open. Do not manufacture a missing DOM node in the test.
+    page.once('dialog',dialog=>dialog.accept());
+    const deleted=await page.evaluate(async()=>{
+      const bridge=window.WorkBoardPaletteBridge;
+      const snapshot=bridge.readSnapshot();
+      const task=snapshot.tasks.find(item=>item.id==='j648-removed');
+      return bridge.dispatch({
+        type:'task.delete',id:task.id,revision:task.revision,
+        ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser
+      });
+    });
+    expect(deleted.ok).toBe(true);
+    await expect(bookmark).toBeVisible();
+    await bookmark.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('body')).toHaveClass(/task-mode/);
+    await expect(bookmark).toBeHidden();
+    await expect(card).toHaveCount(0);
+    const search=board.locator('.j420-atelier-tools [data-j420-search]');
+    await expect(search).toBeHidden();
+    const fallback=board.locator('.j420-atelier-tools [data-j420-new-task]');
+    await expect(fallback).toBeVisible();
+    await expect(fallback).toBeFocused();
+    const inView=await fallback.evaluate(node=>{
+      const r=node.getBoundingClientRect();
+      const dock=document.querySelector('#wbJournalDockV367');
+      const bottom=dock?.getClientRects().length?dock.getBoundingClientRect().top:innerHeight;
+      return r.top>=0&&r.bottom<=bottom&&document.documentElement.scrollWidth-innerWidth<=2;
+    });
+    expect(inView).toBe(true);
+    const snapshot=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot());
+    expect(snapshot.tasks.find(task=>task.id==='j648-removed')).toBeUndefined();
+  });
+}
