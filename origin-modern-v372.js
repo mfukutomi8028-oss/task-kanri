@@ -887,7 +887,7 @@ function renderOriginTaskViewKeepingAnchor(change,{filterChange=false}={}){
  }
  restoreOriginTaskViewAnchor(next);
  if(filterChange&&mount.activeElement?.id!=='originTaskQuery'
-   &&!originTaskFocusIsVisible(mount.activeElement)){
+   &&(next.replaced||!originTaskFocusIsVisible(mount.activeElement))){
   // The old filter button may now be above the viewport. Keep keyboard
   // navigation in the result area rather than on an off-screen control.
   originReturnCard('tasks',next.id)?.focus({preventScroll:true});
