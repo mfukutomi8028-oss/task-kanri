@@ -1307,14 +1307,23 @@
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
       if(!origin||!isJournal()||canonicalRoute()!=='today'
         ||journalReturnOwnerV594()!==origin.owner
+        ||journalReturnDetailPanelV616?.classList.contains('open')
         ||document.querySelector('dialog[open]'))return;
       const view=document.getElementById('todayView');
       const selector=kind==='schedule'
         ?'.j420-agenda-item[data-schedule-id]'
         :'.j420-work-note[data-task-id],.j420-waiting-item[data-task-id]';
-      const source=[...(view?.querySelectorAll(selector)||[])].find(node=>
+      const original=[...(view?.querySelectorAll(selector)||[])].find(node=>
         (kind==='schedule'?node.dataset.scheduleId:node.dataset.taskId)===origin.id
           &&node.getClientRects().length);
+      // V644: Today updates are real task entry points too. Restore the
+      // exact originating update button before falling back to the work card.
+      const update=kind==='task'
+        ?[...(view?.querySelectorAll('.j420-update-item[data-j420-update-kind="task"][data-j420-update-id]')||[])]
+          .find(node=>node.dataset.j420UpdateId===origin.id&&node.getClientRects().length)
+        :null;
+      const source=kind==='task'&&origin.todaySourceV644==='updates'
+        ?update||original:original||update;
       const fallback=kind==='schedule'
         ?view?.querySelector('[data-j420-create-schedule]')
         :view?.querySelector('.j420-focus [data-j420-to-tasks]');
@@ -1327,7 +1336,9 @@
         &&active!==target&&!journalReturnDetailPanelV616?.contains(active)
         &&active.getClientRects().length)return;
       target.focus({preventScroll:true});
-      if(origin.width===window.innerWidth&&Number.isFinite(origin.top))
+      // A vanished card has no meaningful old scroll offset. Make the
+      // surviving navigation control visible instead of returning to empty space.
+      if(source&&origin.width===window.innerWidth&&Number.isFinite(origin.top))
         window.scrollTo({top:origin.top,behavior:'auto'});
       else target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
     }));
@@ -1448,6 +1459,8 @@
       :origin.kind==='task'?route==='memo'
       :origin.kind==='memo'||origin.kind==='schedule'?route==='tasks':false));
     if(show&&origin.kind==='today')origin.wasVisible=true;
+    const restoreTodayAfterClose=Boolean(valid&&origin.kind==='today'
+      &&origin.wasVisible&&route==='today'&&!detailShown);
     // A user switch can invalidate a bookmark while its return button has
     // keyboard focus. Capture focus before hiding/removing the button.
     const focusedReturn=journalReturnBarV594.contains(document.activeElement);
@@ -1458,12 +1471,15 @@
       journalReturnBarV594.replaceChildren();
       // Only move focus if we actually removed the focused control. A
       // background refresh must not steal focus from the current work.
-      if(focusedReturn&&isJournal()){
+      if(focusedReturn&&isJournal()&&!restoreTodayAfterClose){
         const route=canonicalRoute();
         const tabs=window.innerWidth<=860?dockButtons:tabButtons;
         const currentTab=tabs.get(route);
         if(currentTab&&!currentTab.disabled)currentTab.focus({preventScroll:true});
       }
+      // V644: X/implicit detail dismissal needs the same focus destination
+      // as the explicit bookmark, but must not hijack an intentional new action.
+      if(restoreTodayAfterClose)journalFocusTodayOriginV638(origin,'task');
       return;
     }
     // Canonical navigation redraws can happen while the bookmark is focused.
@@ -1474,7 +1490,8 @@
       journalReturnBarV594.append(text);
     }
     text.textContent=origin.kind==='today'
-      ?'今日の元の案件へ戻れます。'
+      ?(origin.todaySourceV644==='updates'
+        ?'今日の元の更新通知へ戻れます。':'今日の元の案件へ戻れます。')
       :origin.kind==='task'
         ?'前に見ていた案件ノートへ戻れます。'
       :origin.kind==='schedule'
@@ -1488,7 +1505,8 @@
       back.addEventListener('click',journalReturnToSourceV594);
       journalReturnBarV594.append(back);
     }
-    back.textContent=origin.kind==='today'?'← 今日の案件へ'
+    back.textContent=origin.kind==='today'
+      ?(origin.todaySourceV644==='updates'?'← 元の更新通知へ':'← 今日の案件へ')
       :origin.kind==='task'?'← 元の案件へ'
       :origin.kind==='schedule'?'← 元の予定へ':'← 元のメモへ';
   }
@@ -1596,6 +1614,18 @@
   function journalCaptureTodayOriginV638(event){
     if(!isJournal()||canonicalRoute()!=='today')return;
     if(event.type==='keydown'&&!['Enter',' '].includes(event.key))return;
+    // A Today update is a button, unlike paper task cards. Capture it before
+    // excluding nested buttons (star, filters, etc.) from the generic handler.
+    const update=event.type==='click'
+      ?event.target.closest?.('#todayView .j420-update-item[data-j420-update-kind="task"][data-j420-update-id]')
+      :null;
+    if(update){
+      journalTodayMovedV639=null;
+      syncJournalTodayMovedV639();
+      journalReturnCaptureV594('today',update.dataset.j420UpdateId);
+      if(journalReturnV594?.kind==='today')journalReturnV594.todaySourceV644='updates';
+      return;
+    }
     if(event.target.closest?.('button,input,select,textarea,a'))return;
     const task=event.target.closest?.(
       '#todayView .j420-work-note[data-task-id],#todayView .j420-waiting-item[data-task-id]');
