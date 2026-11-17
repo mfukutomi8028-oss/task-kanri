@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+// Diagnostic baseline: no application changes, run existing Origin regression tests on Ver.634.
 
 // Test-only room and deliberately synthetic task data. No production access.
 async function openOrigin(page,width,roomSuffix){
