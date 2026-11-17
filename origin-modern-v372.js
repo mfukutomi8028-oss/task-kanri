@@ -1065,6 +1065,12 @@ function originTaskFocusIsVisible(target){
  const headerBottom=Math.max(0,$('.header')?.getBoundingClientRect().bottom||0);
  return bounds.bottom>headerBottom+4&&bounds.top<window.innerHeight-4;
 }
+// Explain scope changes without preserving invisible selections or changing task data.
+function notifyOriginTaskSelectionReleased(count,reason='表示条件が変わったため'){
+ if(!count)return;
+ if(!selectedBulk.size)bulkStatusTarget='';
+ notify(reason+'、選択中の'+count+'件を解除しました。タスクは変更していません。');
+}
 // Reuse the task-ID anchor for layout, sort, grouping, density and filters.
 // The optional filter mode handles no-longer-visible records without changing data.
 function renderOriginTaskViewKeepingAnchor(change,{filterChange=false}={}){
@@ -1075,7 +1081,9 @@ function renderOriginTaskViewKeepingAnchor(change,{filterChange=false}={}){
  const previousKey=previousTask?taskGrouping+'|'+originTaskGroupName(previousTask):'';
  const previousLimit=previousKey&&taskVisibleLimits.has(previousKey)
   ?taskVisibleLimits.get(previousKey):null;
+ const selectedBefore=selectedBulk.size;
  change();
+ notifyOriginTaskSelectionReleased(Math.max(0,selectedBefore-selectedBulk.size));
  // The filter may still include the same record. Preserve its explicit
  // "show more/all" expansion so shrinking to 24 rows cannot clamp scrollY.
  if(previousLimit!==null&&filterChange&&anchor){
@@ -4190,9 +4198,11 @@ if(a==='task-done'){toggleTaskDone(id,el);return}
    if(taskCollapsedGroups.has(key))taskCollapsedGroups.delete(key);
    else{
      // Prevent hidden selections from being completed by an unrelated bulk action.
+     let released=0;
      for(const box of el.closest('.group-title')?.nextElementSibling?.querySelectorAll('[data-action="bulk-toggle"]')||[])
-       selectedBulk.delete(box.dataset.id);
+       if(selectedBulk.delete(box.dataset.id))released++;
      taskCollapsedGroups.add(key);
+     notifyOriginTaskSelectionReleased(released,'グループを閉じたため');
    }
    return render();
  }
@@ -4454,7 +4464,11 @@ function updateMemoQuery(input){
 }
 function updateTaskQuery(input){
  const start=input.selectionStart,end=input.selectionEnd,query=input.value;
- const apply=()=>{taskQuery=query;taskVisibleLimits.clear();selectedBulk.clear()};
+ const apply=()=>{
+  const released=selectedBulk.size;
+  taskQuery=query;taskVisibleLimits.clear();selectedBulk.clear();
+  notifyOriginTaskSelectionReleased(released);
+ };
  // When the search field is visible, the user is editing the search rather
  // than reading a distant row: keep the existing first-batch behavior.
  // Only preserve a task anchor when the user is viewing results farther down.
