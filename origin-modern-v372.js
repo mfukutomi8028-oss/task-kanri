@@ -844,12 +844,66 @@ function restoreOriginTaskViewAnchor(anchor){
    row.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
  }
 }
-// Use a single Origin-only restoration path for layout, sort, grouping and density.
-function renderOriginTaskViewKeepingAnchor(change){
+// A filter can remove the current task from the result set. Prefer the nearest
+// surviving item from the previous ordering, then the first new result.
+function originTaskFilterReturnAnchor(anchor,previousIds){
+ const ids=taskVisible().map(task=>task.id);
+ if(!ids.length)return {...anchor,empty:true};
+ if(ids.includes(anchor.id))return anchor;
+ const remaining=new Set(ids),index=previousIds.indexOf(anchor.id);
+ let candidate='';
+ if(index>=0)for(let step=1;step<previousIds.length;step++){
+  const following=previousIds[index+step],preceding=previousIds[index-step];
+  if(following&&remaining.has(following)){candidate=following;break;}
+  if(preceding&&remaining.has(preceding)){candidate=preceding;break;}
+ }
+ return {...anchor,id:candidate||ids[0],replaced:true};
+}
+function originTaskFocusIsVisible(target){
+ if(!target||!target.getClientRects().length)return false;
+ const bounds=target.getBoundingClientRect();
+ const headerBottom=Math.max(0,$('.header')?.getBoundingClientRect().bottom||0);
+ return bounds.bottom>headerBottom+4&&bounds.top<window.innerHeight-4;
+}
+// Reuse the task-ID anchor for layout, sort, grouping, density and filters.
+// The optional filter mode handles no-longer-visible records without changing data.
+function renderOriginTaskViewKeepingAnchor(change,{filterChange=false}={}){
  const anchor=captureOriginTaskViewAnchor();
+ const previousTasks=filterChange&&anchor?taskVisible():[];
+ const previousIds=previousTasks.map(task=>task.id);
+ const previousTask=previousTasks.find(task=>task.id===anchor?.id);
+ const previousKey=previousTask?taskGrouping+'|'+originTaskGroupName(previousTask):'';
+ const previousLimit=previousKey&&taskVisibleLimits.has(previousKey)
+  ?taskVisibleLimits.get(previousKey):null;
  change();
+ // The filter may still include the same record. Preserve its explicit
+ // "show more/all" expansion so shrinking to 24 rows cannot clamp scrollY.
+ if(previousLimit!==null&&filterChange&&anchor){
+  const currentTask=taskVisible().find(task=>task.id===anchor.id);
+  const currentKey=currentTask?taskGrouping+'|'+originTaskGroupName(currentTask):'';
+  if(currentKey===previousKey)taskVisibleLimits.set(currentKey,previousLimit);
+ }
+ const next=filterChange&&anchor?originTaskFilterReturnAnchor(anchor,previousIds):anchor;
  render();
- restoreOriginTaskViewAnchor(anchor);
+ if(!next)return;
+ if(next.empty){
+  // Never steal the caret while a user is typing in the live search field.
+  if(mount.activeElement?.id==='originTaskQuery')return;
+  const action=$('#workspace .origin-task-empty [data-action="task-reset"]')
+   ||$('#workspace .origin-task-empty [data-action="task-empty-all"]');
+  if(action){
+   action.scrollIntoView({block:'center',behavior:'instant'});
+   action.focus({preventScroll:true});
+  }
+  return;
+ }
+ restoreOriginTaskViewAnchor(next);
+ if(filterChange&&mount.activeElement?.id!=='originTaskQuery'
+   &&(next.replaced||!originTaskFocusIsVisible(mount.activeElement))){
+  // The old filter button may now be above the viewport. Keep keyboard
+  // navigation in the result area rather than on an off-screen control.
+  originReturnCard('tasks',next.id)?.focus({preventScroll:true});
+ }
 }
 function render(){
  const focus= captureOriginFocus();
@@ -3845,7 +3899,13 @@ if(a==='task-done'){toggleTaskDone(id,el);return}
   }
   return;
  }
- if(a==='task-filter'){taskFilter=value;taskStatusChoice='';taskVisibleLimits.clear();selectedBulk.clear();return render()}
+ if(a==='task-filter'){
+  if(!['active','all','mine','late','done','starred','reserved'].includes(value))return;
+  if(taskFilter===value&&!taskStatusChoice)return;
+  return renderOriginTaskViewKeepingAnchor(()=>{
+   taskFilter=value;taskStatusChoice='';taskVisibleLimits.clear();selectedBulk.clear();
+  },{filterChange:true});
+ }
  if(a==='task-density')return renderOriginTaskViewKeepingAnchor(()=>{
   taskDensity=taskDensity==='compact'?'comfortable':'compact';
  })
@@ -3878,7 +3938,14 @@ if(a==='task-done'){toggleTaskDone(id,el);return}
  }
  if(a==='task-reset')return resetOriginTaskFilters('active');
  if(a==='task-empty-all')return resetOriginTaskFilters('all');
- if(a==='filter-status'){taskStatusChoice=taskStatusChoice===el.dataset.status?'':el.dataset.status;taskFilter='all';taskVisibleLimits.clear();selectedBulk.clear();return render()}
+ if(a==='filter-status'){
+  const status=el.dataset.status||'';
+  if(!snapshot.statuses.includes(status))return;
+  return renderOriginTaskViewKeepingAnchor(()=>{
+   taskStatusChoice=taskStatusChoice===status?'':status;
+   taskFilter='all';taskVisibleLimits.clear();selectedBulk.clear();
+  },{filterChange:true});
+ }
  if(a==='memo-load-more'||a==='memo-show-all'){
   if(view!=='notes'||!$('#workspace .origin-memo-more'))return;
   const oldCount=$('#workspace .memo-grid')?.querySelectorAll('.memo-card').length||0;
