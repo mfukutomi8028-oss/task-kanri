@@ -736,6 +736,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
    if(result?.error==='cancelled'||result?.pending){
      if(taskListWrite&&result?.pending)
        setOriginTaskListWriteFeedback('error','処理結果が確定していません。再送信する前に最新のタスクを確認してください。');
+     else if(taskListWrite)setOriginTaskListWriteFeedback('idle');
      return false;
    }
    const conflict=['revision-or-state-mismatch','revision-or-relation-mismatch','conflict','owner-mismatch','not-found','remote-content-changed'].includes(result?.error);
@@ -765,15 +766,11 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  }catch(error){
    console.error('origin command failed',error);
    const message='通信・保存に失敗しました。入力内容を保持しています。接続状態を確認してください。';
-   showEditorSaveError(message);
+   showEditorSaveError(message);notify(message);
    if(taskListWrite)setOriginTaskListWriteFeedback('error',originTaskListWriteError(command));
-   notify(message);return false;
+   return false;
  }
- finally{
-  busy=false;
-  if(taskListWrite&&originTaskListWriteState==='saving')setOriginTaskListWriteFeedback('idle');
-  if(savingPanel)markOriginEditorSaving(false);
- }
+ finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
 }
 let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleAdvancedOpen=false,scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoSearchHistory=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),bulkStatusTarget='',toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
