@@ -116,3 +116,14 @@ test('Origin 320px explains removal of hidden selections on group collapse',asyn
  await assertScopeCleared(page,root,1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
 });
+
+test('Origin 390px explicit filter reset explains why an active bulk selection was removed',async({page})=>{
+ test.setTimeout(120000);
+ const root=await launch(page,390,'reset');
+ const {ids}=await seed(page);
+ await root.locator('#originTaskQuery').fill('選択解除テスト');
+ await choose(root,[ids[0]]);
+ await root.locator('[data-action="task-reset"]').click();
+ await assertScopeCleared(page,root,1);
+ await expect(root.locator('#originTaskQuery')).toHaveValue('');
+});
