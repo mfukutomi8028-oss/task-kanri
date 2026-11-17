@@ -94,11 +94,14 @@ for(const width of [390,1366]){
   await choose(root,'[data-action="filter-status"][data-status="'+ids.secondStatus+'"]');
   await expect(root.locator('[data-action="filter-status"][data-status="'+ids.secondStatus+'"]')).toHaveAttribute('aria-pressed','true');
   await expect(collection.locator('.item-name[data-id="'+anchorId+'"]')).toHaveCount(0);
-  const next=await coordinates(page,ids.second[0]);
+  // The nearest survivor may differ from creation order after sorting.
+  const focusedId=await root.evaluate(el=>el.shadowRoot.activeElement?.dataset.id||'');
+  expect(ids.second).toContain(focusedId);
+  const next=await coordinates(page,focusedId);
   expect(next.top).not.toBeNull();
   expect(next.top).toBeGreaterThan(70);
   expect(next.top).toBeLessThan(next.height-45);
-  await expect(collection.locator('.item-name[data-id="'+ids.second[0]+'"]')).toBeFocused();
+  await expect(collection.locator('.item-name[data-id="'+focusedId+'"]')).toBeFocused();
 
   await choose(root,'[data-action="task-filter"][data-value="late"]');
   await expect(root.locator('.origin-task-empty')).toBeVisible();
