@@ -95,6 +95,8 @@ for(const width of [320,1366]){
   await root.locator('#originBulkStatus').selectOption(data.target);
   await armGate(page,'task.bulk.update');
   await root.locator('[data-action="bulk-status-apply"]').click();
+  await expect(root.locator('#originBulkReviewDialog')).toBeVisible();
+  await root.locator('#originBulkReviewConfirm').click();
   await waitForGate(page);
   const region=root.locator('#originTaskWriteFeedback');
   await expect(region).toBeVisible();
@@ -125,6 +127,8 @@ test('Origin retains selected tasks, target and an actionable error after a fail
  await root.locator('#originBulkStatus').selectOption(data.target);
  await armGate(page,'task.bulk.update',true);
  await root.locator('[data-action="bulk-status-apply"]').click();
+  await expect(root.locator('#originBulkReviewDialog')).toBeVisible();
+  await root.locator('#originBulkReviewConfirm').click();
  await waitForGate(page);
  await releaseGate(page);
  const error=root.locator('#originTaskWriteFeedback');
@@ -143,6 +147,8 @@ test('Origin retains selected tasks, target and an actionable error after a fail
  // User can retry deliberately: never auto-retry an ambiguous write.
  await page.evaluate(()=>{window.__originWriteGate.enabled=false;});
  await root.locator('[data-action="bulk-status-apply"]').click();
+  await expect(root.locator('#originBulkReviewDialog')).toBeVisible();
+  await root.locator('#originBulkReviewConfirm').click();
  await expect(error).toBeHidden();
  await expect(root.locator('.bulkbar')).toHaveCount(0);
  const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks);
