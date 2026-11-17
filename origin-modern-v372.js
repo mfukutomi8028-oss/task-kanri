@@ -870,7 +870,19 @@ function originTaskFocusIsVisible(target){
 function renderOriginTaskViewKeepingAnchor(change,{filterChange=false}={}){
  const anchor=captureOriginTaskViewAnchor();
  const previousIds=filterChange&&anchor?taskVisible().map(task=>task.id):[];
+ const previousLimit=filterChange&&anchor?(()=>{
+  const item=taskVisible().find(task=>task.id===anchor.id);
+  const key=item?taskGrouping+'|'+originTaskGroupName(item):'';
+  return key&&taskVisibleLimits.has(key)?{key,limit:taskVisibleLimits.get(key)}:null;
+ })():null;
  change();
+ // The filter may still include the same record. Preserve its explicit
+ // "show more/all" expansion so shrinking to 24 rows cannot clamp scrollY.
+ if(previousLimit&&taskVisible().some(task=>task.id===anchor.id)){
+  const item=taskVisible().find(task=>task.id===anchor.id);
+  const key=taskGrouping+'|'+originTaskGroupName(item);
+  if(key===previousLimit.key)taskVisibleLimits.set(key,previousLimit.limit);
+ }
  const next=filterChange&&anchor?originTaskFilterReturnAnchor(anchor,previousIds):anchor;
  render();
  if(!next)return;
