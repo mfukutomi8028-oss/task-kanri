@@ -2605,12 +2605,6 @@ function journalTodayV420() {
       </header>
       ${filters.length?`<div class="j420-filter-summary" role="status">表示条件：${filters.map(escapeHtml).join('・')} <button type="button" data-j420-clear-filters>条件をクリア</button></div>`:''}
       <div class="j420-today-spread">
-        <section class="j420-planner" aria-label="今日の流れ">
-          <span class="j420-ribbon" aria-hidden="true"></span>
-          <div class="j420-paper-head"><div><span>DAY PLAN / ${escapeHtml(dateLabel)}</span><h3>今日の流れ</h3></div><span class="j420-paper-head-icon" aria-hidden="true">✦</span></div>
-          <div class="j420-agenda">${agenda}</div>
-          <button type="button" class="j420-add-appointment" data-j420-create-schedule>＋ 予定を追加</button>
-        </section>
         <section class="j420-focus" aria-label="今日の優先案件">
           <div class="j420-paper-head"><div><span>WORKDAY / FIRST THING FIRST</span><h3>今日、まず開く1件</h3></div><button type="button" data-j420-to-tasks>案件アトリエへ →</button></div>
           <p class="j591-focus-explain">優先する理由と次の作業を、ひとつの紙面で確認できます。</p>
@@ -2623,6 +2617,12 @@ function journalTodayV420() {
           ${hiddenWorkCountV600?`<div class="j600-hidden-work" data-j600-hidden-work><span>さらに${hiddenWorkCountV600}件の進行中案件があります</span><button type="button" data-j420-to-tasks>すべての案件を確認 <span aria-hidden="true">→</span></button></div>`:''}
           <button type="button" class="j420-add-task" data-j420-create-task>＋ 新しい案件を書き込む</button>
           <div class="j420-stationery j425-today-stationery" aria-hidden="true"><img class="j440-today-bookmark" src="./assets/journal-bookmark-seal-v440.svg" alt="" decoding="async"></div>
+        </section>
+        <section class="j420-planner" aria-label="今日の流れ">
+          <span class="j420-ribbon" aria-hidden="true"></span>
+          <div class="j420-paper-head"><div><span>DAY PLAN / ${escapeHtml(dateLabel)}</span><h3>今日の流れ</h3></div><span class="j420-paper-head-icon" aria-hidden="true">✦</span></div>
+          <div class="j420-agenda">${agenda}</div>
+          <button type="button" class="j420-add-appointment" data-j420-create-schedule>＋ 予定を追加</button>
         </section>
         <aside class="j420-pockets" aria-label="更新・メモ・確認待ち">
           <div class="j420-pocket j420-pocket-activity"><h3><span aria-hidden="true">✉</span> 受信・更新 <small>${alerts.length}</small></h3><div class="j420-pocket-items">${updateItems}</div><button type="button" data-j420-show-activity>お知らせを見る →</button></div>
