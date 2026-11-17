@@ -108,6 +108,8 @@ test('Bulk status changes affect mounted rows only, never the unexpanded results
  await root.locator('#originTaskSelectShown').click();
  await root.locator('#originBulkStatus').selectOption(initial.alternate);
  await root.locator('[data-action="bulk-status-apply"]').click();
+ await expect(root.locator('#originBulkReviewDialog')).toBeVisible();
+ await root.locator('#originBulkReviewConfirm').click();
  await expect(root.locator('.bulkbar')).toHaveCount(0);
  const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks);
  for(const id of initial.ids){
