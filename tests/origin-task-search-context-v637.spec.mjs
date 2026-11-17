@@ -95,7 +95,7 @@ for(const width of [390,1366]){
   await root.locator('.origin-task-collection .item-name[data-id="'+id+'"]')
    .evaluate(el=>el.click());
   await expect(root.locator('#overlay')).toBeVisible();
-  await root.locator('#sheet [data-action="close"]').evaluate(el=>el.click());
+  await root.locator('#sheet .sheet-close[data-action="close"]').evaluate(el=>el.click());
   await expect(root.locator('#overlay')).toBeHidden();
   await expect(root.locator('#originTaskQuery')).toHaveValue('継続対象');
   await expect(root.locator('.origin-task-collection .item-name[data-id="'+id+'"]')).toBeFocused();
