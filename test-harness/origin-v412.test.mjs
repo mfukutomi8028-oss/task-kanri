@@ -456,7 +456,10 @@ test('Origin load-more restores keyboard focus and never bulk-selects unmounted 
  assert.match(origin,/if\(t.id==='groupSelect'\)[\s\S]*?renderOriginTaskViewKeepingAnchor\(/);
  assert.match(origin,/if\(t.id==='originTaskSort'\)[\s\S]*?renderOriginTaskViewKeepingAnchor\(/);
  assert.match(origin,/taskVisibleLimits\.clear\(\);selectedBulk\.clear\(\)/);
- assert.match(origin,/function renderOriginTaskViewKeepingAnchor\(change\)/);
+ assert.match(origin,/function renderOriginTaskViewKeepingAnchor\(change,\{filterChange=false\}=\{\}\)/);
+ assert.match(origin,/function originTaskFilterReturnAnchor\(anchor,previousIds\)/);
+ assert.match(origin,/if\(a==='task-filter'\)[\s\S]*?renderOriginTaskViewKeepingAnchor\(/);
+ assert.match(origin,/if\(a==='filter-status'\)[\s\S]*?renderOriginTaskViewKeepingAnchor\(/);
 });
 
 test('Origin memo library renders first 24 notes while retaining all filter results',()=>{
