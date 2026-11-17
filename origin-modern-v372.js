@@ -4464,16 +4464,13 @@ function updateMemoQuery(input){
 }
 function updateTaskQuery(input){
  const start=input.selectionStart,end=input.selectionEnd,query=input.value;
- const apply=()=>{
+ const apply=()=>{taskQuery=query;taskVisibleLimits.clear();selectedBulk.clear()};
+ // The anchor-preserving path already announces a scope reset. Only the
+ // direct, visible-input path needs its own announcement.
+ if(originTaskFocusIsVisible(input)){
   const released=selectedBulk.size;
-  taskQuery=query;taskVisibleLimits.clear();selectedBulk.clear();
-  notifyOriginTaskSelectionReleased(released);
- };
- // When the search field is visible, the user is editing the search rather
- // than reading a distant row: keep the existing first-batch behavior.
- // Only preserve a task anchor when the user is viewing results farther down.
- if(originTaskFocusIsVisible(input)){apply();render();}
- else renderOriginTaskViewKeepingAnchor(apply,{filterChange:true});
+  apply();notifyOriginTaskSelectionReleased(released);render();
+ }else renderOriginTaskViewKeepingAnchor(apply,{filterChange:true});
  const next=$('#originTaskQuery');
  if(next){next.focus({preventScroll:true});if(start!==null)next.setSelectionRange(start,end)}
 }
