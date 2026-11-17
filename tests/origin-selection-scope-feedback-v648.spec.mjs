@@ -127,3 +127,29 @@ test('Origin 390px explicit filter reset explains why an active bulk selection w
  await assertScopeCleared(page,root,1);
  await expect(root.locator('#originTaskQuery')).toHaveValue('');
 });
+
+test('Offscreen query updates announce the selection release exactly once',async({page})=>{
+ test.setTimeout(90000);
+ const root=await launch(page,390,'offscreen');
+ const {ids}=await seed(page);
+ await root.locator('#originTaskQuery').fill('選択解除テスト');
+ await choose(root,[ids[0]]);
+ const offscreen=await page.evaluate(()=>{
+  const s=document.getElementById('modernOriginRoot').shadowRoot;
+  const field=s.getElementById('originTaskQuery');
+  field.style.transform='translateY(-4000px)';
+  const hidden=field.getBoundingClientRect().bottom<0;
+  const toast=s.getElementById('originToast');
+  window.__scopeToastWrites=0;
+  new MutationObserver(records=>{window.__scopeToastWrites+=records.filter(x=>x.type==='childList').length;})
+   .observe(toast,{childList:true});
+  field.value='選択解除テスト 02';
+  field.dispatchEvent(new Event('input',{bubbles:true}));
+  return hidden;
+ });
+ expect(offscreen).toBe(true);
+ await expect(root.locator('#originToast')).toContainText('選択中の1件を解除');
+ await expect.poll(()=>page.evaluate(()=>window.__scopeToastWrites)).toBe(1);
+ await expect(root.locator('.bulkbar')).toHaveCount(0);
+ await expect(root.locator('#originTaskQuery')).toHaveValue('選択解除テスト 02');
+});
