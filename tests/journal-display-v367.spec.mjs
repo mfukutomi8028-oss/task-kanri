@@ -6430,3 +6430,32 @@ test('JOURNAL V644 Today closing a detail after its task leaves Today focuses th
   expect(saved.status).toBe('完了');
 });
 
+test('JOURNAL V644 Today task notification returns to the exact notice after task detail',async({page})=>{
+  test.setTimeout(120000);
+  await bootPaperAuxiliary(page,390);
+  await page.evaluate(()=>{
+    const bridge=window.WorkBoardPaletteBridge;
+    const room=bridge.readSnapshot().roomId;
+    // Peer receives a real unread task creation event from JournalQA.
+    localStorage.setItem('system-task-activity-read-at:'+room+':Peer','1');
+    bridge.selectUser('Peer');
+  });
+  await paperRoute(page,390,'today');
+  const notice=page.locator('#todayView .j420-update-item[data-j420-update-kind="task"][data-j420-update-id="paper-main"]');
+  await expect(notice).toBeVisible();
+  await notice.click();
+  const detail=page.locator('.detail-panel.open');
+  await expect(detail).toBeVisible();
+  const back=detail.locator('.j594-return-bookmark [data-j594-return]');
+  await expect(back).toBeVisible();
+  await expect(back).toHaveText('← 今日の案件へ');
+  await back.click();
+  await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
+  await expect(page.locator('body')).toHaveClass(/today-mode/);
+  await expect(notice).toBeFocused();
+  const task=await page.evaluate(()=>
+    window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id==='paper-main'));
+  expect(task.revision).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+});
+
