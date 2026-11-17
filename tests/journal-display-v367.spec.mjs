@@ -6459,3 +6459,41 @@ test('JOURNAL V644 Today task notification returns to the exact notice after tas
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
 
+
+for(const width of [390,1366]){
+  test('JOURNAL V646 returns to a schedule update notice after cancelling its editor at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await bootPaperAuxiliary(page,width);
+    const prepared=await page.evaluate(async()=>{
+      const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+      const schedule=s.schedules.find(item=>item.id==='paper-plan');
+      return bridge.dispatch({
+        type:'schedule.update',id:schedule.id,revision:schedule.revision,
+        ownerRoom:s.roomId,ownerUser:s.currentUser,
+        values:{...schedule,title:'共有予定の更新通知'}
+      });
+    });
+    expect(prepared.ok).toBe(true);
+    await page.evaluate(()=>{
+      const bridge=window.WorkBoardPaletteBridge,room=bridge.readSnapshot().roomId;
+      localStorage.setItem('system-task-activity-read-at:'+room+':Peer','1');
+      bridge.selectUser('Peer');
+    });
+    await paperRoute(page,width,'today');
+    const notice=page.locator('#todayView .j420-update-item[data-j420-update-kind="schedule"][data-j420-update-id="paper-plan"]');
+    await expect(notice).toBeVisible();
+    await notice.focus();
+    await page.keyboard.press('Enter');
+    const editor=page.locator('#scheduleDialog');
+    await expect(editor).toBeVisible();
+    await editor.locator('#closeScheduleDialog').click();
+    await expect(editor).toBeHidden();
+    await expect(page.locator('body')).toHaveClass(/today-mode/);
+    await expect(notice).toBeFocused();
+    await expect(page.locator('[data-j639-today-moved]')).toHaveCount(0);
+    const stored=await page.evaluate(()=>
+      window.WorkBoardPaletteBridge.readSnapshot().schedules.find(s=>s.id==='paper-plan'));
+    expect(stored.revision).toBe(2);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  });
+}
