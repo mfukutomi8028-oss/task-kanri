@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+// Diagnostic baseline: no application changes, run existing Origin regression tests on Ver.634.
 
 // Local-only room; exercise real Origin and the canonical bridge without Firebase writes.
 async function launch(page,width,slug){
