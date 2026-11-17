@@ -69,6 +69,8 @@ for(const width of [390,1366]){
   await selector.selectOption(state.target);
   await expect(apply).toBeEnabled();
   await apply.click();
+  await expect(root.locator('#originBulkReviewDialog')).toBeVisible();
+  await root.locator('#originBulkReviewConfirm').click();
   await expect(root.locator('.bulkbar')).toHaveCount(0);
   await expect(query).toHaveValue('一括状態操作');
   await expect(root.locator('#originToast')).toContainText('2件');
