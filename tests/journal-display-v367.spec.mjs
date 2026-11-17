@@ -6305,3 +6305,59 @@ test('JOURNAL V639 Today cancelled date change must not show a moved destination
   const stored=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.find(s=>s.id==='paper-plan'));
   expect(stored.revision).toBe(1);
 });
+
+test('JOURNAL V639 Today failed schedule save must not show a moved destination',async({page})=>{
+  test.setTimeout(120000);
+  await bootPaperAuxiliary(page,390);
+  await paperRoute(page,390,'today');
+  const card=page.locator('#todayView .j420-agenda-item[data-schedule-id="paper-plan"]');
+  await card.focus();
+  await page.keyboard.press('Enter');
+  const editor=page.locator('#scheduleDialog');
+  await expect(editor).toBeVisible();
+
+  const concurrent=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge;
+    const snapshot=bridge.readSnapshot();
+    const record=snapshot.schedules.find(item=>item.id==='paper-plan');
+    return bridge.dispatch({
+      type:'schedule.update',id:record.id,revision:record.revision,
+      values:{...record,title:'別の利用者が先に更新した予定'},
+      ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser
+    });
+  });
+  expect(concurrent.ok).toBe(true);
+
+  await editor.locator('#scheduleStart').fill('2030-06-11T10:00');
+  await editor.locator('#scheduleEnd').fill('2030-06-11T10:30');
+  await editor.locator('#scheduleForm button[type="submit"]').click();
+
+  await expect(editor).toBeVisible();
+  await expect(editor.locator('#scheduleStart')).toHaveValue('2030-06-11T10:00');
+  await expect(page.locator('[data-j639-today-moved]')).toHaveCount(0);
+  const stored=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.find(item=>item.id==='paper-plan'));
+  expect(stored.revision).toBe(2);
+  expect(stored.title).toBe('別の利用者が先に更新した予定');
+});
+
+test('JOURNAL V639 Today must discard a moved-date return when the active user changes',async({page})=>{
+  test.setTimeout(120000);
+  await bootPaperAuxiliary(page,390);
+  await paperRoute(page,390,'today');
+  const card=page.locator('#todayView .j420-agenda-item[data-schedule-id="paper-plan"]');
+  await card.focus();
+  await page.keyboard.press('Enter');
+  const editor=page.locator('#scheduleDialog');
+  await expect(editor).toBeVisible();
+
+  await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('Peer'));
+  await page.evaluate(()=>{
+    const dialog=document.getElementById('scheduleDialog');
+    if(dialog?.open)dialog.close();
+  });
+  await expect(editor).toBeHidden();
+  await expect(page.locator('[data-j639-today-moved]')).toHaveCount(0);
+  const stored=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.find(item=>item.id==='paper-plan'));
+  expect(stored.revision).toBe(1);
+});
+
