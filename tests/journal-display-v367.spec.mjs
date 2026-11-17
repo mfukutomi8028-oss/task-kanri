@@ -6448,7 +6448,7 @@ test('JOURNAL V644 Today task notification returns to the exact notice after tas
   await expect(detail).toBeVisible();
   const back=detail.locator('.j594-return-bookmark [data-j594-return]');
   await expect(back).toBeVisible();
-  await expect(back).toHaveText('← 今日の案件へ');
+  await expect(back).toHaveText('← 元の更新通知へ');
   await back.click();
   await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
   await expect(page.locator('body')).toHaveClass(/today-mode/);
