@@ -69,6 +69,21 @@ async function choose(root,selector){
   el.click();
  });
 }
+// Debug the reading guide versus the assertion target before relaxing a test.
+async function readingProbe(page,id){
+ return page.evaluate(taskId=>{
+  const s=document.querySelector('#modernOriginRoot').shadowRoot;
+  const headerBottom=Math.max(0,s.querySelector('.header')?.getBoundingClientRect().bottom||0);
+  const guide=Math.max(headerBottom+52,Math.min(210,innerHeight*.24));
+  const cards=[...s.querySelectorAll('.origin-task-collection .item-name[data-action="open"][data-kind="tasks"]')]
+   .filter(c=>c.getClientRects().length).map(card=>({id:card.dataset.id,
+    top:card.closest('.item-row')?.getBoundingClientRect().top,
+    bottom:card.closest('.item-row')?.getBoundingClientRect().bottom}))
+   .filter(row=>row.bottom>headerBottom&&row.top<innerHeight)
+   .sort((a,b)=>Math.abs(a.top-guide)-Math.abs(b.top-guide));
+  return {scrollY,headerBottom,guide,target:taskId,top:cards.slice(0,6)};
+ },id);
+}
 for(const width of [390,1366]){
  test('Origin '+width+'px filter preserves same task, finds a new matching task, and recovers from zero results',async({page})=>{
   test.setTimeout(160000);
@@ -84,7 +99,9 @@ for(const width of [390,1366]){
   expect(initial).toBeGreaterThan(120);
   expect(initial).toBeLessThan(270);
 
+  if(width===1366)console.log('READING_ANCHOR_BEFORE '+JSON.stringify(await readingProbe(page,anchorId)));
   await choose(root,'[data-action="task-filter"][data-value="all"]');
+  if(width===1366)console.log('READING_ANCHOR_AFTER '+JSON.stringify(await readingProbe(page,anchorId)));
   await expect(root.locator('[data-action="task-filter"][data-value="all"]')).toHaveAttribute('aria-pressed','true');
   await expect(collection.locator('.item-name[data-id="'+anchorId+'"]')).toBeVisible();
   const same=await coordinates(page,anchorId);
