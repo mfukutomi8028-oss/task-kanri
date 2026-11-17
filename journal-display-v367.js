@@ -1276,7 +1276,7 @@
   const journalReturnDetailPanelV616=document.querySelector('.detail-panel');
   function journalPositionReturnBookmarkV616(){
     const panel=isJournal()&&!journalReturnBarV594.hidden
-      &&['schedule','memo'].includes(journalReturnV594?.kind)
+      &&['schedule','memo','today'].includes(journalReturnV594?.kind)
       &&journalReturnDetailShellV616?.classList.contains('detail-open')
       &&journalReturnDetailPanelV616?.classList.contains('open')
       ?journalReturnDetailPanelV616:null;
@@ -1287,9 +1287,11 @@
       journalReturnHomeV616.after(journalReturnBarV594);
     }
   }
-  if(journalReturnDetailShellV616)new MutationObserver(journalPositionReturnBookmarkV616)
+  // Reuse the existing detail observers to update the bookmark on both open
+  // and close. The bookmark does not subscribe to task data or write state.
+  if(journalReturnDetailShellV616)new MutationObserver(syncJournalReturnV594)
     .observe(journalReturnDetailShellV616,{attributes:true,attributeFilter:['class']});
-  if(journalReturnDetailPanelV616)new MutationObserver(journalPositionReturnBookmarkV616)
+  if(journalReturnDetailPanelV616)new MutationObserver(syncJournalReturnV594)
     .observe(journalReturnDetailPanelV616,{attributes:true,attributeFilter:['class']});
   const journalReturnOwnerV594=()=>shelfOwnerKey(shelfSnapshot());
   function journalReturnCaptureV594(kind,id) {
@@ -1299,11 +1301,48 @@
       query:journalSearchQueryV393,top:window.scrollY,width:window.innerWidth
     };
   }
+  // Restore an existing Today card after a modal closes or its source DOM
+  // has been replaced by the canonical save renderer.
+  function journalFocusTodayOriginV638(origin,kind,force=false) {
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      if(!origin||!isJournal()||canonicalRoute()!=='today'
+        ||journalReturnOwnerV594()!==origin.owner
+        ||document.querySelector('dialog[open]'))return;
+      const view=document.getElementById('todayView');
+      const selector=kind==='schedule'
+        ?'.j420-agenda-item[data-schedule-id]'
+        :'.j420-work-note[data-task-id],.j420-waiting-item[data-task-id]';
+      const source=[...(view?.querySelectorAll(selector)||[])].find(node=>
+        (kind==='schedule'?node.dataset.scheduleId:node.dataset.taskId)===origin.id
+          &&node.getClientRects().length);
+      const fallback=kind==='schedule'
+        ?view?.querySelector('[data-j420-create-schedule]')
+        :view?.querySelector('.j420-focus [data-j420-to-tasks]');
+      const target=source||fallback;
+      if(!target)return;
+      const active=document.activeElement;
+      // A new intentional action after closing must win over a deferred
+      // focus restoration. Explicit bookmark activation always returns.
+      if(!force&&active&&active!==document.body&&active!==document.documentElement
+        &&active!==target&&!journalReturnDetailPanelV616?.contains(active)
+        &&active.getClientRects().length)return;
+      target.focus({preventScroll:true});
+      if(origin.width===window.innerWidth&&Number.isFinite(origin.top))
+        window.scrollTo({top:origin.top,behavior:'auto'});
+      else target.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+    }));
+  }
   function journalReturnToSourceV594() {
     const origin=journalReturnV594;
     journalReturnV594=null;
     if(!origin||!isJournal()||journalReturnOwnerV594()!==origin.owner){
       syncJournalReturnV594();return;
+    }
+    if(origin.kind==='today'){
+      document.getElementById('closeDetail')?.click();
+      syncJournalReturnV594();
+      journalFocusTodayOriginV638(origin,'task',true);
+      return;
     }
     const target=origin.kind==='task'?'tasks':origin.kind==='schedule'?'schedule':'memo';
     // V616: restore only view filters/position. The canonical schedule route
@@ -1403,14 +1442,19 @@
     const valid=origin&&isJournal()&&journalReturnOwnerV594()===origin.owner;
     if(origin&&!valid)journalReturnV594=null;
     const route=canonicalRoute();
-    const show=Boolean(valid&&(origin.kind==='task'?route==='memo'
+    const detailShown=journalReturnDetailShellV616?.classList.contains('detail-open')
+      &&journalReturnDetailPanelV616?.classList.contains('open');
+    const show=Boolean(valid&&(origin.kind==='today'?route==='today'&&detailShown
+      :origin.kind==='task'?route==='memo'
       :origin.kind==='memo'||origin.kind==='schedule'?route==='tasks':false));
+    if(show&&origin.kind==='today')origin.wasVisible=true;
     // A user switch can invalidate a bookmark while its return button has
     // keyboard focus. Capture focus before hiding/removing the button.
     const focusedReturn=journalReturnBarV594.contains(document.activeElement);
     journalReturnBarV594.hidden=!show;
     journalPositionReturnBookmarkV616();
     if(!show){
+      if(origin?.kind==='today'&&origin.wasVisible)journalReturnV594=null;
       journalReturnBarV594.replaceChildren();
       // Only move focus if we actually removed the focused control. A
       // background refresh must not steal focus from the current work.
@@ -1429,8 +1473,10 @@
       text=document.createElement('p');
       journalReturnBarV594.append(text);
     }
-    text.textContent=origin.kind==='task'
-      ?'前に見ていた案件ノートへ戻れます。'
+    text.textContent=origin.kind==='today'
+      ?'今日の元の案件へ戻れます。'
+      :origin.kind==='task'
+        ?'前に見ていた案件ノートへ戻れます。'
       :origin.kind==='schedule'
         ?'元の予定の日付・表示条件・閲覧位置へ戻れます。'
         :'タスク作成前に見ていたメモへ戻れます。';
@@ -1442,7 +1488,8 @@
       back.addEventListener('click',journalReturnToSourceV594);
       journalReturnBarV594.append(back);
     }
-    back.textContent=origin.kind==='task'?'← 元の案件へ'
+    back.textContent=origin.kind==='today'?'← 今日の案件へ'
+      :origin.kind==='task'?'← 元の案件へ'
       :origin.kind==='schedule'?'← 元の予定へ':'← 元のメモへ';
   }
   // Enhance original JOURNAL task actions only. No duplicate record renderer,
@@ -1477,6 +1524,33 @@
       syncJournalReturnV594();
       return;
     }
+  });
+  // Today cards are canonical task/schedule controls. Capture their IDs
+  // before the existing handlers open detail or a modal; do not duplicate
+  // their actions or save paths.
+  let journalTodayScheduleOriginV638=null;
+  function journalCaptureTodayOriginV638(event){
+    if(!isJournal()||canonicalRoute()!=='today')return;
+    if(event.type==='keydown'&&!['Enter',' '].includes(event.key))return;
+    if(event.target.closest?.('button,input,select,textarea,a'))return;
+    const task=event.target.closest?.(
+      '#todayView .j420-work-note[data-task-id],#todayView .j420-waiting-item[data-task-id]');
+    if(task){
+      journalReturnCaptureV594('today',task.dataset.taskId);
+      return;
+    }
+    const schedule=event.target.closest?.('#todayView .j420-agenda-item[data-schedule-id]');
+    if(schedule&&shelfSnapshot())journalTodayScheduleOriginV638={
+      id:schedule.dataset.scheduleId,owner:journalReturnOwnerV594(),
+      top:window.scrollY,width:window.innerWidth
+    };
+  }
+  window.addEventListener('click',journalCaptureTodayOriginV638,true);
+  window.addEventListener('keydown',journalCaptureTodayOriginV638,true);
+  document.getElementById('scheduleDialog')?.addEventListener('close',()=>{
+    const origin=journalTodayScheduleOriginV638;
+    journalTodayScheduleOriginV638=null;
+    if(origin)journalFocusTodayOriginV638(origin,'schedule');
   });
   // Capture the original page *before* canonical handlers change routes or
   // task-search filters. Support both the appointment editor and week index.
