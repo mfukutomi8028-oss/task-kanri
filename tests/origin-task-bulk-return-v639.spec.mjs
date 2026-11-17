@@ -72,11 +72,12 @@ async function rowTop(page,id){
  },id);
 }
 async function completeSelected(page,root){
- page.once('dialog',dialog=>{void dialog.accept()});
  await root.locator('[data-action="bulk-done"]').evaluate(el=>{
   el.focus({preventScroll:true});
   el.click();
  });
+ await expect(root.locator('#originBulkReviewDialog')).toBeVisible();
+ await root.locator('#originBulkReviewConfirm').click();
  await expect(root.locator('.bulkbar')).toHaveCount(0);
 }
 
