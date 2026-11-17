@@ -6513,8 +6513,10 @@ test('JOURNAL V646 preserves a safe Today focus after saving an appointment from
   });
   expect(prepared.ok).toBe(true);
   await page.evaluate(()=>{
-    const bridge=window.WorkBoardPaletteBridge,room=bridge.readSnapshot().roomId;
-    localStorage.setItem('system-task-activity-read-at:'+room+':Peer','1');
+    const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
+    const createdAt=snapshot.schedules.find(s=>s.id==='paper-plan').createdAt;
+    // Ignore the older create event and show the newer QA update only.
+    localStorage.setItem('system-task-activity-read-at:'+snapshot.roomId+':Peer',String(createdAt+1));
     bridge.selectUser('Peer');
   });
   await paperRoute(page,390,'today');
