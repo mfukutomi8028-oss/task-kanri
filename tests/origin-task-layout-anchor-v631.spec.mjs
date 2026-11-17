@@ -48,7 +48,11 @@ for(const width of [390,1366]){
   await root.locator('#groupSelect').selectOption('status');
   await root.locator('#originTaskSort').selectOption('updated');
   const list=root.locator('.origin-task-collection');
-  await list.locator('[data-action="task-show-all"]').click();
+  // Some restored views already show every task, so the optional expansion
+  // control does not exist. In both cases require all 36 real rows to be visible.
+  const showAll=list.locator('[data-action="task-show-all"]');
+  if(await showAll.count())await showAll.click();
+  await expect(list.locator('.item-row')).toHaveCount(ids.length);
   const target=ids[29];
   await expect(list.locator('.item-name[data-id="'+target+'"]')).toBeVisible();
   await page.evaluate(id=>{
