@@ -250,7 +250,8 @@ test('Origin task groups and memo list density stay view-only and retain filter 
  assert.ok(origin.includes('el.scrollLeft=horizontalScroll.get'));
  assert.ok(origin.includes('origin-filter-current'));
  assert.ok(origin.includes('selectedBulk.delete(box.dataset.id)'));
- assert.match(origin,/taskCollapsedGroups\.clear\(\);taskVisibleLimits\.clear\(\);selectedBulk\.clear\(\);\s*render\(\)/);
+ assert.match(origin,/function resetOriginTaskFilters\(mode='active'\)\{[\s\S]*?renderOriginTaskViewKeepingAnchor\(\(\)=>\{/);
+ assert.match(origin,/taskCollapsedGroups\.clear\(\);taskVisibleLimits\.clear\(\);selectedBulk\.clear\(\)/);
  assert.doesNotMatch(origin,/localStorage\.setItem|firebase\/database|runTransaction/);
 });
 
