@@ -6243,3 +6243,65 @@ for (const width of [390,1366]) {
     expect(saved.revision).toBe(2);
   });
 }
+
+
+for (const width of [390,1366]) {
+  test('JOURNAL V639 Today moved appointment offers an explicit destination date at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await bootPaperAuxiliary(page,width);
+    await paperRoute(page,width,'today');
+    const card=page.locator('#todayView .j420-agenda-item[data-schedule-id="paper-plan"]');
+    await expect(card).toBeVisible();
+    await card.focus();
+    await page.keyboard.press('Enter');
+    const editor=page.locator('#scheduleDialog');
+    await expect(editor).toBeVisible();
+    const destination=await page.evaluate(()=>{
+      const d=new Date();d.setDate(d.getDate()+21);
+      return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),
+        String(d.getDate()).padStart(2,'0')].join('-');
+    });
+    await editor.locator('#scheduleStart').fill(destination+'T10:00');
+    await editor.locator('#scheduleEnd').fill(destination+'T10:30');
+    await editor.locator('#scheduleForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+    await expect(card).toHaveCount(0);
+    const notice=page.locator('#todayView [data-j639-today-moved]');
+    const follow=notice.locator('[data-j639-follow-moved]');
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText(destination.replaceAll('-','/'));
+    await expect(follow).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('body')).toHaveClass(/schedule-mode/);
+    const schedule=page.locator('#scheduleView');
+    await expect(schedule.locator('[data-j425-mode="day"]')).toHaveAttribute('aria-pressed','true');
+    await expect(schedule.locator('[data-j425-day="'+destination+'"]')).toHaveClass(/is-selected/);
+    const moved=schedule.locator('.j459-day-record [data-schedule-id="paper-plan"]').first();
+    await expect(moved).toBeVisible();
+    await expect(moved).toBeFocused();
+    await expect(notice).toHaveCount(0);
+    const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.find(s=>s.id==='paper-plan'));
+    expect(saved.revision).toBe(2);
+    expect(new Date(saved.startAt).getDate()).toBe(Number(destination.slice(8)));
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  });
+}
+
+test('JOURNAL V639 Today cancelled date change must not show a moved destination',async({page})=>{
+  test.setTimeout(120000);
+  await bootPaperAuxiliary(page,390);
+  await paperRoute(page,390,'today');
+  const card=page.locator('#todayView .j420-agenda-item[data-schedule-id="paper-plan"]');
+  await card.focus();
+  await page.keyboard.press('Enter');
+  const editor=page.locator('#scheduleDialog');
+  await expect(editor).toBeVisible();
+  await editor.locator('#scheduleStart').fill('2030-05-21T10:00');
+  await editor.locator('#scheduleEnd').fill('2030-05-21T10:30');
+  await editor.locator('#closeScheduleDialog').click();
+  await expect(editor).toBeHidden();
+  await expect(card).toBeFocused();
+  await expect(page.locator('[data-j639-today-moved]')).toHaveCount(0);
+  const stored=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.find(s=>s.id==='paper-plan'));
+  expect(stored.revision).toBe(1);
+});
