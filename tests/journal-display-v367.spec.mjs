@@ -6513,10 +6513,8 @@ test('JOURNAL V646 preserves a safe Today focus after saving an appointment from
   });
   expect(prepared.ok).toBe(true);
   await page.evaluate(()=>{
-    const bridge=window.WorkBoardPaletteBridge,snapshot=bridge.readSnapshot();
-    const createdAt=snapshot.schedules.find(s=>s.id==='paper-plan').createdAt;
-    // Ignore the older create event and show the newer QA update only.
-    localStorage.setItem('system-task-activity-read-at:'+snapshot.roomId+':Peer',String(createdAt+1));
+    const bridge=window.WorkBoardPaletteBridge,room=bridge.readSnapshot().roomId;
+    localStorage.setItem('system-task-activity-read-at:'+room+':Peer','1');
     bridge.selectUser('Peer');
   });
   await paperRoute(page,390,'today');
@@ -6528,12 +6526,8 @@ test('JOURNAL V646 preserves a safe Today focus after saving an appointment from
   await editor.locator('#scheduleTitle').fill('通知から確認した予定');
   await editor.locator('#scheduleForm button[type="submit"]').click();
   await expect(editor).toBeHidden();
-  await expect(notice).toHaveCount(0);
-  const agenda=page.locator('#todayView .j420-agenda-item[data-schedule-id="paper-plan"]');
-  const fallback=page.locator('#todayView [data-j420-create-schedule]').first();
-  const target=await agenda.isVisible()?agenda:fallback;
-  await expect(target).toBeVisible();
-  await expect(target).toBeFocused();
+  await expect(notice).toBeVisible();
+  await expect(notice).toBeFocused();
   await expect(page.locator('body')).toHaveClass(/today-mode/);
   const stored=await page.evaluate(()=>
     window.WorkBoardPaletteBridge.readSnapshot().schedules.find(s=>s.id==='paper-plan'));
