@@ -4161,11 +4161,12 @@ function updateMemoQuery(input){
 }
 function updateTaskQuery(input){
  const start=input.selectionStart,end=input.selectionEnd,query=input.value;
- // A live search changes the visible set just like other Origin-only filters.
- // Reuse the same task-ID anchor and paging restoration, not a second cache.
- renderOriginTaskViewKeepingAnchor(()=>{
-  taskQuery=query;taskVisibleLimits.clear();selectedBulk.clear();
- },{filterChange:true});
+ const apply=()=>{taskQuery=query;taskVisibleLimits.clear();selectedBulk.clear()};
+ // When the search field is visible, the user is editing the search rather
+ // than reading a distant row: keep the existing first-batch behavior.
+ // Only preserve a task anchor when the user is viewing results farther down.
+ if(originTaskFocusIsVisible(input)){apply();render();}
+ else renderOriginTaskViewKeepingAnchor(apply,{filterChange:true});
  const next=$('#originTaskQuery');
  if(next){next.focus({preventScroll:true});if(start!==null)next.setSelectionRange(start,end)}
 }
