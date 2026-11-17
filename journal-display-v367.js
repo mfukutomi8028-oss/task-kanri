@@ -1529,6 +1529,70 @@
   // before the existing handlers open detail or a modal; do not duplicate
   // their actions or save paths.
   let journalTodayScheduleOriginV638=null;
+  // V639: one transient annotation for an event moved out of Today.
+  // Use the existing notebook notice styling and canonical schedule route.
+  let journalTodaySavedMoveV639=null;
+  let journalTodayMovedV639=null;
+  const journalTodayMovedBarV639=document.createElement('div');
+  journalTodayMovedBarV639.className='j586-schedule-return';
+  journalTodayMovedBarV639.dataset.j639TodayMoved='';
+  journalTodayMovedBarV639.setAttribute('role','status');
+  const journalTodayMovedMessageV639=document.createElement('p');
+  const journalTodayMovedButtonV639=document.createElement('button');
+  journalTodayMovedButtonV639.type='button';
+  journalTodayMovedButtonV639.dataset.j639FollowMoved='';
+  journalTodayMovedBarV639.append(journalTodayMovedMessageV639,journalTodayMovedButtonV639);
+  function syncJournalTodayMovedV639(){
+    const notice=journalTodayMovedV639;
+    if(notice&&notice.owner!==journalReturnOwnerV594())journalTodayMovedV639=null;
+    if(!journalTodayMovedV639||!isJournal()||canonicalRoute()!=='today'){
+      journalTodayMovedBarV639.remove();
+      return;
+    }
+    const masthead=document.querySelector('#todayView .j420-today .j420-masthead');
+    if(!masthead){
+      journalTodayMovedBarV639.remove();
+      return;
+    }
+    const current=journalTodayMovedV639;
+    journalTodayMovedMessageV639.textContent=current.stale
+      ?'この予定は再度更新された可能性があります。予定画面で最新の日時をご確認ください。'
+      :`予定の移動先 「${current.title}」は ${current.date.replace(/-/g,'/')} に変更されました。`;
+    journalTodayMovedButtonV639.textContent=current.stale
+      ?'予定画面で確認':'変更後の予定を見る';
+    if(journalTodayMovedBarV639.previousElementSibling!==masthead)
+      masthead.after(journalTodayMovedBarV639);
+  }
+  journalTodayMovedButtonV639.addEventListener('click',()=>{
+    const current=journalTodayMovedV639;
+    if(!current||!isJournal()||canonicalRoute()!=='today'
+      ||current.owner!==journalReturnOwnerV594())return;
+    if(current.stale){
+      journalTodayMovedV639=null;
+      journalTodayMovedBarV639.remove();
+      navigate('schedule');
+      return;
+    }
+    if(window.WorkBoardJournalNavigation?.openScheduleDateV639?.(current.id,current.date)){
+      journalTodayMovedV639=null;
+      journalTodayMovedBarV639.remove();
+    }else{
+      journalTodayMovedV639={...current,stale:true};
+      syncJournalTodayMovedV639();
+      journalTodayMovedButtonV639.focus({preventScroll:true});
+    }
+  });
+  document.addEventListener('workboard:journal-today-schedule-saved',event=>{
+    const origin=journalTodayScheduleOriginV638;
+    const result=event.detail||{};
+    if(!origin||!isJournal()||canonicalRoute()!=='today'
+      ||origin.owner!==journalReturnOwnerV594()
+      ||String(result.id||'')!==origin.id
+      ||!result.previousDate||result.previousDate===result.date
+      ||!/^\d{4}-\d{2}-\d{2}$/.test(String(result.date||'')))return;
+    journalTodaySavedMoveV639={...origin,date:String(result.date),
+      title:String(result.title||'予定')};
+  });
   function journalCaptureTodayOriginV638(event){
     if(!isJournal()||canonicalRoute()!=='today')return;
     if(event.type==='keydown'&&!['Enter',' '].includes(event.key))return;
@@ -1536,21 +1600,40 @@
     const task=event.target.closest?.(
       '#todayView .j420-work-note[data-task-id],#todayView .j420-waiting-item[data-task-id]');
     if(task){
+      journalTodayMovedV639=null;
+      syncJournalTodayMovedV639();
       journalReturnCaptureV594('today',task.dataset.taskId);
       return;
     }
     const schedule=event.target.closest?.('#todayView .j420-agenda-item[data-schedule-id]');
-    if(schedule&&shelfSnapshot())journalTodayScheduleOriginV638={
-      id:schedule.dataset.scheduleId,owner:journalReturnOwnerV594(),
-      top:window.scrollY,width:window.innerWidth
-    };
+    if(schedule&&shelfSnapshot()){
+      journalTodayMovedV639=null;
+      journalTodaySavedMoveV639=null;
+      syncJournalTodayMovedV639();
+      journalTodayScheduleOriginV638={
+        id:schedule.dataset.scheduleId,owner:journalReturnOwnerV594(),
+        top:window.scrollY,width:window.innerWidth
+      };
+    }
   }
   window.addEventListener('click',journalCaptureTodayOriginV638,true);
   window.addEventListener('keydown',journalCaptureTodayOriginV638,true);
   document.getElementById('scheduleDialog')?.addEventListener('close',()=>{
     const origin=journalTodayScheduleOriginV638;
+    const moved=journalTodaySavedMoveV639;
     journalTodayScheduleOriginV638=null;
-    if(origin)journalFocusTodayOriginV638(origin,'schedule');
+    journalTodaySavedMoveV639=null;
+    if(moved&&origin&&isJournal()&&canonicalRoute()==='today'
+      &&moved.owner===journalReturnOwnerV594()){
+      journalTodayMovedV639=moved;
+      syncJournalTodayMovedV639();
+      requestAnimationFrame(()=>{
+        if(journalTodayMovedV639===moved&&journalTodayMovedBarV639.isConnected
+          &&isJournal()&&canonicalRoute()==='today'
+          &&!document.querySelector('dialog[open]'))
+          journalTodayMovedButtonV639.focus({preventScroll:true});
+      });
+    }else if(origin)journalFocusTodayOriginV638(origin,'schedule');
   });
   // Capture the original page *before* canonical handlers change routes or
   // task-search filters. Support both the appointment editor and week index.
@@ -1600,6 +1683,10 @@
       else button.removeAttribute('aria-current');
     }
     body.dataset.journalRoute = currentRoute;
+    if(currentRoute!=='today'&&journalTodayMovedV639){
+      journalTodayMovedV639=null;
+      journalTodayMovedBarV639.remove();
+    }
     syncJournalReturnV594();
     journalMemoLinkEnhanceV594();
     requestJournalCompose();
@@ -2353,6 +2440,9 @@
         dateLabel();
         scheduleSync();
       } else {
+        journalTodayMovedV639=null;
+        journalTodaySavedMoveV639=null;
+        journalTodayMovedBarV639.remove();
         journalReturnV594=null;
         syncJournalReturnV594();
         journalMemoLinkEnhanceV594();
@@ -2418,8 +2508,15 @@
   let journalTransientOwnerV628=journalReturnOwnerV594();
   function resetJournalTransientOnOwnerChangeV628(){
     const owner=journalReturnOwnerV594();
-    if(owner===journalTransientOwnerV628)return;
+    if(owner===journalTransientOwnerV628){
+      syncJournalTodayMovedV639();
+      return;
+    }
     journalTransientOwnerV628=owner;
+    journalTodayMovedV639=null;
+    journalTodaySavedMoveV639=null;
+    journalTodayScheduleOriginV638=null;
+    journalTodayMovedBarV639.remove();
     journalReturnV594=null;
     syncJournalReturnV594();
     journalMemoSelectedV425='';
