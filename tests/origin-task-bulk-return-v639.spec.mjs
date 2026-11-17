@@ -33,9 +33,9 @@ async function seed(page,count,title='一括復帰対象'){
     type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,
     title:title+' '+String(i+1).padStart(2,'0'),
     description:'一括処理後の操作位置を保持する',
-    status:s.statuses[0],priority:'中',assignee:s.currentUser,
-    category:s.categories[0],requester:'',tags:'',checklist:'',
-    checklistDone:[],dueDate:due,dueTime:'14:00',pinned:false
+    status:s.statuses[0],priority:'中',assignee:s.users[0],
+    category:s.categories[0],requester:'',tags:'',checklist:'確認項目',
+    checklistDone:[false],dueDate:due,dueTime:'14:00',pinned:false
    });
    if(!item?.ok)throw Error('task.create '+JSON.stringify(item));
    ids.push(item.id);
