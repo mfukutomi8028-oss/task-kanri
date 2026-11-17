@@ -111,7 +111,7 @@ for(const width of [390,1366]){
   // Reset button also disappears after click; focus must not remain lost or off-screen.
   await editSearch(root,'継続対象');
   const resetBefore=await align(page,id);
-  await root.locator('[data-action="task-reset"]').evaluate(el=>el.click());
+  await root.locator('[data-action="task-reset"]').evaluate(el=>{el.focus({preventScroll:true});el.click()});
   await expect(root.locator('#originTaskQuery')).toHaveValue('');
   await expect(root.locator('.origin-task-collection .item-name[data-id="'+id+'"]')).toBeFocused();
   expect(Math.abs((await top(page,id))-resetBefore)).toBeLessThan(80);
