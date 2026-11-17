@@ -1373,6 +1373,7 @@
     }
     requestAnimationFrame(()=>{
       if(!isJournal()||journalReturnOwnerV594()!==origin.owner||canonicalRoute()!==target)return;
+      let restoreSourceScroll=true;
       if(origin.kind==='schedule'){
         const view=document.getElementById('scheduleView');
         // The desktop reading rail scrolls independently from the page.
@@ -1425,22 +1426,45 @@
         const board=document.getElementById('boardView');
         const card=[...(board?.querySelectorAll('[data-j420-task-id]')||[])]
           .find(node=>node.dataset.j420TaskId===origin.id);
-        if(card)card.click();
-        else window.WorkBoardJournalNavigation?.openTask(origin.id);
-        // V621: after the canonical desk redraw, restore focus to the
-        // action that opened the memo. The old bookmark has been hidden,
-        // so leaving focus on it strands keyboard users.
-        requestAnimationFrame(()=>{
-          if(!isJournal()||canonicalRoute()!=='tasks'
-            ||journalReturnOwnerV594()!==origin.owner)return;
-          const selected=board?.querySelector('[data-j420-task-id].is-selected');
-          if(selected?.dataset.j420TaskId!==origin.id)return;
-          const action=board.querySelector('#j494AtelierNote [data-j594-open-memo]');
-          if(action?.getClientRects().length)action.focus({preventScroll:true});
-          else selected.focus({preventScroll:true});
-        });
+        // An external delete can remove the bookmarked case while Memo is
+        // open. Consult the canonical snapshot before selecting a stale card.
+        const caseStillExists=Boolean(shelfSnapshot()?.tasks?.some(task=>task.id===origin.id));
+        if(caseStillExists){
+          if(card)card.click();
+          else window.WorkBoardJournalNavigation?.openTask(origin.id);
+          // The canonical desk may redraw after navigation. Restore the
+          // source memo-reference action only while the same case is selected.
+          requestAnimationFrame(()=>{
+            if(!isJournal()||canonicalRoute()!=='tasks'
+              ||journalReturnOwnerV594()!==origin.owner)return;
+            const selected=board?.querySelector('[data-j420-task-id].is-selected');
+            if(selected?.dataset.j420TaskId!==origin.id)return;
+            const action=board.querySelector('#j494AtelierNote [data-j594-open-memo]');
+            if(action?.getClientRects().length)action.focus({preventScroll:true});
+            else selected.focus({preventScroll:true});
+          });
+        }else{
+          // No old record to restore: keep the existing empty-state UI and
+          // move to an actually visible search/create control instead of the
+          // obsolete scroll position. Do not hijack later user input.
+          restoreSourceScroll=false;
+          requestAnimationFrame(()=>{
+            if(!isJournal()||canonicalRoute()!=='tasks'
+              ||journalReturnOwnerV594()!==origin.owner)return;
+            const fallback=[...(board?.querySelectorAll(
+              '.j420-atelier-tools [data-j420-search],.j420-atelier-tools [data-j420-new-task]')||[])]
+              .find(node=>node.getClientRects().length);
+            if(!fallback)return;
+            const active=document.activeElement;
+            const currentTab=(window.innerWidth<=860?dockButtons:tabButtons).get('tasks');
+            if(active&&active!==document.body&&active!==document.documentElement
+              &&active!==currentTab&&active!==fallback&&active.getClientRects().length)return;
+            fallback.focus({preventScroll:true});
+            fallback.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+          });
+        }
       }
-      if(origin.width===window.innerWidth&&Number.isFinite(origin.top)){
+      if(restoreSourceScroll&&origin.width===window.innerWidth&&Number.isFinite(origin.top)){
         requestAnimationFrame(()=>{
           if(isJournal()&&canonicalRoute()===target
             &&journalReturnOwnerV594()===origin.owner)
