@@ -1154,10 +1154,20 @@ function renderTasks(){
 }
 // Clear Origin-only view state; keep canonical tasks and the user's active view intact.
 function resetOriginTaskFilters(mode='active'){
- taskQuery='';taskFilter=mode;taskStatusChoice='';
- taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();
- render();
- $('#originTaskQuery')?.focus({preventScroll:true});
+ const anchor=captureOriginTaskViewAnchor();
+ renderOriginTaskViewKeepingAnchor(()=>{
+  taskQuery='';taskFilter=mode;taskStatusChoice='';
+  taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();
+ },{filterChange:true});
+ if(!anchor){
+  // No visible row to return to (for example, after a zero-result search).
+  // Keep keyboard focus on an editable search field instead of a removed button.
+  const search=$('#originTaskQuery');
+  if(search?.getClientRects().length){
+   search.focus({preventScroll:true});
+   search.scrollIntoView({block:'nearest',behavior:'instant'});
+  }
+ }
 }
 function originTaskEmptyState(){
  const hasTasks=data.tasks.length>0;
@@ -4150,8 +4160,12 @@ function updateMemoQuery(input){
  if(next){next.focus({preventScroll:true});if(start!==null)next.setSelectionRange(start,end)}
 }
 function updateTaskQuery(input){
- const start=input.selectionStart,end=input.selectionEnd;
- taskQuery=input.value;taskVisibleLimits.clear();selectedBulk.clear();render();
+ const start=input.selectionStart,end=input.selectionEnd,query=input.value;
+ // A live search changes the visible set just like other Origin-only filters.
+ // Reuse the same task-ID anchor and paging restoration, not a second cache.
+ renderOriginTaskViewKeepingAnchor(()=>{
+  taskQuery=query;taskVisibleLimits.clear();selectedBulk.clear();
+ },{filterChange:true});
  const next=$('#originTaskQuery');
  if(next){next.focus({preventScroll:true});if(start!==null)next.setSelectionRange(start,end)}
 }
