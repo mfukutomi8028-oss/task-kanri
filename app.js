@@ -6190,6 +6190,7 @@ async function saveScheduleFromForm() {
   const id = editingId || generateScheduleId();
   const expectedRevision = Number(elements.scheduleForm.dataset.baseRevision);
   const existing = state.schedules.find(s => s.id === editingId);
+  const previousDateV639 = existing ? scheduleLocalDate(existing) : '';
   if (editingId && (!existing || normalizeRevision(existing.revision) !== expectedRevision)) {
     return showWriteFailure({ error: 'revision-or-relation-mismatch' }, "予定を更新できませんでした。");
   }
@@ -6207,6 +6208,14 @@ async function saveScheduleFromForm() {
   schedule.lastChange = changeInfo;
   const result = await persistSchedule(schedule);
   if (!result.ok) return showWriteFailure(result, "予定を保存できませんでした。入力内容はそのままです。");
+  // JOURNAL Today needs evidence of a successful write before showing a
+  // moved-date shortcut. Never fire for cancelled, failed or other-mode edits.
+  if (editingId && journalTaskV411() && state.layout === 'today') {
+    document.dispatchEvent(new CustomEvent('workboard:journal-today-schedule-saved', {
+      detail: {id:schedule.id,title:schedule.title,previousDate:previousDateV639,
+        date:scheduleLocalDate(schedule)}
+    }));
+  }
   // Mark only an actually persisted calendar edit; cancelling or failed writes
   // must never show a destination that may not exist.
   if (editingId && journalNoteDialogReturnV479?.action==='calendar'
@@ -13137,6 +13146,40 @@ window.WorkBoardJournalNavigation = Object.freeze({
   openTask(id) {
     if (!journalTaskV411() || !state.tasks.some(t => t.id === id)) return false;
     selectTask(id);
+    return true;
+  },
+  // V639: explicitly open a saved event's real day using the canonical
+  // schedule renderer/navigation. Existing search, scope, user and category
+  // filters remain intact; this bridge never mutates task or schedule data.
+  openScheduleDateV639(id,date) {
+    const targetDate=String(date||'');
+    if (!journalTaskV411() || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate))return false;
+    const record=state.schedules.find(s=>s.id===String(id||''));
+    const day=parseISODate(targetDate);
+    const nav=document.querySelector('.sidebar .nav-item[data-layout="schedule"]');
+    if(!record||!day||!nav||scheduleLocalDate(record)!==targetDate)return false;
+    journalScheduleReturnNoticeV586=null;
+    journalScheduleStateV425.mode='day';
+    journalScheduleStateV425.anchor=targetDate;
+    nav.click();
+    if(state.layout!=='schedule'||elements.scheduleView.hidden)return false;
+    const shown=getFilteredSchedules({start:day,end:addDays(day,1)})
+      .some(s=>s.id===record.id&&(!journalScheduleCategoryV430
+        ||s.category===journalScheduleCategoryV430));
+    journalSchedulePreviewIdV459=shown?record.id:'';
+    journalScheduleV425();
+    requestAnimationFrame(()=>{
+      if(!journalTaskV411()||state.layout!=='schedule'||elements.scheduleView.hidden
+        ||journalScheduleStateV425.mode!=='day'||journalScheduleStateV425.anchor!==targetDate
+        ||document.querySelector('dialog[open]'))return;
+      const view=elements.scheduleView;
+      const card=[...view.querySelectorAll('.j459-day-record [data-schedule-id]')]
+        .find(node=>node.dataset.scheduleId===record.id&&node.getClientRects().length);
+      const target=card||view.querySelector('[data-j425-today]');
+      target?.focus({preventScroll:true});
+      target?.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});
+      if(!card)toast('移動先の日付を表示しました。予定が見えない場合は検索・分類・担当の条件をご確認ください。');
+    });
     return true;
   },
   // V616: capture the canonical display controls before navigateToTask resets
