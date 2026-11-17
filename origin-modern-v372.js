@@ -869,19 +869,19 @@ function originTaskFocusIsVisible(target){
 // The optional filter mode handles no-longer-visible records without changing data.
 function renderOriginTaskViewKeepingAnchor(change,{filterChange=false}={}){
  const anchor=captureOriginTaskViewAnchor();
- const previousIds=filterChange&&anchor?taskVisible().map(task=>task.id):[];
- const previousLimit=filterChange&&anchor?(()=>{
-  const item=taskVisible().find(task=>task.id===anchor.id);
-  const key=item?taskGrouping+'|'+originTaskGroupName(item):'';
-  return key&&taskVisibleLimits.has(key)?{key,limit:taskVisibleLimits.get(key)}:null;
- })():null;
+ const previousTasks=filterChange&&anchor?taskVisible():[];
+ const previousIds=previousTasks.map(task=>task.id);
+ const previousTask=previousTasks.find(task=>task.id===anchor?.id);
+ const previousKey=previousTask?taskGrouping+'|'+originTaskGroupName(previousTask):'';
+ const previousLimit=previousKey&&taskVisibleLimits.has(previousKey)
+  ?taskVisibleLimits.get(previousKey):null;
  change();
  // The filter may still include the same record. Preserve its explicit
  // "show more/all" expansion so shrinking to 24 rows cannot clamp scrollY.
- if(previousLimit&&taskVisible().some(task=>task.id===anchor.id)){
-  const item=taskVisible().find(task=>task.id===anchor.id);
-  const key=taskGrouping+'|'+originTaskGroupName(item);
-  if(key===previousLimit.key)taskVisibleLimits.set(key,previousLimit.limit);
+ if(previousLimit!==null&&filterChange&&anchor){
+  const currentTask=taskVisible().find(task=>task.id===anchor.id);
+  const currentKey=currentTask?taskGrouping+'|'+originTaskGroupName(currentTask):'';
+  if(currentKey===previousKey)taskVisibleLimits.set(currentKey,previousLimit);
  }
  const next=filterChange&&anchor?originTaskFilterReturnAnchor(anchor,previousIds):anchor;
  render();
