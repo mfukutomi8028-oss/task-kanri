@@ -446,6 +446,7 @@
     mount.querySelector('style').appendChild(document.createTextNode("\n/* Task checklist context, shared by compact and detailed rows. */\n.origin-task-progress-pill{display:inline-flex;align-items:center;flex:none;min-height:23px;padding:2px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink-soft);font-size:11px;font-weight:760;line-height:1.4;white-space:nowrap;font-variant-numeric:tabular-nums}\n.origin-task-progress-pill[data-complete=true]{background:var(--accent-bg);border-color:var(--accent);color:var(--accent-dark)}\n.origin-task-insight-next{display:flex;align-items:baseline;gap:9px;min-width:0;margin:0;color:var(--ink);font-size:13px;line-height:1.6;overflow-wrap:anywhere}\n.origin-task-insight-next strong{flex:none;color:var(--accent-dark);font-size:11px;font-weight:850;white-space:nowrap}\n.origin-task-insight-next span{min-width:0;overflow-wrap:anywhere}\n"));
     mount.querySelector('style').appendChild(document.createTextNode("\n/* Origin task-list write status: persist failure context, lock only writes. */\n.origin-task-write-feedback{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:var(--accent-bg);color:var(--accent-dark);font-size:13px;line-height:1.6;font-weight:740}\n.origin-task-write-feedback[hidden]{display:none!important}\n.origin-task-write-feedback[data-state=\"error\"]{background:var(--warn-bg);border-color:var(--warn);color:var(--ink)}\n.origin-task-write-message{flex:1 1 170px;min-width:0;overflow-wrap:anywhere}\n.origin-task-write-feedback button{min-height:44px;padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:12px;font-weight:750;cursor:pointer}\n.origin-task-write-feedback button[hidden]{display:none!important}\n.origin-task-collection[aria-busy=\"true\"] .origin-task-select-hit{cursor:wait}\n"));
     mount.querySelector('style').appendChild(document.createTextNode("\n/* Origin mounted-row selection: clear scope, stable focus, 44px touch control. */\n.origin-task-summary{flex-wrap:wrap;align-items:center;row-gap:7px}\n.origin-task-summary>span{flex:1 1 240px;min-width:0;line-height:1.6;overflow-wrap:anywhere}\n.origin-task-summary-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:7px;min-width:0}\n.origin-task-select-hint{color:var(--muted);font-size:11px;font-weight:650;line-height:1.5}\n.origin-task-summary .origin-task-select-shown{display:inline-flex;justify-content:center;align-items:center;min-height:44px;padding:9px 12px;gap:6px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);text-decoration:none;font-size:12px;font-weight:780;white-space:normal;touch-action:manipulation}\n.origin-task-summary .origin-task-select-shown:hover:not(:disabled){border-color:var(--accent);background:var(--accent-bg);text-decoration:none}\n.origin-task-summary .origin-task-select-shown[aria-pressed=\"true\"]{border-color:var(--accent);background:var(--accent-bg);color:var(--accent-dark)}\n.origin-task-summary .origin-task-select-shown:focus-visible{outline:2px solid var(--accent);outline-offset:2px}\n.origin-task-summary .origin-task-select-shown:disabled{opacity:.55;cursor:not-allowed}\n@media(max-width:770px){.origin-task-summary-actions{flex:1 1 100%;justify-content:space-between}.origin-task-summary .origin-task-select-shown{flex:0 1 auto}}\n"));
+    mount.querySelector('style').appendChild(document.createTextNode("\n/* Origin bulk action preflight — native modal with full, scrollable task inventory. */\n.origin-bulk-review-dialog{box-sizing:border-box;position:fixed;inset:0;margin:auto;width:min(650px,calc(100vw - 28px));max-width:none;max-height:min(770px,calc(100dvh - 32px));min-height:0;padding:0;border:1px solid var(--line);border-radius:17px;background:var(--paper);color:var(--ink);box-shadow:0 26px 80px rgba(14,22,39,.26);overflow:hidden}\n.origin-bulk-review-dialog:not([open]){display:none!important}\n.origin-bulk-review-dialog[open]{display:flex;flex-direction:column}\n.origin-bulk-review-dialog::backdrop{background:rgba(14,22,39,.55);backdrop-filter:blur(2px)}\n.origin-bulk-review-head{flex:0 0 auto;padding:22px 24px 17px;border-bottom:1px solid var(--line);background:linear-gradient(130deg,var(--paper),var(--accent-bg))}\n.origin-bulk-review-eyebrow{margin:0 0 6px;color:var(--accent-dark);font-size:10px;font-weight:870;letter-spacing:.1em}\n.origin-bulk-review-head h2{margin:0 0 8px;color:var(--ink);font-size:22px;line-height:1.35;letter-spacing:-.025em}\n.origin-bulk-review-head p:last-child{margin:0;color:var(--ink-soft);font-size:13px;line-height:1.65}\n.origin-bulk-review-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:17px 24px 18px}\n.origin-bulk-review-summary{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}\n.origin-bulk-review-summary div{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}\n.origin-bulk-review-summary dt{margin-bottom:4px;color:var(--muted);font-size:11px;font-weight:650}\n.origin-bulk-review-summary dd{margin:0;color:var(--ink);font-weight:800;font-size:15px;overflow-wrap:anywhere}\n.origin-bulk-review-caption{margin:18px 0 9px;color:var(--ink);font-size:13px;font-weight:780}\n.origin-bulk-review-items{list-style:decimal;margin:0;padding:0 0 0 23px}\n.origin-bulk-review-items li{padding:10px 5px 10px 3px;border-bottom:1px solid var(--line-soft);color:var(--ink-soft);font-size:12px;line-height:1.5;overflow-wrap:anywhere}\n.origin-bulk-review-items li strong{display:block;font-size:13px;font-weight:740;color:var(--ink)}\n.origin-bulk-review-items li span{display:block;margin-top:3px}\n.origin-bulk-review-footer{display:flex;flex:0 0 auto;justify-content:flex-end;gap:10px;padding:14px 24px;border-top:1px solid var(--line);background:var(--paper)}\n.origin-bulk-review-footer button{min-height:44px;padding:10px 17px;border:1px solid var(--line);border-radius:9px;font-size:13px;font-weight:800;background:var(--paper);color:var(--ink);cursor:pointer}\n.origin-bulk-review-footer #originBulkReviewConfirm{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}\n.origin-bulk-review-footer button:hover{filter:brightness(.97)}\n.origin-bulk-review-footer button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}\n@media(max-width:620px){.origin-bulk-review-dialog{width:calc(100vw - 16px);max-height:calc(100dvh - 20px);border-radius:13px}.origin-bulk-review-head{padding:17px 15px 13px}.origin-bulk-review-body{padding:13px 15px}.origin-bulk-review-summary{grid-template-columns:1fr}.origin-bulk-review-footer{padding:12px 15px}.origin-bulk-review-footer button{flex:1 1 0}}\n@media(prefers-reduced-motion:reduce){.origin-bulk-review-dialog::backdrop{backdrop-filter:none}}\n"));
     document.body.appendChild(host);
     // Show the published release inside origin itself. The label is derived
     // from the shared manifest, never from a hardcoded Modern-only version.
@@ -533,6 +534,133 @@ function syncSnapshot(){
    pinned:t.pinned,updated:t.updatedAt,revision:t.revision,tags:t.tags||[],paperColor:t.paperColor||'ivory'}));
 }
 let busy=false;
+
+// The canonical bulk writer validates this same upper bound. Mirror it in
+// Origin so oversized selections are rejected before a destructive action.
+const ORIGIN_BULK_MAX_ITEMS=200;
+let originBulkReview=null;
+const originBulkReviewDialog=document.createElement('dialog');
+originBulkReviewDialog.id='originBulkReviewDialog';
+originBulkReviewDialog.className='origin-bulk-review-dialog';
+originBulkReviewDialog.setAttribute('aria-labelledby','originBulkReviewTitle');
+originBulkReviewDialog.setAttribute('aria-describedby','originBulkReviewDescription');
+originBulkReviewDialog.innerHTML=[
+ '<header class="origin-bulk-review-head">',
+ '<p class="origin-bulk-review-eyebrow">ORIGIN · BULK REVIEW</p>',
+ '<h2 id="originBulkReviewTitle">一括操作の確認</h2>',
+ '<p id="originBulkReviewDescription">対象と実行内容を確認してください。戻ると選択内容は保持されます。</p>',
+ '</header>',
+ '<div class="origin-bulk-review-body">',
+ '<dl class="origin-bulk-review-summary">',
+ '<div><dt>対象</dt><dd id="originBulkReviewCount"></dd></div>',
+ '<div><dt>実行する操作</dt><dd id="originBulkReviewTarget"></dd></div>',
+ '</dl>',
+ '<p class="origin-bulk-review-caption">対象タスク（すべて表示）</p>',
+ '<ol class="origin-bulk-review-items" aria-label="今回更新するタスク"></ol>',
+ '</div>',
+ '<footer class="origin-bulk-review-footer">',
+ '<button type="button" id="originBulkReviewCancel" data-origin-bulk-review="cancel">一覧に戻る</button>',
+ '<button type="button" id="originBulkReviewConfirm" data-origin-bulk-review="confirm">確認して実行</button>',
+ '</footer>'
+].join('');
+mount.appendChild(originBulkReviewDialog);
+function closeOriginBulkReview(restoreFocus=true){
+ const review=originBulkReview;
+ originBulkReview=null;
+ if(originBulkReviewDialog.open)originBulkReviewDialog.close();
+ if(restoreFocus){
+  const selector=review?.action==='complete'?'bulk-done':'bulk-status-apply';
+  const trigger=$('#workspace [data-action="'+selector+'"]')||$('#originTaskSelectShown');
+  trigger?.focus({preventScroll:true});
+ }
+}
+function openOriginBulkReview(action,target=''){
+ if(busy||view!=='tasks'||originBulkReviewDialog.open)return;
+ if(action==='status'&&(target==='完了'||!snapshot.statuses.includes(target))){
+  notify('変更先の状態を選択してください。');return;
+ }
+ // Enforce mounted, expanded rows so search results that have not been
+ // rendered can never be included by a stale selection.
+ const visibleIds=Array.from($('#workspace .origin-task-collection')?.querySelectorAll(
+  '.origin-task-group-rows:not([hidden]) [data-action="bulk-toggle"]')||[])
+  .filter(box=>box.getClientRects().length).map(box=>box.dataset.id);
+ const ids=visibleIds.filter(id=>selectedBulk.has(id));
+ if(ids.length!==selectedBulk.size){
+  notify('選択内容が変わりました。画面のタスクを確認して選び直してください。');return;
+ }
+ if(!ids.length){notify('タスクを選択してください。');return;}
+ if(ids.length>ORIGIN_BULK_MAX_ITEMS){
+  notify('一括操作は200件までです。表示条件を絞ってください。');return;
+ }
+ const byId=new Map(snapshot.tasks.map(task=>[task.id,task]));
+ const chosen=ids.map(id=>byId.get(id));
+ if(chosen.some(task=>!task)){
+  notify('選択したタスクが更新されています。選び直してください。');return;
+ }
+ if(action==='status'&&chosen.every(task=>task.status===target)){
+  notify('選択したタスクはすべて「'+target+'」です。');return;
+ }
+ originBulkReview={
+  action,target,ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser,
+  items:chosen.map(task=>({id:task.id,revision:task.revision}))
+ };
+ originBulkReviewDialog.querySelector('#originBulkReviewCount').textContent=chosen.length+'件';
+ originBulkReviewDialog.querySelector('#originBulkReviewTarget').textContent=
+  action==='complete'?'タスクを完了にする':'状態を「'+target+'」へ変更';
+ originBulkReviewDialog.querySelector('.origin-bulk-review-items').innerHTML=chosen.map(task=>
+  '<li><strong>'+esc(task.title)+'</strong><span>現在：'+esc(task.status||'未設定')+
+  (task.due?' ／ 期限：'+esc(task.due):'')+'</span></li>').join('');
+ originBulkReviewDialog.showModal();
+ originBulkReviewDialog.querySelector('#originBulkReviewCancel')?.focus({preventScroll:true});
+}
+async function confirmOriginBulkReview(){
+ const review=originBulkReview;
+ if(!review||!originBulkReviewDialog.open||busy)return;
+ const latest=bridge.readSnapshot(),latestById=new Map(latest.tasks.map(task=>[task.id,task]));
+ const sameSelection=selectedBulk.size===review.items.length&&review.items.every(item=>selectedBulk.has(item.id));
+ const unchanged=review.items.length<=ORIGIN_BULK_MAX_ITEMS
+  &&latest.roomId===review.ownerRoom&&latest.currentUser===review.ownerUser
+  &&review.items.every(item=>latestById.get(item.id)?.revision===item.revision)
+  &&(review.action==='complete'||latest.statuses.includes(review.target));
+ if(!sameSelection||!unchanged){
+  closeOriginBulkReview(false);
+  syncSnapshot();render();
+  notify('対象タスクが更新されています。内容を再確認してから一括操作をやり直してください。');
+  $('#workspace [data-action="bulk-status-apply"]')?.focus({preventScroll:true});
+  return;
+ }
+ const items=review.items,returnAnchor=captureOriginTaskBulkReturn(items);
+ closeOriginBulkReview(false);
+ const complete=review.action==='complete';
+ const command=complete?{type:'task.bulk.complete',items,
+   ownerRoom:review.ownerRoom,ownerUser:review.ownerUser}
+  :{type:'task.bulk.update',action:'status',target:review.target,items,
+    ownerRoom:review.ownerRoom,ownerUser:review.ownerUser};
+ const label=complete?items.length+'件のタスクを完了しました':
+  items.length+'件のタスクの状態を「'+review.target+'」に変更しました';
+ const ok=await send(command,label);
+ if(!ok){
+  $('#workspace [data-action="'+(complete?'bulk-done':'bulk-status-apply')+'"]')?.focus({preventScroll:true});
+  return;
+ }
+ selectedBulk.clear();
+ if(!complete)bulkStatusTarget='';
+ render();
+ if(returnAnchor&&!originReturnCard('tasks',returnAnchor.id))
+  revealOriginReturnCard('tasks',returnAnchor.id);
+ restoreOriginTaskRowAction(returnAnchor);
+}
+originBulkReviewDialog.addEventListener('cancel',event=>{
+ event.preventDefault();closeOriginBulkReview();
+});
+originBulkReviewDialog.addEventListener('click',event=>{
+ if(event.target===originBulkReviewDialog){closeOriginBulkReview();return;}
+ const control=event.target.closest?.('[data-origin-bulk-review]');
+ if(!control)return;
+ event.preventDefault();event.stopPropagation();
+ if(control.dataset.originBulkReview==='cancel')closeOriginBulkReview();
+ else if(control.dataset.originBulkReview==='confirm')void confirmOriginBulkReview();
+});
 
 // Task-list writes use the canonical bridge; this state is presentation-only.
 // Keep failed selections/targets available so users can decide whether to retry.
@@ -1181,6 +1309,7 @@ function renderTasks(){
  const renderedCount=groupEntries.reduce((n,group)=>n+(group.collapsed?0:group.limit),0);
  // Only mounted rows in expanded groups are selectable; hidden result pages are not.
  const allShownSelected=renderedCount>0&&selectedBulk.size===renderedCount;
+ const tooManyShown=renderedCount>ORIGIN_BULK_MAX_ITEMS;
  const hiddenCount=Math.max(0,visible.length-renderedCount);
  const groupList=groupEntries.map(({name,rows,index,groupKey,collapsed,limit})=>{
   const remaining=rows.length-limit,shown=rows.slice(0,limit);
@@ -1225,10 +1354,10 @@ function renderTasks(){
  <div class="status-rail" id="originTaskStatusRail" data-mobile-advanced="${taskAdvancedOpen}" data-origin-scroll-key="task-status" aria-label="タスクの状態別件数">${statusMarkers}</div>
  <div class="work-toolbar origin-task-toolbar" data-mobile-advanced="${taskAdvancedOpen}"><div class="tab-pills" data-origin-scroll-key="task-tabs" role="group" aria-label="タスクの表示条件">${filterOptions.map(([id,label])=>`<button type="button" class="${taskFilter===id?'active':''}" data-action="task-filter" data-value="${id}" aria-pressed="${taskFilter===id}">${label}</button>`).join('')}</div></div>
  <div class="origin-task-summary"><span>表示 ${visible.length}件 ／ 全体 ${data.tasks.length}件${renderedCount<visible.length?' · 画面に'+renderedCount+'件':''}${selectedBulk.size?' · '+selectedBulk.size+'件選択中':''}${taskFilterSummary?`<span class="origin-filter-current">${taskFilterSummary}</span>`:''}</span><div class="origin-task-summary-actions">
- <span class="origin-task-select-hint">${hiddenCount?'残り'+hiddenCount+'件は対象外':''}</span>
+ <span class="origin-task-select-hint">${tooManyShown?'一括選択は200件まで。表示条件を絞ってください。':hiddenCount?'残り'+hiddenCount+'件は対象外':''}</span>
  <button type="button" class="origin-task-select-shown" id="originTaskSelectShown" data-action="task-select-shown"
   aria-pressed="${allShownSelected}" title="現在展開しているタスクだけを対象にします。未展開や折りたたみ中のタスクは対象外です。"
-  ${renderedCount?'':'disabled'}>${allShownSelected?'表示中'+renderedCount+'件の選択解除':'表示中'+renderedCount+'件を選択'}</button>
+  ${renderedCount&&!tooManyShown?'':'disabled'}>${allShownSelected?'表示中'+renderedCount+'件の選択解除':'表示中'+renderedCount+'件を選択'}</button>
  ${filtered?'<button type="button" data-action="task-reset">絞り込みを解除</button>':''}
  </div></div>
  <div id="originTaskWriteFeedback" class="origin-task-write-feedback" role="status" aria-live="polite" hidden><span class="origin-task-write-message"></span><button type="button" data-action="task-write-dismiss" hidden>閉じる</button></div>
@@ -4127,6 +4256,9 @@ if(a==='task-done'){toggleTaskDone(id,el);return}
    const ids=visibleBoxes.map(box=>box.dataset.id).filter(Boolean);
    if(!ids.length)return;
    const alreadySelected=ids.every(key=>selectedBulk.has(key));
+   if(!alreadySelected&&new Set([...selectedBulk,...ids]).size>ORIGIN_BULK_MAX_ITEMS){
+     notify('一括選択は200件までです。表示条件を絞ってください。');return;
+   }
    for(const key of ids){
      if(alreadySelected)selectedBulk.delete(key);
      else selectedBulk.add(key);
@@ -4151,52 +4283,8 @@ if(a==='task-done'){toggleTaskDone(id,el);return}
    selectedBulk.clear();render();restoreOriginTaskRowAction(anchor);
    return;
  }
- if(a==='bulk-status-apply'){
-   if(busy)return;
-   const target=bulkStatusTarget;
-   if(!target||target==='完了'||!snapshot.statuses.includes(target)){
-     notify('変更先の状態を選択してください。');return;
-   }
-   const chosen=snapshot.tasks.filter(task=>selectedBulk.has(task.id));
-   if(!chosen.length){notify('タスクを選択してください。');return;}
-   if(chosen.length!==selectedBulk.size){
-     notify('選択したタスクが変更されています。選び直してください。');
-     selectedBulk.clear();bulkStatusTarget='';render();return;
-   }
-   if(chosen.every(task=>task.status===target)){
-     notify('選択したタスクはすべて「'+target+'」です。');return;
-   }
-   const items=chosen.map(task=>({id:task.id,revision:task.revision}));
-   const returnAnchor=captureOriginTaskBulkReturn(items);
-   return send({type:'task.bulk.update',action:'status',target,items,
-     ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser},
-     items.length+'件のタスクの状態を「'+target+'」に変更しました').then(ok=>{
-     if(!ok){$('#workspace [data-action="bulk-status-apply"]')?.focus({preventScroll:true});return;}
-     selectedBulk.clear();bulkStatusTarget='';render();
-     if(returnAnchor&&!originReturnCard('tasks',returnAnchor.id))
-       revealOriginReturnCard('tasks',returnAnchor.id);
-     restoreOriginTaskRowAction(returnAnchor);
-   });
- }
- if(a==='bulk-done'){
-   const items=snapshot.tasks.filter(t=>selectedBulk.has(t.id))
-     .map(t=>({id:t.id,revision:t.revision}));
-   if(!items.length){notify('完了するタスクを選択してください。');return}
-   if(items.length!==selectedBulk.size){notify('選択したタスクが変更されています。選び直してください。');selectedBulk.clear();render();return}
-   if(!window.confirm(items.length+'件のタスクを完了にしますか？'))return;
-   const returnAnchor=captureOriginTaskBulkReturn(items);
-   return send({type:'task.bulk.complete',items,
-     ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser},
-     items.length+'件のタスクを完了しました').then(ok=>{
-      if(!ok)return;
-      selectedBulk.clear();
-      render();
-      // The first remaining task can be beyond the previously loaded 24.
-      if(returnAnchor&&!originReturnCard('tasks',returnAnchor.id))
-       revealOriginReturnCard('tasks',returnAnchor.id);
-      restoreOriginTaskRowAction(returnAnchor);
-     });
- }
+ if(a==='bulk-status-apply')return openOriginBulkReview('status',bulkStatusTarget);
+ if(a==='bulk-done')return openOriginBulkReview('complete');
  if(a==='memo-task'){const m=findItem('memos',id);if(!m)return;return panelShow('tasks',null,true,{title:m.title,desc:m.body,category:snapshot.categories[0]||'その他'})}
  if(a==='undo')return;
 }
@@ -4316,6 +4404,10 @@ mount.addEventListener('change',e=>{
  if(t.dataset.action==='task-check'){taskCheckToggle(t);return}
  if(t.dataset.action==='todo-check'){toggleTodo(t.dataset.id,t.checked);return}
  if(t.dataset.action==='bulk-toggle'){
+  if(t.checked&&!selectedBulk.has(t.dataset.id)&&selectedBulk.size>=ORIGIN_BULK_MAX_ITEMS){
+   t.checked=false;
+   notify('一括選択は200件までです。表示条件を絞ってください。');return;
+  }
   if(originTaskListWriteState==='error')setOriginTaskListWriteFeedback('idle');
   if(t.checked)selectedBulk.add(t.dataset.id);else selectedBulk.delete(t.dataset.id);
   render();return;
