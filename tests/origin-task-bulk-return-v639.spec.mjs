@@ -129,5 +129,42 @@ test('Origin 320px bulk completing the last search match focuses the visible que
  const q=await query.evaluate(el=>({top:el.getBoundingClientRect().top,bottom:el.getBoundingClientRect().bottom}));
  expect(q.bottom).toBeGreaterThan(60);
  expect(q.top).toBeLessThan(844);
- expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id===ids[0])?.completed)).toBe(true);
+ expect(await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id===id)?.completed,ids[0])).toBe(true);
+});
+
+
+test('Origin 390px one-tap completion and inline status change preserve the next keyboard action',async({page})=>{
+ test.setTimeout(120000);
+ const root=await launch(page,390);
+ const state=await seed(page,12,'単独操作復帰');
+ const query=root.locator('#originTaskQuery');
+ await query.fill('単独操作復帰');
+ const rows=root.locator('.origin-task-collection .item-row');
+ await expect(rows).toHaveCount(12);
+ const doneId=await rows.nth(4).locator('.item-name').getAttribute('data-id');
+ const afterDoneId=await rows.nth(5).locator('.item-name').getAttribute('data-id');
+ await alignToReadingPosition(page,doneId);
+ await root.locator('[data-action="task-done"][data-id="'+doneId+'"]').evaluate(el=>{
+  el.focus({preventScroll:true});
+  el.click();
+ });
+ await expect(root.locator('.origin-task-collection .item-name[data-id="'+doneId+'"]')).toHaveCount(0);
+ await expect(root.locator('.origin-task-collection .item-name[data-id="'+afterDoneId+'"]')).toBeFocused();
+ await expect(query).toHaveValue('単独操作復帰');
+
+ // The inspected task leaves the chosen status; the next matching item remains operable.
+ await root.locator('[data-action="filter-status"][data-status="'+state.firstStatus+'"]').evaluate(el=>el.click());
+ await expect(root.locator('[data-action="filter-status"][data-status="'+state.firstStatus+'"]'))
+  .toHaveAttribute('aria-pressed','true');
+ const statusId=await rows.nth(3).locator('.item-name').getAttribute('data-id');
+ const afterStatusId=await rows.nth(4).locator('.item-name').getAttribute('data-id');
+ await root.locator('.origin-task-collection [data-action="task-inline-status"][data-id="'+statusId+'"]')
+  .selectOption(state.secondStatus);
+ await expect(root.locator('.origin-task-collection .item-name[data-id="'+statusId+'"]')).toHaveCount(0);
+ await expect(root.locator('.origin-task-collection .item-name[data-id="'+afterStatusId+'"]')).toBeFocused();
+ await expect(query).toHaveValue('単独操作復帰');
+ const snapshot=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks);
+ expect(snapshot.find(task=>task.id===doneId)?.completed).toBe(true);
+ expect(snapshot.find(task=>task.id===statusId)?.status).toBe(state.secondStatus);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
 });
