@@ -123,6 +123,18 @@ for(const width of [390,1366]){
 test('Origin 320px zero-result search retains editable focus and reset stays accessible',async({page})=>{
  test.setTimeout(90000);
  const root=await launch(page,320);
+ await page.evaluate(async()=>{
+  const b=window.WorkBoardPaletteBridge,s=b.readSnapshot();
+  const d=new Date();d.setDate(d.getDate()+2);
+  const due=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+  const result=await b.dispatch({
+   type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,
+   title:'320px検索操作テスト',description:'入力中のフォーカス保持',
+   status:s.statuses[0],priority:'中',assignee:s.users[0],category:s.categories[0],
+   requester:'',tags:'',checklist:'確認',checklistDone:[false],dueDate:due,dueTime:'14:00',pinned:false
+  });
+  if(!result?.ok)throw Error('seed task failed: '+JSON.stringify(result));
+ });
  const search=root.locator('#originTaskQuery');
  await search.fill('絶対に一致しない検索条件');
  await expect(search).toBeFocused();
