@@ -6497,3 +6497,44 @@ for(const width of [390,1366]){
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   });
 }
+
+
+test('JOURNAL V646 preserves a safe Today focus after saving an appointment from its update notice',async({page})=>{
+  test.setTimeout(120000);
+  await bootPaperAuxiliary(page,390);
+  const prepared=await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    const schedule=s.schedules.find(item=>item.id==='paper-plan');
+    return bridge.dispatch({
+      type:'schedule.update',id:schedule.id,revision:schedule.revision,
+      ownerRoom:s.roomId,ownerUser:s.currentUser,
+      values:{...schedule,title:'共有予定の更新通知'}
+    });
+  });
+  expect(prepared.ok).toBe(true);
+  await page.evaluate(()=>{
+    const bridge=window.WorkBoardPaletteBridge,room=bridge.readSnapshot().roomId;
+    localStorage.setItem('system-task-activity-read-at:'+room+':Peer','1');
+    bridge.selectUser('Peer');
+  });
+  await paperRoute(page,390,'today');
+  const notice=page.locator('#todayView .j420-update-item[data-j420-update-kind="schedule"][data-j420-update-id="paper-plan"]');
+  await expect(notice).toBeVisible();
+  await notice.click();
+  const editor=page.locator('#scheduleDialog');
+  await expect(editor).toBeVisible();
+  await editor.locator('#scheduleTitle').fill('通知から確認した予定');
+  await editor.locator('#scheduleForm button[type="submit"]').click();
+  await expect(editor).toBeHidden();
+  await expect(notice).toHaveCount(0);
+  const agenda=page.locator('#todayView .j420-agenda-item[data-schedule-id="paper-plan"]');
+  const fallback=page.locator('#todayView [data-j420-create-schedule]').first();
+  const target=await agenda.isVisible()?agenda:fallback;
+  await expect(target).toBeVisible();
+  await expect(target).toBeFocused();
+  await expect(page.locator('body')).toHaveClass(/today-mode/);
+  const stored=await page.evaluate(()=>
+    window.WorkBoardPaletteBridge.readSnapshot().schedules.find(s=>s.id==='paper-plan'));
+  expect(stored.revision).toBe(3);
+  expect(stored.title).toBe('通知から確認した予定');
+});
