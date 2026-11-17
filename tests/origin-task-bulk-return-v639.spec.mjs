@@ -144,6 +144,8 @@ test('Origin 390px one-tap completion and inline status change preserve the next
  const doneId=await rows.nth(4).locator('.item-name').getAttribute('data-id');
  const afterDoneId=await rows.nth(5).locator('.item-name').getAttribute('data-id');
  await alignToReadingPosition(page,doneId);
+ // Unlike bulk completion, a single task opens the canonical optional memo prompt.
+ page.once('dialog',dialog=>{void dialog.accept('対応済み')});
  await root.locator('[data-action="task-done"][data-id="'+doneId+'"]').evaluate(el=>{
   el.focus({preventScroll:true});
   el.click();
