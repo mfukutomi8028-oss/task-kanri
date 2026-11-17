@@ -6158,3 +6158,40 @@ for (const width of [390, 1366]) {
     expect(task.revision).toBe(1);
   });
 }
+
+
+for (const width of [390, 1366]) {
+  test('JOURNAL Today work-first reading order at '+width+'px',async({page})=>{
+    test.setTimeout(90000);
+    await bootPaperAuxiliary(page,width);
+    await paperRoute(page,width,'today');
+    const today=page.locator('#todayView .j420-today');
+    await expect(today).toBeVisible();
+    const spread=today.locator('.j420-today-spread');
+    const focus=spread.locator(':scope > .j420-focus');
+    const planner=spread.locator(':scope > .j420-planner');
+    const pockets=spread.locator(':scope > .j420-pockets');
+    await expect(focus.locator('.j591-featured-work')).toBeVisible();
+    await expect(planner.locator('.j420-agenda-item').first()).toBeVisible();
+    // The DOM reading / Tab order must agree with the visible paper sequence.
+    const order=await spread.evaluate(el=>[...el.children].map(node=>
+      node.classList.contains('j420-focus')?'work'
+        :node.classList.contains('j420-planner')?'agenda':'pockets'));
+    expect(order).toEqual(['work','agenda','pockets']);
+    const work=await focus.boundingBox(),agenda=await planner.boundingBox(),side=await pockets.boundingBox();
+    if(width<=1020){
+      expect(work.y).toBeLessThan(agenda.y);
+      expect(agenda.y).toBeLessThan(side.y);
+    }else{
+      expect(work.x).toBeLessThan(agenda.x);
+      expect(work.width).toBeGreaterThan(agenda.width);
+      expect(agenda.x).toBeLessThan(side.x);
+      expect(Math.abs(work.y-agenda.y)).toBeLessThanOrEqual(12);
+    }
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+    // Paper layout changes must not mutate the canonical task records.
+    const task=await page.evaluate(()=>
+      window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id==='paper-main'));
+    expect(task.revision).toBe(1);
+  });
+}

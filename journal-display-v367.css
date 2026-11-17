@@ -3224,7 +3224,7 @@ html[data-wb-display="journal"] .j420-filter-summary button {
 }
 /* The three zones are deliberately not Classic's rows of section cards. */
 html[data-wb-display="journal"] .j420-today-spread {
-  display:grid;grid-template-columns:minmax(210px,.80fr) minmax(360px,2fr) minmax(200px,.72fr);
+  display:grid;grid-template-columns:minmax(360px,2fr) minmax(218px,.88fr) minmax(200px,.72fr);
   gap:9px;align-items:start;min-width:0;
   padding:9px;border:1px solid var(--j-border);border-radius:12px;
   background:linear-gradient(90deg,#e5e1d6 0 8px,var(--j-paper-alt) 8px 100%);
@@ -3899,7 +3899,7 @@ html[data-wb-display="journal"] :is(.j420-atelier-task,.j420-work-note,.j420-wai
 }
 @media(max-width:1100px){
   html[data-wb-display="journal"] .j420-today-spread {
-    grid-template-columns:minmax(218px,.9fr) minmax(325px,1.65fr);
+    grid-template-columns:minmax(325px,1.65fr) minmax(218px,.9fr);
   }
   html[data-wb-display="journal"] .j420-pockets {
     grid-column:1/-1;flex-direction:row;align-items:stretch;gap:9px;
