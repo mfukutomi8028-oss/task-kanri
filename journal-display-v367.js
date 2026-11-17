@@ -982,7 +982,13 @@
       composeMemoSheets();
     } else if (mode === 'today') {
       restoreTaskRegister();
-      // Today uses its own canonical-data diary renderer in app.js.
+      // The canonical renderer owns records and actions. The JOURNAL
+      // compositor owns the reading order of its paper leaves.
+      const spread=document.querySelector('#todayView .j420-today-spread');
+      const work=spread?.querySelector(':scope > .j420-focus');
+      const agenda=spread?.querySelector(':scope > .j420-planner');
+      if(work&&agenda&&work.nextElementSibling!==agenda)
+        spread.insertBefore(work,agenda);
     } else if (mode === 'todos') {
       restoreTaskRegister();
     } else if (mode === 'schedule') {
