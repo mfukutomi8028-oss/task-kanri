@@ -1316,14 +1316,16 @@
       const original=[...(view?.querySelectorAll(selector)||[])].find(node=>
         (kind==='schedule'?node.dataset.scheduleId:node.dataset.taskId)===origin.id
           &&node.getClientRects().length);
-      // V644: Today updates are real task entry points too. Restore the
-      // exact originating update button before falling back to the work card.
-      const update=kind==='task'
-        ?[...(view?.querySelectorAll('.j420-update-item[data-j420-update-kind="task"][data-j420-update-id]')||[])]
-          .find(node=>node.dataset.j420UpdateId===origin.id&&node.getClientRects().length)
-        :null;
-      const source=kind==='task'&&origin.todaySourceV644==='updates'
-        ?update||original:original||update;
+      // Restore the originating update button for both task and schedule
+      // notices. A canonical save can replace its DOM node while the dialog
+      // is open; using the ID avoids focusing a detached button.
+      const update=[...(view?.querySelectorAll(
+        '.j420-update-item[data-j420-update-kind="'+kind+'"][data-j420-update-id]')||[])]
+        .find(node=>node.dataset.j420UpdateId===origin.id&&node.getClientRects().length);
+      const fromUpdates=kind==='task'
+        ?origin.todaySourceV644==='updates'
+        :origin.todaySourceV646==='updates';
+      const source=fromUpdates?update||original:original||update;
       const fallback=kind==='schedule'
         ?view?.querySelector('[data-j420-create-schedule]')
         :view?.querySelector('.j420-focus [data-j420-to-tasks]');
@@ -1614,16 +1616,26 @@
   function journalCaptureTodayOriginV638(event){
     if(!isJournal()||canonicalRoute()!=='today')return;
     if(event.type==='keydown'&&!['Enter',' '].includes(event.key))return;
-    // A Today update is a button, unlike paper task cards. Capture it before
-    // excluding nested buttons (star, filters, etc.) from the generic handler.
+    // Update notices are native buttons. Capture their actual source before
+    // the generic nested-button guard; task opens detail, schedule opens editor.
     const update=event.type==='click'
-      ?event.target.closest?.('#todayView .j420-update-item[data-j420-update-kind="task"][data-j420-update-id]')
+      ?event.target.closest?.('#todayView .j420-update-item[data-j420-update-id]')
       :null;
-    if(update){
+    if(update?.dataset.j420UpdateKind==='task'){
       journalTodayMovedV639=null;
       syncJournalTodayMovedV639();
       journalReturnCaptureV594('today',update.dataset.j420UpdateId);
       if(journalReturnV594?.kind==='today')journalReturnV594.todaySourceV644='updates';
+      return;
+    }
+    if(update?.dataset.j420UpdateKind==='schedule'&&shelfSnapshot()){
+      journalTodayMovedV639=null;
+      journalTodaySavedMoveV639=null;
+      syncJournalTodayMovedV639();
+      journalTodayScheduleOriginV638={
+        id:update.dataset.j420UpdateId,owner:journalReturnOwnerV594(),
+        top:window.scrollY,width:window.innerWidth,todaySourceV646:'updates'
+      };
       return;
     }
     if(event.target.closest?.('button,input,select,textarea,a'))return;
