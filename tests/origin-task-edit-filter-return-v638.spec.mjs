@@ -115,7 +115,7 @@ for(const width of [390,1366]){
 
   // A status edit removes the task from the selected status filter; retain the next match.
   await root.locator('[data-action="filter-status"][data-status="'+states.first+'"]').click();
-  await expect(rows).toHaveCount(24);
+  await expect(rows).toHaveCount(41); // The previously expanded status group remains expanded.
   const statusId=await rows.nth(6).locator('.item-name').getAttribute('data-id');
   const statusNextId=await rows.nth(7).locator('.item-name').getAttribute('data-id');
   const beforeStatus=await align(page,statusId);
