@@ -3105,6 +3105,40 @@ function restoreOriginTaskRowAction(anchor){
      row.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
  }
 }
+// After a batch completion, continue with the next unselected task rather
+// than focusing the toolbar button that disappears when selection is cleared.
+function captureOriginTaskBulkReturn(items){
+ if(view!=='tasks'||panelOpen||!items.length)return null;
+ const selected=new Set(items.map(item=>item.id));
+ const cards=Array.from($('#workspace .origin-task-collection')?.querySelectorAll(
+   '.item-row .item-name[data-action="open"][data-kind="tasks"]')||[])
+  .filter(card=>card.getClientRects().length&&!card.closest('[hidden]'));
+ const selectedCards=cards.filter(card=>selected.has(card.dataset.id));
+ if(!selectedCards.length)return null;
+ const headerBottom=Math.max(0,$('.header')?.getBoundingClientRect().bottom||0);
+ const inViewport=selectedCards.filter(card=>{
+  const rect=card.closest('.item-row').getBoundingClientRect();
+  return rect.bottom>headerBottom&&rect.top<window.innerHeight;
+ });
+ const source=(inViewport.length?inViewport:selectedCards).slice(-1)[0];
+ const control=source.closest('.item-row')?.querySelector('[data-action="bulk-toggle"]');
+ const anchor=captureOriginTaskRowAction(source.dataset.id,control);
+ if(!anchor)return null;
+ const index=cards.indexOf(source);
+ const mounted=cards.slice(index+1).concat(cards.slice(0,index).reverse())
+  .map(card=>card.dataset.id).find(id=>!selected.has(id));
+ // A whole loaded page may be selected while more tasks remain unmounted.
+ const allIds=taskVisible().map(task=>task.id);
+ const virtualIndex=allIds.indexOf(source.dataset.id);
+ const virtual=virtualIndex<0?'':allIds.slice(virtualIndex+1)
+  .concat(allIds.slice(0,virtualIndex).reverse()).find(id=>!selected.has(id));
+ anchor.id=mounted||virtual||source.dataset.id;
+ anchor.action='bulk-done';
+ if(anchor.top<headerBottom+18||anchor.top>window.innerHeight-56){
+  anchor.top=Math.max(headerBottom+56,Math.min(210,window.innerHeight*.24));
+ }
+ return anchor;
+}
 // The same canonical status writer backs both the existing select and one-tap start.
 async function setOriginTaskStatus(id,status,control=null,label='状態を変更しました'){
  const task=findItem('tasks',id);
@@ -4002,9 +4036,18 @@ if(a==='task-done'){toggleTaskDone(id,el);return}
    if(!items.length){notify('完了するタスクを選択してください。');return}
    if(items.length!==selectedBulk.size){notify('選択したタスクが変更されています。選び直してください。');selectedBulk.clear();render();return}
    if(!window.confirm(items.length+'件のタスクを完了にしますか？'))return;
+   const returnAnchor=captureOriginTaskBulkReturn(items);
    return send({type:'task.bulk.complete',items,
      ownerRoom:snapshot.roomId,ownerUser:snapshot.currentUser},
-     items.length+'件のタスクを完了しました').then(ok=>{if(ok){selectedBulk.clear();render()}});
+     items.length+'件のタスクを完了しました').then(ok=>{
+      if(!ok)return;
+      selectedBulk.clear();
+      render();
+      // The first remaining task can be beyond the previously loaded 24.
+      if(returnAnchor&&!originReturnCard('tasks',returnAnchor.id))
+       revealOriginReturnCard('tasks',returnAnchor.id);
+      restoreOriginTaskRowAction(returnAnchor);
+     });
  }
  if(a==='memo-task'){const m=findItem('memos',id);if(!m)return;return panelShow('tasks',null,true,{title:m.title,desc:m.body,category:snapshot.categories[0]||'その他'})}
  if(a==='undo')return;
