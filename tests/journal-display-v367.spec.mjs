@@ -6587,6 +6587,24 @@ for (const width of [390,1366]) {
     await expect(bookmark).toBeHidden();
     await expect(card).toHaveCount(0);
     const search=board.locator('.j420-atelier-tools [data-j420-search]');
+    const diagnosis=await page.evaluate(()=>{
+      const board=document.getElementById('boardView');
+      const search=board?.querySelector('[data-j420-search]');
+      const tabs=[...document.querySelectorAll('.task-view-switcher [data-task-layout]')]
+        .map(el=>({layout:el.dataset.taskLayout,pressed:el.getAttribute('aria-pressed'),visible:Boolean(el.getClientRects().length)}));
+      const node=search;
+      const chain=[];
+      for(let el=node;el&&chain.length<6;el=el.parentElement){
+        chain.push({tag:el.tagName,id:el.id,className:String(el.className||'').slice(0,80),
+          hidden:el.hidden,display:getComputedStyle(el).display,rects:el.getClientRects().length});
+      }
+      return {display:document.documentElement.dataset.wbDisplay,body:document.body.className,
+        boardHidden:board?.hidden,boardDisplay:board?getComputedStyle(board).display:null,
+        boardChildren:board?.childElementCount,tabs,chain,
+        active:document.activeElement?.outerHTML?.slice(0,200),
+        tasks:window.WorkBoardPaletteBridge?.readSnapshot()?.tasks?.map(task=>task.id)};
+    });
+    console.log('JOURNAL_V648_RETURN_DIAGNOSIS',JSON.stringify(diagnosis));
     await expect(search).toBeVisible();
     await expect(search).toBeFocused();
     const inView=await search.evaluate(node=>{
