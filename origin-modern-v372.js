@@ -1154,10 +1154,20 @@ function renderTasks(){
 }
 // Clear Origin-only view state; keep canonical tasks and the user's active view intact.
 function resetOriginTaskFilters(mode='active'){
- taskQuery='';taskFilter=mode;taskStatusChoice='';
- taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();
- render();
- $('#originTaskQuery')?.focus({preventScroll:true});
+ const anchor=captureOriginTaskViewAnchor();
+ renderOriginTaskViewKeepingAnchor(()=>{
+  taskQuery='';taskFilter=mode;taskStatusChoice='';
+  taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();
+ },{filterChange:true});
+ if(!anchor){
+  // No visible row to return to (for example, after a zero-result search).
+  // Keep keyboard focus on an editable search field instead of a removed button.
+  const search=$('#originTaskQuery');
+  if(search?.getClientRects().length){
+   search.focus({preventScroll:true});
+   search.scrollIntoView({block:'nearest',behavior:'instant'});
+  }
+ }
 }
 function originTaskEmptyState(){
  const hasTasks=data.tasks.length>0;
@@ -4150,8 +4160,13 @@ function updateMemoQuery(input){
  if(next){next.focus({preventScroll:true});if(start!==null)next.setSelectionRange(start,end)}
 }
 function updateTaskQuery(input){
- const start=input.selectionStart,end=input.selectionEnd;
- taskQuery=input.value;taskVisibleLimits.clear();selectedBulk.clear();render();
+ const start=input.selectionStart,end=input.selectionEnd,query=input.value;
+ const apply=()=>{taskQuery=query;taskVisibleLimits.clear();selectedBulk.clear()};
+ // When the search field is visible, the user is editing the search rather
+ // than reading a distant row: keep the existing first-batch behavior.
+ // Only preserve a task anchor when the user is viewing results farther down.
+ if(originTaskFocusIsVisible(input)){apply();render();}
+ else renderOriginTaskViewKeepingAnchor(apply,{filterChange:true});
  const next=$('#originTaskQuery');
  if(next){next.focus({preventScroll:true});if(start!==null)next.setSelectionRange(start,end)}
 }
