@@ -6195,3 +6195,51 @@ for (const width of [390, 1366]) {
     expect(task.revision).toBe(1);
   });
 }
+
+
+for (const width of [390,1366]) {
+  test('JOURNAL Today task detail offers a return to the original work card at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await bootPaperAuxiliary(page,width);
+    await paperRoute(page,width,'today');
+    const card=page.locator('#todayView .j420-work-note[data-task-id="paper-main"]');
+    await expect(card).toBeVisible();
+    await card.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.detail-panel.open')).toBeVisible();
+    const returnButton=page.locator('.detail-panel.open .j594-return-bookmark [data-j594-return]');
+    await expect(returnButton).toBeVisible();
+    await expect(returnButton).toHaveText('← 今日の案件へ');
+    await returnButton.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
+    await expect(page.locator('body')).toHaveClass(/today-mode/);
+    await expect(card).toBeFocused();
+    await expect(returnButton).toBeHidden();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+    const record=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id==='paper-main'));
+    expect(record.revision).toBe(1);
+  });
+
+  test('JOURNAL Today returns focus to edited appointment after its canonical save at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await bootPaperAuxiliary(page,width);
+    await paperRoute(page,width,'today');
+    const source=page.locator('#todayView .j420-agenda-item[data-schedule-id="paper-plan"]');
+    await expect(source).toBeVisible();
+    await source.focus();
+    await page.keyboard.press('Enter');
+    const editor=page.locator('#scheduleDialog');
+    await expect(editor).toBeVisible();
+    await editor.locator('#scheduleLocation').fill('中央棟');
+    await editor.locator('#scheduleForm button[type="submit"]').click();
+    await expect(editor).toBeHidden();
+    await expect(source).toBeVisible();
+    await expect(source).toBeFocused();
+    await expect(page.locator('body')).toHaveClass(/today-mode/);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+    const saved=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().schedules.find(s=>s.id==='paper-plan'));
+    expect(saved.location).toBe('中央棟');
+    expect(saved.revision).toBe(2);
+  });
+}
