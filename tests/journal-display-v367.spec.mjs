@@ -6361,3 +6361,27 @@ test('JOURNAL V639 Today must discard a moved-date return when the active user c
   expect(stored.revision).toBe(1);
 });
 
+for (const width of [390,1366]) {
+  test('JOURNAL V644 closes Today task detail to its original work card at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await bootPaperAuxiliary(page,width);
+    await paperRoute(page,width,'today');
+    const card=page.locator('#todayView .j420-work-note[data-task-id="paper-main"]');
+    await expect(card).toBeVisible();
+    await card.focus();
+    await page.keyboard.press('Enter');
+    const detail=page.locator('.detail-panel.open');
+    await expect(detail.locator('.j594-return-bookmark [data-j594-return]')).toBeVisible();
+    // Users commonly close the detail with X rather than the dedicated bookmark.
+    await detail.locator('#closeDetail').click();
+    await expect(page.locator('.detail-panel')).not.toHaveClass(/open/);
+    await expect(page.locator('body')).toHaveClass(/today-mode/);
+    await expect(card).toBeFocused();
+    await expect(page.locator('[data-j594-return]')).toBeHidden();
+    const saved=await page.evaluate(()=>
+      window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id==='paper-main'));
+    expect(saved.revision).toBe(1);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  });
+}
+
