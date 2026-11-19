@@ -112,9 +112,13 @@ for(const width of [390,1366]){
     await attachScreenshot(testInfo,page,'origin-task-inspector-'+width);
     const overview=sheet.locator('#originTaskOverview');
     await expect(overview.locator('dt')).toContainText(['期限日・時刻','担当者','依頼者','状態']);
-    const section=sheet.locator('.origin-task-detail>.origin-task-section').first();
-    const border=await section.evaluate(el=>parseFloat(getComputedStyle(el).borderLeftWidth));
-    expect(border).toBe(0);
+    const section=sheet.locator('.origin-task-detail-main > #originTaskWork');
+    await expect(section).toBeVisible();
+    const borders=await section.evaluate(el=>{
+      const style=getComputedStyle(el);
+      return [style.borderTopWidth,style.borderRightWidth,style.borderBottomWidth,style.borderLeftWidth];
+    });
+    expect(borders).toEqual(['1px','1px','1px','1px']);
     await expect(sheet.locator('.origin-sheet-primary [data-action="edit"]')).toBeVisible();
     await expect(sheet.locator('[data-action="task-check"]')).toHaveCount(3);
     await sheet.locator('.sheet-close').click();
@@ -185,7 +189,7 @@ test('Origin returns focus to filtered neighbor or search when a task leaves the
   await expect(search).toBeFocused();
 });
 
-test('Origin board keeps horizontal position when task controls rerender the workspace',async({page})=>{
+test('Origin mobile board keeps its vertical lanes and cards when density changes',async({page})=>{
   test.setTimeout(90000);
   const {host,seeded}=await openOrigin(page,390,'board-scroll');
   const result=await page.evaluate(async ids=>{
@@ -198,7 +202,9 @@ test('Origin board keeps horizontal position when task controls rerender the wor
   expect(result.every(x=>x?.ok)).toBe(true);
   await host.locator('[data-action="task-layout"][data-value="board"]').click();
   const board=host.locator('.origin-task-collection.origin-task-layout-board');
-  await expect(board.locator('.origin-task-group')).toHaveCount(3);
+  const lanes=board.locator(':scope > .origin-task-group');
+  const statuses=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().statuses.filter(name=>name!=='完了'));
+  await expect(lanes.locator('.group-title strong')).toHaveText(statuses);
   // Current 390px board is intentionally a vertical stack, not a horizontal rail.
   // Check the displayed group order and preserve the same cards after density changes.
   const placement=()=>board.evaluate(el=>({
@@ -210,13 +216,16 @@ test('Origin board keeps horizontal position when task controls rerender the wor
   }));
   const start=await placement();
   expect(start.overflow).toBeLessThanOrEqual(2);
-  expect(start.groups).toHaveLength(3);
+  await expect(board.locator('.origin-board-lane-empty')).toHaveCount(statuses.length-seeded.length);
   for(let i=1;i<start.groups.length;i++){
     expect(start.groups[i].top).toBeGreaterThan(start.groups[i-1].top);
     expect(Math.abs(start.groups[i].left-start.groups[0].left)).toBeLessThanOrEqual(2);
   }
   await host.locator('[data-action="task-advanced-toggle"]').click();
   await host.locator('[data-action="task-density"]').click();
+  await expect(lanes.locator('.group-title strong')).toHaveText(statuses);
+  const cardIds=await board.locator('.item-name').evaluateAll(nodes=>nodes.map(node=>node.dataset.id));
+  expect(cardIds.sort()).toEqual([...seeded].sort());
   const end=await placement();
   expect(end.overflow).toBeLessThanOrEqual(2);
   expect(end.groups).toHaveLength(start.groups.length);

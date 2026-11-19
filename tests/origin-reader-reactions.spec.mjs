@@ -27,25 +27,28 @@ async function boot(page,width=390,mode='local-only'){
  await root.locator('.item-name',{hasText:'Origin 詳細の読みやすさ'}).click();
  return root;
 }
-for(const width of [320,390,1366])test('Origin reader separates content and reaches comments at '+width+'px',async({page})=>{
+for(const width of [320,390,1366])test('Origin reader separates content and reaches comments at '+width+'px',async({page},testInfo)=>{
  const root=await boot(page,width),sheet=root.locator('#sheet');
  await expect(sheet).toHaveAttribute('data-reader-kind','tasks');await expect(root.locator('#originTaskOverview')).toContainText('2週ごと');
  await expect(root.locator('#originTaskOverview')).toContainText('月・水曜日');
  await root.locator('.origin-reader-nav [data-value="originTaskComments"]').click();
- await expect(root.locator('#originTaskComments h3')).toBeFocused();await expect(root.locator('#originTaskComments h3')).toBeInViewport();
+ const composer=root.locator('#originCommentForm textarea[name="text"]');
+ await expect(composer).toBeFocused();
+ await expect(composer).toBeInViewport();
+ await expect(root.locator('.origin-reader-nav [data-value="originTaskComments"]')).toHaveAttribute('aria-current','location');
  await expect(root.locator('.origin-comment-list')).not.toContainText('[[wb-reply:');await expect(root.locator('[data-comment-id="reader-reply"] blockquote')).toContainText('森井');
  const metrics=await sheet.evaluate(el=>({width:el.getBoundingClientRect().width,body:el.querySelector('.sheet-body').clientHeight,footer:el.querySelector('.sheet-foot').clientHeight,overflow:document.documentElement.scrollWidth-innerWidth,font:parseFloat(getComputedStyle(el.querySelector('.record-description')).fontSize)}));
- expect(metrics.overflow).toBeLessThanOrEqual(2);expect(metrics.font).toBeGreaterThanOrEqual(15);expect(metrics.body).toBeGreaterThan(400);expect(metrics.footer).toBeLessThan(180);if(width>770)expect(metrics.width).toBe(680);
+ expect(metrics.overflow).toBeLessThanOrEqual(2);expect(metrics.font).toBeGreaterThanOrEqual(15);expect(metrics.body).toBeGreaterThan(400);expect(metrics.footer).toBeLessThan(180);if(width>770)expect(metrics.width).toBe(955);
  await root.locator('#originCommentForm textarea').fill('返信を書く途中');await root.locator('[data-action="comment-reply"][data-value="reader-comment"]').click();await expect(root.locator('#originReplyContext')).toContainText('森井に返信');await root.locator('[data-action="comment-reply-cancel"]').click();await expect(root.locator('#originReplyContext')).toBeHidden();await expect(root.locator('#originCommentForm textarea')).toHaveValue('返信を書く途中');
- await page.screenshot({path:'/tmp/origin-reader-comments-'+width+'.png'});
+ await page.screenshot({path:testInfo.outputPath('origin-reader-comments-'+width+'.png')});
  await root.locator('.origin-reader-nav [data-value="originTaskOverview"]').click();
- await sheet.screenshot({path:'/tmp/origin-reader-overview-'+width+'.png'});
+ await sheet.screenshot({path:testInfo.outputPath('origin-reader-overview-'+width+'.png')});
  if(width===320){
    await root.locator('#originCommentForm textarea').fill('');await root.locator('.sheet-close').click();
    await root.locator('#originSettingsToggle').click();
    await expect(root.locator('#originSettingsPanel')).toBeVisible();
    await root.locator('#themeBtn').click();await root.locator('.item-name',{hasText:'Origin 詳細の読みやすさ'}).click();
-   await sheet.screenshot({path:'/tmp/origin-reader-dark-320.png'});
+   await sheet.screenshot({path:testInfo.outputPath('origin-reader-dark-320.png')});
  }
 });
 test('Origin enables real reaction writes after remote reconnect and keeps the comment draft and focus',async({page})=>{
@@ -213,7 +216,9 @@ for(const width of [320,390,1366]){
   const back=sheet.locator('.origin-sheet-primary [data-action="origin-edit-back-detail"]');
   await expect(back).toContainText('詳細に戻る');
   const order=await form.evaluate(el=>[...el.querySelectorAll('input,select,textarea')].map(control=>control.name));
-  expect(order.indexOf('desc')).toBeGreaterThan(order.indexOf('priority'));
+  expect(order.indexOf('title')).toBeGreaterThanOrEqual(0);
+  expect(order.indexOf('desc')).toBeGreaterThan(order.indexOf('title'));
+  expect(order.indexOf('desc')).toBeLessThan(order.indexOf('priority'));
   expect(order.indexOf('desc')).toBeLessThan(order.indexOf('due'));
   expect(order.indexOf('desc')).toBeLessThan(order.indexOf('assignee'));
   await form.locator('[name="title"]').fill('保存しない見出し');
