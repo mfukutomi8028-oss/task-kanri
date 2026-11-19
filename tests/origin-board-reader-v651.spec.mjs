@@ -66,6 +66,10 @@ for(const width of [320,390,1366]){
   }));
   expect(compact.brief).toBe(false);
   expect(compact.width).toBeGreaterThan(220);
+  if(width<768){
+   await root.locator('[data-action="task-advanced-toggle"]').click();
+   await expect(root.locator('[data-action="task-density"]')).toBeVisible();
+  }
   await root.locator('[data-action="task-density"]').click();
   await expect(board).not.toHaveClass(/origin-tasks-compact/);
   await expect(cards.first().locator('.origin-board-card-brief')).toBeVisible();
