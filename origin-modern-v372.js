@@ -1236,34 +1236,23 @@ function originTaskChecklistSummary(task){
  return {items,done,total:items.length,remaining:items.length-done,
   next:items.find(item=>!item.done)?.text||''};
 }
-// Origin's view settings are presentation only. Persist immediately per
-// room/user in local storage, and synchronize compatible settings through
-// the existing workflow saved-view writer after interaction settles.
+// Origin has no independent storage writer. The canonical saved-view bridge
+// owns local persistence and optional shared synchronization for each room/user.
 let taskLayoutMode='list',originPrefsUser='';
 const TASK_RENDER_BATCH=24;
-let originTaskViewSaving=false,originTaskViewSaveFailed=false,originTaskViewTimer=0,originTaskViewSyncPending=false;
+let originTaskViewSaving=false,originTaskViewSaveFailed=false,originTaskViewSyncPending=false;
 function originSavedTaskViewValues(prefs){
  const layout=['list','board','timeline'].includes(prefs?.taskLayout)?prefs.taskLayout:'list';
  const sort=['due','priority','updated'].includes(prefs?.columnSort?.key)?prefs.columnSort.key:'due';
  const grouping=['deadline','status','assignee'].includes(prefs?.taskGrouping)?prefs.taskGrouping:(layout==='board'?'status':'deadline');
- const density=['compact','comfortable'].includes(prefs?.density)?prefs.density:'compact';
- return {layout,sort,grouping,density};
-}
-function originTaskViewStorageKey(){
- return 'wbOriginTaskViewV650:'+encodeURIComponent(String(snapshot.roomId||'default'))+':'+encodeURIComponent(String(snapshot.currentUser||''));
+ return {layout,sort,grouping};
 }
 function originCurrentTaskView(){
- return {taskLayout:taskLayoutMode,taskGrouping,
-  columnSort:{key:taskSortMode,direction:'asc'},density:taskDensity};
-}
-function originReadLocalTaskView(){
- try{const value=JSON.parse(localStorage.getItem(originTaskViewStorageKey())||'null');
-  return value&&typeof value==='object'?value:null;
- }catch{return null}
+ return {taskLayout:taskLayoutMode,taskGrouping,columnSort:{key:taskSortMode,direction:'asc'}};
 }
 function originTaskViewSaveState(){
- if(originTaskViewSaving||originTaskViewTimer)return {key:'saving',label:'表示設定を自動保存中…'};
- if(originTaskViewSaveFailed)return {key:'failed',label:'この端末に保存済み・共有同期は未完了'};
+ if(originTaskViewSaving||originTaskViewSyncPending)return {key:'saving',label:'表示設定を自動保存中…'};
+ if(originTaskViewSaveFailed)return {key:'failed',label:'表示設定を共有保存できませんでした'};
  return {key:'saved',label:'表示設定は自動保存されます'};
 }
 function updateOriginTaskViewSaveState(){
@@ -1273,52 +1262,42 @@ function updateOriginTaskViewSaveState(){
 function restoreOriginTaskView(){
  const w=window.WorkBoardWorkflowV152;if(!w?.dependencyStateReady()||originPrefsUser===snapshot.currentUser)return;
  originPrefsUser=snapshot.currentUser;originTaskViewSaveFailed=false;
- const cloud=w.workflow.savedViews?.['origin-'+w.userKey()];
- const local=originReadLocalTaskView();
- const saved=originSavedTaskViewValues(local||cloud);
- taskLayoutMode=saved.layout;taskSortMode=saved.sort;taskGrouping=saved.grouping;taskDensity=saved.density;
+ const prefs=w.workflow.savedViews?.['origin-'+w.userKey()];
+ const saved=originSavedTaskViewValues(prefs);
+ taskLayoutMode=saved.layout;taskSortMode=saved.sort;taskGrouping=saved.grouping;
 }
+// Send through the sole owner as soon as the current render is complete.
+// That owner also writes the current view to its own local cache.
 function queueOriginTaskViewSave(){
- // Immediately safe across reloads even when the shared writer is offline.
- try{localStorage.setItem(originTaskViewStorageKey(),JSON.stringify(originCurrentTaskView()))}catch{}
- originTaskViewSaveFailed=false;
- if(originTaskViewTimer)clearTimeout(originTaskViewTimer);
- originTaskViewTimer=setTimeout(()=>{
-  originTaskViewTimer=0;void saveOriginTaskView();
- },600);
+ originTaskViewSyncPending=true;originTaskViewSaveFailed=false;
  updateOriginTaskViewSaveState();
+ if(!originTaskViewSaving)queueMicrotask(()=>{if(originTaskViewSyncPending)void saveOriginTaskView()});
 }
 async function saveOriginTaskView(){
- if(originTaskViewSaving){originTaskViewSyncPending=true;return}
+ if(originTaskViewSaving)return;
  const w=window.WorkBoardWorkflowV152;
  if(!w?.dependencyStateReady()||busy){
-  if(!originTaskViewTimer)originTaskViewTimer=setTimeout(()=>{
-   originTaskViewTimer=0;void saveOriginTaskView();
-  },1000);
+  setTimeout(()=>{if(originTaskViewSyncPending)void saveOriginTaskView()},500);
   return;
  }
  const room=snapshot.roomId,user=snapshot.currentUser,id='origin-'+w.userKey();
  const values=originCurrentTaskView();
+ originTaskViewSyncPending=false;
  originTaskViewSaving=true;updateOriginTaskViewSaveState();
  try{
-  const result=await w.writeSavedView(id,{
-   taskLayout:values.taskLayout,taskGrouping:values.taskGrouping,
-   columnSort:values.columnSort,updatedAt:Date.now()
-  },w.workflow.savedViews?.[id]||null);
+  const result=await w.writeSavedView(id,{...values,updatedAt:Date.now()},w.workflow.savedViews?.[id]||null);
   if(snapshot.roomId===room&&snapshot.currentUser===user){
    originTaskViewSaveFailed=!result?.ok;
-   if(!result?.ok)notify('表示設定はこの端末に保持しています。共有同期ができませんでした。');
+   if(!result?.ok)notify('表示設定を保存できませんでした。接続状況を確認してください。');
   }
  }catch(error){
   console.warn('Origin view preference auto-save failed',error);
   if(snapshot.roomId===room&&snapshot.currentUser===user){
-   originTaskViewSaveFailed=true;
-   notify('表示設定はこの端末に保持しています。共有同期ができませんでした。');
+   originTaskViewSaveFailed=true;notify('表示設定を保存できませんでした。接続状況を確認してください。');
   }
  }finally{
-  originTaskViewSaving=false;
-  updateOriginTaskViewSaveState();
-  if(originTaskViewSyncPending){originTaskViewSyncPending=false;queueOriginTaskViewSave()}
+  originTaskViewSaving=false;updateOriginTaskViewSaveState();
+  if(originTaskViewSyncPending)queueMicrotask(()=>{void saveOriginTaskView()});
  }
 }
 function renderTasks(){
