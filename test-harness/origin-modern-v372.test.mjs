@@ -61,7 +61,7 @@ test('origin shows the release manifest version instead of a separately maintain
 
 test('origin schedule form submits canonical CAS commands without Classic modal',()=>{
   assert.match(source,/function originScheduleEditor\(v,id\)/);
-  assert.match(source,/name="startAt" type="datetime-local"/);
+  assert.match(source,/originDateControl\('startAt',start,'datetime',true\)/);
   assert.match(source,/type:id\?'schedule.update':'schedule.create'/);
   assert.match(source,/f.dataset.revision=String\(original\?\.revision\?\?0\)/);
   assert.match(source,/type:'schedule.delete'/);
@@ -71,10 +71,10 @@ test('origin schedule form submits canonical CAS commands without Classic modal'
   assert.doesNotMatch(source,/if\(kind==='events' && edit\)\{window.WorkBoardOriginScheduleBridge/);
 });
 
-test('origin schedule UI is native and preserves canonical CAS ownership',()=>{
+test('origin schedule uses validated four-digit calendar inputs and preserves canonical CAS ownership',()=>{
   assert.match(source,/function originScheduleEditor\(v,id\)/);
-  assert.match(source,/name="startAt" type="datetime-local"/);
-  assert.match(source,/name="endAt" type="datetime-local"/);
+  assert.match(source,/originDateControl\('startAt',start,'datetime',true\)/);
+  assert.match(source,/originDateControl\('endAt',end,'datetime',true\)/);
   assert.match(source,/data-action="schedule-duration"/);
   assert.match(source,/type:id\?'schedule.update':'schedule.create'/);
   assert.match(source,/f.dataset.revision=String\(original\?\.revision\?\?0\)/);
