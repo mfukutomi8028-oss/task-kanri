@@ -67,11 +67,11 @@ for(const width of [320,390,1366]){
   await expect(board).toBeVisible();
   const groupNames=await board.locator(':scope > .origin-task-group .group-title strong').allTextContents();
   const statusOrder=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().statuses);
-  expect(groupNames).toEqual(statusOrder.filter(name=>groupNames.includes(name)));
+  expect(groupNames).toEqual(statusOrder.filter(name=>name!=='完了'));
   const row=board.locator('.item-row',{hasText:'最終確認の手配'});
-  await expect(row.locator('.origin-board-facts')).toContainText('担当');
-  await expect(row.locator('.origin-board-facts')).toContainText('期限');
-  await expect(row.locator('.origin-board-due.urgent')).toBeVisible();
+  await expect(row.locator('.origin-board-card-person')).toContainText('担当');
+  await expect(row.locator('.origin-board-card-due.urgent')).toContainText('期限');
+  await expect(row.locator('.origin-board-card-due.urgent')).toBeVisible();
   await expect(row.locator('.origin-task-progress-pill')).toContainText('残り1件');
   await expect(row.locator('[data-action="list-quick-edit"]')).toBeVisible();
   await expect(row.locator('[data-action="task-inline-status"]')).toBeVisible();
@@ -92,7 +92,8 @@ for(const width of [320,390,1366]){
    await expect.poll(()=>page.evaluate(id=>
     window.WorkBoardPaletteBridge.readSnapshot().tasks.find(t=>t.id===id)?.status,ids[0])
    ).toBe('対応中');
-   await expect(board.locator('.item-row',{hasText:'最終確認の手配'}).locator('.origin-board-facts')).toBeVisible();
+   const destination=board.locator('.origin-task-group').filter({has:page.locator('.group-title strong',{hasText:'対応中'})});
+   await expect(destination.locator('.item-row',{hasText:'最終確認の手配'}).locator('.origin-board-card-meta')).toBeVisible();
   }
  });
 }
