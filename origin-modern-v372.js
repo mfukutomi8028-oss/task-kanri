@@ -1084,7 +1084,9 @@ function renderOriginTaskViewKeepingAnchor(change,{filterChange=false}={}){
  const previousLimit=previousKey&&taskVisibleLimits.has(previousKey)
   ?taskVisibleLimits.get(previousKey):null;
  const selectedBefore=selectedBulk.size;
+ const beforePreference=JSON.stringify(originCurrentTaskView());
  change();
+ if(beforePreference!==JSON.stringify(originCurrentTaskView()))queueOriginTaskViewSave();
  notifyOriginTaskSelectionReleased(Math.max(0,selectedBefore-selectedBulk.size));
  // The filter may still include the same record. Preserve its explicit
  // "show more/all" expansion so shrinking to 24 rows cannot clamp scrollY.
@@ -1234,57 +1236,89 @@ function originTaskChecklistSummary(task){
  return {items,done,total:items.length,remaining:items.length-done,
   next:items.find(item=>!item.done)?.text||''};
 }
-// Keep page state in memory only; no storage or changes to the canonical task model.
+// Origin's view settings are presentation only. Persist immediately per
+// room/user in local storage, and synchronize compatible settings through
+// the existing workflow saved-view writer after interaction settles.
 let taskLayoutMode='list',originPrefsUser='';
 const TASK_RENDER_BATCH=24;
-let originTaskViewSaving=false,originTaskViewSaveFailed=false;
-// Use only the three settings that the view-saving action actually persists.
+let originTaskViewSaving=false,originTaskViewSaveFailed=false,originTaskViewTimer=0,originTaskViewSyncPending=false;
 function originSavedTaskViewValues(prefs){
  const layout=['list','board','timeline'].includes(prefs?.taskLayout)?prefs.taskLayout:'list';
  const sort=['due','priority','updated'].includes(prefs?.columnSort?.key)?prefs.columnSort.key:'due';
  const grouping=['deadline','status','assignee'].includes(prefs?.taskGrouping)?prefs.taskGrouping:(layout==='board'?'status':'deadline');
- return {layout,sort,grouping};
+ const density=['compact','comfortable'].includes(prefs?.density)?prefs.density:'compact';
+ return {layout,sort,grouping,density};
+}
+function originTaskViewStorageKey(){
+ return 'wbOriginTaskViewV650:'+encodeURIComponent(String(snapshot.roomId||'default'))+':'+encodeURIComponent(String(snapshot.currentUser||''));
+}
+function originCurrentTaskView(){
+ return {taskLayout:taskLayoutMode,taskGrouping,
+  columnSort:{key:taskSortMode,direction:'asc'},density:taskDensity};
+}
+function originReadLocalTaskView(){
+ try{const value=JSON.parse(localStorage.getItem(originTaskViewStorageKey())||'null');
+  return value&&typeof value==='object'?value:null;
+ }catch{return null}
 }
 function originTaskViewSaveState(){
- if(originTaskViewSaving)return {key:'saving',label:'保存中…'};
- const w=window.WorkBoardWorkflowV152;
- if(!w?.dependencyStateReady()||originPrefsUser!==snapshot.currentUser)return {key:'loading',label:'確認中'};
- if(originTaskViewSaveFailed)return {key:'failed',label:'保存できませんでした · 再試行できます'};
- const prefs=w.workflow.savedViews?.['origin-'+w.userKey()];
- if(!prefs)return {key:'unsaved',label:'未保存'};
- const saved=originSavedTaskViewValues(prefs);
- // Ignore updatedAt, search and filters: they are not stored display choices.
- const same=saved.layout===taskLayoutMode&&saved.sort===taskSortMode&&saved.grouping===taskGrouping;
- return same?{key:'saved',label:'保存済み'}:{key:'changed',label:'未保存の変更'};
+ if(originTaskViewSaving||originTaskViewTimer)return {key:'saving',label:'表示設定を自動保存中…'};
+ if(originTaskViewSaveFailed)return {key:'failed',label:'この端末に保存済み・共有同期は未完了'};
+ return {key:'saved',label:'表示設定は自動保存されます'};
 }
 function updateOriginTaskViewSaveState(){
  const node=$('#originTaskViewState');if(!node)return;
- const state=originTaskViewSaveState();
- node.dataset.state=state.key;node.textContent=state.label;
+ const state=originTaskViewSaveState();node.dataset.state=state.key;node.textContent=state.label;
 }
 function restoreOriginTaskView(){
  const w=window.WorkBoardWorkflowV152;if(!w?.dependencyStateReady()||originPrefsUser===snapshot.currentUser)return;
  originPrefsUser=snapshot.currentUser;originTaskViewSaveFailed=false;
- const prefs=w.workflow.savedViews?.['origin-'+w.userKey()];
- // A user without saved preferences must not inherit the previous user's view.
- const saved=originSavedTaskViewValues(prefs);
- taskLayoutMode=saved.layout;taskSortMode=saved.sort;taskGrouping=saved.grouping;
+ const cloud=w.workflow.savedViews?.['origin-'+w.userKey()];
+ const local=originReadLocalTaskView();
+ const saved=originSavedTaskViewValues(local||cloud);
+ taskLayoutMode=saved.layout;taskSortMode=saved.sort;taskGrouping=saved.grouping;taskDensity=saved.density;
+}
+function queueOriginTaskViewSave(){
+ // Immediately safe across reloads even when the shared writer is offline.
+ try{localStorage.setItem(originTaskViewStorageKey(),JSON.stringify(originCurrentTaskView()))}catch{}
+ originTaskViewSaveFailed=false;
+ if(originTaskViewTimer)clearTimeout(originTaskViewTimer);
+ originTaskViewTimer=setTimeout(()=>{
+  originTaskViewTimer=0;void saveOriginTaskView();
+ },600);
+ updateOriginTaskViewSaveState();
 }
 async function saveOriginTaskView(){
- if(busy)return;
- const w=window.WorkBoardWorkflowV152;if(!w)return;
- busy=true;originTaskViewSaving=true;originTaskViewSaveFailed=false;updateOriginTaskViewSaveState();
+ if(originTaskViewSaving){originTaskViewSyncPending=true;return}
+ const w=window.WorkBoardWorkflowV152;
+ if(!w?.dependencyStateReady()||busy){
+  if(!originTaskViewTimer)originTaskViewTimer=setTimeout(()=>{
+   originTaskViewTimer=0;void saveOriginTaskView();
+  },1000);
+  return;
+ }
+ const room=snapshot.roomId,user=snapshot.currentUser,id='origin-'+w.userKey();
+ const values=originCurrentTaskView();
+ originTaskViewSaving=true;updateOriginTaskViewSaveState();
  try{
-  const id='origin-'+w.userKey();
-  const result=await w.writeSavedView(id,{taskLayout:taskLayoutMode,taskGrouping,columnSort:{key:taskSortMode,direction:'asc'},updatedAt:Date.now()},w.workflow.savedViews?.[id]||null);
-  originTaskViewSaveFailed=!result?.ok;
-  notify(result?.ok?'表示方法・並び順・まとめ方を保存しました。':'保存できませんでした。接続状態を確認してください。');
+  const result=await w.writeSavedView(id,{
+   taskLayout:values.taskLayout,taskGrouping:values.taskGrouping,
+   columnSort:values.columnSort,updatedAt:Date.now()
+  },w.workflow.savedViews?.[id]||null);
+  if(snapshot.roomId===room&&snapshot.currentUser===user){
+   originTaskViewSaveFailed=!result?.ok;
+   if(!result?.ok)notify('表示設定はこの端末に保持しています。共有同期ができませんでした。');
+  }
  }catch(error){
-  console.warn('Origin view preference save failed',error);
-  originTaskViewSaveFailed=true;
-  notify('保存できませんでした。接続状態を確認してください。');
+  console.warn('Origin view preference auto-save failed',error);
+  if(snapshot.roomId===room&&snapshot.currentUser===user){
+   originTaskViewSaveFailed=true;
+   notify('表示設定はこの端末に保持しています。共有同期ができませんでした。');
+  }
  }finally{
-  originTaskViewSaving=false;busy=false;updateOriginTaskViewSaveState();
+  originTaskViewSaving=false;
+  updateOriginTaskViewSaveState();
+  if(originTaskViewSyncPending){originTaskViewSyncPending=false;queueOriginTaskViewSave()}
  }
 }
 function renderTasks(){
@@ -1355,7 +1389,7 @@ function renderTasks(){
  <button type="button" class="origin-density-button" data-action="task-density" aria-pressed="${taskDensity!=='compact'}" aria-label="${taskDensity==='compact'?'現在はコンパクト表示です。詳細表示に切り替える':'現在は詳細表示です。コンパクト表示に切り替える'}" title="${taskDensity==='compact'?'説明や次のチェック項目を含む詳細表示に切り替えます':'必要な情報だけのコンパクト表示に切り替えます'}">表示：${taskDensity==='compact'?'コンパクト':'詳細'}</button>
  </div>
 
- <div class="origin-layout-controls"><div class="tab-pills" role="group" aria-label="タスクの表示方法">${[['list','一覧'],['board','ボード'],['timeline','タイムライン']].map(([id,label])=>`<button type="button" data-action="task-layout" data-value="${id}" class="${taskLayoutMode===id?'active':''}" aria-pressed="${taskLayoutMode===id}">${label}</button>`).join('')}</div><span id="originTaskViewState" class="origin-task-view-state" role="status" aria-atomic="true" data-state="${viewState.key}">${viewState.label}</span><button type="button" class="secondary-button" data-action="task-view-save" title="表示方法・並び順・まとめ方を保存します。検索・絞り込み条件は保存しません。" aria-label="表示方法・並び順・まとめ方を保存（検索・絞り込みは対象外）">表示設定を保存</button></div>
+ <div class="origin-layout-controls"><div class="tab-pills" role="group" aria-label="タスクの表示方法">${[['list','一覧'],['board','ボード'],['timeline','タイムライン']].map(([id,label])=>`<button type="button" data-action="task-layout" data-value="${id}" class="${taskLayoutMode===id?'active':''}" aria-pressed="${taskLayoutMode===id}">${label}</button>`).join('')}</div><span id="originTaskViewState" class="origin-task-view-state" role="status" aria-atomic="true" data-state="${viewState.key}">${viewState.label}</span></div>
  </div>
  <div class="origin-mobile-advanced-switch"><button type="button" data-action="task-advanced-toggle"
   aria-controls="originTaskStatusRail originTaskSort groupSelect" aria-expanded="${taskAdvancedOpen}">
@@ -3823,13 +3857,12 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  if(a==='task-layout'){
   if(!['list','board','timeline'].includes(value)||taskLayoutMode===value)return;
   return renderOriginTaskViewKeepingAnchor(()=>{
-   originTaskViewSaveFailed=false;taskLayoutMode=value;
+   taskLayoutMode=value;
    if(value==='board')taskGrouping='status';
    if(value==='timeline')taskGrouping='deadline';
    taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();
   });
  }
- if(a==='task-view-save')return saveOriginTaskView();
  if(a==='tool-tab'){if(!['templates','archive','knowledge','insights','settings'].includes(value))return;originTool=value;originToolQuery='';originToolLimit=60;return render();}
  if(a==='tool-more'){originToolLimit+=60;return render();}
  if(a==='management-write')return saveOriginManagement(el);
@@ -4427,7 +4460,7 @@ mount.addEventListener('change',e=>{
  if(t.id==='groupSelect'){
   if(!['deadline','status','assignee'].includes(t.value)||taskGrouping===t.value)return;
   return renderOriginTaskViewKeepingAnchor(()=>{
-   originTaskViewSaveFailed=false;taskGrouping=t.value;
+   taskGrouping=t.value;
    taskVisibleLimits.clear();selectedBulk.clear();
   });
  }
@@ -4440,7 +4473,7 @@ mount.addEventListener('change',e=>{
  if(t.id==='originTaskSort'){
   if(!['due','priority','updated'].includes(t.value)||taskSortMode===t.value)return;
   return renderOriginTaskViewKeepingAnchor(()=>{
-   originTaskViewSaveFailed=false;taskSortMode=t.value;
+   taskSortMode=t.value;
    taskVisibleLimits.clear();selectedBulk.clear();
   });
  }
