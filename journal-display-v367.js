@@ -485,6 +485,7 @@
     state.className = 'j-index-filter-state';
     const status = document.createElement('span');
     status.dataset.journalMemoFilterState = '';
+    status.setAttribute('role', 'status');
     const clear = document.createElement('button');
     clear.type = 'button'; clear.dataset.journalMemoClear = '';
     clear.textContent = '索引条件を解除';
@@ -669,9 +670,16 @@
         if (query && matching) group.open = true;
       }
       count.textContent = query ? matched + ' / ' + cards.length + ' 件' : cards.length + ' 件';
-      const conditions = Number(journalMemoColorV396 !== 'all') + Number(Boolean(query));
-      status.textContent = conditions ? '索引の条件：' + conditions + '件適用' : '索引の条件：なし';
-      clear.hidden = conditions === 0;
+      const conditions = [];
+      if (journalMemoColorV396 !== 'all') {
+        const color = options.find(option => option.key === journalMemoColorV396);
+        conditions.push('索引・紙片の色：' + (color?.label || journalMemoColorV396));
+      }
+      if (query) conditions.push('索引内検索「' + finder.value.trim() + '」');
+      status.textContent = conditions.length
+        ? conditions.join(' ／ ') + '（' + conditions.length + '条件）・索引 ' + matched + ' / ' + cards.length + ' 件'
+        : '索引の条件：なし';
+      clear.hidden = conditions.length === 0;
       empty.hidden = matched > 0;
       emptyMessage.textContent = !allCards.length ? '登録されたメモはありません'
         : !cards.length ? '選択した色のメモはありません'
@@ -980,15 +988,6 @@
     if (mode === 'memo') {
       restoreTaskRegister();
       composeMemoSheets();
-    } else if (mode === 'today') {
-      restoreTaskRegister();
-      // The canonical renderer owns records and actions. The JOURNAL
-      // compositor owns the reading order of its paper leaves.
-      const spread=document.querySelector('#todayView .j420-today-spread');
-      const work=spread?.querySelector(':scope > .j420-focus');
-      const agenda=spread?.querySelector(':scope > .j420-planner');
-      if(work&&agenda&&work.nextElementSibling!==agenda)
-        spread.insertBefore(work,agenda);
     } else if (mode === 'todos') {
       restoreTaskRegister();
     } else if (mode === 'schedule') {
@@ -1141,11 +1140,17 @@
     const view = document.getElementById('todayView');
     if (!view) return;
     const query = journalSearchQueryV393.normalize('NFKC').trim().toLocaleLowerCase('ja');
+    let matches = 0;
     for (const card of view.querySelectorAll(
       '.j420-work-note,.j420-agenda-item,.j420-todo-item,.j420-update-item,.j420-waiting-item')) {
       const text = (card.textContent || '').normalize('NFKC').toLocaleLowerCase('ja');
-      card.classList.toggle('j-search-excluded-v393', Boolean(query) && !text.includes(query));
+      const matched = text.includes(query);
+      if (matched) matches++;
+      card.classList.toggle('j-search-excluded-v393', Boolean(query) && !matched);
     }
+    const status = view.querySelector('.j-day-search-result');
+    const message = query ? (matches ? 'この紙面で一致した項目：' + matches + '件' : 'この紙面に一致する項目はありません。') : '';
+    if (status && status.textContent !== message) status.textContent = message;
     // A matching record must stay reachable even when it is in the folded
     // second half of today's cases. Keep it expanded after clearing, so the
     // record the person just found does not disappear again.

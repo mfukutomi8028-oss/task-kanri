@@ -79,7 +79,7 @@ test('JOURNAL Today diary and Task Atelier are independent paper workspaces',asy
   expect(loaded.complete).toBeTruthy();
   expect(loaded.inside).toBeTruthy();
   await expect(todayStationery.locator('.j425-svg-clip')).toHaveCount(0);
-  await expect(today.locator('.j420-masthead-stats > span')).toHaveCount(3);
+  await expect(today.getByRole('navigation',{name:'今日の紙面の目次'}).getByRole('button')).toHaveCount(3);
   await expect(page.locator('#todayView .today-grid')).toHaveCount(0);
   const linen=await today.locator('.j420-today-spread').evaluate(el=>getComputedStyle(el).borderRadius);
   await page.locator('[data-journal-settings]').click();
@@ -991,6 +991,18 @@ test('JOURNAL phone memo search explains no matches and resets without hiding sa
   await expect(card).toBeVisible();
   await expect(page.locator('.j-memo-index-link-v383')
     .filter({hasText:'JOURNAL検索復旧サンプル'})).toBeVisible();
+  await page.locator('[data-journal-memo-color="ivory"]').click();
+  await finder.fill('未登録の件名');
+  await page.locator('[data-journal-memo-index] > summary').click();
+  const filterState=page.locator('[data-journal-memo-filter-state]');
+  await expect(filterState).toContainText('索引・紙片の色');
+  await expect(filterState).toContainText('索引内検索「未登録の件名」');
+  await expect(filterState).toContainText(/索引 0 \/ \d+ 件/);
+  await expect(card).toBeVisible();
+  await page.locator('[data-journal-memo-clear]').click();
+  await expect(filterState).toHaveText('索引の条件：なし');
+  await expect(page.locator('[data-journal-memo-index] > summary')).toBeFocused();
+  await expect(card).toBeVisible();
 });
 
 test('JOURNAL compact phone planner retains dates and hides unused hourly space',async({page})=>{
@@ -4695,6 +4707,10 @@ for(const width of [320,390,768,1366]){
     const tabs=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
     await page.locator(tabs+' [data-journal-route="tasks"]').click();
     const overview=page.locator('#boardView .j591-atelier-brief');
+    const row=page.locator('#boardView .j420-atelier-task').filter({hasText:'期限超過の院内資料を確認する'});
+    await expect(row.locator('.j-card-next')).toHaveText('次 · 変更点を担当部署へ確認する');
+    await expect(row.locator('.j420-card-date')).toContainText('超過');
+    await expect(row).toHaveAccessibleDescription(/変更点を担当部署へ確認する.*超過/);
     await expect(overview).toBeVisible();
     await expect(overview).toContainText('変更点を担当部署へ確認する');
     const launch=overview.locator('button[data-j420-log-task="j591-leading"]');
@@ -6171,6 +6187,20 @@ for (const width of [390, 1366]) {
     const focus=spread.locator(':scope > .j420-focus');
     const planner=spread.locator(':scope > .j420-planner');
     const pockets=spread.locator(':scope > .j420-pockets');
+    const index=today.getByRole('navigation',{name:'今日の紙面の目次'});
+    for(const [name,target] of [['優先案件',focus],['予定表',planner],['受信・ToDo',pockets]]){
+      const entry=index.getByRole('button',{name:new RegExp(name)});
+      await entry.focus();
+      await entry.press('Enter');
+      await expect(target).toBeFocused();
+      await page.keyboard.press('Tab');
+      expect(await target.evaluate(el=>el.contains(document.activeElement))).toBe(true);
+    }
+    const search=page.locator('#wbJournalSearchV393');
+    await search.fill('該当なしの架空の語');
+    await expect(today.getByRole('status').filter({hasText:'この紙面に一致する項目はありません。'})).toBeVisible();
+    await page.locator('[data-journal-search-clear]').click();
+    await expect(today.locator('.j-day-search-result')).toBeEmpty();
     await expect(focus.locator('.j591-featured-work')).toBeVisible();
     await expect(planner.locator('.j420-agenda-item').first()).toBeVisible();
     // The DOM reading / Tab order must agree with the visible paper sequence.
@@ -6655,5 +6685,47 @@ for (const width of [390,1366]) {
     expect(inView).toBe(true);
     expect((await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()))
       .find(memo=>memo.id===memoId)).toBeUndefined();
+  });
+}
+
+for(const width of [320,768,1366]){
+  test('JOURNAL month dates identify weekdays and expose every related task at '+width+'px',async({page})=>{
+    await page.addInitScript(room=>{
+      const d=new Date(),stamp=d.getTime();
+      const dueDate=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+      localStorage.setItem('system-task-tasks:'+room,JSON.stringify(Array.from({length:7},(_,i)=>({
+        id:'planner-case-'+i,title:'期限付き案件 '+i,dueDate,status:'対応中',priority:'中',
+        assignee:'JournalTester',category:'院内',checklist:[],tags:[],comments:[],revision:1,
+        createdAt:stamp,updatedAt:stamp
+      }))));
+    },ROOM);
+    await boot(page,width);
+    await choose(page,'journal');
+    const nav=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(nav+' [data-journal-route="schedule"]').click();
+    const schedule=page.locator('#scheduleView');
+    await schedule.locator('[data-j425-mode="month"]').click();
+    const grid=schedule.locator('.j425-month-grid');
+    await expect(grid.locator('.j425-month-weekday')).toHaveText(Array.from('日月火水木金土'));
+    await expect(grid.locator('button')).toHaveCount(42);
+    await expect(grid.locator('[aria-current="date"]')).toHaveCount(1);
+    const dates=await grid.locator('button').evaluateAll(nodes=>nodes.map(node=>[node.dataset.j425Day,node.getAttribute('aria-label')]));
+    for(const [iso,label] of dates){
+      const d=new Date(iso+'T00:00:00Z');
+      expect(label).toContain(d.getUTCFullYear()+'年'+(d.getUTCMonth()+1)+'月'+d.getUTCDate()+'日（'+'日月火水木金土'[d.getUTCDay()]+'曜日）');
+    }
+    const all=schedule.getByRole('button',{name:'関連タスク全7件を見る'});
+    await expect(all).toBeVisible();
+    await all.click();
+    await expect(schedule.locator('#j425RelatedTasks')).toBeFocused();
+    await expect(schedule.locator('#j425RelatedTasks')).toContainText('この月の関連タスク');
+    await expect(schedule.locator('.j425-schedule-footnotes [data-related-task-id]')).toHaveCount(7);
+    const today=grid.locator('[aria-current="date"]');
+    const iso=await today.getAttribute('data-j425-day');
+    const mini=schedule.locator('.j425-mini-grid [data-j425-day="'+iso+'"]');
+    await expect(mini).toHaveAttribute('aria-label',/年.+月.+日（.曜日）/);
+    await today.click();
+    await expect(schedule.locator('#j425RelatedTasks')).toContainText('この日の関連タスク');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   });
 }
