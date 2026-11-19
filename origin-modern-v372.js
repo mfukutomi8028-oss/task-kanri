@@ -3814,7 +3814,8 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    const body=$('#sheet .sheet-body'),nav=body?.querySelector('.origin-reader-nav');
    if(body){
     const offset=(nav?.getBoundingClientRect().height||0)+12;
-    const top=body.scrollTop+target.getBoundingClientRect().top-body.getBoundingClientRect().top-offset;
+    const scrollTarget=composer?target.querySelector('#originCommentForm'):target;
+    const top=body.scrollTop+scrollTarget.getBoundingClientRect().top-body.getBoundingClientRect().top-offset;
     body.scrollTo({top:Math.max(0,top),behavior:'instant'});
    }else target.scrollIntoView({block:'start',behavior:'instant'});
    el.closest('nav').querySelectorAll('button').forEach(button=>button===el?button.setAttribute('aria-current','location'):button.removeAttribute('aria-current'));
