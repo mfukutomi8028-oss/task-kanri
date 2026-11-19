@@ -36,7 +36,7 @@ for(const width of [390,1366]){
     if(width<768)await root.locator('[data-action="task-advanced-toggle"]').click();
     await root.locator('#originTaskSort').selectOption('priority');
     await root.locator('#groupSelect').selectOption('assignee');
-    await root.locator('[data-action="task-view-save"]').click();
+    await expect(root.locator('[data-action="task-view-save"]')).toHaveCount(0);
     await expect.poll(()=>page.evaluate(()=>
       window.WorkBoardWorkflowV152.workflow.savedViews['origin-'+window.WorkBoardWorkflowV152.userKey()]?.taskLayout
     )).toBe('board');
@@ -125,110 +125,81 @@ test('Origin restores legacy saved view without grouping using layout default',a
   await expect(root.locator('#groupSelect')).toHaveValue('status');
 });
 
+
 for(const width of [320,390,1366]){
-  test('Origin '+width+'px distinguishes unsaved, saved and changed view preferences',async({page})=>{
-    test.setTimeout(90000);
-    const root=await launch(page,width,'save-state');
-    const state=root.locator('#originTaskViewState');
-    await expect(state).toHaveAttribute('role','status');
-    await expect(state).toHaveAttribute('data-state','unsaved');
-    await expect(state).toContainText('未保存');
-    await root.locator('[data-action="task-layout"][data-value="board"]').click();
-    if(width<768)await root.locator('[data-action="task-advanced-toggle"]').click();
-    await root.locator('#originTaskSort').selectOption('priority');
-    await root.locator('#groupSelect').selectOption('assignee');
-    await root.locator('[data-action="task-view-save"]').click();
-    await expect(state).toHaveAttribute('data-state','saved');
-    await expect(state).toContainText('保存済み');
-    await root.locator('#originTaskSort').selectOption('updated');
-    await expect(state).toHaveAttribute('data-state','changed');
-    await expect(state).toContainText('未保存の変更');
-    await root.locator('#originTaskSort').selectOption('priority');
-    await expect(state).toHaveAttribute('data-state','saved');
-    await root.locator('#groupSelect').selectOption('status');
-    await expect(state).toHaveAttribute('data-state','changed');
-    await root.locator('#groupSelect').selectOption('assignee');
-    await expect(state).toHaveAttribute('data-state','saved');
-    await root.locator('#originTaskQuery').fill('作業だけの検索');
-    await expect(state).toHaveAttribute('data-state','saved');
-    await root.locator('#originTaskQuery').fill('');
-    await chooseUser(root,'森井');
-    await expect(state).toHaveAttribute('data-state','unsaved');
-    await chooseUser(root,'福冨');
-    await expect(state).toHaveAttribute('data-state','saved');
-    await page.reload({waitUntil:'domcontentloaded'});
-    await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
-    await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
-    await root.locator((width<768?'#mobileNav':'#desktopNav')+' [data-route="tasks"]').click();
-    await expect(state).toHaveAttribute('data-state','saved');
-    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
-    expect(overflow).toBeLessThanOrEqual(3);
-  });
-}
-
-test('Origin reflects another saved-view update without rewriting an unsaved screen choice',async({page})=>{
+ test('Origin '+width+'px auto-restores the last view without a save action',async({page})=>{
   test.setTimeout(90000);
-  const root=await launch(page,390,'external-preference');
+  const root=await launch(page,width,'auto-restore');
   const state=root.locator('#originTaskViewState');
-  await expect(state).toHaveAttribute('data-state','unsaved');
-  const result=await page.evaluate(async()=>{
-    const w=window.WorkBoardWorkflowV152, id='origin-'+w.userKey();
-    return w.writeSavedView(id,{
-      taskLayout:'list',taskGrouping:'status',
-      columnSort:{key:'priority',direction:'asc'},updatedAt:Date.now()
-    },w.workflow.savedViews?.[id]||null);
-  });
-  expect(result.ok).toBe(true);
-  await expect(root.locator('[data-action="task-layout"][data-value="list"]')).toHaveAttribute('aria-pressed','true');
-  await expect(state).toHaveAttribute('data-state','changed');
-  await root.locator('[data-action="task-advanced-toggle"]').click();
-  await root.locator('#originTaskSort').selectOption('priority');
-  await root.locator('#groupSelect').selectOption('status');
   await expect(state).toHaveAttribute('data-state','saved');
-});
-
-for(const width of [390,1366]){
-  test('Origin '+width+'px keeps failed display-setting saves visible until retry or edit',async({page})=>{
-    test.setTimeout(90000);
-    const root=await launch(page,width,'failed-save');
-    const state=root.locator('#originTaskViewState');
-    await root.locator('[data-action="task-layout"][data-value="board"]').click();
-    if(width<768)await root.locator('[data-action="task-advanced-toggle"]').click();
-    await root.locator('#originTaskSort').selectOption('priority');
-    await page.evaluate(()=>{
-      const w=window.WorkBoardWorkflowV152;
-      window.__originOriginalViewWriter=w.writeSavedView;
-      w.writeSavedView=async()=>({ok:false,conflict:true});
-    });
-    await root.locator('[data-action="task-view-save"]').click();
-    await expect(state).toHaveAttribute('data-state','failed');
-    await expect(state).toContainText('保存できませんでした');
-    await expect(root.locator('[data-action="task-view-save"]')).toBeEnabled();
-    await root.locator('#originTaskSort').selectOption('updated');
-    await expect(state).toHaveAttribute('data-state','unsaved');
-    await page.evaluate(()=>{
-      const w=window.WorkBoardWorkflowV152;
-      w.writeSavedView=window.__originOriginalViewWriter;
-    });
-    await root.locator('[data-action="task-view-save"]').click();
-    await expect(state).toHaveAttribute('data-state','saved');
-    await expect.poll(()=>page.evaluate(()=>{
-      const w=window.WorkBoardWorkflowV152;
-      return w.workflow.savedViews['origin-'+w.userKey()]?.columnSort?.key;
-    })).toBe('updated');
-  });
+  await expect(root.locator('[data-action="task-view-save"]')).toHaveCount(0);
+  await root.locator('[data-action="task-layout"][data-value="board"]').click();
+  if(width<768)await root.locator('[data-action="task-advanced-toggle"]').click();
+  await root.locator('#originTaskSort').selectOption('priority');
+  await root.locator('#groupSelect').selectOption('assignee');
+  await root.locator('[data-action="task-density"]').click();
+  await expect.poll(()=>page.evaluate(()=>{
+   const s=window.WorkBoardPaletteBridge.readSnapshot();
+   const key='wbOriginTaskViewV650:'+encodeURIComponent(s.roomId)+':'+encodeURIComponent(s.currentUser);
+   return JSON.parse(localStorage.getItem(key)||'null');
+  })).toMatchObject({taskLayout:'board',taskGrouping:'assignee',density:'comfortable',
+   columnSort:{key:'priority',direction:'asc'}});
+  await expect(state).toHaveAttribute('data-state','saved');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
+  await root.locator((width<768?'#mobileNav':'#desktopNav')+' [data-route="tasks"]').click();
+  await expect(root.locator('[data-action="task-layout"][data-value="board"]')).toHaveAttribute('aria-pressed','true');
+  await expect(root.locator('#originTaskSort')).toHaveValue('priority');
+  await expect(root.locator('#groupSelect')).toHaveValue('assignee');
+  await expect(root.locator('[data-action="task-density"]')).toHaveAttribute('aria-pressed','true');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
+ });
 }
-
-test('Origin save failure state is cleared when switching users',async({page})=>{
+test('Origin keeps a current local view when a separate workflow view arrives',async({page})=>{
+ test.setTimeout(90000);
+ const root=await launch(page,390,'external-preference');
+ const result=await page.evaluate(async()=>{
+  const w=window.WorkBoardWorkflowV152,id='origin-'+w.userKey();
+  return w.writeSavedView(id,{
+   taskLayout:'board',taskGrouping:'status',
+   columnSort:{key:'priority',direction:'asc'},updatedAt:Date.now()
+  },w.workflow.savedViews?.[id]||null);
+ });
+ expect(result.ok).toBe(true);
+ await expect(root.locator('[data-action="task-layout"][data-value="list"]')).toHaveAttribute('aria-pressed','true');
+ await root.locator('[data-action="task-layout"][data-value="timeline"]').click();
+ await expect(root.locator('#originTaskSort')).toHaveValue('due');
+ await expect(root.locator('#groupSelect')).toHaveValue('deadline');
+ await expect(root.locator('[data-action="task-view-save"]')).toHaveCount(0);
+});
+for(const width of [390,1366]){
+ test('Origin '+width+'px retains last setting locally if automatic shared save fails',async({page})=>{
   test.setTimeout(90000);
-  const root=await launch(page,390,'failure-user-switch');
-  const state=root.locator('#originTaskViewState');
+  const root=await launch(page,width,'failed-auto');
   await page.evaluate(()=>{
-    const w=window.WorkBoardWorkflowV152;
-    w.writeSavedView=async()=>{throw new Error('simulated network failure')};
+   const w=window.WorkBoardWorkflowV152;
+   window.__originOriginalViewWriter=w.writeSavedView;
+   w.writeSavedView=async()=>({ok:false,conflict:true});
   });
-  await root.locator('[data-action="task-view-save"]').click();
-  await expect(state).toHaveAttribute('data-state','failed');
-  await chooseUser(root,'森井');
-  await expect(state).toHaveAttribute('data-state','unsaved');
+  await root.locator('[data-action="task-layout"][data-value="board"]').click();
+  await expect(root.locator('#originTaskViewState')).toHaveAttribute('data-state','failed');
+  const local=await page.evaluate(()=>{
+   const s=window.WorkBoardPaletteBridge.readSnapshot();
+   return JSON.parse(localStorage.getItem('wbOriginTaskViewV650:'+encodeURIComponent(s.roomId)+':'+encodeURIComponent(s.currentUser))||'null');
+  });
+  expect(local.taskLayout).toBe('board');
+  await page.evaluate(()=>{window.WorkBoardWorkflowV152.writeSavedView=window.__originOriginalViewWriter});
+  await root.locator('[data-action="task-layout"][data-value="list"]').click();
+  await expect(root.locator('#originTaskViewState')).toHaveAttribute('data-state','saved');
+ });
+}
+test('Origin auto-view preferences stay isolated when the selected user changes',async({page})=>{
+ test.setTimeout(90000);
+ const root=await launch(page,390,'users-local');
+ await root.locator('[data-action="task-layout"][data-value="board"]').click();
+ await chooseUser(root,'森井');
+ await expect(root.locator('[data-action="task-layout"][data-value="list"]')).toHaveAttribute('aria-pressed','true');
+ await chooseUser(root,'福冨');
+ await expect(root.locator('[data-action="task-layout"][data-value="board"]')).toHaveAttribute('aria-pressed','true');
 });
