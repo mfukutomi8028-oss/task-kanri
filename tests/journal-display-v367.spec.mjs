@@ -322,7 +322,7 @@ test('JOURNAL memo index navigates cards and note color persists through canonic
 test('JOURNAL task desk and editorial list remain distinct and dashboard remains available',async({page})=>{
   test.setTimeout(90000);await boot(page);await choose(page,'journal');
   await page.locator('.wb-journal-tabs-v367 [data-journal-route="tasks"]').click();
-  await expect(page.locator('#boardView .j420-atelier-hero')).toContainText('案件アトリエ');
+  await expect(page.locator('#boardView .j420-atelier-hero')).toContainText('案件台帳');
   await page.locator('#boardView [data-j420-layout="list"]').click();
   await expect(page.locator('#listView .j425-task-index')).toBeVisible();
   await expect(page.locator('#listView .j425-index-workpaper')).toBeVisible();
@@ -4780,12 +4780,16 @@ test('JOURNAL V592 Memo opens quick references on a readable central sheet, with
     await page.setViewportSize({width,height:900});
     await expect(reader).toBeVisible();
     const a=await reader.boundingBox(),b=await gallery.boundingBox();
-    if(width>1190){
-      expect(a.x+a.width/2).toBeLessThan(b.x+b.width/2);
-      expect(a.width).toBeGreaterThan(b.width);
+    const index=await view.locator('.j425-memo-index').boundingBox();
+    expect(a.y+a.height).toBeLessThanOrEqual(b.y+1);
+    if(width>760){
+      expect(index.x+index.width).toBeLessThanOrEqual(a.x+1);
+      expect(a.width).toBeGreaterThan(index.width);
     }else{
-      expect(a.y).toBeLessThan(b.y);
+      expect(index.y+index.height).toBeLessThanOrEqual(a.y+1);
     }
+    await view.getByRole('button',{name:'書庫を整理'}).click();
+    await expect(gallery).toBeFocused();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
     await recent.click();
     await expect(reader).toBeFocused();
@@ -4948,18 +4952,17 @@ test('JOURNAL V596 empty desktop atelier remains actionable without a tall blank
   await page.locator('#closeTaskDialog').click();
 });
 
-test('JOURNAL V596 phone task counters form a balanced two by two index',async ({page})=>{
+test('JOURNAL phone task counters fit one line above the ledger contents',async ({page})=>{
   test.setTimeout(90000);
   await boot(page,390);await choose(page,'journal');
   await page.locator('#wbJournalDockV367 [data-journal-route="tasks"]').click();
   const rects=await page.locator('#boardView .j420-atelier-stats>span').evaluateAll(nodes=>
     nodes.map(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width}}));
   expect(rects).toHaveLength(4);
-  expect(Math.abs(rects[0].y-rects[1].y)).toBeLessThan(2);
-  expect(Math.abs(rects[2].y-rects[3].y)).toBeLessThan(2);
-  expect(rects[2].y).toBeGreaterThan(rects[0].y+15);
-  expect(Math.abs(rects[0].x-rects[2].x)).toBeLessThan(2);
-  expect(Math.abs(rects[1].x-rects[3].x)).toBeLessThan(2);
+  for(let i=1;i<rects.length;i++){
+    expect(Math.abs(rects[i].y-rects[0].y)).toBeLessThan(2);
+    expect(rects[i].x).toBeGreaterThanOrEqual(rects[i-1].x+rects[i-1].width-1);
+  }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
 
@@ -5150,6 +5153,11 @@ test('JOURNAL V603 phone notebook jumps directly to case 24 and returns to its s
   const cards=board.locator('[data-j420-task-id]');
   await expect(cards).toHaveCount(24);
   const folded=board.locator('[data-j565-island-toggle="other"]');
+  await folded.click();
+  await expect(folded).toHaveAttribute('aria-expanded','false');
+  await board.locator('[data-journal-shelf-jump="other"]').click();
+  await expect(folded).toHaveAttribute('aria-expanded','true');
+  await expect(board.locator('[data-j565-island="other"] [data-j420-task-id]').first()).toBeFocused();
   await folded.click();
   await expect(folded).toHaveAttribute('aria-expanded','false');
   await expect(board.locator('[data-j420-task-id="j603-24"]')).toBeHidden();
@@ -6179,6 +6187,7 @@ for (const width of [390, 1366]) {
 for (const width of [390, 1366]) {
   test('JOURNAL Today work-first reading order at '+width+'px',async({page})=>{
     test.setTimeout(90000);
+    await page.clock.setFixedTime(new Date('2026-11-19T09:15:00+09:00'));
     await bootPaperAuxiliary(page,width);
     await paperRoute(page,width,'today');
     const today=page.locator('#todayView .j420-today');
@@ -6187,6 +6196,12 @@ for (const width of [390, 1366]) {
     const focus=spread.locator(':scope > .j420-focus');
     const planner=spread.locator(':scope > .j420-planner');
     const pockets=spread.locator(':scope > .j420-pockets');
+    const appointment=today.locator('[data-journal-day-plan]');
+    await expect(appointment).toContainText('コピーする予定');
+    await appointment.click();
+    await expect(page.locator('#scheduleDialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(appointment).toBeFocused();
     const index=today.getByRole('navigation',{name:'今日の紙面の目次'});
     for(const [name,target] of [['優先案件',focus],['予定表',planner],['受信・ToDo',pockets]]){
       const entry=index.getByRole('button',{name:new RegExp(name)});
@@ -6215,7 +6230,8 @@ for (const width of [390, 1366]) {
     }else{
       expect(work.x).toBeLessThan(agenda.x);
       expect(work.width).toBeGreaterThan(agenda.width);
-      expect(agenda.x).toBeLessThan(side.x);
+      expect(side.y).toBeGreaterThanOrEqual(Math.max(work.y+work.height,agenda.y+agenda.height)-2);
+      expect(side.width).toBeGreaterThan(work.width);
       expect(Math.abs(work.y-agenda.y)).toBeLessThanOrEqual(12);
     }
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
@@ -6727,5 +6743,56 @@ for(const width of [320,768,1366]){
     await today.click();
     await expect(schedule.locator('#j425RelatedTasks')).toContainText('この日の関連タスク');
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  });
+}
+
+for(const width of [390,1366]){
+  test('JOURNAL weekly register separates appointments from free time at '+width+'px',async({page})=>{
+    await page.addInitScript(room=>{
+      const now=Date.now(),start=new Date();start.setHours(10,0,0,0);
+      const record={id:'weekly-registered',title:'引き継ぎ内容の確認',assignee:'JournalTester',
+        category:'院内',location:'会議室',startAt:start.toISOString(),endAt:new Date(+start+1800000).toISOString(),
+        revision:1,createdAt:now,updatedAt:now};
+      localStorage.setItem('system-task-schedules:'+room,JSON.stringify([record]));
+    },ROOM);
+    await boot(page,width);await choose(page,'journal');
+    const nav=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(nav+' [data-journal-route="schedule"]').click();
+    const schedule=page.locator('#scheduleView');
+    const agenda=schedule.locator('.j-week-agenda');
+    const record=agenda.getByRole('button',{name:/引き継ぎ内容の確認/});
+    await expect(agenda).toContainText('1件');
+    await record.click();
+    await expect(page.locator('#scheduleDialog')).toBeVisible();
+    await page.locator('#closeScheduleDialog').click();
+    await expect(record).toBeFocused();
+    await agenda.locator('.j-week-time-jump').click();
+    await expect(schedule.locator('.j-week-time-heading')).toBeFocused();
+    await expect(schedule.locator('.j425-week-grid')).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
+  });
+  test('JOURNAL checklist keeps four items primary and restores its editor trigger at '+width+'px',async({page})=>{
+    await page.addInitScript(room=>{
+      const now=Date.now();
+      const todos=Array.from({length:4},(_,i)=>({id:'daily-row-'+i,text:'引き継ぎ事項 '+i,
+        memo:'共有資料を確認',owner:'JournalTester',completed:false,order:i,revision:1,createdAt:now,updatedAt:now}));
+      localStorage.setItem('system-task-todos:'+room,JSON.stringify(todos));
+    },ROOM);
+    await boot(page,width);await choose(page,'journal');
+    const nav=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(nav+' [data-journal-route="todos"]').click();
+    const todo=page.locator('#todoView');
+    await expect(todo.locator('[data-j425-todo-toggle]')).toHaveCount(4);
+    await expect(todo.locator('[data-j425-todo-edit]')).toHaveCount(0);
+    await expect(todo.locator('.j-todo-list-head progress')).toHaveAttribute('max','4');
+    await todo.locator('[data-j425-todo-toggle="daily-row-1"]').check();
+    await expect(todo.locator('.j-todo-list-head progress')).toHaveAttribute('value','1');
+    const edit=todo.locator('[data-j425-todo-select="daily-row-2"]');
+    await edit.click();
+    await expect(todo.locator('#j450TodoNote .j425-todo-detail h3')).toBeFocused();
+    await expect(todo.locator('[data-j425-todo-edit]')).toBeVisible();
+    await todo.locator('[data-j450-todo-back]').click();
+    await expect(edit).toBeFocused();
+    await expect(todo.locator('[data-j425-todo-edit]')).toHaveCount(0);
   });
 }
