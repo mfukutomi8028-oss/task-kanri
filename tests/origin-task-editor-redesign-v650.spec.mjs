@@ -83,7 +83,7 @@ test('Origin task comment jump focuses the composer before history',async({page}
  await expect(comments).toBeVisible();
  const ordering=await comments.evaluate(section=>[...section.children].map(el=>el.id||el.className));
  const composer=ordering.indexOf('originCommentForm');
- const history=ordering.indexOf('origin-detail-empty');
+ const history=ordering.indexOf('origin-comment-history');
  expect(composer).toBeGreaterThanOrEqual(0);
  expect(history).toBeGreaterThanOrEqual(0);
  expect(composer).toBeLessThan(history);
