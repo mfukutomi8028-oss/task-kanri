@@ -138,3 +138,23 @@ test('Origin comment navigation always aligns the composer from work and related
  expect(fromRelated.formTop).toBeGreaterThanOrEqual(fromRelated.navBottom-2);
  expect(fromRelated.formTop).toBeLessThanOrEqual(fromRelated.navBottom+130);
 });
+
+test('Origin status board retains an empty lane after moving its final task',async({page})=>{
+ test.setTimeout(120000);
+ const root=await openOrigin(page,1366,'stable-empty-lane');
+ const tasks=await seedTasks(page);
+ await root.locator('[data-action="task-layout"][data-value="board"]').click();
+ const board=root.locator('.origin-task-layout-board');
+ const lanes=board.locator(':scope > .origin-task-group');
+ const initial=await lanes.count();
+ expect(initial).toBeGreaterThanOrEqual(4);
+ const source=lanes.filter({has:page.locator('[data-id="'+tasks[0].id+'"][data-action="task-inline-status"]')});
+ const other=tasks[1].status;
+ await source.locator('[data-id="'+tasks[0].id+'"][data-action="task-inline-status"]').selectOption({label:other});
+ await expect(board.locator('.origin-task-group')).toHaveCount(initial);
+ const empty=board.locator('.origin-task-group').filter({has:page.locator('.group-title strong', {hasText:tasks[0].status})});
+ await expect(empty.locator('.origin-board-lane-empty')).toContainText('この状態のタスクはありません');
+ await expect(empty.locator('.origin-group-count')).toContainText('0件');
+ await root.locator('[data-action="filter-status"][data-status="'+tasks[1].status+'"]').click();
+ await expect(board.locator(':scope > .origin-task-group')).toHaveCount(1);
+});
