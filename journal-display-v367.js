@@ -1421,7 +1421,32 @@
             const action=spread.querySelector('.j425-memo-reader [data-journal-memo-task-action]');
             if(action?.getClientRects().length)action.focus({preventScroll:true});
           }));
-        }else spread?.querySelector('[data-j450-memo-find],.j-memo-index-heading-v383')?.focus?.({preventScroll:true});
+        }else{
+          // A memo can be deleted while its linked task is open. Its old
+          // index/reader no longer exists, and the search field may be folded.
+          // Return to a visible canonical memo action without restoring the
+          // stale scroll offset or modifying the user's search conditions.
+          restoreSourceScroll=false;
+          requestAnimationFrame(()=>{
+            if(!isJournal()||canonicalRoute()!=='memo'
+              ||journalReturnOwnerV594()!==origin.owner)return;
+            const view=document.getElementById('workMemoViewV167');
+            const fallback=[...(view?.querySelectorAll('[data-memo-new]')||[]),
+              view?.querySelector('[data-memo-search]')]
+              .find(node=>node&&!node.disabled&&node.getClientRects().length);
+            if(!fallback)return;
+            const active=document.activeElement;
+            const currentTab=(window.innerWidth<=860?dockButtons:tabButtons).get('memo');
+            // A subsequent intentional keyboard/mouse action takes priority.
+            if(active&&active!==document.body&&active!==document.documentElement
+              &&active!==currentTab&&active!==fallback&&active.getClientRects().length)return;
+            fallback.focus({preventScroll:true});
+            // The fixed mobile dock covers the bottom of the viewport;
+            // center the reachable action above it rather than just in view.
+            fallback.scrollIntoView({behavior:'auto',
+              block:window.innerWidth<=860?'center':'nearest',inline:'nearest'});
+          });
+        }
       }else{
         const board=document.getElementById('boardView');
         const card=[...(board?.querySelectorAll('[data-j420-task-id]')||[])]
