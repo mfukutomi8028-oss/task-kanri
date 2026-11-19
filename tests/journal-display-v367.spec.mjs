@@ -6602,3 +6602,58 @@ for (const width of [390,1366]) {
     expect(snapshot.tasks.find(task=>task.id==='j648-removed')).toBeUndefined();
   });
 }
+
+
+for (const width of [390,1366]) {
+  test('JOURNAL returns to a visible memo action when the bookmarked memo was deleted at '+width+'px',async({page})=>{
+    test.setTimeout(120000);
+    await boot(page,width);await choose(page,'journal');
+    const nav=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
+    await page.locator(nav+' [data-journal-route="memo"]').click();
+    const view=page.locator('#workMemoViewV167');
+    await view.locator('[data-memo-new]').first().click();
+    await page.locator('#workMemoTitleV167').fill('削除された参照元メモ '+width);
+    await page.locator('#workMemoBodyV167').fill('タスク化した後に別端末から削除された場合を検証');
+    await page.locator('#workMemoFormV167 button[type="submit"]').click();
+    await expect(page.locator('#workMemoDialogV167')).toBeHidden();
+    const card=view.locator('.work-memo-grid-v167 > .work-memo-card-v167');
+    await expect(card).toHaveCount(1);
+    const memoId=await card.getAttribute('data-memo-sort-id');
+    await card.click();
+    await view.locator('.j425-memo-reader-actions [data-journal-memo-task-action]').click();
+    await expect(page.locator('#taskDialog')).toBeVisible();
+    await page.locator('#closeTaskDialog').click();
+    const bookmark=page.locator('.j594-return-bookmark [data-j594-return]');
+    await expect(bookmark).toBeVisible();
+    page.once('dialog',dialog=>dialog.accept());
+    const deleted=await page.evaluate(async id=>{
+      const bridge=window.WorkBoardPaletteMemoBridgeV369;
+      const memo=bridge.readSnapshot().find(item=>item.id===id);
+      const state=window.WorkBoardPaletteBridge.readSnapshot();
+      return bridge.dispatch({
+        type:'memo.delete',id,revision:memo.revision,
+        ownerRoom:state.roomId,ownerUser:state.currentUser
+      });
+    },memoId);
+    expect(deleted.ok).toBe(true);
+    await expect(bookmark).toBeVisible();
+    await bookmark.focus();
+    await page.keyboard.press('Enter');
+    await expect(view).toBeVisible();
+    await expect(bookmark).toBeHidden();
+    await expect(view.locator('.work-memo-grid-v167 > .work-memo-card-v167')).toHaveCount(0);
+    const create=view.locator('.work-memo-head-v167 [data-memo-new]');
+    await expect(create).toBeVisible();
+    await expect(create).toBeFocused();
+    const inView=await create.evaluate(node=>{
+      const rect=node.getBoundingClientRect();
+      const dock=document.querySelector('#wbJournalDockV367');
+      const bottom=dock?.getClientRects().length?dock.getBoundingClientRect().top:innerHeight;
+      return rect.top>=0&&rect.bottom<=bottom
+        &&document.documentElement.scrollWidth-innerWidth<=2;
+    });
+    expect(inView).toBe(true);
+    expect((await page.evaluate(()=>window.WorkBoardPaletteMemoBridgeV369.readSnapshot()))
+      .find(memo=>memo.id===memoId)).toBeUndefined();
+  });
+}
