@@ -8098,3 +8098,6 @@ html[data-wb-display="journal"] #workMemoViewV167 .j425-memo-gallery .work-memo-
 }
 html[data-wb-display="journal"] #workMemoViewV167 .work-memo-card-head-v167>div:first-child {grid-column:1/-1;min-width:0}
 html[data-wb-display="journal"] .wb-journal-header-v367>.j594-return-bookmark {grid-column:1/-1}
+#workMemoViewV167 .j425-memo-masthead>h2 {
+  margin:0;font:700 clamp(21px,2vw,30px)/1.4 var(--j-serif);color:var(--j-ink);
+}

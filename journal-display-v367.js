@@ -950,6 +950,9 @@
       });
     }
     gallery.append(memoLinen);
+    const folioTitle=document.createElement('h2');
+    folioTitle.textContent='業務メモ';
+    mast.prepend(folioTitle);
     mast.append(organize);
     spread.append(mast,index,reader,shortcuts,gallery);view.append(spread);
     composeMemoIndex(index,memo);

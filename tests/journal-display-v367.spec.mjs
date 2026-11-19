@@ -6774,23 +6774,22 @@ for(const width of [390,1366]){
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   });
   test('JOURNAL checklist keeps four items primary and restores its editor trigger at '+width+'px',async({page})=>{
-    await page.addInitScript(room=>{
-      const now=Date.now();
-      const todos=Array.from({length:4},(_,i)=>({id:'daily-row-'+i,text:'引き継ぎ事項 '+i,
-        memo:'共有資料を確認',owner:'JournalTester',completed:false,order:i,revision:1,createdAt:now,updatedAt:now}));
-      localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
-      localStorage.setItem('system-task-todos:'+room,JSON.stringify(todos));
-    },ROOM);
+    test.setTimeout(90000);
     await boot(page,width);await choose(page,'journal');
     const nav=width<=860?'#wbJournalDockV367':'.wb-journal-tabs-v367';
     await page.locator(nav+' [data-journal-route="todos"]').click();
     const todo=page.locator('#todoView');
+    for(let i=0;i<4;i++){
+      await todo.locator('#todayTodoInput').fill('引き継ぎ事項 '+i);
+      await todo.locator('[data-j425-todo-create] [type="submit"]').click();
+      await expect(todo.locator('[data-j425-todo-toggle]')).toHaveCount(i+1);
+    }
     await expect(todo.locator('[data-j425-todo-toggle]')).toHaveCount(4);
     await expect(todo.locator('[data-j425-todo-edit]')).toHaveCount(0);
     await expect(todo.locator('.j-todo-list-head progress')).toHaveAttribute('max','4');
-    await todo.locator('[data-j425-todo-toggle="daily-row-1"]').check();
+    await todo.getByRole('checkbox',{name:'引き継ぎ事項 1を完了に変更'}).check();
     await expect(todo.locator('.j-todo-list-head progress')).toHaveAttribute('value','1');
-    const edit=todo.locator('[data-j425-todo-select="daily-row-2"]');
+    const edit=todo.locator('[data-j425-todo-select]').filter({hasText:'引き継ぎ事項 2'});
     await edit.click();
     await expect(todo.locator('#j450TodoNote .j425-todo-detail h3')).toBeFocused();
     await expect(todo.locator('[data-j425-todo-edit]')).toBeVisible();
