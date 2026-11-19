@@ -3616,6 +3616,7 @@ function toggleOriginSettings(){
 function openCreateMenu(){closeOriginSettings();const m=$('#createMenu');m.hidden=!m.hidden;if(!m.hidden)m.innerHTML=`${[['tasks','共有タスク','tasks'],['todos','個人ToDo','todo'],['events','予定','calendar'],['memos','業務メモ','notes']].map(([k,n,ic])=>`<button class="pop-row" type="button" data-action="new" data-kind="${k}">${icon(ic,19)} ${n}を作成</button>`).join('')}`}
 async function saveForm(f){
  if(busy)return false;
+ for(const field of f.querySelectorAll('[data-origin-date-text]'))if(!originNormalizeDateText(field,true))return false;
  hideOriginSaveRecovery();
  const fd=new FormData(f),kind=f.dataset.kind,id=f.dataset.id;
  const title=String(fd.get('title')||'').trim();
@@ -3782,6 +3783,13 @@ async function deleteItem(kind,id){
 }
 function setTheme(){theme=theme==='dark'?'light':'dark';initTheme();syncOriginColorTheme()}
 function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dataset.kind,value=el.dataset.value;
+ if(a==='origin-date-picker'){
+  const input=$('#editForm [name="'+el.dataset.for+'"]'),picker=el.closest('.origin-date-wrap')?.querySelector('.origin-date-native');
+  if(!input||!picker)return;
+  picker.value=input.value.slice(0,10);
+  try{picker.showPicker()}catch{picker.focus();picker.click()}
+  return;
+ }
  if(a==='settings-toggle')return toggleOriginSettings();
  if(a==='settings-close')return closeOriginSettings(true);
  if(a==='detail-jump'){
@@ -4510,6 +4518,17 @@ mount.addEventListener('focusin',e=>{
  window.addEventListener('resize',()=>{
    if(view==='calendar'&&(window.innerWidth<=770)!==calendarRenderedMobile)render();
  });
+ mount.addEventListener('change',e=>{
+  const picker=e.target.closest?.('[data-origin-date-native]');if(!picker||!picker.value)return;
+  const field=picker.closest('.origin-date-wrap')?.querySelector('[data-origin-date-text]');if(!field)return;
+  field.value=picker.value+(field.dataset.originDateText==='datetime'?(field.value.match(/T\d{2}:\d{2}$/)?.[0]||'T09:00'):'');
+  field.setCustomValidity('');
+  field.dispatchEvent(new Event('input',{bubbles:true}));
+  field.dispatchEvent(new Event('change',{bubbles:true}));
+ });
+ mount.addEventListener('focusout',e=>{
+  if(e.target.matches?.('[data-origin-date-text]'))originNormalizeDateText(e.target);
+ });
  mount.addEventListener('invalid',e=>{
  const form=e.target?.form;
  if(form?.id!=='editForm'||!e.target.matches?.('input,select,textarea'))return;
@@ -4523,6 +4542,17 @@ mount.addEventListener('focusin',e=>{
  markOriginInvalidField(form,e.target.name,message);
 },true);
 mount.addEventListener('input',e=>{
+ if(e.target.matches?.('[data-origin-date-text]')){
+  const field=e.target,v=field.value;
+  if(e.inputType==='insertText'&&field.selectionStart===v.length){
+   const time=field.dataset.originDateText==='datetime';
+   const suffix=/^\d{4}$/.test(v)?'-':/^\d{4}-\d{2}$/.test(v)?'-':
+    time&&/^\d{4}-\d{2}-\d{2}$/.test(v)?'T':
+    time&&/^\d{4}-\d{2}-\d{2}T\d{2}$/.test(v)?':':'';
+   if(suffix)field.value+=suffix;
+  }
+  field.setCustomValidity('');
+ }
  if(e.target.dataset.managementDraft){originManagementDrafts[e.target.dataset.managementDraft]=e.target.value;return;}
  if(e.target.id==='originToolQuery'&&!e.isComposing){originToolQuery=e.target.value;originToolLimit=60;render();return;}
 
