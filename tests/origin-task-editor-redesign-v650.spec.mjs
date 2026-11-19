@@ -53,7 +53,9 @@ test('Origin 390px task and schedule editors accept exactly four year digits wit
  await due.fill('2026-11-19');
  await expect(due).toHaveValue('2026-11-19');
  await expect(form.locator('[data-action="origin-date-picker"][data-for="due"]')).toBeVisible();
+ page.once('dialog',dialog=>dialog.accept());
  await root.locator('#sheet .sheet-close').click();
+ await expect(root.locator('#overlay')).toBeHidden();
  await root.locator('#mobileNav [data-route="calendar"]').click();
  await root.locator('[data-action="new"][data-kind="events"]').first().click();
  const eventForm=root.locator('#editForm[data-kind="events"]');
