@@ -72,7 +72,17 @@ test('Origin knowledge, archive and inbox use the canonical linked records and s
 
 test('Origin board and timeline preserve actions and save the user display preference',async({page})=>{
  const root=await launch(page,320),form=await newTask(root,'表示方法の対象');await root.locator('[form="editForm"]').click();await expect(form).toHaveCount(0);await tasks(root);await root.locator('[data-action="task-layout"][data-value="board"]').click();await expect(root.locator('.origin-task-layout-board .item-name')).toContainText('表示方法の対象');expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
- await root.locator('[data-action="task-layout"][data-value="timeline"]').click();await expect(root.locator('.origin-task-layout-timeline .item-name')).toContainText('表示方法の対象');await root.locator('[data-action="task-view-save"]').click();await expect(root.locator('#originToast')).toContainText('保存しました');await page.reload();await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);await tasks(root);await expect(root.locator('.origin-task-layout-timeline')).toBeVisible();
+ await root.locator('[data-action="task-layout"][data-value="timeline"]').click();
+ await expect(root.locator('.origin-task-layout-timeline .item-name')).toContainText('表示方法の対象');
+ await expect.poll(()=>page.evaluate(()=>{
+   const workflow=window.WorkBoardWorkflowV152;
+   return workflow.workflow.savedViews['origin-'+workflow.userKey()]?.taskLayout;
+ })).toBe('timeline');
+ await page.reload();await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+ await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
+ await tasks(root);
+ await expect(root.locator('[data-action="task-layout"][data-value="timeline"]')).toHaveAttribute('aria-pressed','true');
+ await expect(root.locator('.origin-task-layout-timeline .item-name')).toContainText('表示方法の対象');
 });
 
 test('Origin management uses canonical category rename and keeps protected statuses',async({page})=>{
