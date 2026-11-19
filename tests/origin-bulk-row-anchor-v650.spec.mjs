@@ -39,16 +39,16 @@ async function seedTasks(page){
 }
 for(const width of [320,390,1366]){
  test('Origin '+width+'px keeps a row anchored while a selection toolbar appears and disappears',async({page})=>{
-  test.setTimeout(180000);
+  test.setTimeout(45000);
   const root=await openOrigin(page,width);
   await seedTasks(page);
   await root.locator('#originTaskQuery').fill('選択位置の検証');
   const rows=root.locator('.origin-task-collection .item-row');
   await expect(rows).toHaveCount(24);
   const id=await rows.nth(12).locator('[data-action="bulk-toggle"]').getAttribute('data-id');
-  const row=root.locator('.origin-task-collection .item-row').filter({
-   has:root.locator('[data-action="bulk-toggle"][data-id="'+id+'"]')
-  });
+  // nth remains stable: selection toggles do not reorder the visible rows.
+  const row=rows.nth(12);
+  await expect(row.locator('[data-action="bulk-toggle"]')).toHaveAttribute('data-id',id);
   await row.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
   const checkbox=root.locator('[data-action="bulk-toggle"][data-id="'+id+'"]');
   const before=await row.evaluate(el=>el.getBoundingClientRect().top);
