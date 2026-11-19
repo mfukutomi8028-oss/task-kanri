@@ -2910,17 +2910,17 @@ function journalTodoV425() {
       <form data-j425-todo-create class="j425-todo-create"><input id="todayTodoInput" type="text" required maxlength="${TODO_MAX_LENGTH}" placeholder="新しいToDoを記入"><button type="submit" class="j425-action-primary">＋ 追加</button><details><summary>メモを添える</summary><textarea id="todayTodoMemo" rows="2" maxlength="${TODO_MEMO_MAX_LENGTH}" placeholder="補足メモ"></textarea></details></form>
     </header>
     <div class="j425-editorial-layout j425-todo-layout">
-      <nav class="j425-index-rail" aria-label="ToDoの分類"><div class="j-index-filter-state"><span data-journal-todo-filter-state>分類：${({all:"すべて",open:"未完了",memo:"メモあり",done:"完了"})[filter]}${filter!=="all"?"（1件適用）":""}</span><button type="button" data-journal-todo-clear ${filter==="all"?"hidden":""}>分類を解除</button></div><details class="j-index-disclosure" data-journal-todo-index ${!journalInlineDetailMediaV491.matches||journalTodoIndexOpen?"open":""}><summary>索引・絞り込み</summary><div class="j-todo-index-options"><h3>ToDo索引</h3><small>PERSONAL INDEX</small><h4>作業のしおり</h4>
+      <nav class="j425-index-rail" aria-label="ToDoの分類"><div class="j-index-filter-state"><span data-journal-todo-filter-state>分類：${({all:"すべて",open:"未完了",memo:"メモあり",done:"完了"})[filter]}${filter!=="all"?"（1件適用）":""}</span><button type="button" data-journal-todo-clear ${filter==="all"?"hidden":""}>分類を解除</button></div><details class="j-index-disclosure" data-journal-todo-index ${!journalInlineDetailMediaV491.matches||journalTodoIndexOpen?"open":""}><summary>索引・絞り込み</summary><div class="j-todo-index-options"><h3>ToDo索引</h3><div class="j425-workbench-toolbar">
+        <label>検索<input type="search" data-j425-todo-search value="${escapeHtml(journalTodoQueryV425)}" placeholder="ToDo・メモを検索"></label>
+        <label>表示順<select data-j425-todo-sort><option value="manual" ${journalTodoSortV425==='manual'?'selected':''}>手動順</option><option value="title" ${journalTodoSortV425==='title'?'selected':''}>タイトル順</option></select></label>
+      </div><h4>分類</h4>
         ${[{id:'all',label:'すべて',n:todos.length},{id:'open',label:'未完了',n:open.length},{id:'memo',label:'メモあり',n:todos.filter(t=>t.memo).length},{id:'done',label:'完了',n:completed.length}].map(v=>`<button type="button" class="j425-index-option" data-j425-todo-filter="${v.id}" aria-pressed="${filter===v.id}">${v.label}<span>${v.n}</span></button>`).join('')}
         </div></details>
       </nav>
       <section class="j425-todo-trays" aria-label="ToDoの作業トレイ">
       <header class="j-todo-list-head"><h3>チェックリスト</h3>
         <div><span>全${todos.length}件中 ${completed.length}件完了</span><progress aria-label="ToDoの完了状況" max="${Math.max(1,todos.length)}" value="${completed.length}"></progress></div>
-      </header><div class="j425-workbench-toolbar">
-        <label>検索<input type="search" data-j425-todo-search value="${escapeHtml(journalTodoQueryV425)}" placeholder="ToDo・メモを検索"></label>
-        <label>表示順<select data-j425-todo-sort><option value="manual" ${journalTodoSortV425==='manual'?'selected':''}>手動順</option><option value="title" ${journalTodoSortV425==='title'?'selected':''}>タイトル順</option></select></label>
-      </div>
+      </header>
       ${populatedGroups.map(g=>`<section class="j425-todo-tray j425-todo-${g.id} ${journalTodoCollapsedV430.has(g.id)?'is-collapsed':''}">
         <header><div class="j430-todo-ribbon"><span class="j430-todo-ribbon-mark" aria-hidden="true">${g.id==='focus'?'✳':g.id==='later'?'◇':'✓'}</span>
           <h3>${g.title}<span>${g.items.length}</span></h3></div>

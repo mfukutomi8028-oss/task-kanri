@@ -4298,7 +4298,7 @@ html[data-wb-display="journal"] .j420-stationery .j420-paperclip {display:none!i
 /* ToDo: handwritten tray groups with a selectable right folio. */
 @media(min-width:1191px){
   html[data-wb-display="journal"] #todoView .j425-todo-layout {
-    grid-template-columns:minmax(0,2.3fr) minmax(230px,.85fr);
+    grid-template-columns:minmax(0,2.3fr) minmax(230px,.85fr)!important;
     grid-template-rows:auto 1fr;align-items:start;
   }
   html[data-wb-display="journal"] #todoView .j425-todo-trays {grid-column:1;grid-row:1/3}
@@ -4312,6 +4312,13 @@ html[data-wb-display="journal"] .j-todo-list-head {
 html[data-wb-display="journal"] .j-todo-list-head h3 {font:750 clamp(19px,2.3vw,29px)/1.4 var(--j-serif);margin:0}
 html[data-wb-display="journal"] .j-todo-list-head div {display:grid;gap:4px;color:#4a584a;font:650 12px var(--j-text)}
 html[data-wb-display="journal"] .j-todo-list-head progress {width:100%;height:6px;accent-color:#597550}
+@media(max-width:760px){
+  html[data-wb-display="journal"] #todoView .j425-index-rail:not(:has(details[open])) {
+    display:flex!important;align-items:center;justify-content:space-between;gap:7px;flex-wrap:wrap;
+  }
+  html[data-wb-display="journal"] #todoView .j425-index-rail:not(:has(details[open])) .j-index-filter-state {margin:0;padding:0}
+  html[data-wb-display="journal"] #todoView .j425-index-rail:not(:has(details[open])) summary {padding:5px;min-height:40px}
+}
 html[data-wb-display="journal"] .j425-todo-create {
   display:flex;flex-wrap:wrap;align-items:center;gap:8px;
   flex:1 1 350px;justify-content:flex-end;
@@ -4837,10 +4844,7 @@ html[data-wb-display="journal"] #workMemoViewV167 .j425-memo-gallery .work-memo-
 
 html[data-wb-display="journal"] #workMemoViewV167>.j425-memo-spread {
   display:grid!important;
-  grid-template-columns:minmax(185px,.7fr) minmax(370px,1.85fr) minmax(245px,.92fr)!important;
-  gap:12px!important;align-items:start;min-width:0!important;padding:7px!important;
-  border:2px solid #aebba8!important;border-radius:13px!important;background:#ebe8dc!important;
-  box-shadow:0 6px 15px #545e4d21,inset 0 0 0 3px #f4f1e8!important;
+  gap:12px!important;align-items:start;min-width:0!important;
 }
 html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-masthead {
   grid-column:1/-1;min-width:0;
@@ -4867,8 +4871,6 @@ html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {
 html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-index {
   grid-column:1;background:#faf8ef!important;
 }
-html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {grid-column:2}
-html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-gallery {grid-column:3}
 html[data-wb-display="journal"] .j425-memo-spread>:is(.j425-memo-gallery,.j425-memo-reader) {
   position:relative!important;
 }
@@ -5082,7 +5084,7 @@ html[data-wb-display="journal"] .j425-memo-reader-actions button {
     grid-template-columns:minmax(175px,.7fr) minmax(0,2.15fr) minmax(200px,.83fr)!important;gap:9px!important;
   }
   html[data-wb-display="journal"] #workMemoViewV167>.j425-memo-spread {
-    grid-template-columns:minmax(175px,.7fr) minmax(340px,1.85fr) minmax(230px,.9fr)!important;gap:9px!important;
+    gap:9px!important;
   }
   html[data-wb-display="journal"] .j425-memo-gallery .work-memo-grid-v167 {grid-template-columns:minmax(0,1fr)!important}
   html[data-wb-display="journal"] .j425-schedule-layout {
@@ -5094,7 +5096,7 @@ html[data-wb-display="journal"] .j425-memo-reader-actions button {
     grid-template-columns:minmax(170px,.78fr) minmax(0,2.2fr)!important;gap:10px!important;
   }
   html[data-wb-display="journal"] #workMemoViewV167>.j425-memo-spread {
-    grid-template-columns:minmax(170px,.74fr) minmax(0,2.3fr)!important;gap:10px!important;
+    gap:10px!important;
   }
   html[data-wb-display="journal"] :is(.j425-reading-rail,.j425-memo-reader) {grid-column:1/-1}
   html[data-wb-display="journal"] .j425-memo-spread>.j425-memo-reader {grid-column:2;max-height:none!important}

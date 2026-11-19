@@ -6214,7 +6214,9 @@ for (const width of [390, 1366]) {
     const search=page.locator('#wbJournalSearchV393');
     await search.fill('該当なしの架空の語');
     await expect(today.getByRole('status').filter({hasText:'この紙面に一致する項目はありません。'})).toBeVisible();
+    await expect(appointment).toBeHidden();
     await page.locator('[data-journal-search-clear]').click();
+    await expect(appointment).toBeVisible();
     await expect(today.locator('.j-day-search-result')).toBeEmpty();
     await expect(focus.locator('.j591-featured-work')).toBeVisible();
     await expect(planner.locator('.j420-agenda-item').first()).toBeVisible();
@@ -6776,6 +6778,7 @@ for(const width of [390,1366]){
       const now=Date.now();
       const todos=Array.from({length:4},(_,i)=>({id:'daily-row-'+i,text:'引き継ぎ事項 '+i,
         memo:'共有資料を確認',owner:'JournalTester',completed:false,order:i,revision:1,createdAt:now,updatedAt:now}));
+      localStorage.setItem('system-task-users:'+room,JSON.stringify(['JournalTester']));
       localStorage.setItem('system-task-todos:'+room,JSON.stringify(todos));
     },ROOM);
     await boot(page,width);await choose(page,'journal');

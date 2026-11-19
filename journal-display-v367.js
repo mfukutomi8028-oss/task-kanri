@@ -1143,6 +1143,7 @@
     const view = document.getElementById('todayView');
     if (!view) return;
     const query = journalSearchQueryV393.normalize('NFKC').trim().toLocaleLowerCase('ja');
+    const headline = view.querySelector('[data-journal-day-plan]');
     let matches = 0;
     for (const card of view.querySelectorAll(
       '.j420-work-note,.j420-agenda-item,.j420-todo-item,.j420-update-item,.j420-waiting-item')) {
@@ -1150,6 +1151,8 @@
       const matched = text.includes(query);
       if (matched) matches++;
       card.classList.toggle('j-search-excluded-v393', Boolean(query) && !matched);
+      if (headline && card.dataset.scheduleId === headline.dataset.journalDayPlan)
+        headline.classList.toggle('j-search-excluded-v393', Boolean(query) && !matched);
     }
     const status = view.querySelector('.j-day-search-result');
     const message = query ? (matches ? 'この紙面で一致した項目：' + matches + '件' : 'この紙面に一致する項目はありません。') : '';
