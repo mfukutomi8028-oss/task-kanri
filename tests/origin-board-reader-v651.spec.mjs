@@ -160,7 +160,7 @@ test('Origin status board retains an empty lane after moving its final task',asy
 });
 
 for(const width of [320,390]){
- test('Origin '+width+'px board lane navigation jumps by keyboard without changing the task filter',async({page})=>{
+ test('Origin '+width+'px mobile board section navigation reveals a vertical lane without changing the task filter',async({page})=>{
   test.setTimeout(150000);
   const root=await openOrigin(page,width,'lane-nav');
   const tasks=await seedTasks(page);
@@ -172,14 +172,20 @@ for(const width of [320,390]){
   await expect(nav.locator('[data-action="board-lane-jump"]')).toHaveCount(4);
   const destination=board.locator(':scope > .origin-task-group').last();
   const last=nav.locator('[data-action="board-lane-jump"]').last();
+  // On mobile the board lanes stack vertically, not horizontally.
+  // Jumping to the last lane must reveal its heading below the sticky header.
+  const before=await destination.locator('.origin-task-group-toggle').evaluate(el=>el.getBoundingClientRect().top);
+  expect(before).toBeGreaterThan(650);
   await last.focus();
   await last.press('Enter');
   await expect(destination.locator('.origin-task-group-toggle')).toBeFocused();
-  await expect.poll(()=>destination.evaluate(el=>{
-   const outer=el.closest('.origin-task-layout-board').getBoundingClientRect();
-   const rect=el.getBoundingClientRect();
-   return Math.max(0,Math.min(outer.right,rect.right)-Math.max(outer.left,rect.left))/rect.width;
-  })).toBeGreaterThan(0.65);
+  await expect.poll(()=>destination.locator('.origin-task-group-toggle').evaluate(el=>{
+   const top=el.getBoundingClientRect().top;
+   const header=el.getRootNode().querySelector('.header');
+   const blockedUntil=Math.max(0,header?.getBoundingClientRect().bottom||0);
+   return top>=blockedUntil-3&&top<window.innerHeight-100;
+  })).toBe(true);
+  expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThan(0);
   await expect(root.locator('[data-action="task-filter"][data-value="active"]')).toHaveAttribute('aria-pressed','true');
   expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.length)).toBe(tasks.length);
   await root.locator('[data-action="task-advanced-toggle"]').click();
