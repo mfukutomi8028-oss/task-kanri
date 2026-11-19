@@ -334,21 +334,6 @@
 .origin-tool-row span{min-width:0;overflow-wrap:anywhere}.origin-tool-row small{display:block;color:var(--muted);margin-top:6px}
 .origin-tool-search{margin-bottom:16px}.origin-layout-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:0}\n.origin-task-command{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px;margin:0 0 12px;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}\n.origin-task-command .origin-task-tools{margin:0;min-width:0;gap:8px}\n.origin-task-command .origin-task-tools>input{min-width:0;max-width:420px;min-height:44px;background:var(--bg);font-size:14px}\n.origin-task-command .origin-task-tools select,.origin-task-command .origin-density-button{min-height:44px}\n.origin-task-command .origin-layout-controls{margin:0;justify-content:flex-end;gap:8px;min-width:0}\n.origin-task-command .origin-layout-controls .tab-pills{background:var(--bg)}\n.origin-task-view-state{display:inline-flex;align-items:center;gap:7px;min-height:28px;padding:5px 9px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--muted);font-size:12px;font-weight:700;line-height:1.4;white-space:nowrap}\n.origin-task-view-state::before{content:'';width:7px;height:7px;flex:none;border-radius:50%;background:var(--muted)}\n.origin-task-view-state[data-state='saved']{color:var(--ink)}\n.origin-task-view-state[data-state='saved']::before{background:var(--accent)}\n.origin-task-view-state[data-state='changed']{background:var(--warn-bg);border-color:var(--warn);color:var(--ink)}\n.origin-task-view-state[data-state='changed']::before{background:var(--warn)}\n.origin-task-view-state[data-state='saving']::before{background:var(--accent)}\n.origin-task-view-state[data-state='failed']{background:var(--warn-bg);border-color:var(--warn);color:var(--ink)}\n.origin-task-view-state[data-state='failed']::before{background:var(--warn)}\n@media(max-width:1050px){.origin-task-command{grid-template-columns:minmax(0,1fr)}.origin-task-command .origin-layout-controls{justify-content:flex-start}}\n@media(max-width:770px){.origin-task-command{padding:10px 11px;gap:8px}.origin-task-command .origin-task-tools>input{flex:1 1 175px;min-width:0;max-width:none;font-size:16px}.origin-task-command .origin-layout-controls{justify-content:space-between;flex-wrap:wrap}}
 .origin-stats-scroll{overflow:auto}.origin-stats{width:100%;border-collapse:collapse;font-size:13px}.origin-stats th,.origin-stats td{text-align:left;padding:12px;border-bottom:1px solid var(--line)}
-.origin-task-layout-board{display:flex;overflow-x:auto;gap:14px;padding:14px;background:var(--bg);scrollbar-width:thin}
-.origin-task-layout-board>.origin-task-group{flex:0 0 292px;max-width:100%;min-width:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper)}
-.origin-task-layout-board .item-row{grid-template-columns:44px minmax(0,1fr);gap:9px;padding:13px;transition:background-color .15s ease}
-.origin-task-layout-board .item-assignee,.origin-task-layout-board .item-date{display:none}
-.origin-task-layout-board .row-last{grid-column:2;justify-content:flex-start;flex-wrap:wrap}
-.origin-task-layout-board .row-last .origin-task-inline-status{min-width:0;flex:1 1 118px}
-.origin-task-layout-board .group-title{padding:12px;background:var(--paper)}
-.origin-task-layout-board .origin-task-mobile-due,.origin-task-layout-board .origin-task-mobile-assignee{display:none!important}
-.origin-task-layout-board .origin-board-facts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:9px}
-.origin-task-layout-board .origin-board-facts>span{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;padding:7px 8px;border:1px solid var(--line-soft);border-radius:9px;background:var(--bg);color:var(--muted);font-size:11px}
-.origin-task-layout-board .origin-board-facts strong{display:block;max-width:100%;overflow-wrap:anywhere;color:var(--ink);font-size:12px;line-height:1.5;font-weight:760}
-.origin-task-layout-board .origin-board-due.urgent strong{color:var(--red)}
-@media(hover:hover){.origin-task-layout-board .item-row:hover{background:var(--hover)}}
-@media(prefers-reduced-motion:reduce){.origin-task-layout-board .item-row{transition:none}}
-@media(max-width:770px){.origin-task-layout-board{display:grid;grid-template-columns:minmax(0,1fr);overflow:visible;gap:12px;padding:10px}.origin-task-layout-board>.origin-task-group{width:100%;max-width:none}.origin-task-layout-board .row-last{grid-column:1/-1}}
 .origin-task-layout-timeline{display:block;padding:14px 12px 14px 18px}
 .origin-task-layout-timeline>.origin-task-group{position:relative;margin:0 0 0 9px;padding:0 0 18px 18px;border-left:2px solid var(--line)}
 .origin-task-layout-timeline>.origin-task-group:last-child{padding-bottom:0}
@@ -1253,11 +1238,11 @@ function originCurrentTaskView(){
 function originTaskViewSaveState(){
  if(originTaskViewSaving||originTaskViewSyncPending)return {key:'saving',label:'表示設定を自動保存中…'};
  if(originTaskViewSaveFailed)return {key:'failed',label:'表示設定を共有保存できませんでした'};
- return {key:'saved',label:'表示設定は自動保存されます'};
+ return {key:'saved',label:''};
 }
 function updateOriginTaskViewSaveState(){
  const node=$('#originTaskViewState');if(!node)return;
- const state=originTaskViewSaveState();node.dataset.state=state.key;node.textContent=state.label;
+ const state=originTaskViewSaveState();node.dataset.state=state.key;node.textContent=state.label;node.hidden=!state.label;
 }
 function restoreOriginTaskView(){
  const w=window.WorkBoardWorkflowV152;if(!w?.dependencyStateReady()||originPrefsUser===snapshot.currentUser)return;
@@ -1368,7 +1353,7 @@ function renderTasks(){
  <button type="button" class="origin-density-button" data-action="task-density" aria-pressed="${taskDensity!=='compact'}" aria-label="${taskDensity==='compact'?'現在はコンパクト表示です。詳細表示に切り替える':'現在は詳細表示です。コンパクト表示に切り替える'}" title="${taskDensity==='compact'?'説明や次のチェック項目を含む詳細表示に切り替えます':'必要な情報だけのコンパクト表示に切り替えます'}">表示：${taskDensity==='compact'?'コンパクト':'詳細'}</button>
  </div>
 
- <div class="origin-layout-controls"><div class="tab-pills" role="group" aria-label="タスクの表示方法">${[['list','一覧'],['board','ボード'],['timeline','タイムライン']].map(([id,label])=>`<button type="button" data-action="task-layout" data-value="${id}" class="${taskLayoutMode===id?'active':''}" aria-pressed="${taskLayoutMode===id}">${label}</button>`).join('')}</div><span id="originTaskViewState" class="origin-task-view-state" role="status" aria-atomic="true" data-state="${viewState.key}">${viewState.label}</span></div>
+ <div class="origin-layout-controls"><div class="tab-pills" role="group" aria-label="タスクの表示方法">${[['list','一覧'],['board','ボード'],['timeline','タイムライン']].map(([id,label])=>`<button type="button" data-action="task-layout" data-value="${id}" class="${taskLayoutMode===id?'active':''}" aria-pressed="${taskLayoutMode===id}">${label}</button>`).join('')}</div><span id="originTaskViewState" class="origin-task-view-state" role="status" aria-atomic="true" data-state="${viewState.key}" ${viewState.label?"":"hidden"}>${viewState.label}</span></div>
  </div>
  <div class="origin-mobile-advanced-switch"><button type="button" data-action="task-advanced-toggle"
   aria-controls="originTaskStatusRail originTaskSort groupSelect" aria-expanded="${taskAdvancedOpen}">
@@ -1444,11 +1429,16 @@ function taskRow(t){
   :'';
  const insight=notes||facts.length
   ?`<div class="origin-task-insight">${nextLine}${notes?`<p class="origin-task-insight-description">${esc(notes)}</p>`:''}${facts.length?`<div class="origin-task-insight-meta">${facts.join('')}</div>`:''}</div>`:'';
- // Board columns hide the desktop side facts, so show them inside each card.
+ // The board summarizes who and when without the two large grey fact blocks.
  const boardFacts=taskLayoutMode==='board'
-  ?`<div class="origin-board-facts"><span class="origin-board-assignee">担当<strong>${esc(t.assignee||'担当未設定')}</strong></span><span class="origin-board-due ${urgent?'urgent':''}">期限<strong>${esc(dateText)}</strong></span></div>`
+  ?`<div class="origin-board-card-meta"><span class="origin-board-card-person"><small>担当</small><strong>${esc(t.assignee||'担当未設定')}</strong></span><span class="origin-board-card-due ${urgent?'urgent':''}"><small>期限</small><strong>${esc(dateText)}</strong></span></div>`
   :'';
- return `<div class="item-row ${selectedBulk.has(t.id)?'origin-task-selected':''}"><label class="origin-task-select-hit"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/></label><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}" title="${esc(t.title)}" aria-label="${esc(t.title)}の詳細を開く"><span class="origin-task-title-text">${esc(t.title)}</span><span class="origin-task-detail-arrow" aria-hidden="true">${icon('right',14)}</span></button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}${progressPill}<span class="origin-task-mobile-assignee">${esc(t.assignee||'担当未設定')}</span></div>${boardFacts}${insight}</div><span class="item-assignee"><span class="origin-task-fact-label">担当</span><strong>${esc(t.assignee||'未設定')}</strong></span><span class="item-date ${urgent?'urgent':''}"><span class="origin-task-fact-label">期限</span><strong>${esc(dateText)}</strong></span><div class="row-last">${statusSelect}<button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="tasks" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を編集" title="タスクを編集">${icon('edit',15)}<span class="origin-task-edit-label">編集</span></button><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
+ // Detailed cards expose a short description and the next unchecked item;
+ // compact cards keep those details in the task reader.
+ const boardBrief=taskLayoutMode==='board'&&taskDensity!=='compact'
+  ?`<div class="origin-board-card-brief">${notes?`<p class="origin-board-card-description">${esc(notes)}</p>`:''}${checklistProgress?.next?`<p class="origin-board-card-next"><strong>次に確認</strong><span>${esc(checklistProgress.next)}</span></p>`:''}</div>`
+  :'';
+ return `<div class="item-row ${taskLayoutMode==='board'?'origin-board-card':''} ${selectedBulk.has(t.id)?'origin-task-selected':''}"><label class="origin-task-select-hit"><input type="checkbox" class="todo-check task-select-check" data-action="bulk-toggle" data-id="${esc(t.id)}" aria-label="一括選択：${esc(t.title)}" ${selectedBulk.has(t.id)?'checked':''}/></label><div class="origin-task-main"><button type="button" class="item-name" data-action="open" data-kind="tasks" data-id="${esc(t.id)}" title="${esc(t.title)}" aria-label="${esc(t.title)}の詳細を開く"><span class="origin-task-title-text">${esc(t.title)}</span><span class="origin-task-detail-arrow" aria-hidden="true">${icon('right',14)}</span></button><div class="row-under">${taskTag(t)} <span class="origin-task-meta">${esc(t.category||'分類なし')} · ${esc(t.priority||'中')}優先</span>${due}${progressPill}<span class="origin-task-mobile-assignee">${esc(t.assignee||'担当未設定')}</span></div>${boardFacts}${taskLayoutMode==='board'?boardBrief:insight}</div><span class="item-assignee"><span class="origin-task-fact-label">担当</span><strong>${esc(t.assignee||'未設定')}</strong></span><span class="item-date ${urgent?'urgent':''}"><span class="origin-task-fact-label">期限</span><strong>${esc(dateText)}</strong></span><div class="row-last">${statusSelect}<button type="button" class="origin-list-quick-edit" data-action="list-quick-edit" data-kind="tasks" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を編集" title="タスクを編集">${icon('edit',15)}<span class="origin-task-edit-label">編集</span></button><button type="button" class="primary-mini" data-action="task-done" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を${t.completed?'未完了に戻す':'完了にする'}">${t.completed?'戻す':'完了'}</button></div></div>`;
 }
 // Pending and completed ToDos use bounded initial rendering, like tasks and notes.
 const TODO_RENDER_BATCH=24;
@@ -3819,7 +3809,14 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
    const heading=summary||target.querySelector('h3')||target;
    if(!summary&&!composer)heading.tabIndex=-1;
    (composer||heading).focus({preventScroll:true});
-   (composer||target).scrollIntoView({block:composer?'nearest':'start',behavior:'auto'});
+   // Use a fixed section anchor inside the scrolling sheet. Nearest-edge
+   // scrolling moved the composer differently after Work and Related jumps.
+   const body=$('#sheet .sheet-body'),nav=body?.querySelector('.origin-reader-nav');
+   if(body){
+    const offset=(nav?.getBoundingClientRect().height||0)+12;
+    const top=body.scrollTop+target.getBoundingClientRect().top-body.getBoundingClientRect().top-offset;
+    body.scrollTo({top:Math.max(0,top),behavior:'instant'});
+   }else target.scrollIntoView({block:'start',behavior:'instant'});
    el.closest('nav').querySelectorAll('button').forEach(button=>button===el?button.setAttribute('aria-current','location'):button.removeAttribute('aria-current'));
    return;
  }
