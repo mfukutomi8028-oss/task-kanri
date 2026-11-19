@@ -1832,7 +1832,7 @@ function originScheduleBatchFields(v){
  <label class="form-field full" data-batch-field="dates">登録する日付<textarea name="batchDates" placeholder="YYYY-MM-DD（改行またはカンマ区切り）">${esc(date)}</textarea></label>
  <label class="form-field" data-batch-field="endMode">終了条件<select name="batchEndMode"><option value="count">件数で指定</option><option value="date">終了日まで</option></select></label>
  <label class="form-field" data-batch-field="count">作成件数（最大200）<input name="batchCount" type="number" min="1" max="200" value="4"/></label>
- <label class="form-field" data-batch-field="endDate">終了日<input name="batchEndDate" type="date" value="${esc(date)}"/></label>
+ <label class="form-field" data-batch-field="endDate">終了日${originDateControl('batchEndDate',date)}</label>
  <button class="secondary-button" type="button" data-action="schedule-preview">作成日を確認</button>
  <div id="originBatchReview" class="form-field full origin-batch-review" role="status" aria-live="polite">条件を指定し、作成日を確認してください。</div>
  </div></div></details>`;
@@ -1871,6 +1871,26 @@ async function previewOriginBatch(form){
  }catch(error){invalidateOriginBatchReview(form);notify('作成日の確認に失敗しました。入力内容は保持しています。');}
  finally{busy=false;markOriginEditorSaving(false)}
 }
+function originDateControl(name,value,mode='date',required=false){
+ const datetime=mode==='datetime',iso=String(value||'');
+ const pattern=datetime?'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}':'[0-9]{4}-[0-9]{2}-[0-9]{2}';
+ return `<span class="origin-date-wrap"><input type="text" name="${esc(name)}" data-origin-date-text="${datetime?'datetime':'date'}" inputmode="${datetime?'text':'numeric'}" autocomplete="off" maxlength="${datetime?16:10}" pattern="${pattern}" placeholder="${datetime?'YYYY-MM-DDTHH:mm':'YYYY-MM-DD'}" value="${esc(iso)}" ${required?'required':''}/><button type="button" class="origin-date-open" data-action="origin-date-picker" data-for="${esc(name)}" title="カレンダーから選択" aria-label="カレンダーから日付を選択">${icon('calendar',18)}</button><input type="date" class="origin-date-native" tabindex="-1" aria-hidden="true" data-origin-date-native="${esc(name)}" value="${esc(iso.slice(0,10))}"/></span>`;
+}
+function originNormalizeDateText(field,report=false){
+ const datetime=field.dataset.originDateText==='datetime';let value=field.value.trim().replace(/\//g,'-');if(datetime)value=value.replace(' ','T');
+ if(/^\d{8}$/.test(value))value=value.slice(0,4)+'-'+value.slice(4,6)+'-'+value.slice(6);
+ if(datetime&&/^\d{12}$/.test(value))value=value.slice(0,4)+'-'+value.slice(4,6)+'-'+value.slice(6,8)+'T'+value.slice(8,10)+':'+value.slice(10);
+ const m=(datetime?/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/:/^(\d{4})-(\d{2})-(\d{2})$/).exec(value);
+ let valid=!value&&!field.required;
+ if(m){
+  const y=Number(m[1]),mon=Number(m[2]),d=Number(m[3]),dt=new Date(0);dt.setUTCHours(0,0,0,0);dt.setUTCFullYear(y,mon-1,d);
+  valid=y>=1&&y<=9999&&dt.getUTCFullYear()===y&&dt.getUTCMonth()===mon-1&&dt.getUTCDate()===d&&(!datetime||(Number(m[4])<=23&&Number(m[5])<=59));
+ }
+ field.setCustomValidity(valid?'':'日付は西暦4桁で正しく入力してください（例：2026-11-19）。');
+ if(valid&&field.value!==value)field.value=value;
+ if(report&&!valid)field.reportValidity();
+ return valid;
+}
 function originScheduleEditor(v,id){
  const date=/^\d{4}-\d{2}-\d{2}$/.test(v.date||'')?v.date:selectedDay;
  const start=scheduleLocalInput(v.startAt)||date+'T09:00';
@@ -1886,8 +1906,8 @@ function originScheduleEditor(v,id){
  return `<div class="origin-schedule-intro"><strong>${v.originTaskDraft?'タスクから関連予定を作成':'予定を登録・編集'}</strong><p>${v.originTaskDraft?'タスク名と関連付けを引き継ぎました。日時は仮入力です。確認してから登録してください。':'日時と担当者を選び、この画面でそのまま保存できます。'}</p></div>
  <div class="form-grid">
  <label class="form-field full">予定名<input name="title" value="${esc(v.title||'')}" maxlength="80" required placeholder="例：部署ミーティング"/></label>
- <label class="form-field">開始日時<input name="startAt" type="datetime-local" value="${esc(start)}" required/></label>
- <label class="form-field">終了日時<input name="endAt" type="datetime-local" value="${esc(end)}" required/></label>
+ <label class="form-field">開始日時${originDateControl('startAt',start,'datetime',true)}</label>
+ <label class="form-field">終了日時${originDateControl('endAt',end,'datetime',true)}</label>
  <div class="form-field full origin-schedule-duration" role="group" aria-label="所要時間"><span>所要時間</span><button type="button" data-action="schedule-duration" data-minutes="30">30分</button><button type="button" data-action="schedule-duration" data-minutes="60">1時間</button><button type="button" data-action="schedule-duration" data-minutes="120">2時間</button></div>
  <label class="form-field">担当者<select name="assignee" required>${options(snapshot.assignees,assignee)}</select></label>
  <label class="form-field">分類<select name="category" required>${options(snapshot.categories,category)}</select></label>
@@ -2253,7 +2273,7 @@ function originRecurrenceEditor(v){
  <p class="quiet-small form-field full">このタスクの完了時に、次回の1件を自動作成します。</p>
  <label class="form-field full">繰り返し<select name="recurrence">${options.map(([id,label])=>`<option value="${id}" ${method===id?'selected':''}>${label}</option>`).join('')}</select></label>
  <div id="originRecurrenceFields" class="form-grid">
- <label class="form-field" data-recur-field="anchor">繰り返し開始日<input name="repeatAnchor" type="date" value="${esc(date)}"/></label>
+ <label class="form-field" data-recur-field="anchor">繰り返し開始日${originDateControl('repeatAnchor',date)}</label>
  <label class="form-field" data-recur-field="interval">間隔（1〜36）<input name="repeatInterval" type="number" min="1" max="36" value="${r.interval||1}"/></label>
  <fieldset class="form-field full" data-recur-field="weekdays"><legend>対象曜日</legend><div class="origin-batch-weekdays">${days.map((d,i)=>`<label><input name="repeatWeekdays" type="checkbox" value="${i}" ${(r.weekdays||[parseDay(date).getDay()]).includes(i)?'checked':''}/>${d}</label>`).join('')}</div></fieldset>
  <label class="form-field" data-recur-field="monthDay">毎月の何日<input name="repeatMonthDay" type="number" min="1" max="31" value="${r.monthDay||parseDay(date).getDate()}"/></label>
@@ -2262,7 +2282,7 @@ function originRecurrenceEditor(v){
  <label class="form-field full" data-recur-field="dates">指定日（最大200件）<textarea name="repeatDates" placeholder="YYYY-MM-DD（改行またはカンマ区切り）">${esc((r.selectedDates||[]).join('\n'))}</textarea></label>
  <label class="form-field" data-recur-field="endMode">終了条件<select name="repeatEndMode">${[['count','件数で指定'],['date','終了日まで'],['unlimited','無期限']].map(([id,label])=>`<option value="${id}" ${id===(r.endMode||'count')?'selected':''}>${label}</option>`).join('')}</select></label>
  <label class="form-field" data-recur-field="count">自動作成する件数<input name="repeatCount" type="number" min="1" max="200" value="${r.count||4}"/></label>
- <label class="form-field" data-recur-field="endDate">終了日<input name="repeatEndDate" type="date" value="${esc(r.endDate||'')}"/></label>
+ <label class="form-field" data-recur-field="endDate">終了日${originDateControl('repeatEndDate',r.endDate||'')}</label>
  <button type="button" class="secondary-button" data-action="task-recurrence-preview">次回の日付を確認</button><div id="originRecurrenceReview" class="form-field full origin-batch-review" role="status" aria-live="polite">${Number(r.generatedCount)||0}件作成済み。条件を指定して次回の日付を確認できます。</div>
  </div></div></details>`;
 }
@@ -2953,7 +2973,7 @@ function panelShow(kind,id,edit=false,seed={}){
  panelOpen=true;panelMode=edit?'edit':'detail';panelKind=kind;panelId=id||'';
  const freshObj=obj||{},v={...freshObj,...seed};
  if(edit){
- const fields=kind==='tasks'?`<div class="form-grid">${originTemplatePicker()}<label class="form-field full">件名<input name="title" maxlength="80" required value="${esc(v.title||'')}"/></label><label class="form-field">状態<select name="status">${snapshot.statuses.map(s=>`<option value="${esc(s)}" ${s===(v.status||'未着手')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">優先度<select name="priority">${['緊急','高','中','低'].map(s=>`<option value="${s}" ${s===(v.priority||'中')?'selected':''}>${s}</option>`).join('')}</select></label><label class="form-field full">説明<textarea name="desc" class="origin-task-description-input" maxlength="6000" placeholder="対応内容や補足事項">${esc(v.desc||'')}</textarea></label><label class="form-field">開始日・予約（任意）<input name="startDate" type="date" value="${esc(v.startDate||'')}"/></label><label class="form-field">期限日（任意）<input name="due" type="date" value="${esc(v.due||'')}"/></label><label class="form-field">期限時刻（任意）<input name="dueTime" type="time" value="${esc(v.dueTime||'')}"/></label><label class="form-field">担当者<select name="assignee">${[...new Set(['自分',...snapshot.assignees.filter(x=>x!==snapshot.currentUser),v.assignee])].filter(Boolean).map(s=>`<option value="${esc(s)}" ${s===(v.assignee||'自分')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">分類<select name="category">${snapshot.categories.map(s=>`<option value="${esc(s)}" ${s===(v.category||snapshot.categories[0])?'selected':''}>${esc(s)}</option>`).join('')}</select></label><details class="origin-task-optional" ${v.requester||(v.tags||[]).length||(v.checklist||[]).length||v.pinned?'open':''}><summary>追加情報 <small>依頼者・タグ・チェックリスト・固定</small><span class="origin-task-expand-cue" aria-hidden="true">${icon('chevron',14)}</span></summary><div class="origin-task-extra-grid"><label class="form-field">依頼者<input name="requester" maxlength="40" value="${esc(v.requester||'')}"/></label><label class="form-field">タグ<input name="tags" maxlength="80" value="${esc((v.tags||[]).join(', '))}"/></label><div class="form-field full"><strong>チェックリスト</strong><div id="originTaskChecks">${taskCheckboxRows(v)}</div><button type="button" class="secondary-button" data-action="task-check-add">＋ 項目を追加</button></div><label class="form-field full"><span><input type="checkbox" name="pinned" ${v.pinned?'checked':''}/>固定する</span></label></div></details>${originRecurrenceEditor(v)}<p id="originTaskError" class="origin-task-error" role="alert" hidden></p></div>`:
+ const fields=kind==='tasks'?`<div class="form-grid">${originTemplatePicker()}<label class="form-field full">件名<input name="title" maxlength="80" required value="${esc(v.title||'')}"/></label><label class="form-field">状態<select name="status">${snapshot.statuses.map(s=>`<option value="${esc(s)}" ${s===(v.status||'未着手')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">優先度<select name="priority">${['緊急','高','中','低'].map(s=>`<option value="${s}" ${s===(v.priority||'中')?'selected':''}>${s}</option>`).join('')}</select></label><label class="form-field full">説明<textarea name="desc" class="origin-task-description-input" maxlength="6000" placeholder="対応内容や補足事項">${esc(v.desc||'')}</textarea></label><label class="form-field">開始日・予約（任意）${originDateControl('startDate',v.startDate||'')}</label><label class="form-field">期限日（任意）${originDateControl('due',v.due||'')}</label><label class="form-field">期限時刻（任意）<input name="dueTime" type="time" value="${esc(v.dueTime||'')}"/></label><label class="form-field">担当者<select name="assignee">${[...new Set(['自分',...snapshot.assignees.filter(x=>x!==snapshot.currentUser),v.assignee])].filter(Boolean).map(s=>`<option value="${esc(s)}" ${s===(v.assignee||'自分')?'selected':''}>${esc(s)}</option>`).join('')}</select></label><label class="form-field">分類<select name="category">${snapshot.categories.map(s=>`<option value="${esc(s)}" ${s===(v.category||snapshot.categories[0])?'selected':''}>${esc(s)}</option>`).join('')}</select></label><details class="origin-task-optional" ${v.requester||(v.tags||[]).length||(v.checklist||[]).length||v.pinned?'open':''}><summary>追加情報 <small>依頼者・タグ・チェックリスト・固定</small><span class="origin-task-expand-cue" aria-hidden="true">${icon('chevron',14)}</span></summary><div class="origin-task-extra-grid"><label class="form-field">依頼者<input name="requester" maxlength="40" value="${esc(v.requester||'')}"/></label><label class="form-field">タグ<input name="tags" maxlength="80" value="${esc((v.tags||[]).join(', '))}"/></label><div class="form-field full"><strong>チェックリスト</strong><div id="originTaskChecks">${taskCheckboxRows(v)}</div><button type="button" class="secondary-button" data-action="task-check-add">＋ 項目を追加</button></div><label class="form-field full"><span><input type="checkbox" name="pinned" ${v.pinned?'checked':''}/>固定する</span></label></div></details>${originRecurrenceEditor(v)}<p id="originTaskError" class="origin-task-error" role="alert" hidden></p></div>`:
  kind==='templates'?originTemplateEditor(v):kind==='knowledge'?originKnowledgeEditor(v):
  kind==='todos'?`<div class="origin-todo-edit-fields"><label class="form-field">やること <span class="help">必須</span><input name="title" value="${esc(v.title||'')}" maxlength="${snapshot.todoTitleMaxLength}" required placeholder="何をしますか？"/></label><label class="form-field origin-todo-status-field"><span>状態</span><select name="done"><option value="false" ${!v.done?'selected':''}>未完了</option><option value="true" ${v.done?'selected':''}>完了</option></select></label><label class="form-field">補足メモ<textarea name="memo" maxlength="${snapshot.todoMemoMaxLength}" placeholder="必要な情報を記録（任意）">${esc(v.memo||'')}</textarea></label></div>`:
  kind==='events'?originScheduleEditor(v,id):
