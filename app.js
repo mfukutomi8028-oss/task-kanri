@@ -2528,8 +2528,11 @@ function journalWorkCueV591(task) {
   if(['高','緊急'].includes(task?.priority))return {kind:'priority',label:'優先度の高い案件'};
   return {kind:'normal',label:'続きを確認する案件'};
 }
+function journalFirstPendingCheck(task) {
+  return (task?.checklist||[]).find(entry=>!entry.done&&String(entry.text||'').trim());
+}
 function journalWorkNextV591(task) {
-  const item=(task?.checklist||[]).find(entry=>!entry.done&&String(entry.text||'').trim());
+  const item=journalFirstPendingCheck(task);
   if(item)return {label:'次のチェック項目',text:String(item.text).trim()};
   const description=String(task?.description||'').trim();
   if(description)return {label:'まず確認する内容',text:description.slice(0,160)};
@@ -2576,7 +2579,8 @@ function journalTodayV420() {
   const leadTaskV591=top[0]||null;
   const followingTasksV591=top.filter(task=>task.id!==leadTaskV591?.id);
   const alerts=getActivityItems().filter(x=>x.important).slice(0,4);
-  const todos=visibleTodos().filter(x=>!x.completed).slice(0,4);
+  const unfinishedTodos=visibleTodos().filter(x=>!x.completed);
+  const todos=unfinishedTodos.slice(0,4);
   const waiting=all.filter(t=>/確認待|回答待|承認待|依頼中|材料待|待機/.test(t.status)).slice(0,3);
   const filters=[scopeHasMine()?'自分の担当':'',assignee?'担当：'+assignee:'',category?'分類：'+category:''].filter(Boolean);
   const d=startOfToday();
@@ -2596,24 +2600,18 @@ function journalTodayV420() {
   elements.todayView.innerHTML=`
     <div class="j420-today">
       <header class="j420-masthead">
-        <div><span class="j420-eyebrow">01 / TODAY JOURNAL</span><h2>本日の綴り</h2><p>${escapeHtml(dateLabel)}</p></div>
-        <div class="j420-masthead-stats" role="group" aria-label="今日の件数">
-          <span><small>本日の予定</small><strong>${schedules.length}<em>件</em></strong></span>
-          <span><small>今日までのタスク</small><strong>${todayTasks.length}<em>件</em></strong></span>
-          <span class="j420-late"><small>期限超過</small><strong>${late.length}<em>件</em></strong></span>
-        </div>
+        <div><span class="j420-eyebrow" lang="en">DAYBOOK</span><h2>本日の綴り</h2><p>${escapeHtml(dateLabel)}</p></div>
+        <nav class="j-day-index" aria-label="今日の紙面の目次">
+          <button type="button" aria-controls="journalDayWork"><strong>優先案件</strong><small>本日期限 ${todayTasks.length} · 超過 ${late.length}</small></button>
+          <button type="button" aria-controls="journalDayPlan"><strong>予定表</strong><small>今日の予定 ${schedules.length}件</small></button>
+          <button type="button" aria-controls="journalDayPocket"><strong>受信・ToDo</strong><small>未完了ToDo ${unfinishedTodos.length}件</small></button>
+        </nav>
       </header>
       ${filters.length?`<div class="j420-filter-summary" role="status">表示条件：${filters.map(escapeHtml).join('・')} <button type="button" data-j420-clear-filters>条件をクリア</button></div>`:''}
+      <p class="j-day-search-result" role="status"></p>
       <div class="j420-today-spread">
-        <section class="j420-planner" aria-label="今日の流れ">
-          <span class="j420-ribbon" aria-hidden="true"></span>
-          <div class="j420-paper-head"><div><span>DAY PLAN / ${escapeHtml(dateLabel)}</span><h3>今日の流れ</h3></div><span class="j420-paper-head-icon" aria-hidden="true">✦</span></div>
-          <div class="j420-agenda">${agenda}</div>
-          <button type="button" class="j420-add-appointment" data-j420-create-schedule>＋ 予定を追加</button>
-        </section>
-        <section class="j420-focus" aria-label="今日の優先案件">
+        <section class="j420-focus" id="journalDayWork" tabindex="-1" aria-label="今日の優先案件">
           <div class="j420-paper-head"><div><span>WORKDAY / FIRST THING FIRST</span><h3>今日、まず開く1件</h3></div><button type="button" data-j420-to-tasks>案件アトリエへ →</button></div>
-          <p class="j591-focus-explain">優先する理由と次の作業を、ひとつの紙面で確認できます。</p>
           ${leadTaskV591?`<div class="j591-focus-lead">${journalTodayTaskCardV420(leadTaskV591,0,true)}</div>`:'<div class="j420-empty">進行中の案件はありません。新しいタスクから登録できます。</div>'}
           ${followingTasksV591.length?`<div class="j591-following-work">
             <div class="j591-following-heading"><h4>次に控える案件</h4><span>${followingTasksV591.length} 件</span></div>
@@ -2624,7 +2622,13 @@ function journalTodayV420() {
           <button type="button" class="j420-add-task" data-j420-create-task>＋ 新しい案件を書き込む</button>
           <div class="j420-stationery j425-today-stationery" aria-hidden="true"><img class="j440-today-bookmark" src="./assets/journal-bookmark-seal-v440.svg" alt="" decoding="async"></div>
         </section>
-        <aside class="j420-pockets" aria-label="更新・メモ・確認待ち">
+        <section class="j420-planner" id="journalDayPlan" tabindex="-1" aria-label="今日の流れ">
+          <span class="j420-ribbon" aria-hidden="true"></span>
+          <div class="j420-paper-head"><div><span>DAY PLAN / ${escapeHtml(dateLabel)}</span><h3>今日の流れ</h3></div><span class="j420-paper-head-icon" aria-hidden="true">✦</span></div>
+          <div class="j420-agenda">${agenda}</div>
+          <button type="button" class="j420-add-appointment" data-j420-create-schedule>＋ 予定を追加</button>
+        </section>
+        <aside class="j420-pockets" id="journalDayPocket" tabindex="-1" aria-label="更新・メモ・確認待ち">
           <div class="j420-pocket j420-pocket-activity"><h3><span aria-hidden="true">✉</span> 受信・更新 <small>${alerts.length}</small></h3><div class="j420-pocket-items">${updateItems}</div><button type="button" data-j420-show-activity>お知らせを見る →</button></div>
           <div class="j420-pocket j420-pocket-todos"><h3><span aria-hidden="true">☷</span> メモ・ToDo <small>${todos.length}</small></h3><div class="j420-pocket-items">${todoItems}</div><button type="button" data-j420-to-todos>ToDoを開く →</button></div>
           <div class="j420-pocket j420-pocket-wait"><h3><span aria-hidden="true">⌛</span> 待ち <small>${waiting.length}</small></h3><div class="j420-pocket-items">${waitingItems}</div></div>
@@ -2632,6 +2636,13 @@ function journalTodayV420() {
       </div>
     </div>`;
   const root=elements.todayView;
+  root.querySelector('.j-day-index').addEventListener('click',event=>{
+    const button=event.target.closest('button[aria-controls]');
+    if(!button)return;
+    const section=document.getElementById(button.getAttribute('aria-controls'));
+    section.focus({preventScroll:true});
+    section.scrollIntoView({block:'start',behavior:'instant'});
+  });
   const more=root.querySelector('[data-journal-today-more]');
   more?.addEventListener('toggle',()=>{if(more.isConnected)journalTodayMoreOpen=more.open;});
   bindTaskCards(root);
@@ -4418,10 +4429,13 @@ function journalScheduleV425(){
  const targetToday=getFilteredSchedules({start:startOfToday(),end:addDays(startOfToday(),1)}).filter(matchesCategory);
  const upcoming=getFilteredSchedules({start:startOfToday(),end:addDays(startOfToday(),21)}).filter(s=>scheduleLocalDate(s)>today&&matchesCategory(s)).slice(0,6);
  const categories=[...new Set(getFilteredSchedules({start:addDays(startOfToday(),-45),end:addDays(startOfToday(),365)}).map(s=>s.category).filter(Boolean))];
- const related=getFilteredTasks().filter(t=>t.dueDate&&t.dueDate>=toISODate(range.start)&&t.dueDate<toISODate(range.end)).slice(0,5);
+ const related=getFilteredTasks().filter(t=>t.dueDate&&t.dueDate>=toISODate(range.start)&&t.dueDate<toISODate(range.end));
  const notes=schedules.filter(s=>s.memo).slice(0,3);
  const monthDates=Array.from({length:42},(_,i)=>addDays(monthStart,i-monthStart.getDay()));
- const monthPanel=`<div class="j425-mini-calendar"><div class="j425-mini-month-head"><button type="button" data-j425-shift-month="-1" aria-label="前の月">‹</button><strong>${anchor.getFullYear()}年${anchor.getMonth()+1}月</strong><button type="button" data-j425-shift-month="1" aria-label="次の月">›</button></div><div class="j425-mini-grid">${'日月火水木金土'.split('').map(d=>`<span class="j425-mini-weekday">${d}</span>`).join('')}${monthDates.map(d=>`<button type="button" data-j425-day="${toISODate(d)}" class="${d.getMonth()!==anchor.getMonth()?'is-muted':''} ${toISODate(d)===today?'is-today':''} ${toISODate(d)===toISODate(anchor)?'is-selected':''}">${d.getDate()}</button>`).join('')}</div></div>`;
+ const relatedHeading=({day:'この日の関連タスク',month:'この月の関連タスク'})[mode]||'この週の関連タスク';
+ const weekdayNames=Array.from('日月火水木金土');
+ const calendarDateName=d=>d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日（'+weekdayNames[d.getDay()]+'曜日）';
+ const monthPanel=`<div class="j425-mini-calendar"><div class="j425-mini-month-head"><button type="button" data-j425-shift-month="-1" aria-label="前の月">‹</button><strong>${anchor.getFullYear()}年${anchor.getMonth()+1}月</strong><button type="button" data-j425-shift-month="1" aria-label="次の月">›</button></div><div class="j425-mini-grid">${'日月火水木金土'.split('').map(d=>`<span class="j425-mini-weekday">${d}</span>`).join('')}${monthDates.map(d=>`<button type="button" data-j425-day="${toISODate(d)}" aria-label="${calendarDateName(d)}" ${toISODate(d)===today?'aria-current="date"':''} class="${d.getMonth()!==anchor.getMonth()?'is-muted':''} ${toISODate(d)===today?'is-today':''} ${toISODate(d)===toISODate(anchor)?'is-selected':''}">${d.getDate()}</button>`).join('')}</div></div>`;
  const interval=52,dayHeight=interval*12;
  const byDay=iso=>schedules.filter(s=>scheduleLocalDate(s)===iso);
  // Include older multi-day schedules when calculating a day's registered gaps.
@@ -4570,7 +4584,7 @@ function journalScheduleV425(){
      </details>`;
  };
  const dayColumn=(d,i)=>{const iso=toISODate(d),items=byDay(iso);return `<section class="j425-week-column ${iso===today?'is-today':''}"><header><span>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</span><small>${items.length}件</small><button type="button" class="j443-add-on-date" data-j443-add-schedule-date="${iso}" aria-label="${d.getMonth()+1}月${d.getDate()}日に予定を追加">＋ 予定</button></header><div class="j425-week-column-body" data-j425-empty-date="${iso}" style="--day-height:${dayHeight}px">${mode==='day'?renderJournalDayRecordsV459(items):renderJournalDayEventsV456(items,iso)+renderJournalWeekGapsV473(d,iso)}</div></section>`};
- const weekBody=mode==='month'?`<div class="j425-month-grid">${Array.from({length:monthDates.length},(_,i)=>{const d=monthDates[i],iso=toISODate(d),count=byDay(iso).length;return `<button type="button" data-j425-day="${iso}" class="${d.getMonth()!==anchor.getMonth()?'is-outside':''} ${iso===today?'is-today':''}"><span>${d.getDate()}</span><small>${count?count+'件':'　'}</small>${byDay(iso).slice(0,2).map(s=>`<i>${escapeHtml(s.title)}</i>`).join('')}</button>`}).join('')}</div>`:
+ const weekBody=mode==='month'?`<div class="j425-month-grid">${weekdayNames.map(day=>`<span class="j425-month-weekday" aria-hidden="true">${day}</span>`).join('')}${Array.from({length:monthDates.length},(_,i)=>{const d=monthDates[i],iso=toISODate(d),count=byDay(iso).length;return `<button type="button" data-j425-day="${iso}" aria-label="${escapeHtml([calendarDateName(d),...(d.getMonth()===anchor.getMonth()?[count+'件']:[]),...byDay(iso).slice(0,2).map(s=>s.title)].join('、'))}" ${iso===today?'aria-current="date"':''} class="${d.getMonth()!==anchor.getMonth()?'is-outside':''} ${iso===today?'is-today':''}"><span>${d.getDate()}</span><small>${count?count+'件':'　'}</small>${byDay(iso).slice(0,2).map(s=>`<i>${escapeHtml(s.title)}</i>`).join('')}</button>`}).join('')}</div>`:
  mode==='list'?`<div class="j425-schedule-ledger">${days.map(d=>{const iso=toISODate(d);return `<section><h4>${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</h4>${byDay(iso).map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(formatScheduleTime(s.startAt))}</time><strong>${escapeHtml(s.title)}</strong><small>${escapeHtml(s.category||'予定')}</small></button>`).join('')||'<p>予定なし</p>'}</section>`}).join('')}</div>`:
  `<div class="j425-week-scroll" role="region" aria-label="週間の時間割" tabindex="0"><div class="j425-week-grid ${mode==='day'?'is-single-day':''}"><div class="j425-week-hours"><header>時間</header><div>${Array.from({length:12},(_,i)=>`<span style="top:${i*interval}px">${String(i+8).padStart(2,'0')}:00</span>`).join('')}</div></div>${days.map(dayColumn).join('')}</div></div>`;
  const rangeLabel=mode==='month'?`${monthStart.getFullYear()}年${monthStart.getMonth()+1}月`:
@@ -4649,12 +4663,13 @@ function journalScheduleV425(){
       ${returnNoticeHtml}
       ${todayShortcutV598}
       ${weekBody}
-      <div class="j425-schedule-footnotes"><section><h3>関連タスク <small>${related.length}件</small></h3>${related.map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}"><span>□</span>${escapeHtml(t.title)}<small>${escapeHtml(t.dueDate)}</small></button>`).join('')||'<p>表示期間に期限があるタスクはありません</p>'}</section><section><h3>予定のメモ</h3>${notes.map(s=>`<p><strong>${escapeHtml(s.title)}</strong>：${escapeHtml(s.memo)}</p>`).join('')||'<p>表示期間の予定にメモはありません</p>'}</section></div>
+      <div class="j425-schedule-footnotes"><section><h3 id="j425RelatedTasks" tabindex="-1">${relatedHeading} <small>${related.length}件</small></h3>${related.map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}"><span>□</span>${escapeHtml(t.title)}<small>${escapeHtml(t.dueDate)}</small></button>`).join('')||'<p>表示期間に期限があるタスクはありません</p>'}</section><section><h3>予定のメモ</h3>${notes.map(s=>`<p><strong>${escapeHtml(s.title)}</strong>：${escapeHtml(s.memo)}</p>`).join('')||'<p>表示期間の予定にメモはありません</p>'}</section></div>
       <div class="j425-stationery-row j425-schedule-props" aria-hidden="true"><img class="j442-schedule-botanical" src="./assets/journal-schedule-botanical-v442.svg" alt="" decoding="async"></div>
     </section>
-    <aside class="j425-reading-rail j425-schedule-sidebar"><div class="j425-notebook-holes" aria-hidden="true"></div>${previewHtml}<h3>今日の予定</h3><small>${today} / ${targetToday.length}件</small><div class="j425-side-schedule-list">${todayList}</div><h4>今後の予定</h4>${upcoming.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(scheduleLocalDate(s))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>近日中の予定はありません</p>'}<h4>今週の関連タスク</h4>${related.slice(0,4).map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button>`).join('')||'<p>関連タスクはありません</p>'}</aside>
+    <aside class="j425-reading-rail j425-schedule-sidebar"><div class="j425-notebook-holes" aria-hidden="true"></div>${previewHtml}<h3>今日の予定</h3><small>${today} / ${targetToday.length}件</small><div class="j425-side-schedule-list">${todayList}</div><h4>今後の予定</h4>${upcoming.map(s=>`<button type="button" data-schedule-id="${escapeHtml(s.id)}"><time>${escapeHtml(scheduleLocalDate(s))}</time><strong>${escapeHtml(s.title)}</strong></button>`).join('')||'<p>近日中の予定はありません</p>'}<h4>${relatedHeading}</h4>${related.slice(0,4).map(t=>`<button type="button" data-related-task-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button>`).join('')||'<p>関連タスクはありません</p>'}${related.length>4?`<button type="button" data-j425-all-related>関連タスク全${related.length}件を見る</button>`:''}</aside>
   </div></div>`;
  const root=elements.scheduleView;
+ root.querySelector('[data-j425-all-related]')?.addEventListener('click',()=>root.querySelector('#j425RelatedTasks')?.focus());
  // Calendar controls are rebuilt from canonical records after each date or
  // filter change. Keep the same control and reading position without caching
  // or duplicating schedules, and never restore focus after leaving JOURNAL.
@@ -7549,10 +7564,14 @@ function journalFocusAtelierNoteV500(root,includeDesktop=false){
 
 function journalAtelierCardV420(t) {
   const due=t.dueDate?escapeHtml(t.dueDate.slice(5).replace('-','/')):'期限なし';
-  return `<article class="j420-atelier-task ${journalAtelierSelectedV420===t.id?'is-selected':''} ${isOverdue(t)?'is-overdue':''}" data-j420-task-id="${escapeHtml(t.id)}" tabindex="0" role="button" aria-controls="j494AtelierNote" aria-expanded="false" aria-label="${escapeHtml(t.title)}を案件ノートで見る">
+  const pending=journalAtelierCanAdvanceV602(t)&&!isCompletedStatus(t.status)&&journalFirstPendingCheck(t);
+  const detailsId='journalCardInfo-'+escapeHtml(encodeURIComponent(t.id));
+  return `<article class="j420-atelier-task ${journalAtelierSelectedV420===t.id?'is-selected':''} ${isOverdue(t)?'is-overdue':''}" data-j420-task-id="${escapeHtml(t.id)}" tabindex="0" role="button" aria-controls="j494AtelierNote" aria-expanded="false" aria-describedby="${detailsId} ${detailsId}-due" aria-label="${escapeHtml(t.title)}を案件ノートで見る">
     <span class="j420-card-dot" aria-hidden="true"></span>
-    <span class="j420-card-content"><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(t.category||'未分類')} / ${escapeHtml(t.status)}</small></span>
-    <span class="j420-card-date">${due}</span><span class="j420-card-person" title="${escapeHtml(t.assignee||'未割当')}">${escapeHtml((t.assignee||'―').slice(0,1))}</span>
+    <span class="j420-card-content"><strong>${escapeHtml(t.title)}</strong>
+      <span id="${detailsId}"><small>${escapeHtml(t.category||'未分類')} / ${escapeHtml(t.status)} · ${escapeHtml(t.assignee||'未割当')}</small>
+      ${pending?`<span class="j-card-next">次 · ${escapeHtml(pending.text)}</span>`:''}</span></span>
+    <span id="${detailsId}-due" class="j420-card-date">${isOverdue(t)?'超過 ':''}${due}</span>
   </article>`;
 }
 
