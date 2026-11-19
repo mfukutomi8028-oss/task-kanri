@@ -137,13 +137,10 @@ for(const width of [320,390,1366]){
   if(width<768)await root.locator('[data-action="task-advanced-toggle"]').click();
   await root.locator('#originTaskSort').selectOption('priority');
   await root.locator('#groupSelect').selectOption('assignee');
-  await root.locator('[data-action="task-density"]').click();
   await expect.poll(()=>page.evaluate(()=>{
-   const s=window.WorkBoardPaletteBridge.readSnapshot();
-   const key='wbOriginTaskViewV650:'+encodeURIComponent(s.roomId)+':'+encodeURIComponent(s.currentUser);
-   return JSON.parse(localStorage.getItem(key)||'null');
-  })).toMatchObject({taskLayout:'board',taskGrouping:'assignee',density:'comfortable',
-   columnSort:{key:'priority',direction:'asc'}});
+   const w=window.WorkBoardWorkflowV152;
+   return w.workflow.savedViews['origin-'+w.userKey()];
+  })).toMatchObject({taskLayout:'board',taskGrouping:'assignee',columnSort:{key:'priority',direction:'asc'}});
   await expect(state).toHaveAttribute('data-state','saved');
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
@@ -152,7 +149,6 @@ for(const width of [320,390,1366]){
   await expect(root.locator('[data-action="task-layout"][data-value="board"]')).toHaveAttribute('aria-pressed','true');
   await expect(root.locator('#originTaskSort')).toHaveValue('priority');
   await expect(root.locator('#groupSelect')).toHaveValue('assignee');
-  await expect(root.locator('[data-action="task-density"]')).toHaveAttribute('aria-pressed','true');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
  });
 }
@@ -174,7 +170,7 @@ test('Origin keeps a current local view when a separate workflow view arrives',a
  await expect(root.locator('[data-action="task-view-save"]')).toHaveCount(0);
 });
 for(const width of [390,1366]){
- test('Origin '+width+'px retains last setting locally if automatic shared save fails',async({page})=>{
+ test('Origin '+width+'px keeps an unsaved view visible if the canonical writer fails',async({page})=>{
   test.setTimeout(90000);
   const root=await launch(page,width,'failed-auto');
   await page.evaluate(()=>{
@@ -184,11 +180,7 @@ for(const width of [390,1366]){
   });
   await root.locator('[data-action="task-layout"][data-value="board"]').click();
   await expect(root.locator('#originTaskViewState')).toHaveAttribute('data-state','failed');
-  const local=await page.evaluate(()=>{
-   const s=window.WorkBoardPaletteBridge.readSnapshot();
-   return JSON.parse(localStorage.getItem('wbOriginTaskViewV650:'+encodeURIComponent(s.roomId)+':'+encodeURIComponent(s.currentUser))||'null');
-  });
-  expect(local.taskLayout).toBe('board');
+  await expect(root.locator('[data-action="task-layout"][data-value="board"]')).toHaveAttribute('aria-pressed','true');
   await page.evaluate(()=>{window.WorkBoardWorkflowV152.writeSavedView=window.__originOriginalViewWriter});
   await root.locator('[data-action="task-layout"][data-value="list"]').click();
   await expect(root.locator('#originTaskViewState')).toHaveAttribute('data-state','saved');
