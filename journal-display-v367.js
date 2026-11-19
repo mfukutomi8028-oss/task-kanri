@@ -1441,7 +1441,10 @@
             if(active&&active!==document.body&&active!==document.documentElement
               &&active!==currentTab&&active!==fallback&&active.getClientRects().length)return;
             fallback.focus({preventScroll:true});
-            fallback.scrollIntoView({behavior:'auto',block:'nearest',inline:'nearest'});
+            // The fixed mobile dock covers the bottom of the viewport;
+            // center the reachable action above it rather than just in view.
+            fallback.scrollIntoView({behavior:'auto',
+              block:window.innerWidth<=860?'center':'nearest',inline:'nearest'});
           });
         }
       }else{
