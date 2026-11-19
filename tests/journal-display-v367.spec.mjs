@@ -6642,7 +6642,7 @@ for (const width of [390,1366]) {
     await expect(view).toBeVisible();
     await expect(bookmark).toBeHidden();
     await expect(view.locator('.work-memo-grid-v167 > .work-memo-card-v167')).toHaveCount(0);
-    const create=view.locator('.work-memo-head-v167 [data-memo-new]');
+    const create=view.locator('[data-memo-new]:visible').first();
     await expect(create).toBeVisible();
     await expect(create).toBeFocused();
     const inView=await create.evaluate(node=>{

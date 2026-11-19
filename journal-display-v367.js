@@ -1431,7 +1431,7 @@
             if(!isJournal()||canonicalRoute()!=='memo'
               ||journalReturnOwnerV594()!==origin.owner)return;
             const view=document.getElementById('workMemoViewV167');
-            const fallback=[view?.querySelector('.work-memo-head-v167 [data-memo-new]'),
+            const fallback=[...(view?.querySelectorAll('[data-memo-new]')||[]),
               view?.querySelector('[data-memo-search]')]
               .find(node=>node&&!node.disabled&&node.getClientRects().length);
             if(!fallback)return;
