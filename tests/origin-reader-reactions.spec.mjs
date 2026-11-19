@@ -27,7 +27,7 @@ async function boot(page,width=390,mode='local-only'){
  await root.locator('.item-name',{hasText:'Origin 詳細の読みやすさ'}).click();
  return root;
 }
-for(const width of [320,390,1366])test('Origin reader separates content and reaches comments at '+width+'px',async({page})=>{
+for(const width of [320,390,1366])test('Origin reader separates content and reaches comments at '+width+'px',async({page},testInfo)=>{
  const root=await boot(page,width),sheet=root.locator('#sheet');
  await expect(sheet).toHaveAttribute('data-reader-kind','tasks');await expect(root.locator('#originTaskOverview')).toContainText('2週ごと');
  await expect(root.locator('#originTaskOverview')).toContainText('月・水曜日');
@@ -40,15 +40,15 @@ for(const width of [320,390,1366])test('Origin reader separates content and reac
  const metrics=await sheet.evaluate(el=>({width:el.getBoundingClientRect().width,body:el.querySelector('.sheet-body').clientHeight,footer:el.querySelector('.sheet-foot').clientHeight,overflow:document.documentElement.scrollWidth-innerWidth,font:parseFloat(getComputedStyle(el.querySelector('.record-description')).fontSize)}));
  expect(metrics.overflow).toBeLessThanOrEqual(2);expect(metrics.font).toBeGreaterThanOrEqual(15);expect(metrics.body).toBeGreaterThan(400);expect(metrics.footer).toBeLessThan(180);if(width>770)expect(metrics.width).toBe(955);
  await root.locator('#originCommentForm textarea').fill('返信を書く途中');await root.locator('[data-action="comment-reply"][data-value="reader-comment"]').click();await expect(root.locator('#originReplyContext')).toContainText('森井に返信');await root.locator('[data-action="comment-reply-cancel"]').click();await expect(root.locator('#originReplyContext')).toBeHidden();await expect(root.locator('#originCommentForm textarea')).toHaveValue('返信を書く途中');
- await page.screenshot({path:'/tmp/origin-reader-comments-'+width+'.png'});
+ await page.screenshot({path:testInfo.outputPath('origin-reader-comments-'+width+'.png')});
  await root.locator('.origin-reader-nav [data-value="originTaskOverview"]').click();
- await sheet.screenshot({path:'/tmp/origin-reader-overview-'+width+'.png'});
+ await sheet.screenshot({path:testInfo.outputPath('origin-reader-overview-'+width+'.png')});
  if(width===320){
    await root.locator('#originCommentForm textarea').fill('');await root.locator('.sheet-close').click();
    await root.locator('#originSettingsToggle').click();
    await expect(root.locator('#originSettingsPanel')).toBeVisible();
    await root.locator('#themeBtn').click();await root.locator('.item-name',{hasText:'Origin 詳細の読みやすさ'}).click();
-   await sheet.screenshot({path:'/tmp/origin-reader-dark-320.png'});
+   await sheet.screenshot({path:testInfo.outputPath('origin-reader-dark-320.png')});
  }
 });
 test('Origin enables real reaction writes after remote reconnect and keeps the comment draft and focus',async({page})=>{
