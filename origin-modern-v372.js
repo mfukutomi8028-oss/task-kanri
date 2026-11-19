@@ -4418,9 +4418,12 @@ mount.addEventListener('change',e=>{
    t.checked=false;
    notify('一括選択は200件までです。表示条件を絞ってください。');return;
   }
+  // Rebuilding the bulk toolbar changes the space above this row.
+  // Preserve its viewport position as well as its keyboard focus.
+  const anchor=captureOriginTaskRowAction(t.dataset.id,t);
   if(originTaskListWriteState==='error')setOriginTaskListWriteFeedback('idle');
   if(t.checked)selectedBulk.add(t.dataset.id);else selectedBulk.delete(t.dataset.id);
-  render();return;
+  render();restoreOriginTaskRowAction(anchor);return;
  }
 });
 mount.addEventListener('focusin',e=>{
