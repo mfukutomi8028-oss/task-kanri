@@ -788,8 +788,7 @@
     const input = document.getElementById('taskStartDateV167');
     const id = document.getElementById('taskId')?.value || '';
     if (!dialog || !(dialog.open || dialog.hasAttribute('open')) || !input) return;
-    const start = id ? featureState.taskStarts[id] : null;
-    if (document.activeElement !== input) input.value = effectiveTaskStart(id, featureState.tasks[id]);
+    if (document.activeElement !== input) input.value = effectiveTaskStart(id, currentTaskRecords()?.[id]);
   }
 
   function installTaskSubmitBridge() {
@@ -902,7 +901,7 @@
     readSnapshot:() => {
       const starts = JSON.parse(JSON.stringify(featureState.taskStarts || {}));
       // Presentation-only fallback; never persist inferred recurrence dates.
-      for (const [id, task] of Object.entries(featureState.tasks || {})) {
+      for (const [id, task] of Object.entries(currentTaskRecords() || {})) {
         if (!Object.prototype.hasOwnProperty.call(starts, id)) {
           const date = effectiveTaskStart(id, task);
           if (date) starts[id] = { date, revision: 0 };
@@ -944,9 +943,15 @@
     return '';
   }
 
+  function currentTaskRecords() {
+    // Local-only commits update Classic's canonical task cache; the feature
+    // sidecar has no Firebase task subscription in that mode.
+    return featureState.online ? featureState.tasks : loadLocalTasks();
+  }
+
   function futureTasks() {
     const today = todayIso();
-    return Object.entries(featureState.tasks || {})
+    return Object.entries(currentTaskRecords() || {})
       .map(([id, task]) => ({ id, ...(task || {}), startDate: effectiveTaskStart(id, task) }))
       .filter(task => /^\d{4}-\d{2}-\d{2}$/.test(String(task.startDate || '')) && task.startDate > today)
       .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)) || Number(a.createdAt || 0) - Number(b.createdAt || 0));
@@ -980,7 +985,7 @@
   }
 
   function activeTasks(future) {
-    return Object.entries(featureState.tasks || {})
+    return Object.entries(currentTaskRecords() || {})
       .map(([id, task]) => ({ id, ...(task || {}) }))
       .filter(task => !future.has(task.id));
   }
