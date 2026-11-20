@@ -76,6 +76,14 @@ test('Ver.340: completion creates a no-deadline task at the next independent mon
   expect(child).toMatchObject({dueDate:'',dueTime:'',recurringParentId:root.id,status:'未着手'});
   expect(child.recurrenceRule).toMatchObject({anchorDate:anchor,occurrenceDate:first,seriesId:root.id,interval:2,monthDay:25});
 
+  // A future recurrence starts in the canonical reservation area. Explicitly
+  // activate it before editing or completing that occurrence.
+  await page.locator('[data-reserved-task-open]').click();
+  await expect(page.locator('#reservedTaskDialogV167 [data-reserved-id="'+child.id+'"]')).toBeVisible();
+  await page.locator('#reservedTaskDialogV167 [data-reserved-activate="'+child.id+'"]').click();
+  await expect.poll(() => page.evaluate(id=>
+    window.WorkBoardOriginStartBridge.readSnapshot()[id]?.date,child.id)).not.toBe(first);
+  await page.locator('#reservedTaskDialogV167 [data-reserved-close]').click();
   // A manually chosen deadline can aid reminders without changing the cycle.
   await page.locator('[data-task-id="'+child.id+'"]').first().evaluate(el=>el.click());
   await page.locator('#detailBody [data-action="edit"]').click();
@@ -256,6 +264,11 @@ test('Ver.343: a configured deadline and its time recur, without making them man
   expect(child.recurrenceRule.occurrenceDate).toBe(anchor);
   expect(child.dueDate).toBe(deadline);
   expect(child.dueTime).toBe('17:30');
+  await page.locator('[data-reserved-task-open]').click();
+  await page.locator('#reservedTaskDialogV167 [data-reserved-activate="'+child.id+'"]').click();
+  await expect.poll(() => page.evaluate(id=>
+    window.WorkBoardOriginStartBridge.readSnapshot()[id]?.date,child.id)).not.toBe(anchor);
+  await page.locator('#reservedTaskDialogV167 [data-reserved-close]').click();
   await page.locator('[data-task-id="'+child.id+'"]').first().evaluate(el=>el.click());
   page.once('dialog',dialog=>dialog.accept(''));
   await page.locator('#detailBody [data-action="done"]').click();

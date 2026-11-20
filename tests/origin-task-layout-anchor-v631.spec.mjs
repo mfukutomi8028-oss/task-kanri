@@ -38,7 +38,7 @@ async function seed(page){
  });
 }
 for(const width of [390,1366]){
- test('Origin '+width+'px layout change keeps the previously visible task near its screen position even beyond 24 rows',async({page})=>{
+ test('Origin '+width+'px layout change resets to top and can reveal every task beyond 24 rows',async({page})=>{
   test.setTimeout(120000);
   const root=await launch(page,width,'more-than-batch');
   const ids=await seed(page);
@@ -66,12 +66,18 @@ for(const width of [390,1366]){
    el.closest('.item-row').getBoundingClientRect().top);
   expect(before).toBeGreaterThan(115);
   expect(before).toBeLessThan(320);
-  // DOM click avoids Playwright's automatic scroll-to-click changing the reading anchor.
+  // Ver.656 deliberately resets layout changes to the top; it no longer
+  // preserves the previous row anchor when the presentation changes.
   await root.locator('[data-action="task-layout"][data-value="board"]').evaluate(el=>el.click());
-  const card=root.locator('.origin-task-layout-board .item-name[data-id="'+target+'"]');
-  await expect(card).toBeVisible();
-  const after=await card.evaluate(el=>el.closest('.item-row').getBoundingClientRect().top);
-  expect(Math.abs(after-before)).toBeLessThan(75);
+  await expect(root.locator('[data-action="task-layout"][data-value="board"]')).toHaveAttribute('aria-pressed','true');
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeLessThan(20);
+  const board=root.locator('.origin-task-layout-board');
+  await expect(board.locator('.item-row')).toHaveCount(24);
+  const more=board.locator('[data-action="task-show-all"]');
+  await expect(more).toHaveCount(1);
+  await more.evaluate(el=>el.click());
+  await expect(board.locator('.item-row')).toHaveCount(ids.length);
+  await expect(board.locator('.item-name[data-id="'+target+'"]')).toBeVisible();
   await expect(root.locator('#originTaskSort')).toHaveValue('updated');
   await expect(root.locator('#originTaskQuery')).toHaveValue('');
   expect(await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks

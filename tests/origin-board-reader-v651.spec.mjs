@@ -279,3 +279,32 @@ test('Origin retries a stale saved-view conflict without showing a false save er
  await expect(root.locator('#originTaskViewState')).toBeHidden();
  await expect(root.locator('[data-action="task-layout"][data-value="board"]')).toHaveAttribute('aria-pressed','true');
 });
+
+test('Origin shows theme-aware update age after seven days without modifying task data', async ({ page }) => {
+  test.setTimeout(120000);
+  const room='origin-board-reader-20261119-stale-age-1366';
+  await page.addInitScript(roomId => {
+    const day=86400000,now=Date.now();
+    const create=(id,days,status='未着手',useCreated=false)=>({
+      id,title:'更新経過確認 '+id,status,assignee:'OriginReaderQA',priority:'中',category:'PC',
+      description:'',requester:'',tags:[],checklist:[],comments:[],history:[],
+      recurrence:'none',recurrenceRule:{},dueDate:'',dueTime:'',pinned:false,
+      createdAt:now-days*day,updatedAt:useCreated?0:now-days*day,revision:1
+    });
+    localStorage.setItem('system-task-tasks:'+roomId,JSON.stringify([
+      create('stale-9',9),create('stale-created',8,'未着手',true),
+      create('recent-6',6),create('completed-12',12,'完了')
+    ]));
+  },room);
+  const root=await openOrigin(page,1366,'stale-age');
+  const list=root.locator('.origin-task-layout-list');
+  const row=id=>list.locator('.item-row:has(.item-name[data-id="'+id+'"])');
+  await expect(row('stale-9').locator('.origin-task-stale-badge')).toContainText('更新なし 9日');
+  await expect(row('stale-created').locator('.origin-task-stale-badge')).toContainText('更新なし 8日');
+  await expect(row('recent-6').locator('.origin-task-stale-badge')).toHaveCount(0);
+  await root.locator('[data-action="task-filter"][data-value="all"]').click();
+  await expect(row('completed-12').locator('.origin-task-stale-badge')).toHaveCount(0);
+  await root.locator('[data-action="task-layout"][data-value="board"]').click();
+  await expect(root.locator('.origin-task-layout-board .origin-task-stale-badge').first()).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
+});

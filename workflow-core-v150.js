@@ -45,11 +45,24 @@
     applyDependenciesLocal(id,clean);const r=await ensureRemote();if(!r){if(remoteState==='local-only')return{ok:true,localOnly:true};applyDependenciesLocal(id,previous);notify('前提タスク設定を共同データへ保存できませんでした。',true);return{ok:false}}
     try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/dependencies/${id}`);let conflict=false;const tx=await r.runTransaction(target,current=>{if(!sameIdList(current,expected,id)){conflict=true;return}return clean.length?idMap(clean,id):null},{applyLocally:false});if(!tx.committed){const latest=normalizeIdList(tx.snapshot?.val?.(),id);applyDependenciesLocal(id,latest);if(conflict){notify('別の端末で前提タスク設定が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}throw new Error('dependency-transaction-aborted')}applyDependenciesLocal(id,tx.snapshot?.val?.());return{ok:true}}catch(e){console.warn('Ver.248 dependency write failed',e);applyDependenciesLocal(id,previous);notify('前提タスク設定を共同データへ保存できませんでした。',true);return{ok:false,error:String(e?.message||e)}}
   }
+  function stageSavedView(id,value){
+    // Cache an explicit personal choice synchronously: changing users or
+    // reloading during a network write must not discard the latest selection.
+    const key=String(id),next=normalizeSavedViewValue(value);
+    if(!key.startsWith('origin-')||!next)return false;
+    workflow.savedViews[key]=next;
+    persist();
+    return true;
+  }
   function applySavedViewLocal(id,value){const key=String(id),next=normalizeSavedViewValue(value);if(next)workflow.savedViews[key]=next;else delete workflow.savedViews[key];emit()}
   async function writeSavedView(id,view,expectedView){
     const options=arguments[3]||{};
     const key=String(id),previous=normalizeSavedViewValue(workflow.savedViews?.[key]),expected=arguments.length>=3?normalizeSavedViewValue(expectedView):previous,next=normalizeSavedViewValue(view);if(!next)return{ok:false};applySavedViewLocal(key,next);const r=await ensureRemote();if(!r){if(remoteState==='local-only')return{ok:true,localOnly:true};applySavedViewLocal(key,previous);notify('表示形式の共有保存に失敗しました。',true);return{ok:false}}
-    try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/savedViews/${key}`);let conflict=false;const tx=await r.runTransaction(target,current=>{if(!sameSavedViewValue(current,expected)){conflict=true;return}return next},{applyLocally:false});if(!tx.committed){const latest=normalizeSavedViewValue(tx.snapshot?.val?.());applySavedViewLocal(key,latest);if(conflict){if(!options?.silentConflict)notify('別の端末で保存済み表示が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}throw new Error('saved-view-transaction-aborted')}applySavedViewLocal(key,tx.snapshot?.val?.());return{ok:true}}catch(e){console.warn('Ver.248 saved view write failed',e);applySavedViewLocal(key,previous);notify('表示形式の共有保存に失敗しました。',true);return{ok:false,error:String(e?.message||e)}}
+    try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/savedViews/${key}`);
+      // Origin preferences are per-user presentation choices, not protected task records.
+      // The last committed choice wins for this user's key; other users and task CAS stay isolated.
+      if(key.startsWith('origin-')){await r.set(target,next);return{ok:true}}
+      let conflict=false;const tx=await r.runTransaction(target,current=>{if(!sameSavedViewValue(current,expected)){conflict=true;return}return next},{applyLocally:false});if(!tx.committed){const latest=normalizeSavedViewValue(tx.snapshot?.val?.());applySavedViewLocal(key,latest);if(conflict){if(!options?.silentConflict)notify('別の端末で保存済み表示が更新されています。最新の内容を反映しました。',true);return{ok:false,conflict:true}}throw new Error('saved-view-transaction-aborted')}applySavedViewLocal(key,tx.snapshot?.val?.());return{ok:true}}catch(e){console.warn('Ver.248 saved view write failed',e);applySavedViewLocal(key,previous);notify('表示形式の共有保存に失敗しました。',true);return{ok:false,error:String(e?.message||e)}}
   }
   function applyRelationsLocal(taskId,ids){const id=String(taskId),clean=normalizeIdList(ids,id),before=new Set([...Object.keys(workflow.relations?.[id]||{}),...Object.entries(workflow.relations||{}).filter(([other,map])=>other!==id&&map?.[id]===true).map(([other])=>other),...clean]);for(const other of before){const peer=workflow.relations?.[other]&&typeof workflow.relations[other]==='object'?{...workflow.relations[other]}:{};if(clean.includes(other))peer[id]=true;else delete peer[id];if(Object.keys(peer).length)workflow.relations[other]=peer;else delete workflow.relations[other]}if(clean.length)workflow.relations[id]=idMap(clean,id);else delete workflow.relations[id];emit()}
   async function writeRelations(taskId,ids,expectedIds){
@@ -58,6 +71,6 @@
   }
   async function writeReminder(taskId,item,user=currentUser()){const u=userKey(user),id=String(taskId),next=item&&Number(item.at)>0?{at:Number(item.at),note:String(item.note||'').slice(0,240),updatedAt:Date.now()}:null;workflow.reminders[u]||={};if(next)workflow.reminders[u][id]=next;else delete workflow.reminders[u][id];if(!Object.keys(workflow.reminders[u]).length)delete workflow.reminders[u];emit();const r=await ensureRemote();if(!r){if(remoteState==='local-only')return{ok:true,localOnly:true};notify('リマインダーを共同データへ保存できませんでした。',true);return{ok:false}}try{const target=r.ref(r.db,`rooms/${ROOM_ID}/workflowV148/reminders/${u}/${id}`);const tx=await r.runTransaction(target,()=>next,{applyLocally:false});if(!tx.committed&&next)throw new Error('aborted');return{ok:true}}catch(e){console.warn(e);notify('リマインダーを保存できませんでした。',true);return{ok:false}}}
   load();
-  const api={ROOM_ID,cacheKey,taskKey,get workflow(){return workflow},tasks,taskMap,isCompleted,depIds,activeBlockers,relationIds,reminderFor,remindersFor,currentUser,userKey,notify,writeDependencies,writeSavedView,writeRelations,writeReminder,safeJson,dependencyState,dependencyStateReady,ensureRemote};
+  const api={ROOM_ID,cacheKey,taskKey,get workflow(){return workflow},tasks,taskMap,isCompleted,depIds,activeBlockers,relationIds,reminderFor,remindersFor,currentUser,userKey,notify,writeDependencies,writeSavedView,writeRelations,writeReminder,stageSavedView,safeJson,dependencyState,dependencyStateReady,ensureRemote};
   window.WorkBoardWorkflowV148=api;window.WorkBoardWorkflowV149=api;window.WorkBoardWorkflowV150=api;document.documentElement.dataset.workflowVersion='150';initPromise=initFirebase();
 })();

@@ -12862,7 +12862,7 @@ function paletteNextSnapshot() {
       history: (task.history || []).slice(-5).map(h => ({ text: String(h.text || ''), author: String(h.author || ''), createdAt: Number(h.createdAt) || 0 })),
       recurrence: task.recurrence || 'none', recurrenceRule: {...task.recurrenceRule}, hasSeries:isRecurringDeleteCandidate('task',task),knowledgeId:task.knowledgeId||'', pinned: Boolean(task.pinned),
       favorite: isTaskStarred(task.id), completed: isCompletedStatus(task.status),
-      revision: task.revision, updatedAt: task.updatedAt || 0
+      revision: task.revision, updatedAt: task.updatedAt || 0, createdAt: task.createdAt || 0
     })),
     todos: todos.map(todo => ({
       id: todo.id, text: todo.text, memo: todo.memo || '',

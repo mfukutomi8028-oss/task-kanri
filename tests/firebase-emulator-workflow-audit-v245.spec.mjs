@@ -132,3 +132,37 @@ test('Ver.245 product: stale reminder save and clear preserve the remote winner,
   expect(stored?.at).toBe(freshAt);
   expect(Number(stored?.updatedAt || 0)).toBeGreaterThan(0);
 });
+
+test('Origin personal saved-view: stale bases may save without overwriting a different user', async ({ page }) => {
+  await boot(page);
+  await page.waitForFunction(() => window.WorkBoardWorkflowV152?.dependencyState?.() === 'ready');
+  const pathA = `rooms/${ROOM}/workflowV148/savedViews/origin-福冨`;
+  const pathB = `rooms/${ROOM}/workflowV148/savedViews/origin-土屋`;
+  const first = {taskLayout:'list',taskGrouping:'deadline',columnSort:{key:'due',direction:'asc'},updatedAt:100};
+  const other = {taskLayout:'board',taskGrouping:'status',columnSort:{key:'priority',direction:'asc'},updatedAt:100};
+  const initial = await page.evaluate(async ({first,other}) => {
+    const w=window.WorkBoardWorkflowV152;
+    return await Promise.all([
+      w.writeSavedView('origin-福冨',first,null),
+      w.writeSavedView('origin-土屋',other,null)
+    ]);
+  }, {first,other});
+  expect(initial.every(result=>result.ok)).toBe(true);
+  await expect.poll(() => readDb(pathA)).toEqual(first);
+  await expect.poll(() => readDb(pathB)).toEqual(other);
+  // Simulate a previous session changing this user's stored preference. The
+  // old expected value is intentionally stale, but this is not task data.
+  const remoteCurrent={...first,taskLayout:'board',updatedAt:200};
+  await putDb(pathA,remoteCurrent);
+  await expect.poll(() => page.evaluate(() =>
+    window.WorkBoardWorkflowV152.workflow.savedViews['origin-福冨']?.updatedAt || 0
+  )).toBe(200);
+  const latest={...first,columnSort:{key:'updated',direction:'desc'},updatedAt:300};
+  const result=await page.evaluate(({first,latest})=>
+    window.WorkBoardWorkflowV152.writeSavedView('origin-福冨',latest,first),
+    {first,latest});
+  expect(result.ok).toBe(true);
+  expect(result.conflict).toBeUndefined();
+  await expect.poll(() => readDb(pathA)).toEqual(latest);
+  expect(await readDb(pathB)).toEqual(other);
+});
