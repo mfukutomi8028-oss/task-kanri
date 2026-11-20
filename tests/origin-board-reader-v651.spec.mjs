@@ -205,7 +205,8 @@ test('Origin completed ToDo history is visible, dated and survives page reload',
  await add.locator('input[name="title"]').fill('完了履歴で遡るToDo');
  await add.locator('button[type="submit"]').click();
  await expect(root.locator('.origin-todo-list .todo-text')).toContainText('完了履歴で遡るToDo');
- await root.locator('.origin-todo-list [data-action="todo-check"]').first().check();
+ await root.locator('.origin-todo-list [data-action="todo-check"]').first().evaluate(el=>el.click());
+ await root.locator('[data-action="todo-history-jump"]').click();
  const history=root.locator('#originCompletedTodos');
  await expect(history).toBeVisible();
  await expect(history).toContainText('完了履歴で遡るToDo');
@@ -215,6 +216,7 @@ test('Origin completed ToDo history is visible, dated and survives page reload',
  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
  const reloaded=page.locator('#modernOriginRoot');
  await reloaded.locator('#mobileNav [data-route="todos"]').click();
+ await reloaded.locator('[data-action="todo-history-jump"]').click();
  await expect(reloaded.locator('#originCompletedTodos')).toBeVisible();
  await expect(reloaded.locator('#originCompletedTodos')).toContainText('完了履歴で遡るToDo');
 });
