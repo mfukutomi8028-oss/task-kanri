@@ -6649,21 +6649,33 @@ async function commitRecurringDelete(selection, scope) {
       const plan = compute(rawRecurringDeleteRoot());
       return applyCommit(plan.nextRoot, plan);
     }
-    // A whole-room transaction can see null from a cold RTDB local cache.
-    // Warm the authoritative server snapshot before CAS, with no optimistic UI.
-    await get(refForSeries);
+    // The room root has no permanent listener. A standalone get() does not
+    // guarantee a locally cached root for runTransaction, whose first callback
+    // can receive null even when the remote room exists. Keep a temporary
+    // authoritative value subscription active until the transaction finishes.
+    // Never construct a room from a null callback: doing so could overwrite
+    // concurrent data or recreate a genuinely deleted series.
+    let stopSeriesWatch = null;
     let conflict = false;
-    const tx = await runTransaction(refForSeries, current => {
-      const raw = current && typeof current === "object" ? current : {};
-      const root = kind === "schedule" ? { schedules: raw } : raw;
-      try {
-        const plan = compute(root);
-        return kind === "schedule" ? plan.nextRoot.schedules : plan.nextRoot;
-      } catch (error) {
-        conflict = true;
-        return;
-      }
-    }, { applyLocally: false });
+    let tx;
+    try {
+      await new Promise((resolve, reject) => {
+        stopSeriesWatch = onValue(refForSeries, resolve, reject);
+      });
+      tx = await runTransaction(refForSeries, current => {
+        const raw = current && typeof current === "object" ? current : {};
+        const root = kind === "schedule" ? { schedules: raw } : raw;
+        try {
+          const plan = compute(root);
+          return kind === "schedule" ? plan.nextRoot.schedules : plan.nextRoot;
+        } catch (error) {
+          conflict = true;
+          return;
+        }
+      }, { applyLocally: false });
+    } finally {
+      stopSeriesWatch?.();
+    }
     if (!tx.committed || !committedPlan) {
       throw new Error(conflict ? "revision-or-relation-mismatch" : "transaction-aborted-or-invariant-failure");
     }
