@@ -92,6 +92,7 @@ for(const scope of ['one','following','all']){
   await db('rooms/'+ROOM,'DELETE');
   const original=seeds();
   await db('rooms/'+ROOM,'PUT',{tasks:original,meta:{v658Marker:'keep'}});
+  const canonicalKeep=await db('rooms/'+ROOM+'/tasks/'+KEEP);
   await boot(page);
   const {preview,deletion}=await previewAndDelete(page,scope);
   expect(preview.ok).toBe(true);
@@ -99,7 +100,7 @@ for(const scope of ['one','following','all']){
   expect(deletion?.ok,'deletion: '+JSON.stringify(deletion)).toBe(true);
   const latest=await db('rooms/'+ROOM);
   expect(latest.meta.v658Marker).toBe('keep');
-  expect(latest.tasks[KEEP]).toEqual(original[KEEP]);
+  expect(latest.tasks[KEEP]).toEqual(canonicalKeep);
   expect(Boolean(latest.tasks[PARENT])).toBe(false);
   expect(Boolean(latest.tasks[CHILD])).toBe(scope==='one');
  });
@@ -109,6 +110,7 @@ test('Origin recurring delete refuses a real concurrent change to a series membe
  await db('rooms/'+ROOM,'DELETE');
  const original=seeds();
  await db('rooms/'+ROOM,'PUT',{tasks:original,meta:{v658Marker:'keep'}});
+ const canonicalKeep=await db('rooms/'+ROOM+'/tasks/'+KEEP);
  await boot(page);
  const result=await page.evaluate(async()=>{
   const b=window.WorkBoardPaletteBridge,s=b.readSnapshot(),item=s.tasks.find(t=>t.id==='monthly-parent-v658');
@@ -125,5 +127,5 @@ test('Origin recurring delete refuses a real concurrent change to a series membe
  const latest=await db('rooms/'+ROOM+'/tasks');
  expect(latest[PARENT]).toBeDefined();
  expect(latest[CHILD].title).toBe('実際に変更された次回タスク');
- expect(latest[KEEP]).toEqual(original[KEEP]);
+ expect(latest[KEEP]).toEqual(canonicalKeep);
 });
