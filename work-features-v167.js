@@ -789,7 +789,7 @@
     const id = document.getElementById('taskId')?.value || '';
     if (!dialog || !(dialog.open || dialog.hasAttribute('open')) || !input) return;
     const start = id ? featureState.taskStarts[id] : null;
-    if (document.activeElement !== input) input.value = start?.date || '';
+    if (document.activeElement !== input) input.value = effectiveTaskStart(id, featureState.tasks[id]);
   }
 
   function installTaskSubmitBridge() {
@@ -851,7 +851,7 @@
       ? revision >= 1 && updatedByThisUser && updatedDuringSubmit
       : revision > pending.baseRevision && updatedByThisUser && updatedDuringSubmit;
     if (!saveSucceeded) return;
-    if (String(featureState.taskStarts[pending.id]?.date || '') === String(pending.startDate || '')) return;
+    if (String(effectiveTaskStart(pending.id, task)) === String(pending.startDate || '')) return;
     await persistStartDate(pending.id, pending.startDate, pending.startRevision);
   }
 
@@ -899,7 +899,17 @@
 
   // Presentations share this sidecar's existing subscription and repository.
   window.WorkBoardOriginStartBridge = Object.freeze({
-    readSnapshot:()=>JSON.parse(JSON.stringify(featureState.taskStarts||{})),
+    readSnapshot:() => {
+      const starts = JSON.parse(JSON.stringify(featureState.taskStarts || {}));
+      // Presentation-only fallback; never persist inferred recurrence dates.
+      for (const [id, task] of Object.entries(featureState.tasks || {})) {
+        if (!Object.prototype.hasOwnProperty.call(starts, id)) {
+          const date = effectiveTaskStart(id, task);
+          if (date) starts[id] = { date, revision: 0 };
+        }
+      }
+      return starts;
+    },
     async save(command={}) {
       if(command.ownerRoom!==featureState.roomId||command.ownerUser!==currentUser())
         return {ok:false,error:'owner-mismatch'};
@@ -920,10 +930,24 @@
     return startDateRepository.cleanupOrphans();
   }
 
+  // A generated recurrence has a scheduled occurrence date, but no explicit
+  // taskStarts record. Resolve it as the initial start date instead of creating
+  // a second write outside the canonical task-completion transaction. Any saved
+  // taskStarts entry (including an explicit empty date) takes precedence.
+  function effectiveTaskStart(id, task) {
+    if (Object.prototype.hasOwnProperty.call(featureState.taskStarts, id)) {
+      return String(featureState.taskStarts[id]?.date || '');
+    }
+    if (task?.recurringParentId && /^\d{4}-\d{2}-\d{2}$/.test(String(task.recurrenceRule?.occurrenceDate || ''))) {
+      return String(task.recurrenceRule.occurrenceDate);
+    }
+    return '';
+  }
+
   function futureTasks() {
     const today = todayIso();
     return Object.entries(featureState.tasks || {})
-      .map(([id, task]) => ({ id, ...(task || {}), startDate: featureState.taskStarts[id]?.date || '' }))
+      .map(([id, task]) => ({ id, ...(task || {}), startDate: effectiveTaskStart(id, task) }))
       .filter(task => /^\d{4}-\d{2}-\d{2}$/.test(String(task.startDate || '')) && task.startDate > today)
       .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)) || Number(a.createdAt || 0) - Number(b.createdAt || 0));
   }
@@ -1005,7 +1029,7 @@
     const task = remembered && String(remembered.title || '') === selectedTitle
       ? remembered
       : Object.values(featureState.tasks).find(item => String(item?.title || '') === selectedTitle);
-    const startDate = task?.id ? featureState.taskStarts[task.id]?.date || '' : '';
+    const startDate = task?.id ? effectiveTaskStart(task.id, task) : '';
     if (!startDate) return;
     if (detail.querySelector('.task-start-detail-v167')) return;
     const infoSection = [...detail.querySelectorAll('.detail-section')].find(section => section.textContent?.includes('タスク情報')) || detail.querySelector('.detail-section');
