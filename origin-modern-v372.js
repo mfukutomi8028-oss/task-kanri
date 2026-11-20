@@ -890,7 +890,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  }
  finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
 }
-let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleAdvancedOpen=false,scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=true,todoSearchOpen=false,todoSearchHistory=true,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
+let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleAdvancedOpen=false,scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=true,todoSearchOpen=false,todoSearchHistory=true,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskSortDirection='asc',taskSortSecondary='priority',taskSecondaryDirection='asc',taskSortAdvancedOpen=false,taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),bulkStatusTarget='',toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
 // Detailed search is an Origin-only route that preserves the six main tabs.
 let originFullSearchQuery='',originFullSearchReturn='today',originFullSearchLimit=30,originFullSearchSort='relevance',originFullSearchComposing=false;
@@ -1178,15 +1178,32 @@ function renderToday(){
  ${todos.length?todos.map(t=>`<div class="mini-todo"><label class="origin-today-todo-hit"><input class="todo-check" type="checkbox" data-action="todo-check" data-id="${esc(t.id)}" aria-label="${esc(t.title)}を完了にする"/></label><button type="button" class="todo-title" data-action="open" data-kind="todos" data-id="${esc(t.id)}" title="${esc(t.title)}">${esc(t.title)}</button></div>`).join(''):empty('未完了のToDoはありません','上の欄から追加できます。')}
  ${pendingTodos.length>todos.length?`<button class="origin-today-more" data-route="todos">残り${pendingTodos.length-todos.length}件をToDo一覧で確認 ${icon('right',13)}</button>`:''}</div></section></div></div>`;
 }
+const ORIGIN_SORT_FIELDS=[['due','期限'],['priority','優先度'],['updated','更新日時'],['assignee','担当者'],['title','件名']];
+function originSortOptions(current,secondary=false){
+ const choices=secondary?[['none','指定しない'],...ORIGIN_SORT_FIELDS.filter(([key])=>key!==taskSortMode)]:ORIGIN_SORT_FIELDS;
+ return choices.map(([key,label])=>`<option value="${key}" ${current===key?'selected':''}>${label}</option>`).join('');
+}
+function originSortDirectionOptions(field,current){
+ const labels={due:['近い順','遠い順'],priority:['高い順','低い順'],updated:['新しい順','古い順'],assignee:['五十音順','逆順'],title:['五十音順','逆順']};
+ return (labels[field]||['通常','逆順']).map((label,index)=>`<option value="${index?'desc':'asc'}" ${current===(index?'desc':'asc')?'selected':''}>${label}</option>`).join('');
+}
+function originCompareTaskField(a,b,field,direction){
+ const flip=direction==='desc'?-1:1;
+ if(field==='due'){
+  if(!a.due||!b.due)return !a.due&&!b.due?0:!a.due?1:-1;
+  return a.due.localeCompare(b.due)*flip;
+ }
+ if(field==='priority'){const ranks={'緊急':0,'高':1,'中':2,'低':3};return ((ranks[a.priority]??9)-(ranks[b.priority]??9))*flip;}
+ if(field==='updated')return (Number(b.updatedAt||0)-Number(a.updatedAt||0))*flip;
+ if(field==='assignee')return String(a.assignee||'').localeCompare(String(b.assignee||''),'ja')*flip;
+ if(field==='title')return String(a.title||'').localeCompare(String(b.title||''),'ja')*flip;
+ return 0;
+}
 function taskDisplaySort(a,b){
- const priority={'緊急':0,'高':1,'中':2,'低':3};
- const byPriority=(priority[a.priority]??9)-(priority[b.priority]??9);
- const byDue=taskSort(a,b);
- const byUpdated=Number(b.updatedAt||0)-Number(a.updatedAt||0);
- const tie=String(a.id).localeCompare(String(b.id));
- if(taskSortMode==='priority')return byPriority||byDue||tie;
- if(taskSortMode==='updated')return byUpdated||byDue||tie;
- return byDue||tie;
+ const primary=originCompareTaskField(a,b,taskSortMode,taskSortDirection);
+ const secondary=taskSortSecondary!=='none'&&taskSortSecondary!==taskSortMode
+  ?originCompareTaskField(a,b,taskSortSecondary,taskSecondaryDirection):0;
+ return primary||secondary||taskSort(a,b)||String(a.id).localeCompare(String(b.id));
 }
 function taskVisible(){
  const q=taskQuery.trim().toLocaleLowerCase();
@@ -1230,12 +1247,28 @@ const TASK_RENDER_BATCH=24;
 let originTaskViewSaving=false,originTaskViewSaveFailed=false,originTaskViewSyncPending=false,originTaskViewSaveTimer=0;
 function originSavedTaskViewValues(prefs){
  const layout=['list','board','timeline'].includes(prefs?.taskLayout)?prefs.taskLayout:'list';
- const sort=['due','priority','updated'].includes(prefs?.columnSort?.key)?prefs.columnSort.key:'due';
+ const sort=ORIGIN_SORT_FIELDS.some(([key])=>key===prefs?.columnSort?.key)?prefs.columnSort.key:'due';
+ const direction=prefs?.columnSort?.direction==='desc'?'desc':'asc';
  const grouping=['deadline','status','assignee'].includes(prefs?.taskGrouping)?prefs.taskGrouping:(layout==='board'?'status':'deadline');
- return {layout,sort,grouping};
+ return {layout,sort,grouping,direction};
 }
 function originCurrentTaskView(){
- return {taskLayout:taskLayoutMode,taskGrouping,columnSort:{key:taskSortMode,direction:'asc'}};
+ return {taskLayout:taskLayoutMode,taskGrouping,columnSort:{key:taskSortMode,direction:taskSortDirection}};
+}
+// Secondary sort stays in per-device Origin UI preferences; shared saved-view schema is unchanged.
+function originTaskSortExtraKey(){
+ const user=window.WorkBoardWorkflowV152?.userKey?.()||snapshot.currentUser;
+ return 'origin-task-sort-extra-v656:'+String(snapshot.roomId)+':'+String(user);
+}
+function restoreOriginTaskSortExtras(){
+ let extra={};try{extra=JSON.parse(localStorage.getItem(originTaskSortExtraKey())||'{}')||{}}catch(_){extra={}}
+ const candidate=String(extra.secondary||'');
+ taskSortSecondary=(candidate==='none'||ORIGIN_SORT_FIELDS.some(([key])=>key===candidate))?candidate:(taskSortMode==='due'?'priority':'due');
+ if(taskSortSecondary===taskSortMode)taskSortSecondary='none';
+ taskSecondaryDirection=extra.direction==='desc'?'desc':'asc';
+}
+function persistOriginTaskSortExtras(){
+ try{localStorage.setItem(originTaskSortExtraKey(),JSON.stringify({secondary:taskSortSecondary,direction:taskSecondaryDirection}))}catch(_){/* Keep UI available if storage is blocked. */}
 }
 function originTaskViewSaveState(){
  if(originTaskViewSaving||originTaskViewSyncPending)return {key:'saving',label:'表示設定を自動保存中…'};
@@ -1251,7 +1284,8 @@ function restoreOriginTaskView(){
  originPrefsUser=snapshot.currentUser;originTaskViewSaveFailed=false;
  const prefs=w.workflow.savedViews?.['origin-'+w.userKey()];
  const saved=originSavedTaskViewValues(prefs);
- taskLayoutMode=saved.layout;taskSortMode=saved.sort;taskGrouping=saved.grouping;
+ taskLayoutMode=saved.layout;taskSortMode=saved.sort;taskSortDirection=saved.direction;taskGrouping=saved.grouping;
+ restoreOriginTaskSortExtras();
 }
 // Send through the sole owner as soon as the current render is complete.
 // That owner also writes the current view to its own local cache.
