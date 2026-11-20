@@ -1290,10 +1290,16 @@ function restoreOriginTaskView(){
 // That owner also writes the current view to its own local cache.
 function queueOriginTaskViewSave(){
  originTaskViewSyncPending=true;originTaskViewSaveFailed=false;
+ // Immediately cache the latest user-specific choice before any reload or
+ // account switch; the canonical workflow owner alone persists preferences.
+ const w=window.WorkBoardWorkflowV152;
+ if(w?.stageSavedView){
+  w.stageSavedView('origin-'+w.userKey(),{...originCurrentTaskView(),updatedAt:Date.now()});
+ }
  updateOriginTaskViewSaveState();
- // Treat rapid layout/sort changes as one preference write, not competing CAS writes.
  clearTimeout(originTaskViewSaveTimer);
- originTaskViewSaveTimer=setTimeout(()=>{originTaskViewSaveTimer=0;if(originTaskViewSyncPending)void saveOriginTaskView()},300);
+ // Start synchronization now; in-flight writes serialize subsequent choices.
+ void saveOriginTaskView();
 }
 async function saveOriginTaskView(){
  if(originTaskViewSaving)return;
@@ -1325,7 +1331,7 @@ async function saveOriginTaskView(){
   }
  }finally{
   originTaskViewSaving=false;updateOriginTaskViewSaveState();
-  if(originTaskViewSyncPending)queueOriginTaskViewSave();
+  if(originTaskViewSyncPending)void saveOriginTaskView();
  }
 }
 function renderTasks(){
@@ -4472,7 +4478,11 @@ let originWorkflowRenderPending=false;
 for(const event of ['workflow-v150-update','workflow-v152-update'])window.addEventListener(event,()=>{
  if(originWorkflowRenderPending)return;
  originWorkflowRenderPending=true;
- queueMicrotask(()=>{originWorkflowRenderPending=false;restoreOriginTaskView();originInboxUpdateBadge();if($('#originInboxDialog')?.open)renderOriginInbox();if(['today','tools','tasks'].includes(view)&&document.documentElement.dataset.wbDisplay==='modern')render()});
+ queueMicrotask(()=>{originWorkflowRenderPending=false;restoreOriginTaskView();originInboxUpdateBadge();if($('#originInboxDialog')?.open)renderOriginInbox();
+  // Own saved-view notifications do not change task records; avoid replacing
+  // the DOM after the anchored layout/sort operation has already rendered.
+  if(originTaskViewSaving&&event==='workflow-v150-update')return;
+  if(['today','tools','tasks'].includes(view)&&document.documentElement.dataset.wbDisplay==='modern')render();});
 });
 $('#originInboxDialog').addEventListener('cancel',e=>{e.preventDefault();closeOriginInbox()});
 $('#originInboxDialog').addEventListener('click',e=>{if(e.target===$('#originInboxDialog'))closeOriginInbox()});
