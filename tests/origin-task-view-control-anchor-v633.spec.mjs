@@ -75,7 +75,7 @@ async function changeSelectWithoutChangingScroll(root,id,value){
 }
 
 for(const width of [390,1366]){
- test('Origin '+width+'px retains reading position and keyboard focus across sort, grouping, density',async({page})=>{
+ test('Origin '+width+'px resets sort/group to top but retains focus and density reading position',async({page})=>{
   test.setTimeout(120000);
   const root=await launch(page,width);
   await seedTasks(page);
@@ -89,22 +89,27 @@ for(const width of [390,1366]){
   const id=await collection.locator('.item-name[data-action="open"]').nth(13).getAttribute('data-id');
   expect(id).toBeTruthy();
 
-  // Priority sorting moves the chosen item beyond the 24-item render limit.
+  // Ver.656 intentionally returns to the top after a sort or group change.
+  // The chosen low-priority task moves beyond the initial 24-row page.
   const start=await alignTask(page,id);
   expect(start).toBeGreaterThan(120);
   expect(start).toBeLessThan(260);
   await changeSelectWithoutChangingScroll(root,'originTaskSort','priority');
   await expect(root.locator('#originTaskSort')).toHaveValue('priority');
   await expect(root.locator('#originTaskSort')).toBeFocused();
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeLessThan(20);
+  await expect(collection.locator('.item-row')).toHaveCount(24);
+  const showAll=collection.locator('[data-action="task-show-all"]');
+  await expect(showAll).toHaveCount(1);
+  await showAll.evaluate(el=>el.click());
   await expect(collection.locator('.item-name[data-id="'+id+'"]')).toBeVisible();
-  expect(Math.abs((await rowTop(page,id))-start)).toBeLessThan(75);
 
-  const groupedBefore=await alignTask(page,id);
+  await alignTask(page,id);
   await changeSelectWithoutChangingScroll(root,'groupSelect','deadline');
   await expect(root.locator('#groupSelect')).toHaveValue('deadline');
   await expect(root.locator('#groupSelect')).toBeFocused();
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeLessThan(20);
   await expect(collection.locator('.item-name[data-id="'+id+'"]')).toBeVisible();
-  expect(Math.abs((await rowTop(page,id))-groupedBefore)).toBeLessThan(75);
 
   const densityBefore=await alignTask(page,id);
   const density=root.locator('[data-action="task-density"]');
