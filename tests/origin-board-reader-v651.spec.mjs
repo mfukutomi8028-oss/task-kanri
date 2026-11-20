@@ -195,3 +195,85 @@ for(const width of [320,390]){
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
  });
 }
+
+
+test('Origin completed ToDo history is visible, dated and survives page reload',async({page})=>{
+ test.setTimeout(120000);
+ const root=await openOrigin(page,390,'todo-history');
+ await root.locator('#mobileNav [data-route="todos"]').click();
+ const add=root.locator('.origin-todo-add');
+ await add.locator('input[name="title"]').fill('完了履歴で遡るToDo');
+ await add.locator('button[type="submit"]').click();
+ await expect(root.locator('.origin-todo-list .todo-text')).toContainText('完了履歴で遡るToDo');
+ await root.locator('.origin-todo-list [data-action="todo-check"]').first().check();
+ const history=root.locator('#originCompletedTodos');
+ await expect(history).toBeVisible();
+ await expect(history).toContainText('完了履歴で遡るToDo');
+ await expect(history.locator('time')).toHaveCount(1);
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+ await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
+ const reloaded=page.locator('#modernOriginRoot');
+ await reloaded.locator('#mobileNav [data-route="todos"]').click();
+ await expect(reloaded.locator('#originCompletedTodos')).toBeVisible();
+ await expect(reloaded.locator('#originCompletedTodos')).toContainText('完了履歴で遡るToDo');
+});
+
+test('Origin task display returns to top when changing layout or sort',async({page})=>{
+ test.setTimeout(120000);
+ const root=await openOrigin(page,1366,'view-top');
+ await page.setViewportSize({width:1366,height:430});
+ await seedTasks(page);
+ const scrollDown=async()=>page.evaluate(()=>{
+  window.scrollTo(0,document.documentElement.scrollHeight);
+  return window.scrollY;
+ });
+ expect(await scrollDown()).toBeGreaterThan(100);
+ await root.locator('[data-action="task-layout"][data-value="board"]').evaluate(el=>el.click());
+ expect(await page.evaluate(()=>window.scrollY)).toBeLessThan(30);
+ expect(await scrollDown()).toBeGreaterThan(100);
+ await root.locator('[data-action="task-layout"][data-value="list"]').evaluate(el=>el.click());
+ expect(await page.evaluate(()=>window.scrollY)).toBeLessThan(30);
+ expect(await scrollDown()).toBeGreaterThan(100);
+ await root.locator('#originTaskSort').evaluate(el=>{el.value='priority';el.dispatchEvent(new Event('change',{bubbles:true}))});
+ expect(await page.evaluate(()=>window.scrollY)).toBeLessThan(30);
+});
+
+test('Origin supports a secondary task sort, direction and clear grouping',async({page})=>{
+ test.setTimeout(120000);
+ const root=await openOrigin(page,1366,'multi-sort');
+ await seedTasks(page);
+ await root.locator('#groupSelect').selectOption('assignee');
+ const primary=root.locator('#originTaskSort');
+ await primary.selectOption('due');
+ await root.locator('[data-action="task-sort-advanced"]').click();
+ const secondary=root.locator('#originTaskSortSecondary');
+ await expect(secondary).toBeVisible();
+ await secondary.selectOption('priority');
+ await expect(root.locator('.origin-task-collection .item-name').first()).toContainText('ボード改善の確認 1');
+ await root.locator('#originTaskSecondaryDirection').selectOption('desc');
+ await expect(root.locator('.origin-task-collection .item-name').first()).not.toContainText('ボード改善の確認 1');
+ await expect(root.locator('#groupSelect')).toHaveValue('assignee');
+});
+
+test('Origin retries a stale saved-view conflict without showing a false save error',async({page})=>{
+ test.setTimeout(120000);
+ const root=await openOrigin(page,1366,'stale-view');
+ await page.evaluate(()=>{
+  const api=window.WorkBoardWorkflowV152;
+  const original=api.writeSavedView.bind(api);
+  window.__originSaveAttempts=0;
+  api.writeSavedView=async(...args)=>{
+   window.__originSaveAttempts++;
+   if(window.__originSaveAttempts===1){
+    api.workflow.savedViews[args[0]]={taskLayout:'list',taskGrouping:'deadline',columnSort:{key:'due',direction:'asc'},updatedAt:Date.now()};
+    return {ok:false,conflict:true};
+   }
+   return original(...args);
+  };
+ });
+ await root.locator('[data-action="task-layout"][data-value="board"]').click();
+ await expect.poll(()=>page.evaluate(()=>window.__originSaveAttempts)).toBeGreaterThanOrEqual(2);
+ await expect(root.locator('#originTaskViewState')).toBeHidden();
+ await expect(root.locator('[data-action="task-layout"][data-value="board"]')).toHaveAttribute('aria-pressed','true');
+});
