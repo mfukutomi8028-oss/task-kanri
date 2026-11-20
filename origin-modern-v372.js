@@ -4099,7 +4099,7 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  }
  if(a==='todo-search-toggle'){
   todoSearchOpen=!todoSearchOpen;
-  if(!todoSearchOpen){todoQuery='';todoPendingLimit=TODO_RENDER_BATCH;todoCompletedLimit=TODO_RENDER_BATCH;}
+  if(!todoSearchOpen){todoQuery='';todoSearchHistory=false;todoPendingLimit=TODO_RENDER_BATCH;todoCompletedLimit=TODO_RENDER_BATCH;}
   render();
   if(todoSearchOpen){todoSearchHistory=true;$('#originTodoQuery')?.focus({preventScroll:true});}
   return;
