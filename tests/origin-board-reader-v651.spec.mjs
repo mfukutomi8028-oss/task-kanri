@@ -298,9 +298,7 @@ test('Origin shows theme-aware update age after seven days without modifying tas
   },room);
   const root=await openOrigin(page,1366,'stale-age');
   const list=root.locator('.origin-task-layout-list');
-  const row=id=>list.locator('.item-row').filter({
-    has:root.locator('.item-name[data-id="'+id+'"]')
-  });
+  const row=id=>list.locator('.item-row:has(.item-name[data-id="'+id+'"])');
   await expect(row('stale-9').locator('.origin-task-stale-badge')).toContainText('更新なし 9日');
   await expect(row('stale-created').locator('.origin-task-stale-badge')).toContainText('更新なし 8日');
   await expect(row('recent-6').locator('.origin-task-stale-badge')).toHaveCount(0);
