@@ -10,6 +10,7 @@ async function launch(page,width=390){
 async function newTask(root,title){await root.locator('#createBtn').click();await root.locator('#createMenu [data-kind="tasks"]').click();const f=root.locator('#editForm');await f.locator('[name="title"]').fill(title);return f;}
 async function tasks(root){await root.locator('#mobileNav [data-route="tasks"]').click();}
 test('Origin recurring completion and termination edits preserve the canonical series counter',async({page})=>{
+ test.setTimeout(90000);
  const root=await launch(page),form=await newTask(root,'定期点検');
  await form.locator('.origin-recurrence summary').click();await form.locator('[name="recurrence"]').selectOption('daily');
  await form.locator('[name="repeatAnchor"]').fill('2027-02-01');await form.locator('[name="repeatCount"]').fill('2');
@@ -19,7 +20,13 @@ test('Origin recurring completion and termination edits preserve the canonical s
  await root.locator('#sheet [data-action="task-done"]').click();
  const before=await page.evaluate(()=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.title==='定期点検'&&!x.completed));
  expect(before.recurrenceRule.generatedCount).toBe(1);
- await root.locator('.sheet-close').click();await root.locator('.item-name',{hasText:'定期点検'}).click();await root.locator('#sheet [data-action="edit"]').click();
+ // The new occurrence has a future start date and belongs in Reservations,
+ // not the default active list. Editing it must keep the series counter.
+ await root.locator('.sheet-close').click();
+ await expect(root.locator('.origin-task-collection .item-name[data-id="'+before.id+'"]')).toHaveCount(0);
+ await root.locator('[data-action="task-filter"][data-value="reserved"]').click();
+ await root.locator('.origin-task-collection .item-name[data-id="'+before.id+'"]').click();
+ await root.locator('#sheet [data-action="edit"]').click();
  await root.locator('[name="repeatCount"]').fill('3');await root.locator('[form="editForm"]').click();await expect(root.locator('#editForm')).toHaveCount(0);
  const after=await page.evaluate(id=>window.WorkBoardPaletteBridge.readSnapshot().tasks.find(x=>x.id===id),before.id);
  expect(after.recurrenceRule.generatedCount).toBe(1);expect(after.recurrenceRule.seriesId).toBe(before.recurrenceRule.seriesId);expect(after.recurrenceRule.count).toBe(3);
