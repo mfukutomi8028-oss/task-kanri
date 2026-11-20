@@ -890,7 +890,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  }
  finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
 }
-let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleAdvancedOpen=false,scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=true,todoSearchOpen=false,todoSearchHistory=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskSortDirection='asc',taskSortSecondary='priority',taskSecondaryDirection='asc',taskSortAdvancedOpen=false,taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
+let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleAdvancedOpen=false,scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoSearchHistory=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskSortDirection='asc',taskSortSecondary='priority',taskSecondaryDirection='asc',taskSortAdvancedOpen=false,taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),bulkStatusTarget='',toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
 // Detailed search is an Origin-only route that preserves the six main tabs.
 let originFullSearchQuery='',originFullSearchReturn='today',originFullSearchLimit=30,originFullSearchSort='relevance',originFullSearchComposing=false;
@@ -1539,7 +1539,7 @@ function renderTodos(){
    <div class="progress-track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="ToDoの完了率"><div class="progress-fill" style="width:${pct}%"></div></div>
  </div>
  <section class="surface origin-todo-main"><div class="surface-section">
-   <div class="section-head"><h2>${icon('todo',18)} やること <span class="count">${pending.length}</span></h2><div class="origin-todo-section-actions"><button type="button" class="origin-todo-search-toggle" data-action="todo-search-toggle" aria-label="${todoSearchOpen?'ToDo検索を閉じる':'ToDoを検索'}" aria-expanded="${todoSearchOpen}" aria-controls="originTodoSearchPanel">${icon('search',15)} ${todoSearchOpen?'検索を閉じる':'検索'}</button><button type="button" class="text-button" data-action="new" data-kind="todos">詳しく追加 ${icon('plus',13)}</button></div></div>
+   <div class="section-head"><h2>${icon('todo',18)} やること <span class="count">${pending.length}</span></h2><div class="origin-todo-section-actions"><button type="button" class="origin-todo-search-toggle" data-action="todo-history-jump" aria-label="完了履歴 ${totalDone}件を確認" aria-controls="originCompletedTodos" aria-expanded="${todoCompletedOpen}" title="完了履歴へ移動">${icon('check',15)} 履歴 ${totalDone}件</button><button type="button" class="origin-todo-search-toggle" data-action="todo-search-toggle" aria-label="${todoSearchOpen?'ToDo検索を閉じる':'ToDoを検索'}" aria-expanded="${todoSearchOpen}" aria-controls="originTodoSearchPanel">${icon('search',15)} ${todoSearchOpen?'検索を閉じる':'検索'}</button><button type="button" class="text-button" data-action="new" data-kind="todos">詳しく追加 ${icon('plus',13)}</button></div></div>
    <form class="small-add origin-todo-add" data-form="quick-todo"><input name="title" placeholder="やることを入力してEnter" maxlength="${snapshot.todoTitleMaxLength}" required autocomplete="off" aria-label="新しいToDo"/><button type="submit" aria-label="ToDoを追加">${icon('plus',16)}</button></form>
    <div class="origin-todo-search-row" id="originTodoSearchPanel" ${todoSearchOpen?'':'hidden'}><input id="originTodoQuery" type="search" aria-label="ToDoの件名・補足メモを検索" placeholder="ToDoの件名・メモを検索" autocomplete="off" value="${esc(todoQuery)}"/><button type="button" class="origin-jump-result" data-action="jump-result" data-kind="todos" aria-label="表示中のToDoの先頭へ移動" ${shown.length||(todoSearchHistory&&done.length)?'':'disabled'}>${icon('arrow',16)} <span>結果へ</span></button></div>
   <div class="origin-todo-search-history-wrap" ${todoSearchOpen?'':'hidden'}><button type="button" class="origin-todo-search-history" data-action="todo-search-history" aria-pressed="${todoSearchHistory}" aria-controls="originCompletedTodos">${icon('check',14)} 完了履歴も検索</button>${q&&shown.length?'<button type="button" class="origin-todo-search-history" data-action="todo-clear-query">検索語を解除</button>':''}</div>
@@ -4100,7 +4100,6 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  if(a==='todo-search-toggle'){
   todoSearchOpen=!todoSearchOpen;
   if(!todoSearchOpen){todoQuery='';todoSearchHistory=false;todoPendingLimit=TODO_RENDER_BATCH;todoCompletedLimit=TODO_RENDER_BATCH;}
-  if(todoSearchOpen)todoSearchHistory=true;
   render();
   if(todoSearchOpen)$('#originTodoQuery')?.focus({preventScroll:true});
   return;
@@ -4115,6 +4114,16 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
   return;
  }
  if(a==='jump-result')return focusOriginFirstResult(kind);
+ if(a==='todo-history-jump'){
+  todoCompletedOpen=true;render();
+  const button=$('#workspace .origin-todo-archive-toggle');
+  if(button){
+   const stickyBottom=Math.max(0,$('.header')?.getBoundingClientRect().bottom||0);
+   window.scrollTo({top:Math.max(0,window.scrollY+button.getBoundingClientRect().top-stickyBottom-16),behavior:'instant'});
+   button.focus({preventScroll:true});
+  }
+  return;
+ }
  if(a==='todo-completed-toggle'){todoCompletedOpen=!todoCompletedOpen;return render()}
  if(a==='todo-load-more'||a==='todo-show-all'){
   if(view!=='todos'||!['pending','completed'].includes(value))return;
