@@ -50,6 +50,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   const notificationSuite = read('tests/firebase-emulator-comment-notifications-v235.spec.mjs');
   const scheduleCopySuite = read('tests/firebase-emulator-schedule-copy-v225.spec.mjs');
   const bulkSuite = read('tests/firebase-emulator-bulk-actions-v243.spec.mjs');
+  const recurringDeleteSuite = read('tests/firebase-emulator-recurring-delete-v658.spec.mjs');
   const runner = read('test-harness/run-firebase-browser.mjs');
 
   for (const source of [suite, duplicateSuite, todoSuite, workSuite, userCommentSuite, replySuite, notificationSuite, scheduleCopySuite]) {
@@ -108,6 +109,13 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(scheduleCopySuite, /test-firebase-emulator-schedule-copy-v225/);
 
   assert.match(runner, /firebase-emulator-write\.spec\.mjs/);
+  assert.equal((runner.match(/firebase-emulator-recurring-delete-v658\.spec\.mjs/g)||[]).length,4);
+  assert.match(recurringDeleteSuite,/demo-task-kanri/);
+  assert.match(recurringDeleteSuite,/test-firebase-emulator-recurring-delete-v658/);
+  assert.match(recurringDeleteSuite,/127\.0\.0\.1/);
+  assert.match(recurringDeleteSuite,/firebaseio\\\.com\|firebasedatabase\\\.app/);
+  assert.match(recurringDeleteSuite,/WORK_BOARD_TEST/);
+  assert.match(recurringDeleteSuite,/productionRequests/);
   assert.match(runner, /firebase-emulator-duplicate\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-todo\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-work-features\.spec\.mjs/);
@@ -120,7 +128,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.equal((runner.match(/firebase-emulator-comment-notifications-v235\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-schedule-copy-v225\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-bulk-actions-v243\.spec\.mjs/g) || []).length, 4);
-  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 35);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 39);
   assert.equal((runner.match(/firebase-emulator-work-features\.spec\.mjs/g) || []).length, 4);
   assert.doesNotMatch(runner, /firebase-emulator-modern-|Ver\.563|Ver\.564/);
   assert.match(runner, /stale business-memo revision is rejected/);

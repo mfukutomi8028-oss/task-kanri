@@ -6649,21 +6649,40 @@ async function commitRecurringDelete(selection, scope) {
       const plan = compute(rawRecurringDeleteRoot());
       return applyCommit(plan.nextRoot, plan);
     }
-    // A whole-room transaction can see null from a cold RTDB local cache.
-    // Warm the authoritative server snapshot before CAS, with no optimistic UI.
-    await get(refForSeries);
+    // The room root has no permanent listener. A standalone get() does not
+    // guarantee a locally cached root for runTransaction, whose first callback
+    // can receive null even when the remote room exists. Keep a temporary
+    // authoritative value subscription active until the transaction finishes.
+    // Never construct a room from a null callback: doing so could overwrite
+    // concurrent data or recreate a genuinely deleted series.
+    let stopSeriesWatch = null;
+    let seriesWatchTimeout = 0;
     let conflict = false;
-    const tx = await runTransaction(refForSeries, current => {
-      const raw = current && typeof current === "object" ? current : {};
-      const root = kind === "schedule" ? { schedules: raw } : raw;
-      try {
-        const plan = compute(root);
-        return kind === "schedule" ? plan.nextRoot.schedules : plan.nextRoot;
-      } catch (error) {
-        conflict = true;
-        return;
-      }
-    }, { applyLocally: false });
+    let tx;
+    try {
+      await new Promise((resolve, reject) => {
+        // A dropped connection must not leave the delete confirmation busy.
+        seriesWatchTimeout = setTimeout(
+          () => reject(new Error("network-or-read-failure")), 30000);
+        stopSeriesWatch = onValue(refForSeries,
+          snapshot => { clearTimeout(seriesWatchTimeout); resolve(snapshot); },
+          error => { clearTimeout(seriesWatchTimeout); reject(error); });
+      });
+      tx = await runTransaction(refForSeries, current => {
+        const raw = current && typeof current === "object" ? current : {};
+        const root = kind === "schedule" ? { schedules: raw } : raw;
+        try {
+          const plan = compute(root);
+          return kind === "schedule" ? plan.nextRoot.schedules : plan.nextRoot;
+        } catch (error) {
+          conflict = true;
+          return;
+        }
+      }, { applyLocally: false });
+    } finally {
+      clearTimeout(seriesWatchTimeout);
+      stopSeriesWatch?.();
+    }
     if (!tx.committed || !committedPlan) {
       throw new Error(conflict ? "revision-or-relation-mismatch" : "transaction-aborted-or-invariant-failure");
     }

@@ -32,6 +32,10 @@ function runCase({ spec, grep = '' }) {
 // the next seed + initial RTDB subscription starts from a clean browser runtime.
 // Assertions and the shared Emulator remain unchanged.
 const cases = [
+  { spec: 'tests/firebase-emulator-recurring-delete-v658.spec.mjs', grep: 'Origin recurring delete one succeeds remotely' },
+  { spec: 'tests/firebase-emulator-recurring-delete-v658.spec.mjs', grep: 'Origin recurring delete following succeeds remotely' },
+  { spec: 'tests/firebase-emulator-recurring-delete-v658.spec.mjs', grep: 'Origin recurring delete all succeeds remotely' },
+  { spec: 'tests/firebase-emulator-recurring-delete-v658.spec.mjs', grep: 'Origin recurring delete refuses a real concurrent change' },
   { spec: 'tests/firebase-emulator-write.spec.mjs', grep: 'boots in remote-online mode' },
   { spec: 'tests/firebase-emulator-write.spec.mjs', grep: 'archives and restores' },
   { spec: 'tests/firebase-emulator-write.spec.mjs', grep: 'writes personal inbox events' },
