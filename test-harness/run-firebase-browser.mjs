@@ -51,6 +51,7 @@ const cases = [
   { spec: 'tests/firebase-emulator-work-features-audit-v244.spec.mjs', grep: 'guarded orphan cleanup removes a start record' },
   { spec: 'tests/firebase-emulator-work-features-audit-v244.spec.mjs', grep: 'guarded orphan cleanup preserves a start record' },
   { spec: 'tests/firebase-emulator-workflow-audit-v245.spec.mjs', grep: 'v150 dependency child transaction preserves unrelated workflow records' },
+  { spec: 'tests/firebase-emulator-workflow-audit-v245.spec.mjs', grep: 'Origin personal saved-view' },
   { spec: 'tests/firebase-emulator-workflow-audit-v245.spec.mjs', grep: 'stale reminder save and clear preserve the remote winner' },
   { spec: 'tests/firebase-emulator-archive-duplicate-audit-v246.spec.mjs', grep: 'stale archive restore preserves the remote winner' },
   { spec: 'tests/firebase-emulator-archive-duplicate-audit-v246.spec.mjs', grep: 'stale duplicate merge preserves the remote target' },
