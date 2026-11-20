@@ -158,6 +158,6 @@
   }
   load();
   const api=Object.assign({},Base,{ensureV152Remote:ensureRemote,currentUser,users,writeReminder,inboxFor,unreadCount,writeInboxEvent,markInboxRead,markAllInboxRead,isArchived,archiveInfo,archiveTask,unarchiveTask,duplicateOf,duplicateInfo,markDuplicate});
-  Object.defineProperties(api,{v152:{enumerable:true,get:()=>data},v152State:{enumerable:true,get:()=>remoteState}});
+  Object.defineProperties(api,{workflow:{enumerable:true,get:()=>Base.workflow},v152:{enumerable:true,get:()=>data},v152State:{enumerable:true,get:()=>remoteState}});
   window.WorkBoardWorkflowV152=api;document.documentElement.dataset.workflowVersion='152';initPromise=initRemote();
 })();
