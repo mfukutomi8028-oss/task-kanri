@@ -1400,7 +1400,7 @@ function renderTasks(){
   <div class="origin-task-sort-primary">
    <label for="originTaskSort">第1条件 <select id="originTaskSort" aria-label="タスクの並び替え第1条件">${originSortOptions(taskSortMode)}</select></label>
    <label for="groupSelect">まとめ方 <select id="groupSelect" aria-label="タスクをまとめる方法"><option value="deadline" ${taskGrouping==='deadline'?'selected':''}>期限別</option><option value="status" ${taskGrouping==='status'?'selected':''}>状態別</option><option value="assignee" ${taskGrouping==='assignee'?'selected':''}>担当者別</option></select></label>
-   <button type="button" class="origin-task-sort-more-toggle" data-action="task-sort-advanced" aria-controls="originTaskSortAdvanced" aria-expanded="${taskSortAdvancedOpen}">${taskSortAdvancedOpen?'詳細設定を閉じる':'第2条件・順序を設定'} ${icon('chevron',14)}</button>
+   <button type="button" class="origin-task-sort-more-toggle" data-action="task-sort-advanced" aria-controls="originTaskSortAdvanced" aria-expanded="${taskSortAdvancedOpen}">${taskSortAdvancedOpen?'詳細設定を閉じる':'第2条件：'+(ORIGIN_SORT_FIELDS.find(([key])=>key===taskSortSecondary)?.[1]||'なし')} ${icon('chevron',14)}</button>
   </div>
   <div id="originTaskSortAdvanced" class="origin-task-sort-more" ${taskSortAdvancedOpen?'':'hidden'}>
    <label for="originTaskSortDirection">第1条件の順序 <select id="originTaskSortDirection">${originSortDirectionOptions(taskSortMode,taskSortDirection)}</select></label>
@@ -4100,8 +4100,9 @@ function handleAction(el){const a=el.dataset.action,id=el.dataset.id,kind=el.dat
  if(a==='todo-search-toggle'){
   todoSearchOpen=!todoSearchOpen;
   if(!todoSearchOpen){todoQuery='';todoSearchHistory=false;todoPendingLimit=TODO_RENDER_BATCH;todoCompletedLimit=TODO_RENDER_BATCH;}
+  if(todoSearchOpen)todoSearchHistory=true;
   render();
-  if(todoSearchOpen){todoSearchHistory=true;$('#originTodoQuery')?.focus({preventScroll:true});}
+  if(todoSearchOpen)$('#originTodoQuery')?.focus({preventScroll:true});
   return;
  }
  if(a==='todo-search-history'){
