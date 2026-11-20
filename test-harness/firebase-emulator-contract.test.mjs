@@ -112,7 +112,7 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.match(runner, /firebase-emulator-todo\.spec\.mjs/);
   assert.match(runner, /firebase-emulator-work-features\.spec\.mjs/);
   assert.equal((runner.match(/firebase-emulator-work-features-audit-v244\.spec\.mjs/g) || []).length, 3);
-  assert.equal((runner.match(/firebase-emulator-workflow-audit-v245\.spec\.mjs/g) || []).length, 2);
+  assert.equal((runner.match(/firebase-emulator-workflow-audit-v245\.spec\.mjs/g) || []).length, 3);
   assert.equal((runner.match(/firebase-emulator-archive-duplicate-audit-v246\.spec\.mjs/g) || []).length, 2);
   assert.equal((runner.match(/firebase-emulator-workflow-inbox-audit-v247\.spec\.mjs/g) || []).length, 1);
   assert.match(runner, /firebase-emulator-user-comments\.spec\.mjs/);
@@ -120,13 +120,14 @@ test('browser emulator suites use demo projects, test rooms, and block productio
   assert.equal((runner.match(/firebase-emulator-comment-notifications-v235\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-schedule-copy-v225\.spec\.mjs/g) || []).length, 1);
   assert.equal((runner.match(/firebase-emulator-bulk-actions-v243\.spec\.mjs/g) || []).length, 4);
-  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 34);
+  assert.equal((runner.match(/\{\s*spec:/g) || []).length, 35);
   assert.equal((runner.match(/firebase-emulator-work-features\.spec\.mjs/g) || []).length, 4);
   assert.doesNotMatch(runner, /firebase-emulator-modern-|Ver\.563|Ver\.564/);
   assert.match(runner, /stale business-memo revision is rejected/);
   assert.match(runner, /guarded orphan cleanup removes a start record/);
   assert.match(runner, /guarded orphan cleanup preserves a start record/);
   assert.match(runner, /v150 dependency child transaction preserves unrelated workflow records/);
+  assert.match(runner, /Origin personal saved-view/);
   assert.match(runner, /stale reminder save and clear preserve the remote winner/);
   assert.match(runner, /stale archive restore preserves the remote winner/);
   assert.match(runner, /stale duplicate merge preserves the remote target/);
