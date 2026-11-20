@@ -6656,11 +6656,17 @@ async function commitRecurringDelete(selection, scope) {
     // Never construct a room from a null callback: doing so could overwrite
     // concurrent data or recreate a genuinely deleted series.
     let stopSeriesWatch = null;
+    let seriesWatchTimeout = 0;
     let conflict = false;
     let tx;
     try {
       await new Promise((resolve, reject) => {
-        stopSeriesWatch = onValue(refForSeries, resolve, reject);
+        // A dropped connection must not leave the delete confirmation busy.
+        seriesWatchTimeout = setTimeout(
+          () => reject(new Error("network-or-read-failure")), 30000);
+        stopSeriesWatch = onValue(refForSeries,
+          snapshot => { clearTimeout(seriesWatchTimeout); resolve(snapshot); },
+          error => { clearTimeout(seriesWatchTimeout); reject(error); });
       });
       tx = await runTransaction(refForSeries, current => {
         const raw = current && typeof current === "object" ? current : {};
@@ -6674,6 +6680,7 @@ async function commitRecurringDelete(selection, scope) {
         }
       }, { applyLocally: false });
     } finally {
+      clearTimeout(seriesWatchTimeout);
       stopSeriesWatch?.();
     }
     if (!tx.committed || !committedPlan) {
