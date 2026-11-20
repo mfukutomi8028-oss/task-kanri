@@ -4306,6 +4306,7 @@ if(a==='task-done'){toggleTaskDone(id,el);return}
    taskFilter=value;taskStatusChoice='';taskVisibleLimits.clear();selectedBulk.clear();
   },{filterChange:true});
  }
+ if(a==='task-sort-advanced'){taskSortAdvancedOpen=!taskSortAdvancedOpen;render();$('#workspace [data-action="task-sort-advanced"]')?.focus({preventScroll:true});return;}
  if(a==='task-density')return renderOriginTaskViewKeepingAnchor(()=>{
   taskDensity=taskDensity==='compact'?'comfortable':'compact';
  })
@@ -4527,7 +4528,7 @@ mount.addEventListener('change',e=>{
   return renderOriginTaskViewKeepingAnchor(()=>{
    taskGrouping=t.value;
    taskVisibleLimits.clear();selectedBulk.clear();
-  });
+  },{resetToTop:true});
  }
  if(t.id==='originBulkStatus'){
   bulkStatusTarget=t.value;
@@ -4536,11 +4537,24 @@ mount.addEventListener('change',e=>{
   return;
  }
  if(t.id==='originTaskSort'){
-  if(!['due','priority','updated'].includes(t.value)||taskSortMode===t.value)return;
+  if(!ORIGIN_SORT_FIELDS.some(([key])=>key===t.value)||taskSortMode===t.value)return;
   return renderOriginTaskViewKeepingAnchor(()=>{
    taskSortMode=t.value;
-   taskVisibleLimits.clear();selectedBulk.clear();
-  });
+   if(taskSortSecondary===taskSortMode)taskSortSecondary='none';
+   persistOriginTaskSortExtras();taskVisibleLimits.clear();selectedBulk.clear();
+  },{resetToTop:true});
+ }
+ if(t.id==='originTaskSortDirection'){
+  if(!['asc','desc'].includes(t.value)||t.value===taskSortDirection)return;
+  return renderOriginTaskViewKeepingAnchor(()=>{taskSortDirection=t.value;taskVisibleLimits.clear();selectedBulk.clear()},{resetToTop:true});
+ }
+ if(t.id==='originTaskSortSecondary'){
+  if(t.value===taskSortMode||!(t.value==='none'||ORIGIN_SORT_FIELDS.some(([key])=>key===t.value))||t.value===taskSortSecondary)return;
+  return renderOriginTaskViewKeepingAnchor(()=>{taskSortSecondary=t.value;persistOriginTaskSortExtras();taskVisibleLimits.clear();selectedBulk.clear()},{resetToTop:true});
+ }
+ if(t.id==='originTaskSecondaryDirection'){
+  if(!['asc','desc'].includes(t.value)||t.value===taskSecondaryDirection||taskSortSecondary==='none')return;
+  return renderOriginTaskViewKeepingAnchor(()=>{taskSecondaryDirection=t.value;persistOriginTaskSortExtras();taskVisibleLimits.clear();selectedBulk.clear()},{resetToTop:true});
  }
   if(t.dataset.action==='task-inline-status'){updateOriginInlineStatus(t);return}
  if(t.dataset.action==='task-check'){taskCheckToggle(t);return}
