@@ -68,12 +68,30 @@ try{
     auth:bob.auth,database:bob.db,...authConfig
   });
   stores.push(aStore,bStore);
+  // An Origin UI only receives an authenticated sticky service through an
+  // explicit trusted Auth initializer. The selected display name is not a credential.
+  assert.equal(typeof sticky.mountVerifiedOriginStickyStore,'function',
+    'an Origin bridge for the real Firebase Auth SDK is required');
+  const originRoot={systemTaskUser:'alice'};
+  const mounted=sticky.mountVerifiedOriginStickyStore({
+    root:originRoot,auth:alice.auth,database:alice.db,...authConfig
+  });
+  stores.push(mounted.store);
+  assert.equal(originRoot.WorkBoardPersonalStickyStoreV659,mounted.store);
+  assert.equal(mounted.store.readSnapshot().notes.length,0,
+    'a selected display name cannot unlock anonymous personal notes');
+  assert.throws(()=>sticky.mountVerifiedOriginStickyStore({
+    root:originRoot,auth:alice.auth,database:alice.db,...authConfig
+  }),/already|mounted|attached/i,'do not silently replace a live Origin store');
   const initial=await aStore.dispatch({type:'sticky.create',ownerRoom:roomId,ownerUid:'alice'});
   assert.deepEqual(initial,{ok:false,error:'auth-required'},'no anonymous writes');
   assert.deepEqual(aStore.readSnapshot().notes,[],'no anonymous reads');
 
   await signInWithEmailAndPassword(alice.auth,credentials[0].email,credentials[0].password);
   await waitFor('authorized Alice',()=>aStore.readSnapshot().status==='ready');
+  await waitFor('Origin bridge authenticated',()=>
+    mounted.store.readSnapshot().status==='ready'
+    && mounted.store.readSnapshot().ownerUid==='alice');
   const created=await aStore.dispatch({type:'sticky.create',ownerRoom:roomId,ownerUid:'alice'});
   assert.equal(created.ok,true,'the verified owner can create a private note');
   const content=await aStore.dispatch({type:'sticky.content',ownerRoom:roomId,ownerUid:'alice',
@@ -138,6 +156,12 @@ try{
 
   await signOut(alice.auth);
   await signOut(bob.auth);
+  assert.equal(mounted.store.readSnapshot().notes.length,0,
+    'Origin screen clears private notes on sign-out');
+  mounted.destroy();
+  assert.equal(originRoot.WorkBoardPersonalStickyStoreV659,undefined,
+    'unmounting must not leave a stale global sticky store');
+  mounted.destroy(); // repeated cleanup must not fail
   assert.equal(aStore.readSnapshot().notes.length,0);
   assert.equal(bStore.readSnapshot().notes.length,0);
   console.log('STICKY_V659_REAL_AUTH_RTDATABASE_EMULATOR_PASSED: synthetic identities only');
