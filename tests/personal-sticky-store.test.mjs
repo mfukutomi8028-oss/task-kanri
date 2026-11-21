@@ -159,3 +159,20 @@ test('create and move notes across five synced pages without changing legacy con
  assert.equal((await store.dispatch(ownerCommand(store,'sticky.create',{page:0}))).ok,false);
  store.destroy();
 });
+
+test('memo mode preference is stored by board store, independently for each chosen user',()=>{
+ const storage=memoryStorage();
+ const first=local(storage);
+ assert.equal(first.readMemoChoice('福冨'),'business');
+ assert.equal(first.saveMemoChoice('福冨','personal'),true);
+ assert.equal(first.readMemoChoice('福冨'),'personal');
+ assert.equal(first.readMemoChoice('森井'),'business');
+ assert.equal(first.saveMemoChoice('森井','business'),true);
+ assert.equal(first.saveMemoChoice('森井','wrong'),false);
+ assert.equal(first.saveMemoChoice('','personal'),false);
+ first.destroy();
+ const reloaded=local(storage);
+ assert.equal(reloaded.readMemoChoice('福冨'),'personal');
+ assert.equal(reloaded.readMemoChoice('森井'),'business');
+ reloaded.destroy();
+});

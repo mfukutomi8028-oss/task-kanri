@@ -892,9 +892,8 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
 }
 let originStickyMemoModeV659='business', originStickyControllerV659=null;
-function originMemoKeyV660(){return 'originMemoModeV660:'+encodeURIComponent(snapshot.roomId||'')+':'+encodeURIComponent(snapshot.currentUser||'');}
-function originMemoReadV660(){try{return localStorage.getItem(originMemoKeyV660())==='personal'?'personal':'business';}catch{return 'business';}}
-function originMemoSaveV660(){try{localStorage.setItem(originMemoKeyV660(),originStickyMemoModeV659);}catch{}}
+function originMemoReadV660(){return window.WorkBoardPersonalStickyStoreV659?.readMemoChoice?.(snapshot.currentUser)||'business';}
+function originMemoSaveV660(){window.WorkBoardPersonalStickyStoreV659?.saveMemoChoice?.(snapshot.currentUser,originStickyMemoModeV659);}
 originStickyMemoModeV659=originMemoReadV660();
 let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleAdvancedOpen=false,scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoSearchHistory=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskSortDirection='asc',taskSortSecondary='priority',taskSecondaryDirection='asc',taskSortAdvancedOpen=false,taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),bulkStatusTarget='',toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;

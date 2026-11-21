@@ -57,6 +57,24 @@ export function createBoardPersonalStickyStore({roomId,storage=null}={}) {
   };
   const localKey=key=>`system-task-sticky-v659:${roomId}:${key}`;
   const remotePath=(key,id='')=>`rooms/${roomId}/personalStickyNotes/${key}${id?'/'+id:''}`;
+  // Presentation preferences belong to this storage owner, not Origin's view.
+  // These values remain device-local and never enter Firebase note records.
+  const memoChoiceKey=user=>{
+    const key=userKeyFromDisplayName(user);
+    return key?`system-task-origin-memo-v660:${roomId}:${key}`:'';
+  };
+  function readMemoChoice(user){
+    const key=memoChoiceKey(user);
+    if(!key||!storage)return 'business';
+    try{return storage.getItem(key)==='personal'?'personal':'business';}
+    catch{return 'business';}
+  }
+  function saveMemoChoice(user,choice){
+    const key=memoChoiceKey(user);
+    if(!key||!storage||!['personal','business'].includes(choice))return false;
+    try{storage.setItem(key,choice);return true;}
+    catch{return false;}
+  }
   const readLocal=key=>{
     const json=storage.getItem(localKey(key));
     if(!json)return Object.create(null);
@@ -182,7 +200,7 @@ export function createBoardPersonalStickyStore({roomId,storage=null}={}) {
     }catch{return {ok:false,error:'write-failed'}}
   }
   return Object.freeze({
-    readSnapshot:snapshot,setContext,dispatch,
+    readSnapshot:snapshot,setContext,dispatch,readMemoChoice,saveMemoChoice,
     subscribe(listener){
       if(typeof listener!=='function')throw new TypeError('Listener required');
       if(disposed)throw new Error('Sticky store destroyed');
