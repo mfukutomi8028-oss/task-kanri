@@ -104,21 +104,36 @@ test('Origin sticky: mobile uses list instead of overwriting canvas coordinates'
  await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text)).toBe('スマートフォンの付箋');
  expect(await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0].layout.x)).toBe(original);
 });
-test('Origin sticky: no authenticated store shows locked mode without a write control',async({page})=>{
+test('Origin sticky is usable with no login and local-only fallback',async({page})=>{
  await page.setViewportSize({width:1366,height:900});
  await page.route('**/*',route=>new URL(route.request().url()).origin==='http://127.0.0.1:4173'?route.continue():route.abort());
  await page.addInitScript(()=>{
-  Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
-  localStorage.setItem('systemTaskRoomId','sticky-no-auth');
-  localStorage.setItem('systemTaskUser','テスト利用者');
+   Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
+   localStorage.setItem('systemTaskRoomId','sticky-no-login');
+   localStorage.setItem('systemTaskUser','福冨');
  });
- await page.goto('/?room=sticky-no-auth');
+ await page.goto('/?room=sticky-no-login');
+ await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
  const root=page.locator('#modernOriginRoot');
  await root.locator('[data-route="notes"]').first().click();
  await root.locator('[data-sticky-mode="personal"]').click();
- await expect(root.locator('.sticky-add')).toBeDisabled();
- await expect(root.locator('.sticky-origin-error')).toContainText('本人確認');
+ await expect(root.locator('.sticky-add')).toBeEnabled();
+ await root.locator('.sticky-add').click();
+ await root.locator('.sticky-origin-card textarea').fill('ログイン不要の個人付箋');
+ await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659?.readSnapshot().notes[0]?.content.text))
+   .toBe('ログイン不要の個人付箋');
+ await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('森井'));
+ await expect(root.locator('.sticky-origin-card')).toHaveCount(0);
+ await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('福冨'));
+ await expect(root.locator('.sticky-origin-card textarea')).toHaveValue('ログイン不要の個人付箋');
+ await page.reload();
+ await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+ await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
+ const reloaded=page.locator('#modernOriginRoot');
+ await reloaded.locator('[data-route="notes"]').first().click();
+ await reloaded.locator('[data-sticky-mode="personal"]').click();
+ await expect(reloaded.locator('.sticky-origin-card textarea')).toHaveValue('ログイン不要の個人付箋');
 });
 
 test('Origin sticky blocks navigation while a note has an uncommitted draft',async({page})=>{
