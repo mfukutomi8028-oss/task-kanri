@@ -1,5 +1,5 @@
 /* Auth-bound personal sticky persistence. Never connected to legacy /rooms. */
-import { newSticky, updateSticky, canDeleteSticky, isStickyNote, isStickyId, stickyList, planStickyPlacement } from './personal-sticky-core-v659.js';
+import { newSticky, updateSticky, canDeleteSticky, isStickyNote, isStickyId, stickyList, planStickyPlacement, planMobileMove } from './personal-sticky-core-v659.js';
 
 /**
  * @param {{
@@ -86,9 +86,12 @@ export function createPersonalStickyStore({ auth, database, roomId, firebase, ap
       ? (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : '')
       : String(command.id || '');
     if (!isStickyId(id)) return { ok: false, error: 'invalid-id' };
-    if (!['sticky.create', 'sticky.content', 'sticky.appearance', 'sticky.layout', 'sticky.mobile', 'sticky.delete'].includes(kind)) {
+    if (!['sticky.create', 'sticky.content', 'sticky.appearance', 'sticky.layout', 'sticky.mobile', 'sticky.mobileMove', 'sticky.delete'].includes(kind)) {
       return { ok: false, error: 'unsupported-command' };
     }
+    const mobileMove=kind==='sticky.mobileMove'
+      ? planMobileMove(Object.values(notes),id,command.direction) : null;
+    if(kind==='sticky.mobileMove'&&!mobileMove)return {ok:false,error:'reorder-unavailable'};
     const myGeneration = generation;
     const now = Date.now();
     const expected = command.expectedRevision;
@@ -116,7 +119,9 @@ export function createPersonalStickyStore({ auth, database, roomId, firebase, ap
           return null;
         }
         const updated = updateSticky(current, {
-          field: fields[kind], expectedRevision: expected, values: command.values,
+          field: kind==='sticky.mobileMove' ? 'mobile' : fields[kind],
+          expectedRevision: mobileMove?.expectedRevision ?? expected,
+          values: kind==='sticky.mobileMove' ? {order:mobileMove.order} : command.values,
           ownerUid: identity, roomId, now
         });
         if (!updated.ok) { reason = updated.error; return; }
