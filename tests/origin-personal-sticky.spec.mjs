@@ -121,7 +121,8 @@ test('Origin sticky is usable with no login and local-only fallback',async({page
  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
  const root=page.locator('#modernOriginRoot');
  await root.locator('[data-route="notes"]').first().click();
- await root.locator('[data-sticky-mode="personal"]').click();
+  await root.locator('#desktopNav .origin-memo-nav').hover();
+  await root.locator('#desktopNav [data-memo-nav-mode="personal"]').click();
  await expect(root.locator('.sticky-add')).toBeEnabled();
  await root.locator('.sticky-add').click();
  await root.locator('.sticky-origin-card textarea').fill('ログイン不要の個人付箋');
@@ -357,6 +358,7 @@ test('five pages keep new notes separate and allow moving an existing note',asyn
  const root=await origin(page);
  await root.locator('.sticky-add').click();
  await root.locator('[data-sticky-page="3"]').click();
+ await expect(root.locator('[data-sticky-page="3"]')).toHaveAttribute('aria-pressed','true');
  await expect(root.locator('.sticky-origin-card')).toHaveCount(0);
  await root.locator('.sticky-add').click();
  await expect(root.locator('.sticky-origin-card')).toHaveCount(1);
