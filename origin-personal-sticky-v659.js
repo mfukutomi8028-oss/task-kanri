@@ -375,7 +375,7 @@
       const shown=pageNotes().filter(note=>(colorFilter==='all'||note.appearance.color===colorFilter)
         && (!term || note.content.text.normalize('NFKC').toLocaleLowerCase('ja').includes(term)))
         .sort((a,b)=>a.mobile.order-b.mobile.order||a.createdAt-b.createdAt||a.id.localeCompare(b.id));
-      canvas.replaceChildren();
+      preserveScroll(()=>canvas.replaceChildren());
       if(!shown.length) {
         canvas.append(createElement('p','sticky-origin-empty',
           term||colorFilter!=='all'?'条件に合う付箋はありません':'このページにはまだ付箋がありません。「＋ 付箋を追加」で作成できます。'));
@@ -417,18 +417,75 @@
       const canvas=stage?.querySelector('.sticky-origin-canvas');
       if(!stage||!canvas)return;
       if(window.matchMedia('(max-width:767px)').matches){
-        boardScale=1;canvas.style.zoom='1';return;
+        boardScale=1;
+        canvas.style.zoom='1';
+        stage.style.width='100%';
+        stage.style.height='';
+        stage.style.minHeight='';
+        return;
       }
-      // Keep the 1400px logical board; fit it to the actual visible width.
-      // Drag/pointer calculations continue to use boardScale.
-      const widthScale=Math.max(.1,(stage.clientWidth-12)/1400);
-      const heightScale=allView?Math.max(.1,(Math.max(440,stage.clientHeight)-18)/900):1;
+      // Read the available parent width, not the previously fitted stage width.
+      // The stage and its grid now have exactly the same visual footprint.
+      const availableWidth=Math.max(220,stage.parentElement?.clientWidth||panel.clientWidth||1400);
+      const widthScale=Math.max(.1,(availableWidth-12)/1400);
+      const availableHeight=Math.max(440,Math.min(980,window.innerHeight*.72));
+      const heightScale=allView?Math.max(.1,(availableHeight-18)/900):1;
       boardScale=Math.max(.1,Math.min(1,widthScale,heightScale));
       canvas.style.zoom=String(boardScale);
+      if(allView){
+        stage.style.width=Math.ceil(1400*boardScale+2)+'px';
+        stage.style.height=Math.ceil(900*boardScale+2)+'px';
+        stage.style.minHeight='0';
+      }else{
+        stage.style.width='100%';
+        stage.style.height='';
+        stage.style.minHeight='';
+      }
+    }
+    // A remote snapshot must not reset the board, page, or any scrolled ancestor.
+    // Preserve the actual scroll containers, including Origin's parent workspace.
+    function preserveScroll(work) {
+      const ancestors=[];
+      let el=panel;
+      while(el){
+        if(el.nodeType===1 && (el.scrollTop||el.scrollLeft))
+          ancestors.push([el,el.scrollTop,el.scrollLeft]);
+        el=el.parentElement || el.getRootNode?.().host || null;
+      }
+      const previousWindowX=window.scrollX,previousWindowY=window.scrollY;
+      const priorStage=panel.querySelector('.sticky-origin-stage');
+      const stagePos=priorStage?[priorStage.scrollTop,priorStage.scrollLeft]:null;
+      const textareaPositions=new Map();
+      panel.querySelectorAll('.sticky-origin-card textarea').forEach(textarea=>{
+        textareaPositions.set(textarea.dataset.stickyText,textarea.scrollTop);
+      });
+      work();
+      const stage=panel.querySelector('.sticky-origin-stage');
+      if(stagePos&&stage){
+        stage.scrollTop=stagePos[0];stage.scrollLeft=stagePos[1];
+      }
+      for(const [element,top,left] of ancestors)if(element.isConnected){
+        element.scrollTop=top;element.scrollLeft=left;
+      }
+      panel.querySelectorAll('.sticky-origin-card textarea').forEach(textarea=>{
+        if(textareaPositions.has(textarea.dataset.stickyText))
+          textarea.scrollTop=textareaPositions.get(textarea.dataset.stickyText);
+      });
+      if(window.scrollY!==previousWindowY||window.scrollX!==previousWindowX)
+        window.scrollTo({top:previousWindowY,left:previousWindowX,behavior:'instant'});
     }
     function draw() {
       if (disposed) return;
       if (panel.querySelector('textarea:focus') || composing || activeMovement) return;
+      // Keep the existing stage/toolbar mounted during ordinary Firebase updates.
+      // Replacing the whole panel causes native scroll anchoring to jump to the top.
+      if(isReady()&&panel.querySelector('.sticky-origin-stage')){
+        refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
+        if(indexOpen)populateStickyIndex(panel.querySelector('[data-sticky-index]'));
+        const label=panel.querySelector('.sticky-origin-state');
+        if(label)label.textContent='P'+activePage+' · '+pageNotes().length+'枚 / 全'+data.length+'枚';
+        return;
+      }
       // Synchronization while searching must not replace the focused input:
       // doing so interrupts Japanese IME and loses the keyboard cursor.
       const focusedToolbar=panel.querySelector('.sticky-origin-toolbar input[type="search"]:focus, .sticky-origin-toolbar select:focus');
@@ -441,6 +498,10 @@
         return;
       }
       if(stageObserver){stageObserver.disconnect();stageObserver=null;}
+      const scrollContainers=[];
+      let ancestor=panel;
+      while(ancestor){if(ancestor.nodeType===1&&(ancestor.scrollTop||ancestor.scrollLeft))scrollContainers.push([ancestor,ancestor.scrollTop,ancestor.scrollLeft]);ancestor=ancestor.parentElement||ancestor.getRootNode?.().host||null;}
+      const previousScrollY=window.scrollY,previousScrollX=window.scrollX;
       panel.replaceChildren();
       const toolbar=createElement('div','sticky-origin-toolbar');
       const search=createElement('input');
@@ -510,7 +571,11 @@
           if((composing||drafts.size||timers.size||pendingWrites.size||contentSaves.size)
              &&!confirm('この付箋には未保存の変更があります。ページを切り替えますか？'))return;
           activePage=number;savePage();
-          draw();
+          // The page switch is intentional; cards alone need to be redrawn.
+          panel.querySelectorAll('[data-sticky-page]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.stickyPage)===activePage)));
+          refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
+          const label=panel.querySelector('.sticky-origin-state');
+          if(label)label.textContent='P'+activePage+' · '+pageNotes().length+'枚 / 全'+data.length+'枚';
         });
         pages.append(control);
       }
@@ -537,6 +602,8 @@
         stageObserver.observe(stage);
       }
       applyBoardScale();
+      for(const [element,top,left] of scrollContainers)if(element.isConnected){element.scrollTop=top;element.scrollLeft=left;}
+      if(window.scrollX!==previousScrollX||window.scrollY!==previousScrollY)window.scrollTo({top:previousScrollY,left:previousScrollX,behavior:'instant'});
     }
     let unsubscribe = () => {};
     if (service && typeof service.subscribe === 'function') {
