@@ -10,12 +10,15 @@ async function origin(page,width=1366) {
   localStorage.setItem('systemTaskUser','テスト利用者');
   localStorage.setItem('systemTaskRoomId','sticky-ui-test');
   const rows=[],callbacks=new Set();
+  let collapsed=[];
   const send=()=>{const snapshot={status:'ready',ownerUid:'uid_test',ownerRoom:'sticky-ui-test',notes:structuredClone(rows)};
    callbacks.forEach(cb=>cb(snapshot));};
   let sequence=0;
   window.WorkBoardPersonalStickyStoreV659={
    subscribe(cb){callbacks.add(cb);cb({status:'ready',ownerUid:'uid_test',ownerRoom:'sticky-ui-test',notes:structuredClone(rows)});return()=>callbacks.delete(cb);},
    readSnapshot(){return {status:'ready',ownerUid:'uid_test',ownerRoom:'sticky-ui-test',notes:structuredClone(rows)};},
+   readCollapsedNotes(){return [...collapsed];},
+   saveCollapsedNotes(ids){collapsed=[...ids];return true;},
    async dispatch(cmd){
     if(cmd.type==='sticky.content' && window.__stickyHoldTextSave) {
       await new Promise(resolve=>{
@@ -31,6 +34,26 @@ async function origin(page,width=1366) {
       layout:{x:24+(sequence-1)*328,y:24,width:280,height:220,zIndex:sequence,page:cmd.page??1,revision:1,updatedAt:now},
       mobile:{order:sequence,revision:1,updatedAt:now}});
      send();return {ok:true,id};
+    }
+    if(cmd.type==='sticky.arrange'){
+     const ordered=rows.filter(n=>(n.layout.page??1)===cmd.page)
+       .sort((a,b)=>a.layout.y-b.layout.y||a.layout.x-b.layout.x);
+     let x=24,y=24,rowHeight=0,changed=0;
+     const planned=[];
+     for(const note of ordered){
+      if(x+note.layout.width>1376){x=24;y+=rowHeight+16;rowHeight=0;}
+      if(y+note.layout.height>876)return {ok:false,error:'no-space'};
+      planned.push({id:note.id,x,y});x+=note.layout.width+16;rowHeight=Math.max(rowHeight,note.layout.height);
+     }
+     for(const item of planned){
+      const note=rows.find(n=>n.id===item.id);
+      if(note.layout.x!==item.x||note.layout.y!==item.y){
+       note.layout={...note.layout,x:item.x,y:item.y,
+         revision:note.layout.revision+1,updatedAt:Date.now()};
+       changed++;
+      }
+     }
+     send();return {ok:true,changed,page:cmd.page};
     }
     const note=rows.find(n=>n.id===cmd.id);
     if(!note)return {ok:false,error:'record-not-found'};
@@ -522,6 +545,7 @@ test('folded note shows only title until toggled open, retaining original conten
  const card=root.locator('.sticky-origin-card').first();
  await card.locator('textarea').fill('折りたたみ対象の長いメモ');
  await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text)).toBe('折りたたみ対象の長いメモ');
+ await expect(card.locator('[data-sticky-status]')).toBeHidden();
  await card.locator('[data-sticky-collapse]').click();
  await expect(card).toHaveClass(/sticky-origin-card-collapsed/);
  await expect(card.locator('textarea')).toBeHidden();
