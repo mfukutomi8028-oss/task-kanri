@@ -381,3 +381,46 @@ test('desktop canvas fits 1920 viewport without horizontal scrolling',async({pag
  expect(size.scroll).toBeLessThanOrEqual(size.client+1);
  expect(size.page).toBeLessThanOrEqual(size.viewport+1);
 });
+
+
+test('sticky paper-color control stays visible against every paper color',async({page})=>{
+ const root=await origin(page);
+ await root.locator('.sticky-add').click();
+ const card=root.locator('.sticky-origin-card').first();
+ const toggle=card.locator('[data-sticky-color-toggle]');
+ for(const color of ['ivory','lemon','peach','mint','sky','lavender']){
+   await toggle.click();
+   await card.locator('[data-sticky-color="'+color+'"]').click();
+   const visual=await toggle.evaluate(el=>{
+     const surface=getComputedStyle(el),swatch=getComputedStyle(el.querySelector('.sticky-origin-color-preview'));
+     return {background:surface.backgroundColor,border:surface.borderTopStyle,borderWidth:parseFloat(surface.borderTopWidth),swatchBorderWidth:parseFloat(swatch.borderTopWidth)};
+   });
+   expect(visual.background).toBe('rgb(255, 255, 255)');
+   expect(visual.border).toBe('solid');
+   expect(visual.borderWidth).toBeGreaterThanOrEqual(1);
+   expect(visual.swatchBorderWidth).toBeGreaterThanOrEqual(2);
+ }
+});
+
+test('long character counter never overlaps the bottom-right resize handle at minimum card size',async({page})=>{
+ const root=await origin(page);
+ await root.locator('.sticky-add').click();
+ const card=root.locator('.sticky-origin-card').first();
+ await card.locator('textarea').evaluate(el=>el.blur());
+ await page.evaluate(async()=>{
+   const service=window.WorkBoardPersonalStickyStoreV659;
+   const note=service.readSnapshot().notes[0];
+   const owner={ownerUid:note.ownerUid,ownerRoom:note.roomId,id:note.id};
+   await service.dispatch({type:'sticky.content',...owner,expectedRevision:note.content.revision,values:{text:'あ'.repeat(2000)}});
+   const updated=service.readSnapshot().notes[0];
+   await service.dispatch({type:'sticky.layout',...owner,expectedRevision:updated.layout.revision,values:{width:220,height:160}});
+ });
+ await expect(card).toHaveCSS('width','220px');
+ const count=card.locator('.sticky-origin-foot span:last-child');
+ await expect(count).toHaveText('2000/2000');
+ const countBox=await count.boundingBox();
+ const resizeBox=await card.locator('.sticky-origin-resize').boundingBox();
+ expect(countBox).not.toBeNull();
+ expect(resizeBox).not.toBeNull();
+ expect(countBox.x+countBox.width+4).toBeLessThanOrEqual(resizeBox.x);
+});
