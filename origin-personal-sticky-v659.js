@@ -30,7 +30,7 @@
     .sticky-origin-foot{padding:3px 10px 8px;font-size:11px;min-height:27px;display:flex;justify-content:space-between;align-items:center;color:#4f596c}
     .sticky-origin-resize{position:absolute;right:0;bottom:0;width:28px;height:28px;border:0;background:transparent;color:#455067;cursor:nwse-resize;touch-action:none}
     .sticky-origin-palette{display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:4px 10px}
-    .sticky-origin-palette button{width:38px;min-width:38px;height:38px;min-height:38px;border-radius:10px;border:2px solid transparent;background:var(--swatch);color:#253046;font-size:0}
+    .sticky-origin-palette button{width:44px;min-width:44px;height:44px;min-height:44px;border-radius:10px;border:2px solid transparent;background:var(--swatch);color:#253046;font-size:0}
     .sticky-origin-palette button[aria-pressed="true"]{border-color:#3d4ab5;box-shadow:inset 0 0 0 3px white}
     .sticky-origin-empty{padding:30px;font-size:14px;color:var(--muted)}
     .sticky-origin-error{padding:18px;border:1px solid var(--line);border-radius:12px;color:var(--ink-soft);background:var(--paper)}
@@ -155,7 +155,18 @@
       const search=createElement('input');
       search.type='search';search.setAttribute('aria-label','個人付箋を検索');
       search.placeholder='付箋の本文を検索';search.value=query;
-      search.addEventListener('input',()=>{query=search.value;draw();});
+      search.addEventListener('input',()=>{
+        // Keep the search field and Japanese IME composition node mounted.
+        query=search.value;
+        const canvas=panel.querySelector('.sticky-origin-canvas');
+        if(!canvas)return;
+        const term=query.normalize('NFKC').toLocaleLowerCase('ja');
+        const shown=data.filter(note=>!term||note.content.text.normalize('NFKC').toLocaleLowerCase('ja').includes(term))
+          .sort((x,y)=>x.mobile.order-y.mobile.order||x.createdAt-y.createdAt);
+        canvas.replaceChildren();
+        if(!shown.length)canvas.append(createElement('p','sticky-origin-empty','一致する付箋はありません'));
+        else shown.forEach(note=>canvas.append(buildCard(note)));
+      });
       const add=button('＋ 付箋を追加','sticky-add');
       add.disabled=!isReady();
       add.addEventListener('click',async()=>{
