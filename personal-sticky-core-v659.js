@@ -34,9 +34,36 @@ export function isStickyGroup(field, value) {
     && integer(value.zIndex, 0, 1000000000);
   return integer(value.order, 0, 1000000000);
 }
-export function newSticky({ id, ownerUid, roomId, now, x = 24, y = 24 }) {
+/**
+ * Propose an unused placement without moving any existing note.
+ * Only the create command may apply this proposal; UI themes share the result.
+ */
+export function planStickyPlacement(notes = []) {
+  const entries=Array.isArray(notes)?notes.filter(isStickyNote):[];
+  const zIndex=Math.min(1000000000,1+Math.max(0,...entries.map(n=>n.layout.zIndex)));
+  const order=Math.min(1000000000,1024+Math.max(0,...entries.map(n=>n.mobile.order)));
+  const gap=24;
+  const blocked=(x,y)=>entries.some(note=>x<note.layout.x+note.layout.width+gap
+    && x+STICKY_SIZE.width+gap>note.layout.x
+    && y<note.layout.y+note.layout.height+gap
+    && y+STICKY_SIZE.height+gap>note.layout.y);
+  for(let y=gap;y+STICKY_SIZE.height<=STICKY_CANVAS.height-gap;y+=STICKY_SIZE.height+gap)
+    for(let x=gap;x+STICKY_SIZE.width<=STICKY_CANVAS.width-gap;x+=STICKY_SIZE.width+gap)
+      if(!blocked(x,y))return {x,y,zIndex,order};
+  // When the board is full, use a deterministic stagger and keep the note
+  // inside the scrollable canvas rather than losing it off screen.
+  const maxX=STICKY_CANVAS.width-STICKY_SIZE.width-gap;
+  const maxY=STICKY_CANVAS.height-STICKY_SIZE.height-gap;
+  return {
+    x:gap+(entries.length*67)%(maxX-gap+1),
+    y:gap+(entries.length*53)%(maxY-gap+1),
+    zIndex,order
+  };
+}
+export function newSticky({ id, ownerUid, roomId, now, x = 24, y = 24, zIndex = 1, order = 0 }) {
   if (!isStickyId(id) || !isStickyOwner(ownerUid, roomId) || !integer(now, 1, Number.MAX_SAFE_INTEGER)
-    || !integer(x, 0, STICKY_CANVAS.width) || !integer(y, 0, STICKY_CANVAS.height)) {
+    || !integer(x, 0, STICKY_CANVAS.width) || !integer(y, 0, STICKY_CANVAS.height)
+    || !integer(zIndex, 0, 1000000000) || !integer(order, 0, 1000000000)) {
     return { ok: false, error: 'invalid-create' };
   }
   return {
@@ -45,8 +72,8 @@ export function newSticky({ id, ownerUid, roomId, now, x = 24, y = 24 }) {
       schemaVersion: 1, id, ownerUid, roomId, createdAt: now, updatedAt: now,
       content: group(1, { text: '', updatedAt: now }),
       appearance: group(1, { color: 'lemon', updatedAt: now }),
-      layout: group(1, { x, y, width: STICKY_SIZE.width, height: STICKY_SIZE.height, zIndex: 1, updatedAt: now }),
-      mobile: group(1, { order: 0, updatedAt: now })
+      layout: group(1, { x, y, width: STICKY_SIZE.width, height: STICKY_SIZE.height, zIndex, updatedAt: now }),
+      mobile: group(1, { order, updatedAt: now })
     }
   };
 }
