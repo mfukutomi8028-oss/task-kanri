@@ -16,6 +16,7 @@
     .sticky-origin-toolbar :is(button,select,input):focus-visible{outline:2px solid var(--focus,#4659cc);outline-offset:2px}
     .sticky-origin-toolbar button,.sticky-origin-card button{font:inherit;min-width:44px;min-height:44px}
     .sticky-origin-toolbar .sticky-add{background:var(--accent);color:var(--on-accent);border:0;border-radius:10px;padding:9px 15px;font-weight:750}
+    .sticky-origin-scope-note{font-size:12px;line-height:1.65;color:var(--ink-soft);margin:2px 0 12px}
     .sticky-origin-index-toggle{background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 13px}
     .sticky-origin-index{margin:0 0 12px;padding:12px;border:1px solid var(--line);border-radius:13px;background:var(--paper);max-height:260px;overflow:auto}
     .sticky-origin-index-label{margin:0 0 10px;color:var(--ink-soft);font-size:13px;font-weight:700}
@@ -331,12 +332,14 @@
         requestAnimationFrame(()=>panel.querySelector('[data-sticky-text="'+newId+'"]')?.focus());
       });
       const label=createElement('span','sticky-origin-state',state==='ready' ? data.length+'枚' :
-        state==='loading' ? '読み込み中…' : '本人確認が完了していないため利用できません');
+        state==='loading' ? '読み込み中…' : '付箋データを利用できません');
       toolbar.append(search,colorSelect,indexToggle,fit,add,label);panel.append(toolbar);
+      panel.append(createElement('p','sticky-origin-scope-note',
+        '付箋は選択中の利用者名ごとに表示されます。ログインによる閲覧制限はないため、機密情報は記載しないでください。'));
       if (!isReady()) {
         const error=createElement('div','sticky-origin-error');
-        error.append(createElement('strong','','個人付箋は本人確認後に利用できます'),
-          createElement('span','','現在の利用者名選択だけでは、他の職員から付箋を保護できません。認証済みアカウントに接続されるまで作成・閲覧は無効です。'));
+        error.append(createElement('strong','','付箋の保存先に接続できません'),
+          createElement('span','','ネットワークの接続状態を確認してください。データが読み込めない間は保存操作を停止しています。'));
         panel.append(error);return;
       }
       const stage=createElement('div','sticky-origin-stage');
