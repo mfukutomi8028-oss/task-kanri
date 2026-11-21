@@ -245,7 +245,12 @@ test('remote arrange uses atomic collection transaction and cancels all changes 
  assert.equal(result.ok,true);
  const after=store.readSnapshot().notes;
  assert.equal(after.length,2);
- const first=after.find(note=>note.id===a.id);
+ // Make another arrangement necessary before simulating a stale remote revision.
+ const relocated=await store.dispatch(ownerCommand(store,'sticky.layout',{
+  id:b.id,expectedRevision:after.find(note=>note.id===b.id).layout.revision,values:{x:700}
+ }));
+ assert.equal(relocated.ok,true);
+ const first=store.readSnapshot().notes.find(note=>note.id===a.id);
  const path='rooms/test-room/personalStickyNotes/'+first.ownerUid+'/'+first.id;
  const otherPath='rooms/test-room/personalStickyNotes/'+first.ownerUid+'/'+b.id;
  const stale=records.get(path);
