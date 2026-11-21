@@ -437,3 +437,40 @@ test('long character counter never overlaps the bottom-right resize handle at mi
  await card.locator('textarea').fill('短文');
  await expect(count).toHaveText('2/2000');
 });
+
+test('sticky color and delete controls live together at lower left without a saved-status label',async({page})=>{
+ const root=await origin(page);
+ await root.locator('.sticky-add').click();
+ const card=root.locator('.sticky-origin-card').first();
+ const color=card.locator('.sticky-origin-foot [data-sticky-color-toggle]');
+ const remove=card.locator('.sticky-origin-foot [data-sticky-delete]');
+ await expect(color).toBeVisible();
+ await expect(remove).toBeVisible();
+ await expect(card.locator('.sticky-origin-card-head [data-sticky-color-toggle],[data-sticky-delete]')).toHaveCount(0);
+ await expect(card.getByText('保存済み',{exact:true})).toHaveCount(0);
+ await expect(card.locator('[data-sticky-status]')).toHaveCount(0);
+ const [frame,colorBox,removeBox]=await Promise.all([card.boundingBox(),color.boundingBox(),remove.boundingBox()]);
+ expect(colorBox.x).toBeLessThan(removeBox.x);
+ expect(colorBox.y).toBeGreaterThan(frame.y+frame.height*.65);
+ await color.click();
+ const palette=card.locator('.sticky-origin-palette');
+ await expect(palette).toBeVisible();
+ const menuBox=await palette.boundingBox();
+ expect(menuBox.y+menuBox.height).toBeLessThanOrEqual(colorBox.y+4);
+ await card.locator('[data-sticky-color="peach"]').click();
+ await expect(card).toHaveCSS('background-color','rgb(250, 227, 219)');
+ page.once('dialog',dialog=>dialog.accept());
+ await remove.click();
+ await expect(root.locator('.sticky-origin-card')).toHaveCount(0);
+});
+test('mobile note footer keeps color and delete accessible without a resize button',async({page})=>{
+ const root=await origin(page,390);
+ await root.locator('.sticky-add').click();
+ const card=root.locator('.sticky-origin-card').first();
+ await expect(card.locator('.sticky-origin-foot [data-sticky-color-toggle]')).toBeVisible();
+ await expect(card.locator('.sticky-origin-foot [data-sticky-delete]')).toBeVisible();
+ await expect(card.locator('.sticky-origin-resize')).toBeHidden();
+ await card.locator('[data-sticky-color-toggle]').click();
+ await expect(card.locator('.sticky-origin-palette')).toBeVisible();
+ await expect(card.getByText('保存済み',{exact:true})).toHaveCount(0);
+});
