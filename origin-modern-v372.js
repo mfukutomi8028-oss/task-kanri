@@ -494,7 +494,8 @@ function parseDay(s){const [y,m,d]=String(s||'').split('-').map(Number);return n
 const days=['日','月','火','水','木','金','土'];function dateLabel(k){if(!k)return '未設定';const d=parseDay(k);return `${d.getMonth()+1}月${d.getDate()}日（${days[d.getDay()]}）`}function rangeLabel(d){const a=monday(parseDay(d)),b=addDay(a,6);return `${a.getMonth()+1}月${a.getDate()}日 〜 ${b.getMonth()+1}月${b.getDate()}日`}
 function monday(d){const x=dayStart(d);x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
 function newId(){return (crypto?.randomUUID?.()||`${Date.now()}${Math.random()}`)}
-const bridge=window.WorkBoardPaletteBridge;
+mount.querySelector('style').appendChild(document.createTextNode(".origin-memo-nav{position:relative;display:flex;align-items:center}\n.origin-memo-nav-menu{display:none;position:absolute;left:0;top:100%;z-index:60;min-width:170px;padding:6px;border:1px solid var(--line);border-radius:12px;background:var(--paper);box-shadow:0 14px 34px rgba(20,31,60,.14)}\n.origin-memo-nav:hover .origin-memo-nav-menu,.origin-memo-nav:focus-within .origin-memo-nav-menu{display:grid;gap:3px}\n.origin-memo-nav-menu button{min-height:44px;width:100%;text-align:left;padding:9px 12px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-size:13px;font-weight:730}\n.origin-memo-nav-menu button:hover,.origin-memo-nav-menu button:focus-visible,.origin-memo-nav-menu button[aria-current=\"true\"]{background:var(--accent-bg);color:var(--accent-dark)}\n.origin-memo-header-switch{display:none}\n@media(max-width:770px){.origin-memo-header-switch{display:flex;align-items:center;gap:4px;margin-left:auto;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}\n.origin-memo-header-switch button{min-height:44px;padding:7px 9px;border:0;border-radius:8px;background:transparent;color:var(--ink-soft);font-size:11px;font-weight:760;white-space:nowrap}\n.origin-memo-header-switch button[aria-pressed=\"true\"]{background:var(--accent-bg);color:var(--accent-dark)}}"));
+ const bridge=window.WorkBoardPaletteBridge;
 const memoBridge=window.WorkBoardPaletteMemoBridgeV369;
 let snapshot=bridge.readSnapshot();
 let memoItems=memoBridge?.readSnapshot?.()||[];
@@ -891,6 +892,10 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
 }
 let originStickyMemoModeV659='business', originStickyControllerV659=null;
+function originMemoKeyV660(){return 'originMemoModeV660:'+encodeURIComponent(snapshot.roomId||'')+':'+encodeURIComponent(snapshot.currentUser||'');}
+function originMemoReadV660(){try{return localStorage.getItem(originMemoKeyV660())==='personal'?'personal':'business';}catch{return 'business';}}
+function originMemoSaveV660(){try{localStorage.setItem(originMemoKeyV660(),originStickyMemoModeV659);}catch{}}
+originStickyMemoModeV659=originMemoReadV660();
 let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleAdvancedOpen=false,scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoSearchHistory=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskSortDirection='asc',taskSortSecondary='priority',taskSecondaryDirection='asc',taskSortAdvancedOpen=false,taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),bulkStatusTarget='',toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
 // Detailed search is an Origin-only route that preserves the six main tabs.
@@ -901,9 +906,24 @@ function nav(){
  const desktop=$('#desktopNav'),mobile=$('#mobileNav');
  // Navigation depends on view only, not every synced task/memo record.
  // Avoid replacing focused menu buttons on every canonical snapshot refresh.
- if(desktop?.dataset.activeRoute===view&&mobile?.dataset.activeRoute===view)return;
+ if(desktop?.dataset.activeRoute===view&&mobile?.dataset.activeRoute===view&&desktop?.dataset.memoMode===originStickyMemoModeV659)return;
  const markup=(small)=>viewDefs.map(([id,label,ic])=>`<button type="button" data-route="${id}" class="${small?'':'nav-button '}${view===id?'active':''}" ${view===id?'aria-current="page"':''}>${icon(ic,small?21:17)}<span>${label}</span></button>`).join('');
- if(desktop){desktop.innerHTML=markup(false);desktop.dataset.activeRoute=view}
+ if(desktop){
+   desktop.innerHTML=markup(false);desktop.dataset.activeRoute=view;desktop.dataset.memoMode=originStickyMemoModeV659;
+   const noteButton=desktop.querySelector('[data-route="notes"]');
+   if(noteButton){
+     const group=document.createElement('div');group.className='origin-memo-nav';
+     noteButton.replaceWith(group);group.append(noteButton);
+     const menu=document.createElement('div');menu.className='origin-memo-nav-menu';
+     menu.setAttribute('role','group');menu.setAttribute('aria-label','メモの種類');
+     for(const [mode,label] of [['business','業務メモ'],['personal','個人付箋']]){
+       const choice=document.createElement('button');choice.type='button';
+       choice.dataset.memoNavMode=mode;choice.textContent=label;
+       choice.setAttribute('aria-current',String(originStickyMemoModeV659===mode));menu.append(choice);
+     }
+     group.append(menu);
+   }
+ }
  if(mobile){mobile.innerHTML=markup(true);mobile.dataset.activeRoute=view}
 }
 // Origin uses Classic's saved per-room and per-user colors without replacing Origin UI.
@@ -1137,19 +1157,19 @@ function render(){
  const m={today:renderToday,tasks:renderTasks,todos:renderTodos,calendar:renderCalendar,notes:renderNotes,tools:renderOriginTools,search:renderOriginFullSearch};
  $('#workspace').innerHTML=m[view]();
  if(view==='notes'){
-   const bar=document.createElement('nav');
-   bar.className='tab-pills';
-   bar.setAttribute('aria-label','メモの種類');
-   bar.style.marginBottom='15px';
-   for(const [mode,label] of [['business','業務メモ'],['personal','個人付箋']]){
-     const button=document.createElement('button');button.type='button';
-     button.dataset.stickyMode=mode;button.textContent=label;
-     button.classList.toggle('active',originStickyMemoModeV659===mode);
-     button.setAttribute('aria-pressed',String(originStickyMemoModeV659===mode));
-     bar.append(button);
+   // Desktop selection is in the header. Touch selection shares the heading.
+   const heading=$('#workspace .page-heading');
+   if(heading){
+     const choices=document.createElement('div');choices.className='origin-memo-header-switch';
+     choices.setAttribute('role','group');choices.setAttribute('aria-label','メモの種類');
+     for(const [mode,label] of [['business','業務メモ'],['personal','個人付箋']]){
+       const choice=document.createElement('button');choice.type='button';
+       choice.dataset.memoHeaderMode=mode;choice.textContent=label;
+       choice.setAttribute('aria-pressed',String(originStickyMemoModeV659===mode));
+       choices.append(choice);
+     }
+     heading.append(choices);
    }
-   const workspace=$('#workspace');
-   workspace.insertBefore(bar,workspace.firstChild);
    if(originStickyMemoModeV659==='personal'){
      const api=window.WorkBoardOriginStickyPanelV659;
      const target=$('#originStickyMountV659');
