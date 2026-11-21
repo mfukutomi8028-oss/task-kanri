@@ -46,10 +46,17 @@
     @media(min-width:768px){.sticky-origin-card-head button:not(.sticky-origin-grip){min-width:36px;width:36px;min-height:44px;padding:0 2px;font-size:11px}}
     .sticky-origin-card textarea{display:block;flex:1;resize:none;min-height:68px;width:100%;padding:12px 14px;border:0;outline:0;background:transparent;color:#273040;font-size:14px;line-height:1.65;overflow:auto}
     .sticky-origin-card textarea:focus-visible{outline:2px solid #4659cc;outline-offset:-2px}
-    .sticky-origin-foot{padding:3px 10px 8px;font-size:11px;min-height:27px;display:flex;justify-content:space-between;align-items:center;color:#4f596c}
+    .sticky-origin-foot{padding:3px 10px 8px;padding-right:40px;font-size:11px;min-height:32px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center;color:#4f596c}
+    .sticky-origin-foot [data-sticky-status]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .sticky-origin-char-count{white-space:nowrap;font-variant-numeric:tabular-nums;justify-self:end}
     .sticky-origin-resize{position:absolute;right:0;bottom:0;width:28px;height:28px;border:0;background:transparent;color:#455067;cursor:nwse-resize;touch-action:none}
-    .sticky-origin-color-toggle{position:relative;border-radius:8px;padding:0;border:0;display:grid;place-items:center}
-    .sticky-origin-color-preview{display:block;width:24px;height:24px;border:1px solid rgba(28,35,60,.25);border-radius:7px;background:var(--sticky-paper)}
+    .sticky-origin-color-toggle{position:relative;border-radius:8px;padding:0;display:grid;place-items:center}
+    /* An opaque neutral control distinguishes even the current paper color from its background. */
+    .sticky-origin-card-head .sticky-origin-color-toggle{background:#fff;border:1px solid #64718b;box-shadow:0 1px 3px rgba(30,42,64,.14)}
+    .sticky-origin-card-head .sticky-origin-color-toggle:hover{background:#f2f4ff;border-color:#4659b9}
+    .sticky-origin-card-head .sticky-origin-color-toggle[aria-expanded="true"]{background:#eff0ff;border-color:#4659b9}
+    .sticky-origin-card-head .sticky-origin-color-toggle::after{content:"";position:absolute;right:3px;bottom:4px;width:5px;height:5px;border-right:1.5px solid #36445d;border-bottom:1.5px solid #36445d;transform:rotate(45deg);pointer-events:none}
+    .sticky-origin-color-preview{display:block;width:22px;height:22px;border:2px solid #53617b;border-radius:7px;background:var(--sticky-paper);box-shadow:0 0 0 1px #fff}
     .sticky-origin-palette{position:absolute;right:8px;top:48px;z-index:30;display:grid;grid-template-columns:repeat(3,44px);gap:5px;padding:8px;background:#fff;border:1px solid rgba(25,40,60,.2);border-radius:11px;box-shadow:0 8px 20px rgba(20,30,50,.18)}
     .sticky-origin-palette[hidden]{display:none}
     .sticky-origin-page-move{max-width:83px;min-height:36px;font-size:11px;border:1px solid rgba(30,40,60,.18);border-radius:6px;background:rgba(255,255,255,.4);color:#273040}
@@ -69,6 +76,7 @@
       .sticky-origin-card{position:relative!important;left:auto!important;top:auto!important;width:100%!important;height:260px!important;box-shadow:none}
       .sticky-origin-grip{cursor:default;touch-action:auto}
       .sticky-origin-order{display:flex}
+      .sticky-origin-foot{padding-right:12px}
       .sticky-origin-resize,.sticky-origin-front,.sticky-origin-back,.sticky-origin-toolbar .sticky-fit{display:none}
     }
     @media(prefers-reduced-motion:no-preference){.sticky-origin-card{transition:box-shadow .16s ease}.sticky-origin-card:hover{box-shadow:0 10px 28px rgba(28,38,65,.14)}}
@@ -236,7 +244,7 @@
         option.value=String(index);pageMove.append(option);
       }
       pageMove.value=String(notePage(note));
-      foot.append(status,pageMove,createElement('span','',textarea.value.length+'/2000'));
+      foot.append(status,pageMove,createElement('span','sticky-origin-char-count',textarea.value.length+'/2000'));
       const resize=button('↘','sticky-origin-resize');
       resize.dataset.stickyResize=note.id;
       resize.setAttribute('aria-label','ドラッグで付箋の大きさを変更');
