@@ -145,7 +145,7 @@ test('Origin mobile order controls rearrange cards without touching desktop coor
  await root.locator('.sticky-add').click();
  await root.locator('.sticky-add').click();
  const before=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes);
- assert.equal(before.length,2);
+ expect(before).toHaveLength(2);
  const secondId=before[1].id;
  const oldCoords=before.map(n=>[n.layout.x,n.layout.y]);
  await root.locator('.sticky-origin-card').nth(1).locator('[data-sticky-order="up"]').click();
