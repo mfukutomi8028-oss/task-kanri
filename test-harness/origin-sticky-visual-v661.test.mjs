@@ -33,7 +33,7 @@ test('Origin sticky character counter and resize handle use distinct footer cell
  const counter=style('.sticky-origin-char-count');
  assert.match(counter,/white-space:\s*nowrap/i);
  assert.match(source,/foot\.append\(colorToggle,remove,spacer,pageMove,createElement\('span','sticky-origin-char-count',textarea\.value\.length\+'\/2000'\),resize\)/);
- assert.match(source,/\.sticky-origin-foot\{[^}]*grid-template-columns:44px 44px minmax\(0,1fr\) 44px auto\}/);
+ assert.match(source,/\.sticky-origin-foot\{[^}]*grid-template-columns:44px 44px minmax\(0,1fr\) 44px auto;/);
  assert.match(source,/\.sticky-origin-card button\.sticky-origin-resize\{display:none\}/);
 });
 
