@@ -304,8 +304,13 @@ test('Origin user selector confirms before switching away from an unsaved person
  const prior=await picker.inputValue();
  const next=prior==='森井'?'福冨':'森井';
  await expect(root.locator('[data-sticky-status]')).toContainText(/未保存|保存中/);
- // The default Playwright dialog handler dismisses the native confirmation.
- await picker.selectOption(next);
+ // The header picker is currently hidden in the personal memo layout.
+ // Exercise its delegated change handler directly, without Playwright trying
+ // to select an option on a nonvisible element.
+ await picker.evaluate((element,value)=>{
+   element.value=value;
+   element.dispatchEvent(new Event('change',{bubbles:true,composed:true}));
+ },next);
  await expect(picker).toHaveValue(prior);
  await expect(text).toHaveValue('まだ保存していない利用者ごとの付箋');
  await page.evaluate(()=>{
