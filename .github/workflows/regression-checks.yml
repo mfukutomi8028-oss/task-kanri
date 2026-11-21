@@ -249,6 +249,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Login-free Origin sticky cross-device Firebase Emulator test
+        run: npm run test:firebase:sticky:v659
       - name: Firebase Emulator write tests
         shell: bash
         run: npm run test:firebase 2>&1 | tee firebase-results.log
