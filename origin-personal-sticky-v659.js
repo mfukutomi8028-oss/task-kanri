@@ -465,7 +465,7 @@
       // Once writing has stopped, subsequent snapshots may safely repaint.
     });
     panel.addEventListener('click',async e=>{
-      if(!e.target.closest('[data-sticky-color-toggle],.sticky-origin-palette]')){
+      if(!e.target.closest('[data-sticky-color-toggle],.sticky-origin-palette')){
         panel.querySelectorAll('.sticky-origin-palette').forEach(menu=>{menu.hidden=true;});
         panel.querySelectorAll('[data-sticky-color-toggle]').forEach(toggle=>toggle.setAttribute('aria-expanded','false'));
       }
