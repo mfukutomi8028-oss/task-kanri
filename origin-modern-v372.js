@@ -4531,7 +4531,7 @@ function refreshFromCanonical(){
    if(selectedHit||selectedKind)(target||$('#originSearchInput')).focus({preventScroll:true});
  }
 }
-bridge.subscribe(s=>{snapshot=s;refreshFromCanonical()});
+bridge.subscribe(s=>{const changed=s.roomId!==snapshot.roomId||s.currentUser!==snapshot.currentUser;snapshot=s;if(changed)originStickyMemoModeV659=originMemoReadV660();refreshFromCanonical()});
 memoBridge?.subscribe?.(items=>{memoItems=items;refreshFromCanonical()});
 window.addEventListener('workboard:task-starts-changed',refreshFromCanonical);
 let originWorkflowRenderPending=false;
@@ -4549,16 +4549,17 @@ $('#originInboxDialog').addEventListener('click',e=>{if(e.target===$('#originInb
 mount.addEventListener('click',e=>{
  const target=e.target;
  if(!target.closest('.origin-header-settings'))closeOriginSettings();
- const stickyMode=target.closest('[data-sticky-mode]');
- if(stickyMode&&view==='notes'){
-   const next=stickyMode.dataset.stickyMode;
-   if(next==='personal'||next==='business'){
-     if(next!==originStickyMemoModeV659&&originStickyMemoModeV659==='personal'
-       &&originStickyControllerV659?.hasPending()
-       &&!confirm('個人付箋に未保存の変更があります。切り替えると保存されない可能性があります。このまま切り替えますか？'))return;
-     if(next!==originStickyMemoModeV659){originStickyMemoModeV659=next;render();}
-     return;
-   }
+ const memoChoice=target.closest('[data-memo-nav-mode],[data-memo-header-mode]');
+ if(memoChoice){
+  const next=memoChoice.dataset.memoNavMode||memoChoice.dataset.memoHeaderMode;
+  if(next==='personal'||next==='business'){
+   if(next!==originStickyMemoModeV659&&view==='notes'&&originStickyMemoModeV659==='personal'
+     &&originStickyControllerV659?.hasPending()
+     &&!confirm('個人付箋に未保存の変更があります。切り替えると保存されない可能性があります。このまま切り替えますか？'))return;
+   if(next!==originStickyMemoModeV659){originStickyMemoModeV659=next;originMemoSaveV660();}
+   if(view==='notes')render();else handleRoute('notes');
+   return;
+  }
  }
  const route=target.closest('[data-route]');if(route){handleRoute(route.dataset.route);return}
  const action=target.closest('[data-action]');if(action){if(['todo-check','bulk-toggle','task-check'].includes(action.dataset.action))return;handleAction(action);return}
