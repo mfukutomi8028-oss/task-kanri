@@ -582,12 +582,13 @@ test('sticky screen keeps scroll positions after color changes, resizing and fro
  await page.evaluate(()=>window.scrollTo(0,340));
  await stage.evaluate(node=>node.scrollTop=290);
  const initial=await page.evaluate(()=>({y:scrollY,inside:document.querySelector('#modernOriginRoot')?.shadowRoot?.querySelector('.sticky-origin-stage')?.scrollTop}));
- await card.locator('[data-sticky-color-toggle]').click();
- await card.locator('[data-sticky-color="sky"]').click();
+ // Invoke the same DOM click handlers without Playwright scrolling the off-screen card into view.
+ await card.locator('[data-sticky-color-toggle]').evaluate(node=>node.click());
+ await card.locator('[data-sticky-color="sky"]').evaluate(node=>node.click());
  await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.appearance.color)).toBe('sky');
  const afterColor=await stage.evaluate(node=>node.scrollTop);
  expect(Math.abs(afterColor-initial.inside)).toBeLessThan(5);
- await card.locator('[data-sticky-front]').click();
+ await card.locator('[data-sticky-front]').evaluate(node=>node.click());
  const afterFront=await stage.evaluate(node=>node.scrollTop);
  expect(Math.abs(afterFront-initial.inside)).toBeLessThan(5);
 });
@@ -616,4 +617,18 @@ test('whole board is centered horizontally instead of showing an inert right-sid
   return {left:b.left-r.left,right:r.right-b.right,visible:r.width};
  });
  expect(Math.abs(pos.left-pos.right)).toBeLessThan(14);
+});
+
+test('header search result tabs fit without creating a horizontal scrollbar',async({page})=>{
+ const root=await origin(page,1366);
+ await root.locator('#originSearchInput').fill('あ');
+ const popup=root.locator('#searchResults');
+ await expect(popup).toBeVisible();
+ const dims=await popup.evaluate(popup=>{
+  const tabs=popup.querySelector('.origin-search-filters');
+  return {railWidth:tabs?.clientWidth,railScroll:tabs?.scrollWidth,
+    popupWidth:popup.getBoundingClientRect().width};
+ });
+ expect(dims.popupWidth).toBeGreaterThanOrEqual(400);
+ expect(dims.railScroll).toBeLessThanOrEqual(dims.railWidth+1);
 });
