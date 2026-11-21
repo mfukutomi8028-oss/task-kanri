@@ -13,9 +13,7 @@
     "test:rules:v577": "firebase emulators:exec --only database --project demo-task-kanri-v577 --config firebase.v577.candidate.json \"node test-harness/security-rules-v577.mjs\"",
     "test:auth:ui:v580": "firebase emulators:exec --only auth,database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/staged-auth-ui-v580/emulator-smoke.mjs\"",
     "demo:auth:ui:v580": "firebase emulators:exec --only auth,database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/staged-auth-ui-v580/server.mjs\"",
-    "test:migration:v582": "firebase emulators:exec --only database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/migration-roundtrip-v582-emulator.mjs\"",
-    "test:rules:sticky:v659": "firebase emulators:exec --only database --project demo-task-kanri-sticky-v659 --config firebase.sticky.v659.candidate.json \"node test-harness/security-rules-sticky-v659.mjs\"",
-    "test:auth:sticky:v659": "firebase emulators:exec --only auth,database --project demo-task-kanri-sticky-v659 --config firebase.sticky.v659.candidate.json \"node test-harness/personal-sticky-auth-emulator-v659.mjs\""
+    "test:migration:v582": "firebase emulators:exec --only database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/migration-roundtrip-v582-emulator.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
