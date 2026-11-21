@@ -5,7 +5,7 @@
   "scripts": {
     "test:protocol": "node test-harness/run-protocol.mjs",
     "test:ui": "playwright test",
-    "test:firebase:browser": "node test-harness/personal-sticky-noauth-emulator-v659.mjs && node test-harness/run-firebase-browser.mjs && node test-harness/run-firebase-grep-audits-v480.mjs && node test-harness/run-firebase-audit-suites-v479.mjs",
+    "test:firebase:browser": "node test-harness/run-firebase-browser.mjs && node test-harness/run-firebase-grep-audits-v480.mjs && node test-harness/run-firebase-audit-suites-v479.mjs",
     "test:firebase": "firebase emulators:exec --only database --project demo-task-kanri \"npm run test:firebase:browser\"",
     "test": "npm run test:protocol && npm run test:ui",
     "test:rules:v568": "firebase emulators:exec --only database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/security-rules-v568.mjs\"",
@@ -13,7 +13,8 @@
     "test:rules:v577": "firebase emulators:exec --only database --project demo-task-kanri-v577 --config firebase.v577.candidate.json \"node test-harness/security-rules-v577.mjs\"",
     "test:auth:ui:v580": "firebase emulators:exec --only auth,database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/staged-auth-ui-v580/emulator-smoke.mjs\"",
     "demo:auth:ui:v580": "firebase emulators:exec --only auth,database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/staged-auth-ui-v580/server.mjs\"",
-    "test:migration:v582": "firebase emulators:exec --only database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/migration-roundtrip-v582-emulator.mjs\""
+    "test:migration:v582": "firebase emulators:exec --only database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/migration-roundtrip-v582-emulator.mjs\"",
+    "test:firebase:sticky:v659": "firebase emulators:exec --only database --project demo-task-kanri \"node test-harness/personal-sticky-noauth-emulator-v659.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
