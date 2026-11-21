@@ -285,11 +285,11 @@
       if(Math.abs(dx)+Math.abs(dy)<3&&!d.moved)return;
       d.moved=true;
       if(d.isSize){
-        d.card.style.width=Math.max(220,Math.min(480,d.initial.width+Math.round(dx)))+'px';
-        d.card.style.height=Math.max(160,Math.min(500,d.initial.height+Math.round(dy)))+'px';
+        d.card.style.width=Math.max(220,Math.min(480,1400-d.initial.x,d.initial.width+Math.round(dx)))+'px';
+        d.card.style.height=Math.max(160,Math.min(500,900-d.initial.y,d.initial.height+Math.round(dy)))+'px';
       } else {
-        d.card.style.left=Math.max(0,Math.min(1400,d.initial.x+Math.round(dx)))+'px';
-        d.card.style.top=Math.max(0,Math.min(900,d.initial.y+Math.round(dy)))+'px';
+        d.card.style.left=Math.max(0,Math.min(1400-d.initial.width,d.initial.x+Math.round(dx)))+'px';
+        d.card.style.top=Math.max(0,Math.min(900-d.initial.height,d.initial.y+Math.round(dy)))+'px';
       }
     });
     panel.addEventListener('pointerup',async e=>{
@@ -311,8 +311,8 @@
       if(!note||!isReady())return;
       e.preventDefault();
       const amount=e.shiftKey?20:10;
-      const values={x:Math.max(0,Math.min(1400,note.layout.x+(e.key==='ArrowLeft'?-amount:e.key==='ArrowRight'?amount:0))),
-        y:Math.max(0,Math.min(900,note.layout.y+(e.key==='ArrowUp'?-amount:e.key==='ArrowDown'?amount:0)))};
+      const values={x:Math.max(0,Math.min(1400-note.layout.width,note.layout.x+(e.key==='ArrowLeft'?-amount:e.key==='ArrowRight'?amount:0))),
+        y:Math.max(0,Math.min(900-note.layout.height,note.layout.y+(e.key==='ArrowUp'?-amount:e.key==='ArrowDown'?amount:0)))};
       const res=await commit(note.id,'layout',values);
       if(res.ok){grip.closest('.sticky-origin-card').style.left=values.x+'px';grip.closest('.sticky-origin-card').style.top=values.y+'px';}
     });
