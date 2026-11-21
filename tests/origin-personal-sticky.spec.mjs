@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 // Synthetic in-memory sticky service: test presentation, never patient/real data.
-// Security belongs to the separate Auth + Firebase Emulator tests.
+// The selected board name is a view partition only; no login or privacy guarantee is provided.
 async function origin(page,width=1366) {
  await page.setViewportSize({width,height:900});
  await page.route('**/*',route=>new URL(route.request().url()).origin==='http://127.0.0.1:4173'?route.continue():route.abort());
@@ -23,7 +23,7 @@ async function origin(page,width=1366) {
         window.__stickyWaitingSaves.push(resolve);
       });
     }
-    if(cmd.ownerUid!=='uid_test'||cmd.ownerRoom!=='sticky-ui-test')return {ok:false,error:'auth-required'};
+    if(cmd.ownerUid!=='uid_test'||cmd.ownerRoom!=='sticky-ui-test')return {ok:false,error:'unavailable'};
     if(cmd.type==='sticky.create'){
      const id='demo_'+(++sequence),now=Date.now();
      rows.push({schemaVersion:1,id,ownerUid:'uid_test',roomId:'sticky-ui-test',createdAt:now,updatedAt:now,
