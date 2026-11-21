@@ -94,3 +94,17 @@ test('creating consecutive notes chooses different positions and mobile order',a
  assert.ok(second.note.mobile.order>first.note.mobile.order);
  h.store.destroy();
 });
+
+test('mobile move updates only the selected note order and keeps its desktop position',async()=>{
+ const h=harness();await h.login();
+ const base={type:'sticky.create',ownerRoom:'room_a',ownerUid:'user_a'};
+ const first=await h.store.dispatch(base),second=await h.store.dispatch(base);
+ assert.equal(first.ok,true);assert.equal(second.ok,true);
+ const moved=await h.store.dispatch({type:'sticky.mobileMove',id:second.id,direction:'up',
+   ownerRoom:'room_a',ownerUid:'user_a'});
+ assert.equal(moved.ok,true);
+ assert.ok(moved.note.mobile.order<first.note.mobile.order);
+ assert.equal(moved.note.layout.x,second.note.layout.x);
+ assert.equal(moved.note.content.text,second.note.content.text);
+ h.store.destroy();
+});
