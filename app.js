@@ -2046,7 +2046,6 @@ function scheduleSubscribedRender() {
 }
 
 function render() {
-  syncPersonalStickyContextV659();
   // A user-triggered render already includes every queued remote update.
   if (subscriptionRenderFrame !== null) {
     cancelAnimationFrame(subscriptionRenderFrame);
@@ -2061,6 +2060,8 @@ function render() {
 }
 
 function renderCore() {
+  // Follow user switches even when managed by the Classic user editor.
+  syncPersonalStickyContextV659();
   syncUserUi();
   syncRoomUi();
   normalizeScopeForLayout();
