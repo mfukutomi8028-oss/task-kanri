@@ -16,6 +16,16 @@
     .sticky-origin-toolbar :is(button,select,input):focus-visible{outline:2px solid var(--focus,#4659cc);outline-offset:2px}
     .sticky-origin-toolbar button,.sticky-origin-card button{font:inherit;min-width:44px;min-height:44px}
     .sticky-origin-toolbar .sticky-add{background:var(--accent);color:var(--on-accent);border:0;border-radius:10px;padding:9px 15px;font-weight:750}
+    .sticky-origin-index-toggle{background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 13px}
+    .sticky-origin-index{margin:0 0 12px;padding:12px;border:1px solid var(--line);border-radius:13px;background:var(--paper);max-height:260px;overflow:auto}
+    .sticky-origin-index-label{margin:0 0 10px;color:var(--ink-soft);font-size:13px;font-weight:700}
+    .sticky-origin-index-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:8px}
+    .sticky-origin-index-entry{display:flex;align-items:center;gap:9px;min-height:52px;width:100%;padding:8px 10px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;text-align:left;font:inherit}
+    .sticky-origin-index-entry:hover{border-color:var(--accent)}
+    .sticky-origin-index-entry:focus-visible{outline:2px solid var(--focus,#4659cc);outline-offset:2px}
+    .sticky-origin-index-swatch{display:block;width:18px;height:18px;min-width:18px;min-height:18px;border:1px solid rgba(30,40,60,.16);border-radius:5px}
+    .sticky-origin-index-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:650}
+    .sticky-origin-index-empty{color:var(--ink-soft);font-size:13px}
     .sticky-origin-state{font-size:12px;color:var(--ink-soft);line-height:1.6}
     .sticky-origin-stage{background:color-mix(in srgb,var(--bg) 92%,#d0d6e3);border:1px solid var(--line);border-radius:16px;overflow:auto;max-height:min(72dvh,980px);min-height:440px;overscroll-behavior:contain}
     .sticky-origin-canvas{position:relative;width:1400px;height:900px;min-width:1400px;min-height:900px;background-image:linear-gradient(to right,rgba(104,113,140,.08) 1px,transparent 1px),linear-gradient(to bottom,rgba(104,113,140,.08) 1px,transparent 1px);background-size:28px 28px}
@@ -64,7 +74,7 @@
     let disposed = false;
     let data = [];
     let ownerUid = '', ownerRoom = '', state = 'locked';
-    let query = '', colorFilter = 'all', allView = false, boardScale = 1, composing = false, saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
+    let query = '', colorFilter = 'all', indexOpen = false, allView = false, boardScale = 1, composing = false, saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
     const pendingWrites=new Set();
     const contentSaves=new Map();
     const panel = document.createElement('section');
@@ -211,6 +221,36 @@
           term||colorFilter!=='all'?'条件に合う付箋はありません':'まだ付箋はありません。「＋ 付箋を追加」で作成できます。'));
       } else shown.forEach(note=>canvas.append(buildCard(note)));
     }
+    // This index is independent of canvas overlap and active filters.
+    // Labels come from plain text; never render personal note content as HTML.
+    function populateStickyIndex(index) {
+      if(!index)return;
+      index.replaceChildren();
+      index.append(createElement('p','sticky-origin-index-label','付箋一覧 · '+data.length+'枚'));
+      const grid=createElement('div','sticky-origin-index-grid');
+      const ordered=data.slice().sort((a,b)=>a.mobile.order-b.mobile.order
+        || a.createdAt-b.createdAt || a.id.localeCompare(b.id));
+      for(const note of ordered){
+        const entry=button('', 'sticky-origin-index-entry');
+        entry.dataset.stickyIndexSelect=note.id;
+        const title=note.content.text.split('\n').find(line=>line.trim())?.trim().slice(0,42) || '新しい付箋';
+        entry.setAttribute('aria-label',title+'を表示');
+        const swatch=createElement('span','sticky-origin-index-swatch');
+        swatch.style.backgroundColor=colorHex[note.appearance.color]||colorHex.lemon;
+        swatch.setAttribute('aria-hidden','true');
+        entry.append(swatch,createElement('span','sticky-origin-index-title',title));
+        grid.append(entry);
+      }
+      if(!ordered.length)grid.append(createElement('p','sticky-origin-index-empty','付箋はまだありません'));
+      index.append(grid);
+    }
+    function makeStickyIndex() {
+      const index=createElement('aside','sticky-origin-index');
+      index.dataset.stickyIndex='';
+      index.setAttribute('aria-label','すべての個人付箋');
+      populateStickyIndex(index);
+      return index;
+    }
     function applyBoardScale() {
       const stage=panel.querySelector('.sticky-origin-stage');
       const canvas=stage?.querySelector('.sticky-origin-canvas');
@@ -226,9 +266,11 @@
       if (panel.querySelector('textarea:focus') || composing || activeMovement) return;
       // Synchronization while searching must not replace the focused input:
       // doing so interrupts Japanese IME and loses the keyboard cursor.
-      const focusedSearch=panel.querySelector('.sticky-origin-toolbar input[type="search"]:focus, .sticky-origin-toolbar select:focus');
-      if(focusedSearch&&isReady()){
+      const focusedToolbar=panel.querySelector('.sticky-origin-toolbar input[type="search"]:focus, .sticky-origin-toolbar select:focus');
+      const focusedIndex=panel.querySelector('.sticky-origin-index-entry:focus');
+      if((focusedToolbar||focusedIndex)&&isReady()){
         refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
+        if(focusedToolbar)populateStickyIndex(panel.querySelector('[data-sticky-index]'));
         const label=panel.querySelector('.sticky-origin-state');
         if(label)label.textContent=data.length+'枚';
         return;
@@ -264,6 +306,21 @@
         fit.setAttribute('aria-pressed',String(allView));
         applyBoardScale();
       });
+      const indexToggle=button('付箋一覧','sticky-origin-index-toggle');
+      indexToggle.dataset.stickyIndexToggle='';
+      indexToggle.setAttribute('aria-expanded',String(indexOpen));
+      indexToggle.setAttribute('aria-controls','originStickyIndexV659');
+      indexToggle.addEventListener('click',()=>{
+        indexOpen=!indexOpen;
+        indexToggle.setAttribute('aria-expanded',String(indexOpen));
+        const old=panel.querySelector('[data-sticky-index]');
+        if(old)old.remove();
+        if(indexOpen&&isReady()){
+          const index=makeStickyIndex();
+          index.id='originStickyIndexV659';
+          panel.insertBefore(index,panel.querySelector('.sticky-origin-stage'));
+        }
+      });
       const add=button('＋ 付箋を追加','sticky-add');
       add.disabled=!isReady();
       add.addEventListener('click',async()=>{
@@ -275,7 +332,7 @@
       });
       const label=createElement('span','sticky-origin-state',state==='ready' ? data.length+'枚' :
         state==='loading' ? '読み込み中…' : '本人確認が完了していないため利用できません');
-      toolbar.append(search,colorSelect,fit,add,label);panel.append(toolbar);
+      toolbar.append(search,colorSelect,indexToggle,fit,add,label);panel.append(toolbar);
       if (!isReady()) {
         const error=createElement('div','sticky-origin-error');
         error.append(createElement('strong','','個人付箋は本人確認後に利用できます'),
@@ -285,7 +342,13 @@
       const stage=createElement('div','sticky-origin-stage');
       const canvas=createElement('div','sticky-origin-canvas');
       refreshStickyCards(canvas);
-      stage.append(canvas);panel.append(stage);
+      stage.append(canvas);
+      if(indexOpen){
+        const index=makeStickyIndex();
+        index.id='originStickyIndexV659';
+        panel.append(index);
+      }
+      panel.append(stage);
       applyBoardScale();
     }
     let unsubscribe = () => {};
@@ -338,6 +401,37 @@
       // Once writing has stopped, subsequent snapshots may safely repaint.
     });
     panel.addEventListener('click',async e=>{
+      const pick=e.target.closest('[data-sticky-index-select]');
+      if(pick){
+        if(!isReady())return;
+        const note=noteFromId(pick.dataset.stickyIndexSelect);
+        if(!note)return;
+        // The index always includes hidden notes. Show the selected note
+        // without changing any other card or the user's stored filter choices.
+        query='';
+        colorFilter='all';
+        const search=panel.querySelector('.sticky-origin-toolbar input[type="search"]');
+        const filter=panel.querySelector('[data-sticky-color-filter]');
+        if(search)search.value='';
+        if(filter)filter.value='all';
+        refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
+        let zIndex=note.layout.zIndex;
+        if(!window.matchMedia('(max-width:767px)').matches){
+          const maxZ=Math.max(0,...data.map(item=>item.layout.zIndex));
+          if(zIndex<maxZ&&maxZ<1000000000){
+            const moved=await commit(note.id,'layout',{zIndex:maxZ+1});
+            if(moved.ok)zIndex=maxZ+1;
+            else badge('付箋を前面に出せませんでした。最新の状態を確認してください。');
+          }
+        }
+        const card=panel.querySelector('.sticky-origin-card[data-id="'+note.id+'"]');
+        if(card){
+          card.style.zIndex=String(zIndex);
+          card.scrollIntoView({block:'nearest',inline:'nearest'});
+          card.querySelector('.sticky-origin-grip')?.focus({preventScroll:true});
+        }
+        return;
+      }
       const front=e.target.closest('[data-sticky-front]');
       if(front){
         if(!isReady())return;
