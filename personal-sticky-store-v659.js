@@ -236,3 +236,51 @@ export function createVerifiedPersonalStickyStore({
     requireLiveConnection: true
   });
 }
+
+
+/**
+ * Connect the existing Origin sticky presentation to a Firebase Auth session.
+ *
+ * Called by the future authorized startup path BEFORE Origin is mounted.
+ * Does not perform sign-in, accept a selected display name as identity,
+ * persist credentials, or change the legacy /rooms application.
+ *
+ * A live Auth object and the Firebase Rules protected database are required.
+ * The underlying store owns authorization, subscription and sign-out cleanup.
+ */
+export function mountVerifiedOriginStickyStore({
+  root, auth, database, roomId, firebase, accessCheckIntervalMs = 5000
+} = {}) {
+  const slot = 'WorkBoardPersonalStickyStoreV659';
+  if (!root || (typeof root !== 'object' && typeof root !== 'function')
+    || !Object.isExtensible(root) || slot in root) {
+    throw new TypeError('Origin personal sticky store already mounted or invalid target');
+  }
+  const store = createVerifiedPersonalStickyStore({
+    auth, database, roomId, firebase, accessCheckIntervalMs
+  });
+  try {
+    // Read-only while active: another view cannot silently replace the
+    // authorized store with a display-name or localStorage scoped service.
+    Object.defineProperty(root, slot, {
+      configurable: true, enumerable: false, writable: false, value: store
+    });
+  } catch (error) {
+    store.destroy();
+    throw error;
+  }
+  let disposed = false;
+  return Object.freeze({
+    store,
+    destroy() {
+      if (disposed) return;
+      disposed = true;
+      // Destroy first so subscribing Origin cards hide private data before
+      // removing the integration slot. Repeated teardown is a no-op.
+      store.destroy();
+      if (Object.getOwnPropertyDescriptor(root, slot)?.value === store) {
+        Reflect.deleteProperty(root, slot);
+      }
+    }
+  });
+}
