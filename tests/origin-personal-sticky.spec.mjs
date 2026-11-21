@@ -434,6 +434,12 @@ test('long character counter never overlaps the bottom-right resize handle at mi
  expect(countBox).not.toBeNull();
  expect(resizeBox).not.toBeNull();
  expect(countBox.x+countBox.width+1).toBeLessThanOrEqual(resizeBox.x);
+ // Every footer action must also remain separate at the minimum 220px card width.
+ const footerOrder=['[data-sticky-color-toggle]','[data-sticky-delete]','[data-sticky-page-move]','.sticky-origin-char-count','.sticky-origin-resize'];
+ const footerRects=await Promise.all(footerOrder.map(selector=>card.locator(selector).boundingBox()));
+ for(let i=1;i<footerRects.length;i++){
+   expect(footerRects[i-1].x+footerRects[i-1].width).toBeLessThanOrEqual(footerRects[i].x+.75);
+ }
  await card.locator('textarea').fill('短文');
  await expect(count).toHaveText('2/2000');
 });
