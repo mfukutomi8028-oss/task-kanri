@@ -73,11 +73,39 @@
     .sticky-origin-empty{padding:30px;font-size:14px;color:var(--muted)}
     .sticky-origin-error{padding:18px;border:1px solid var(--line);border-radius:12px;color:var(--ink-soft);background:var(--paper)}
     .sticky-origin-error strong{display:block;margin-bottom:6px;color:var(--ink)}
+    /* Collapsing changes only the presentation height; saved dimensions stay intact. */
+    .sticky-origin-card.sticky-origin-card-collapsed{height:48px!important;min-height:48px!important}
+    .sticky-origin-card-collapsed .sticky-origin-card-head{flex:1;border-bottom:0}
+    .sticky-origin-card-collapsed textarea,.sticky-origin-card-collapsed .sticky-origin-palette,
+    .sticky-origin-card-collapsed .sticky-origin-foot,.sticky-origin-card-collapsed .sticky-origin-save-feedback,
+    .sticky-origin-card-collapsed .sticky-origin-order,.sticky-origin-card-collapsed .sticky-origin-front,
+    .sticky-origin-card-collapsed .sticky-origin-back,.sticky-origin-card-collapsed .sticky-origin-expand{display:none!important}
+    .sticky-origin-expand,.sticky-origin-collapse{padding:0 4px;white-space:nowrap}
+    .sticky-origin-expand svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+    .sticky-origin-toolbar button.sticky-arrange{white-space:nowrap}
+    .sticky-origin-editor:not([open]){display:none}
+    .sticky-origin-editor[open]{display:flex;flex-direction:column;gap:0;box-sizing:border-box;
+      width:min(960px,calc(100vw - 36px));height:min(780px,calc(100dvh - 36px));
+      min-width:0;max-width:none;max-height:none;margin:auto;padding:0;border:1px solid rgba(34,45,72,.24);
+      border-radius:17px;box-shadow:0 24px 76px rgba(20,31,52,.22);color:#273040;background:var(--sticky-paper,#faf3c9)}
+    .sticky-origin-editor::backdrop{background:rgba(25,32,52,.5)}
+    .sticky-origin-editor-header,.sticky-origin-editor-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 17px;min-height:55px}
+    .sticky-origin-editor-header{border-bottom:1px solid rgba(25,40,60,.15)}
+    .sticky-origin-editor-header strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+    .sticky-origin-editor-header button{min-width:44px;min-height:44px;border:1px solid rgba(27,37,61,.2);
+      border-radius:10px;background:rgba(255,255,255,.55);color:#273040;cursor:pointer}
+    .sticky-origin-editor textarea{flex:1;min-height:0;resize:none;border:0;outline:0;padding:22px 25px;
+      background:transparent;color:#273040;font-size:16px;line-height:1.85;overflow:auto}
+    .sticky-origin-editor textarea:focus-visible{outline:2px solid #4659cc;outline-offset:-3px}
+    .sticky-origin-editor-footer{border-top:1px solid rgba(25,40,60,.12);font-size:12px}
+    .sticky-origin-editor-footer [data-sticky-status][hidden]{display:none}
     @media(max-width:767px){
       .sticky-origin-toolbar input{max-width:none;flex:1 1 100%}
       .sticky-origin-stage{max-height:none;min-height:0;overflow:visible;background:transparent;border:0}
       .sticky-origin-canvas{display:grid;gap:12px;width:100%;height:auto;min-width:0;min-height:0;background:none}
       .sticky-origin-card{position:relative!important;left:auto!important;top:auto!important;width:100%!important;height:260px!important;box-shadow:none}
+      .sticky-origin-card.sticky-origin-card-collapsed{height:48px!important;min-height:48px!important}
+      .sticky-origin-toolbar button.sticky-arrange{display:none}
       .sticky-origin-grip{cursor:default;touch-action:auto}
       .sticky-origin-order{display:flex}
       .sticky-origin-foot{padding:4px 10px 7px;grid-template-columns:44px 44px minmax(0,1fr) 44px auto;gap:5px}
@@ -101,7 +129,7 @@
     let disposed = false;
     let data = [];
     let ownerUid = '', ownerRoom = '', state = 'locked';
-    let query = '', colorFilter = 'all', indexOpen = false, allView = false, boardScale = 1, activePage = 1, composing = false, saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
+    let query = '', colorFilter = 'all', indexOpen = false, allView = false, boardScale = 1, activePage = 1, composing = false, arranging = false, collapsedIds = new Set(), saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
     const pendingWrites=new Set();
     const contentSaves=new Map();
     const panel = document.createElement('section');
@@ -133,8 +161,7 @@
       const show = message !== '保存済み';
       if (show) saving.set(id,message);
       else saving.delete(id);
-      const feedback=panel.querySelector('[data-sticky-status="'+id+'"]');
-      if (feedback){
+      for(const feedback of panel.querySelectorAll('[data-sticky-status="'+id+'"]')){
         feedback.textContent=show?message:'';
         feedback.hidden=!show;
       }
@@ -189,6 +216,7 @@
     function buildCard(note) {
       const card=createElement('article','sticky-origin-card');
       card.dataset.id=note.id;
+      card.classList.toggle('sticky-origin-card-collapsed',collapsedIds.has(note.id));
       card.style.setProperty('--sticky-paper',colorHex[note.appearance.color]||colorHex.lemon);
       card.style.left=note.layout.x+'px';
       card.style.top=note.layout.y+'px';
@@ -232,6 +260,22 @@
       const back=button('背面','sticky-origin-back');
       back.dataset.stickyBack=note.id;
       back.setAttribute('aria-label','この付箋を最背面へ');
+      const focus=button('','sticky-origin-expand');
+      focus.dataset.stickyExpand=note.id;
+      focus.setAttribute('aria-label','付箋を大きく編集');
+      focus.title='大きく編集（元のサイズは保持します）';
+      const maximize=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      maximize.setAttribute('viewBox','0 0 24 24');
+      maximize.setAttribute('aria-hidden','true');
+      const maxPath=document.createElementNS('http://www.w3.org/2000/svg','path');
+      maxPath.setAttribute('d','M4 10V4h6 M14 4h6v6 M20 14v6h-6 M10 20H4v-6');
+      maximize.append(maxPath);focus.append(maximize);
+      const folded=collapsedIds.has(note.id);
+      const fold=button(folded?'＋':'－','sticky-origin-collapse');
+      fold.dataset.stickyCollapse=note.id;
+      fold.setAttribute('aria-label',folded?'付箋を展開':'付箋を折りたたむ');
+      fold.setAttribute('aria-pressed',String(folded));
+      fold.title=folded?'展開':'折りたたむ';
       const colorToggle=button('','sticky-origin-color-toggle');
       colorToggle.dataset.stickyColorToggle=note.id;
       colorToggle.setAttribute('aria-label','付箋の色を変更');
@@ -240,7 +284,7 @@
       colorToggle.setAttribute('aria-expanded','false');
       colorToggle.setAttribute('aria-controls','stickyPalette-'+note.id);
       colorToggle.append(createElement('span','sticky-origin-color-preview'));
-      top.append(grip,mobileActions,front,back);
+      top.append(grip,mobileActions,front,back,focus,fold);
       const textarea=createElement('textarea');
       textarea.dataset.stickyText=note.id;
       textarea.setAttribute('aria-label','付箋本文');
