@@ -38,20 +38,9 @@ function fakeRealtimeDatabase() {
     },
     runTransaction:async(path,update)=>{
       writes++;
-      const collection=path.split('/').length===4&&path.split('/')[2]==='personalStickyNotes';
-      const prefix=path+'/';
-      const read=()=>collection
-        ? Object.fromEntries([...records].filter(([key])=>key.startsWith(prefix)
-          &&!key.slice(prefix.length).includes('/'))
-          .map(([key,value])=>[key.slice(prefix.length),clone(value)]))
-        :clone(records.get(path));
-      const next=update(read());
-      if(next===undefined)return {committed:false,snapshot:{val:()=>read()}};
-      if(collection){
-        for(const key of [...records.keys()])if(key.startsWith(prefix))records.delete(key);
-        if(next)for(const [id,note] of Object.entries(next))records.set(prefix+id,clone(note));
-      }else if(next===null)records.delete(path);
-      else records.set(path,clone(next));
+      const next=update(clone(records.get(path)));
+      if(next===undefined)return {committed:false,snapshot:{val:()=>clone(records.get(path))}};
+      if(next===null)records.delete(path);else records.set(path,clone(next));
       notify(path);
       return {committed:true,snapshot:{val:()=>clone(next)}};
     }
