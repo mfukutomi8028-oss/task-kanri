@@ -895,6 +895,7 @@ let originStickyMemoModeV659='business', originStickyControllerV659=null;
 function originMemoReadV660(){return window.WorkBoardPersonalStickyStoreV659?.readMemoChoice?.(snapshot.currentUser)||'business';}
 function originMemoSaveV660(){window.WorkBoardPersonalStickyStoreV659?.saveMemoChoice?.(snapshot.currentUser,originStickyMemoModeV659);}
 originStickyMemoModeV659=originMemoReadV660();
+let originMemoIdentityV660=String(snapshot.roomId||'')+'\u0000'+String(snapshot.currentUser||'');
 let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleAdvancedOpen=false,scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoSearchHistory=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskSortDirection='asc',taskSortSecondary='priority',taskSecondaryDirection='asc',taskSortAdvancedOpen=false,taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),bulkStatusTarget='',toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
 // Detailed search is an Origin-only route that preserves the six main tabs.
@@ -4512,6 +4513,11 @@ setIconPlaceholders(mount);initTheme();selectOriginColorMode();syncSnapshot();re
 // presentation refresh until compositionend (which already renders the final
 // committed query); always ingest the canonical snapshot immediately.
 function refreshFromCanonical(){
+ const identity=String(snapshot.roomId||'')+'\u0000'+String(snapshot.currentUser||'');
+ if(identity!==originMemoIdentityV660){
+   originMemoIdentityV660=identity;
+   originStickyMemoModeV659=originMemoReadV660();
+ }
  const sr=$('#searchResults'),active=mount.activeElement;
  const open=!sr.hidden&&$('#originSearchInput').value.trim()&&!searchComposing;
  const selectedHit=active?.dataset?.action==='search-open'
@@ -4530,7 +4536,7 @@ function refreshFromCanonical(){
    if(selectedHit||selectedKind)(target||$('#originSearchInput')).focus({preventScroll:true});
  }
 }
-bridge.subscribe(s=>{const changed=s.roomId!==snapshot.roomId||s.currentUser!==snapshot.currentUser;snapshot=s;if(changed)originStickyMemoModeV659=originMemoReadV660();refreshFromCanonical()});
+bridge.subscribe(s=>{snapshot=s;refreshFromCanonical()});
 memoBridge?.subscribe?.(items=>{memoItems=items;refreshFromCanonical()});
 window.addEventListener('workboard:task-starts-changed',refreshFromCanonical);
 let originWorkflowRenderPending=false;
