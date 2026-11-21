@@ -3555,6 +3555,9 @@ function closeSearch(clear=false){
 }
 function handleRoute(route){
  if(!viewDefs.some(x=>x[0]===route))return;
+ if(view==='notes'&&originStickyMemoModeV659==='personal'&&route!==view
+   &&originStickyControllerV659?.hasPending()
+   &&!confirm('個人付箋に未保存の変更があります。移動すると保存されない可能性があります。このまま移動しますか？'))return;
  originInboxReturn=null;
  closeOriginInbox(false);
  closeOriginSettings();
@@ -4529,7 +4532,13 @@ mount.addEventListener('click',e=>{
  const stickyMode=target.closest('[data-sticky-mode]');
  if(stickyMode&&view==='notes'){
    const next=stickyMode.dataset.stickyMode;
-   if(next==='personal'||next==='business'){originStickyMemoModeV659=next;render();return;}
+   if(next==='personal'||next==='business'){
+     if(next!==originStickyMemoModeV659&&originStickyMemoModeV659==='personal'
+       &&originStickyControllerV659?.hasPending()
+       &&!confirm('個人付箋に未保存の変更があります。切り替えると保存されない可能性があります。このまま切り替えますか？'))return;
+     if(next!==originStickyMemoModeV659){originStickyMemoModeV659=next;render();}
+     return;
+   }
  }
  const route=target.closest('[data-route]');if(route){handleRoute(route.dataset.route);return}
  const action=target.closest('[data-action]');if(action){if(['todo-check','bulk-toggle','task-check'].includes(action.dataset.action))return;handleAction(action);return}
