@@ -105,6 +105,8 @@ jobs:
       - name: Protocol and release-contract tests
         shell: bash
         run: npm run test:protocol 2>&1 | tee protocol-results.log
+      - name: Origin personal sticky core and auth-bound store tests
+        run: node --test tests/personal-sticky-core.test.mjs tests/personal-sticky-store.test.mjs
       - name: Cross-check PowerShell release entrypoint
         shell: pwsh
         run: ./release-check.ps1
