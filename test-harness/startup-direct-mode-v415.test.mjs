@@ -53,7 +53,7 @@ test('startup: parallel preload keeps dependency-sensitive JS execution order', 
 
 test('startup: load only the active screen bundle; keep cascade slots across later mode changes', () => {
   assert.match(manifest, /deferredDisplayAssets:\s*\{/);
-  assert.match(manifest, /modern:\s*\{ styles: \[\], scripts: \["origin-modern-v372\.js"\] \}/);
+  assert.match(manifest, /modern:\s*\{ styles: \[\], scripts: \["origin-personal-sticky-v659\.js", "origin-modern-v372\.js"\] \}/);
   assert.match(manifest, /journal:\s*\{ styles: \["journal-display-v367\.css"\], scripts: \["journal-display-v367\.js"\] \}/);
   assert.match(config, /const INITIAL_MODE = document\.documentElement\.dataset\.wbDisplay \|\| 'classic'/);
   assert.match(config, /const STYLES = ALL_STYLES\.filter/);
