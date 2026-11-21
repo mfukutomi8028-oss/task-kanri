@@ -28,7 +28,7 @@
     .sticky-origin-index-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:650}
     .sticky-origin-index-empty{color:var(--ink-soft);font-size:13px}
     .sticky-origin-state{font-size:12px;color:var(--ink-soft);line-height:1.6}
-    .sticky-origin-stage{background:color-mix(in srgb,var(--bg) 92%,#d0d6e3);border:1px solid var(--line);border-radius:16px;overflow-x:hidden;overflow-y:auto;max-height:min(72dvh,980px);min-height:440px;overscroll-behavior:contain}
+    .sticky-origin-stage{box-sizing:border-box;width:100%;margin-inline:auto;background:color-mix(in srgb,var(--bg) 92%,#d0d6e3);border:1px solid var(--line);border-radius:16px;overflow-x:hidden;overflow-y:auto;max-height:min(72dvh,980px);min-height:440px;overscroll-behavior:contain}
     .sticky-origin-canvas{position:relative;width:1400px;height:900px;min-width:1400px;min-height:900px;background-image:linear-gradient(to right,rgba(104,113,140,.08) 1px,transparent 1px),linear-gradient(to bottom,rgba(104,113,140,.08) 1px,transparent 1px);background-size:28px 28px;isolation:isolate}
     .sticky-origin-card{position:absolute;display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid rgba(25,40,60,.16);box-shadow:0 8px 22px rgba(28,38,65,.10);color:#273040;background:var(--sticky-paper,#faf3c9);min-height:160px;min-width:220px}
     .sticky-origin-card:focus-within{outline:2px solid #4659cc;outline-offset:2px}
@@ -375,6 +375,8 @@
     }
     function refreshStickyCards(canvas) {
       if(!canvas)return;
+      const scrollFrame=canvas.closest('.sticky-origin-stage');
+      const originalTop=scrollFrame?.scrollTop||0,originalLeft=scrollFrame?.scrollLeft||0;
       const term=query.normalize('NFKC').toLocaleLowerCase('ja');
       const shown=pageNotes().filter(note=>(colorFilter==='all'||note.appearance.color===colorFilter)
         && (!term || note.content.text.normalize('NFKC').toLocaleLowerCase('ja').includes(term)))
@@ -384,6 +386,10 @@
         canvas.append(createElement('p','sticky-origin-empty',
           term||colorFilter!=='all'?'条件に合う付箋はありません':'このページにはまだ付箋がありません。「＋ 付箋を追加」で作成できます。'));
       } else shown.forEach(note=>canvas.append(buildCard(note)));
+      if(scrollFrame){
+        scrollFrame.scrollTop=originalTop;
+        scrollFrame.scrollLeft=originalLeft;
+      }
     }
     // This index is independent of canvas overlap and active filters.
     // Labels come from plain text; never render personal note content as HTML.
@@ -421,14 +427,31 @@
       const canvas=stage?.querySelector('.sticky-origin-canvas');
       if(!stage||!canvas)return;
       if(window.matchMedia('(max-width:767px)').matches){
-        boardScale=1;canvas.style.zoom='1';return;
+        boardScale=1;canvas.style.zoom='1';
+        stage.style.width='';stage.style.height='';stage.style.minHeight='';
+        stage.style.maxHeight='';stage.style.overflowY='';
+        return;
       }
-      // Keep the 1400px logical board; fit it to the actual visible width.
-      // Drag/pointer calculations continue to use boardScale.
-      const widthScale=Math.max(.1,(stage.clientWidth-12)/1400);
-      const heightScale=allView?Math.max(.1,(Math.max(440,stage.clientHeight)-18)/900):1;
+      // Use the parent width (not the resized stage) to avoid a ResizeObserver
+      // feedback loop when "全体表示" shrinks the frame around the canvas.
+      const parentWidth=stage.parentElement?.clientWidth||stage.clientWidth;
+      const widthScale=Math.max(.1,(parentWidth-12)/1400);
+      const heightLimit=Math.max(440,Math.min(window.innerHeight*.72,980));
+      const heightScale=allView?Math.max(.1,(heightLimit-18)/900):1;
       boardScale=Math.max(.1,Math.min(1,widthScale,heightScale));
       canvas.style.zoom=String(boardScale);
+      if(allView){
+        // Keep the logical 1400x900 coordinates but remove the unusable
+        // right/bottom region and center the actual visible board.
+        stage.style.width=Math.ceil(1400*boardScale+2)+'px';
+        stage.style.height=Math.ceil(900*boardScale+2)+'px';
+        stage.style.minHeight='0';
+        stage.style.maxHeight='none';
+        stage.style.overflowY='hidden';
+      }else{
+        stage.style.width='';stage.style.height='';stage.style.minHeight='';
+        stage.style.maxHeight='';stage.style.overflowY='';
+      }
     }
     function draw() {
       if (disposed) return;
@@ -444,6 +467,13 @@
         if(label)label.textContent='P'+activePage+' · '+pageNotes().length+'枚 / 全'+data.length+'枚';
         return;
       }
+      // A remote save or a color/size/layout commit invokes draw again.
+      // Replacing the stage without retaining these values used to jump the
+      // user to the top of the board and sometimes the top of the page.
+      const previousStage=panel.querySelector('.sticky-origin-stage');
+      const previousScrollTop=previousStage?.scrollTop||0;
+      const previousScrollLeft=previousStage?.scrollLeft||0;
+      const previousWindowX=window.scrollX,previousWindowY=window.scrollY;
       if(stageObserver){stageObserver.disconnect();stageObserver=null;}
       panel.replaceChildren();
       const toolbar=createElement('div','sticky-origin-toolbar');
@@ -541,6 +571,13 @@
         stageObserver.observe(stage);
       }
       applyBoardScale();
+      if(previousStage){
+        stage.scrollTop=previousScrollTop;
+        stage.scrollLeft=previousScrollLeft;
+        // Prevent browser scroll anchoring from reinterpreting the removed DOM.
+        if(window.scrollX!==previousWindowX||window.scrollY!==previousWindowY)
+          window.scrollTo({left:previousWindowX,top:previousWindowY,behavior:'instant'});
+      }
     }
     let unsubscribe = () => {};
     if (service && typeof service.subscribe === 'function') {
