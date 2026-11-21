@@ -1,4 +1,7 @@
-/* Personal sticky note canonical pure model. No DOM, browser storage or Firebase access. */
+/* Personal sticky note canonical pure model. No DOM, browser storage or Firebase access.
+ * The ownerUid field identifies the selected board user partition in the
+ * login-free version; it is not a verified Firebase Auth identity.
+ */
 export const STICKY_COLORS = Object.freeze(['ivory', 'lemon', 'peach', 'mint', 'sky', 'lavender']);
 export const STICKY_TEXT_LIMIT = 2000;
 export const STICKY_CANVAS = Object.freeze({ width: 1400, height: 900 });
