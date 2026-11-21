@@ -1,286 +1,197 @@
-/* Auth-bound personal sticky persistence. Never connected to legacy /rooms. */
-import { newSticky, updateSticky, canDeleteSticky, isStickyNote, isStickyId, stickyList, planStickyPlacement, planMobileMove } from './personal-sticky-core-v659.js';
+/*
+ * Origin's login-free personal sticky storage.
+ * The selected board display name is a VIEW FILTER, not an identity proof.
+ * This store uses the board's existing /rooms path so different devices can
+ * show the same user's notes. Do not put confidential data in this collection.
+ */
+import {
+  newSticky, updateSticky, canDeleteSticky, isStickyNote, isStickyId,
+  stickyList, planStickyPlacement, planMobileMove
+} from './personal-sticky-core-v659.js';
+
+const COMMAND_FIELDS=Object.freeze({
+  'sticky.content':'content','sticky.appearance':'appearance',
+  'sticky.layout':'layout','sticky.mobile':'mobile'
+});
+const COMMANDS=new Set(['sticky.create','sticky.delete','sticky.mobileMove',...Object.keys(COMMAND_FIELDS)]);
+
+export function userKeyFromDisplayName(value) {
+  // Reuse the application's normalized 12-character user labels, not Auth UIDs.
+  const label=String(value??'').normalize('NFKC').replace(/\s+/g,'').slice(0,12);
+  if(!label)return '';
+  const bytes=new TextEncoder().encode(label);
+  const key='u_'+Array.from(bytes,byte=>byte.toString(16).padStart(2,'0')).join('');
+  return isStickyId(key)?key:'';
+}
 
 /**
- * @param {{
- *  auth: object, database: object, roomId: string,
- *  firebase: {ref: Function, onValue: Function, runTransaction: Function, onAuthStateChanged: Function},
- *  approvedMember: (uid:string, roomId:string) => Promise<boolean>,
- *  accessCheckIntervalMs?: number,
- *  requireLiveConnection?: boolean
- * }} deps
- * This adapter cannot grant access: Firebase Rules MUST independently validate
- * Auth UID + approved room membership on every read and write.
+ * Single board-owned store. setContext() follows the already selected user and
+ * the board's active connection, rather than opening a separate login flow.
+ *
+ * Remote: rooms/{roomId}/personalStickyNotes/{displayNameKey}/{noteId}
+ * Local-only fallback: browser localStorage, explicitly not multi-device.
+ * Remote failures never fall back to another writable local copy.
  */
-export function createPersonalStickyStore({ auth, database, roomId, firebase, approvedMember,
-  accessCheckIntervalMs = 0, requireLiveConnection = false }) {
-  if (!isStickyId(roomId) || !auth || !database || !firebase
-    || ['ref', 'onValue', 'runTransaction', 'onAuthStateChanged'].some(key => typeof firebase[key] !== 'function')
-    || typeof approvedMember !== 'function' || typeof requireLiveConnection !== 'boolean'
-    || !Number.isSafeInteger(accessCheckIntervalMs)
-    || (accessCheckIntervalMs !== 0 && (accessCheckIntervalMs < 200 || accessCheckIntervalMs > 60000)))
-    throw new TypeError('Authenticated sticky dependencies are required');
+export function createBoardPersonalStickyStore({roomId,storage=null}={}) {
+  if(!isStickyId(roomId))throw new TypeError('Valid board room required');
+  const subscribers=new Set();
+  let disposed=false,generation=0,unsubscribeDb=null,selectedKey='',selection='',mode='initializing';
+  let database=null,api=null,status='locked',storageMode='none',notes=Object.create(null);
 
-  const subscribers = new Set();
-  let unsubscribeAuth = null, unsubscribeDb = null, unsubscribeConnection = null;
-  let connectionOnline = !requireLiveConnection;
-  let generation = 0, destroyed = false, uid = '', state = 'locked', notes = Object.create(null);
-  const snapshot = () => Object.freeze({
-    status: state, ownerUid: uid, ownerRoom: roomId,
-    notes: Object.freeze(Object.values(notes).filter(isStickyNote).map(note => structuredClone(note)))
+  const snapshot=()=>Object.freeze({
+    status,ownerUid:selectedKey,ownerRoom:roomId,storageMode,
+    notes:Object.freeze(Object.values(notes).filter(isStickyNote).map(note=>structuredClone(note)))
   });
-  const notify = () => {
-    const current = snapshot();
-    for (const fn of [...subscribers]) {
-      try { fn(current); } catch (error) { console.error('Sticky subscriber failed.', error); }
+  const notify=()=>{
+    const current=snapshot();
+    for(const listener of [...subscribers]) {
+      try{listener(current)}catch(error){console.error('Sticky subscriber failed',error)}
     }
   };
-  const clear = (next = 'locked') => {
+  const reset=()=>{
     generation++;
-    if (unsubscribeDb) { unsubscribeDb(); unsubscribeDb = null; }
-    uid = '';
-    notes = Object.create(null);
-    state = next;
+    if(unsubscribeDb){unsubscribeDb();unsubscribeDb=null}
+    notes=Object.create(null);
+    selectedKey='';status='locked';storageMode='none';
     notify();
   };
-  const path = (u, id = '') => `roomsV2/${roomId}/personal/${u}/stickyNotes${id ? '/' + id : ''}`;
-  const changeAuth = async user => {
-    clear();
-    if (!user || typeof user.uid !== 'string' || !isStickyId(user.uid) || destroyed) return;
-    if (!connectionOnline) { state = 'offline'; notify(); return; }
-    const runId = generation, candidate = user.uid;
-    state = 'checking'; notify();
-    try {
-      const allowed = await approvedMember(candidate, roomId);
-      // Re-check actual Firebase Auth identity after async membership lookup.
-      if (!allowed || destroyed || runId !== generation || !connectionOnline
-        || auth.currentUser?.uid !== candidate) {
-        if (runId === generation) clear(connectionOnline ? 'locked' : 'offline');
-        return;
+  const localKey=key=>`system-task-sticky-v659:${roomId}:${key}`;
+  const remotePath=(key,id='')=>`rooms/${roomId}/personalStickyNotes/${key}${id?'/'+id:''}`;
+  const readLocal=key=>{
+    const json=storage.getItem(localKey(key));
+    if(!json)return Object.create(null);
+    const parsed=JSON.parse(json);
+    if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw new Error('Invalid sticky storage data');
+    const safe=Object.create(null);
+    for(const [id,note] of Object.entries(parsed)){
+      if(!isStickyId(id)||!isStickyNote(note)||note.id!==id||note.ownerUid!==key||note.roomId!==roomId)
+        throw new Error('Invalid stored sticky note');
+      safe[id]=note;
+    }
+    return safe;
+  };
+  function setContext({user='',mode:nextMode='initializing',database:nextDatabase=null,firebase=null}={}) {
+    if(disposed)return;
+    const key=userKeyFromDisplayName(user);
+    const validRemote=nextMode==='remote-online' && nextDatabase
+      && firebase && ['ref','onValue','runTransaction'].every(name=>typeof firebase[name]==='function');
+    const nextStorageMode=nextMode==='local-only'?'local':validRemote?'shared':'none';
+    const nextApi=validRemote?firebase:null;
+    if(selectedKey===key&&selection===String(user)&&mode===nextMode
+      && database===nextDatabase&&api===nextApi)return;
+
+    reset();
+    selection=String(user);mode=nextMode;database=nextDatabase;api=nextApi;
+    if(!key){status='locked';notify();return;}
+    if(nextStorageMode==='local' && storage){
+      try{
+        notes=readLocal(key);
+        selectedKey=key;storageMode='local';status='ready';notify();
+      }catch{
+        status='error';notify();
       }
-      uid = candidate;
-      state = 'loading'; notify();
-      unsubscribeDb = firebase.onValue(firebase.ref(database, path(uid)), snap => {
-        if (destroyed || runId !== generation || auth.currentUser?.uid !== candidate) return;
-        const incoming = snap.val() || {};
-        const safe = Object.create(null);
-        for (const [id, value] of Object.entries(incoming)) {
-          if (isStickyId(id) && isStickyNote(value)
-            && value.id === id && value.ownerUid === candidate && value.roomId === roomId) safe[id] = value;
-        }
-        notes = safe;
-        state = 'ready';
-        notify();
-      }, () => {
-        if (runId === generation) clear('error');
-      });
-    } catch {
-      if (runId === generation) clear('error');
+      return;
     }
-  };
-  if (requireLiveConnection) {
-    // RTDB get() can return cached membership while offline. Use the SDK's
-    // actual client connection signal and never display or queue private
-    // writes without an active connection to the database.
-    unsubscribeConnection = firebase.onValue(firebase.ref(database, '.info/connected'), snap => {
-      if (destroyed) return;
-      const next = snap.val() === true;
-      if (next === connectionOnline) return;
-      connectionOnline = next;
-      if (!next) clear('offline');
-      else if (auth.currentUser) void changeAuth(auth.currentUser);
-      else clear();
-    }, () => {
-      if (destroyed) return;
-      connectionOnline = false;
-      clear('offline');
-    });
-  }
-  unsubscribeAuth = firebase.onAuthStateChanged(auth, changeAuth, () => clear('error'));
-  // Approval changes can occur without an Auth state event. The verified
-  // adapter must therefore recheck membership even while signed in.
-  let checkingAccess = false;
-  const accessTimer = accessCheckIntervalMs > 0 ? setInterval(async () => {
-    if (checkingAccess || destroyed || state !== 'ready' || !uid) return;
-    checkingAccess = true;
-    const currentUid = uid, ticket = generation;
-    let stillAllowed = false;
-    try { stillAllowed = await approvedMember(currentUid, roomId) === true; }
-    catch { /* Verification failures lock instead of retaining private data. */ }
-    finally { checkingAccess = false; }
-    if (!destroyed && ticket === generation && auth.currentUser?.uid === currentUid
-      && !stillAllowed) clear('locked');
-  }, accessCheckIntervalMs) : null;
-  const requireIdentity = (ownerRoom, ownerUid) => {
-    if (destroyed || !connectionOnline || state !== 'ready' || !uid || ownerRoom !== roomId || ownerUid !== uid
-      || auth.currentUser?.uid !== uid) return null;
-    return uid;
-  };
-  async function dispatch(command = {}) {
-    const identity = requireIdentity(command.ownerRoom, command.ownerUid);
-    if (!identity) return { ok: false, error: 'auth-required' };
-    const kind = String(command.type || '');
-    if (kind==='sticky.create' && Object.keys(notes).length >= 200)
-      return { ok:false,error:'limit-reached' };
-    const placement=kind==='sticky.create' ? planStickyPlacement(Object.values(notes)) : null;
-    const id = kind === 'sticky.create'
-      ? (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : '')
-      : String(command.id || '');
-    if (!isStickyId(id)) return { ok: false, error: 'invalid-id' };
-    if (!['sticky.create', 'sticky.content', 'sticky.appearance', 'sticky.layout', 'sticky.mobile', 'sticky.mobileMove', 'sticky.delete'].includes(kind)) {
-      return { ok: false, error: 'unsupported-command' };
-    }
-    const mobileMove=kind==='sticky.mobileMove'
-      ? planMobileMove(Object.values(notes),id,command.direction) : null;
-    if(kind==='sticky.mobileMove'&&!mobileMove)return {ok:false,error:'reorder-unavailable'};
-    const myGeneration = generation;
-    const now = Date.now();
-    const expected = command.expectedRevision;
-    const fields = { 'sticky.content': 'content', 'sticky.appearance': 'appearance',
-      'sticky.layout': 'layout', 'sticky.mobile': 'mobile' };
-    let reason = '';
-    try {
-      const result = await firebase.runTransaction(firebase.ref(database, path(identity, id)), current => {
-        if (generation !== myGeneration || !connectionOnline || auth.currentUser?.uid !== identity || state !== 'ready') {
-          reason = 'auth-changed'; return;
-        }
-        if (kind === 'sticky.create') {
-          if (current) { reason = 'already-exists'; return; }
-          const created = newSticky({ id, ownerUid: identity, roomId, now, x: Number(command.x ?? placement.x), y: Number(command.y ?? placement.y),
-            zIndex: placement.zIndex, order: placement.order });
-          if (!created.ok) { reason = created.error; return; }
-          return created.note;
-        }
-        if (!isStickyNote(current) || current.id !== id || current.ownerUid !== identity || current.roomId !== roomId) {
-          reason = 'record-not-found'; return;
-        }
-        if (kind === 'sticky.delete') {
-          const matching = canDeleteSticky(current, { ownerUid: identity, roomId, expectedRevisions: command.expectedRevisions });
-          if (!matching) { reason = 'conflict'; return; }
-          return null;
-        }
-        const updated = updateSticky(current, {
-          field: kind==='sticky.mobileMove' ? 'mobile' : fields[kind],
-          expectedRevision: mobileMove?.expectedRevision ?? expected,
-          values: kind==='sticky.mobileMove' ? {order:mobileMove.order} : command.values,
-          ownerUid: identity, roomId, now
+    if(nextStorageMode==='shared'){
+      const activeGeneration=generation;
+      selectedKey=key;storageMode='shared';status='loading';notify();
+      try{
+        unsubscribeDb=api.onValue(api.ref(database,remotePath(key)),snapshotValue=>{
+          if(disposed||activeGeneration!==generation)return;
+          const incoming=snapshotValue.val()||{},safe=Object.create(null);
+          for(const [id,note] of Object.entries(incoming)){
+            if(isStickyId(id)&&isStickyNote(note)&&note.id===id
+              && note.ownerUid===key&&note.roomId===roomId)safe[id]=note;
+          }
+          notes=safe;status='ready';notify();
+        },()=>{
+          if(activeGeneration!==generation)return;
+          notes=Object.create(null);status='error';notify();
         });
-        if (!updated.ok) { reason = updated.error; return; }
-        return updated.note;
-      }, { applyLocally: false });
-      if (generation !== myGeneration || auth.currentUser?.uid !== identity) return { ok: false, error: 'auth-changed' };
-      return result.committed ? { ok: true, id, note: result.snapshot?.val?.() || null }
-        : { ok: false, error: reason || 'conflict' };
-    } catch (error) {
-      return { ok: false, error: 'write-failed' };
+      }catch{notes=Object.create(null);status='error';notify();}
+      return;
     }
+    status=nextMode==='remote-degraded'?'error':'loading';
+    notify();
   }
-  return Object.freeze({
-    readSnapshot: snapshot,
-    subscribe(listener) {
-      if (typeof listener !== 'function') throw new TypeError('Listener required');
-      if (destroyed) throw new Error('Sticky store destroyed');
-      subscribers.add(listener); listener(snapshot());
-      return () => subscribers.delete(listener);
-    },
-    dispatch,
-    list: filters => stickyList(notes, filters),
-    destroy() {
-      if (destroyed) return;
-      destroyed = true;
-      if (unsubscribeAuth) unsubscribeAuth();
-      if (unsubscribeConnection) unsubscribeConnection();
-      if (accessTimer !== null) clearInterval(accessTimer);
-      clear();
-      subscribers.clear();
-    }
-  });
-}
-
-
-/**
- * Verified client SDK adapter for a future authenticated Origin session.
- * Not wired into the legacy /rooms app. The membership read is allowed only
- * for this Firebase Auth UID when the selected room has approved it.
- *
- * Never trust a selected display name, cached role, or caller-supplied UID.
- * Production Realtime Database Rules must independently protect all writes.
- */
-export function createVerifiedPersonalStickyStore({
-  auth, database, roomId, firebase, accessCheckIntervalMs = 5000
-}) {
-  if (!firebase || typeof firebase.get !== 'function'
-    || !Number.isSafeInteger(accessCheckIntervalMs)
-    || accessCheckIntervalMs < 200 || accessCheckIntervalMs > 60000) {
-    throw new TypeError('Verified Auth and periodic access checks are required');
-  }
-  const approvedMember = async (candidate, requestedRoom) => {
-    if (!isStickyId(candidate) || !isStickyId(requestedRoom)
-      || auth?.currentUser?.uid !== candidate) return false;
-    try {
-      // This leaf's Firebase Rules require approved identity + membership
-      // AND auth.uid === candidate. Display names cannot grant access.
-      const accessRef = firebase.ref(database,
-        `roomsV2/${requestedRoom}/access/members/${candidate}`);
-      const access = await firebase.get(accessRef);
-      return auth.currentUser?.uid === candidate
-        && ['viewer', 'editor', 'admin'].includes(access.val());
-    } catch {
-      // Permission denied, offline, expired identity or missing membership
-      // must all fail closed. Never fall back to localStorage or /rooms.
-      return false;
-    }
-  };
-  return createPersonalStickyStore({
-    auth, database, roomId, firebase, approvedMember, accessCheckIntervalMs,
-    requireLiveConnection: true
-  });
-}
-
-
-/**
- * Connect the existing Origin sticky presentation to a Firebase Auth session.
- *
- * Called by the future authorized startup path BEFORE Origin is mounted.
- * Does not perform sign-in, accept a selected display name as identity,
- * persist credentials, or change the legacy /rooms application.
- *
- * A live Auth object and the Firebase Rules protected database are required.
- * The underlying store owns authorization, subscription and sign-out cleanup.
- */
-export function mountVerifiedOriginStickyStore({
-  root, auth, database, roomId, firebase, accessCheckIntervalMs = 5000
-} = {}) {
-  const slot = 'WorkBoardPersonalStickyStoreV659';
-  if (!root || (typeof root !== 'object' && typeof root !== 'function')
-    || !Object.isExtensible(root) || slot in root) {
-    throw new TypeError('Origin personal sticky store already mounted or invalid target');
-  }
-  const store = createVerifiedPersonalStickyStore({
-    auth, database, roomId, firebase, accessCheckIntervalMs
-  });
-  try {
-    // Read-only while active: another view cannot silently replace the
-    // authorized store with a display-name or localStorage scoped service.
-    Object.defineProperty(root, slot, {
-      configurable: true, enumerable: false, writable: false, value: store
-    });
-  } catch (error) {
-    store.destroy();
-    throw error;
-  }
-  let disposed = false;
-  return Object.freeze({
-    store,
-    destroy() {
-      if (disposed) return;
-      disposed = true;
-      // Destroy first so subscribing Origin cards hide private data before
-      // removing the integration slot. Repeated teardown is a no-op.
-      store.destroy();
-      if (Object.getOwnPropertyDescriptor(root, slot)?.value === store) {
-        Reflect.deleteProperty(root, slot);
+  async function dispatch(command={}) {
+    if(disposed || status!=='ready'
+      || command.ownerUid!==selectedKey || command.ownerRoom!==roomId)
+      return {ok:false,error:'unavailable'};
+    const kind=String(command.type||'');
+    if(!COMMANDS.has(kind))return {ok:false,error:'unsupported-command'};
+    if(kind==='sticky.create'&&Object.keys(notes).length>=200)return {ok:false,error:'limit-reached'};
+    const placement=kind==='sticky.create'?planStickyPlacement(Object.values(notes)):null;
+    const id=kind==='sticky.create'
+      ? (globalThis.crypto?.randomUUID?.()
+        ?? 'note_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,14))
+      : String(command.id||'');
+    if(!isStickyId(id))return {ok:false,error:'invalid-id'};
+    const move=kind==='sticky.mobileMove'?planMobileMove(Object.values(notes),id,command.direction):null;
+    if(kind==='sticky.mobileMove'&&!move)return {ok:false,error:'reorder-unavailable'};
+    const capturedGeneration=generation,capturedUser=selectedKey,now=Date.now();
+    let reason='';
+    const apply=current=>{
+      if(disposed||generation!==capturedGeneration||status!=='ready'||selectedKey!==capturedUser){
+        reason='user-changed';return undefined;
       }
+      if(kind==='sticky.create'){
+        if(current){reason='already-exists';return undefined;}
+        const created=newSticky({id,ownerUid:capturedUser,roomId,now,
+          x:Number(command.x??placement.x),y:Number(command.y??placement.y),
+          zIndex:placement.zIndex,order:placement.order});
+        if(!created.ok){reason=created.error;return undefined;}
+        return created.note;
+      }
+      if(!isStickyNote(current)||current.id!==id||current.ownerUid!==capturedUser
+        ||current.roomId!==roomId){reason='record-not-found';return undefined;}
+      if(kind==='sticky.delete'){
+        if(!canDeleteSticky(current,{ownerUid:capturedUser,roomId,expectedRevisions:command.expectedRevisions})){
+          reason='conflict';return undefined;
+        }
+        return null;
+      }
+      const updated=updateSticky(current,{
+        field:kind==='sticky.mobileMove'?'mobile':COMMAND_FIELDS[kind],
+        expectedRevision:move?.expectedRevision??command.expectedRevision,
+        values:move?{order:move.order}:command.values,
+        ownerUid:capturedUser,roomId,now
+      });
+      if(!updated.ok){reason=updated.error;return undefined;}
+      return updated.note;
+    };
+    try{
+      if(storageMode==='local'){
+        const current=notes[id]||null,next=apply(current);
+        if(next===undefined)return {ok:false,error:reason||'conflict'};
+        const updated={...notes};
+        if(next===null)delete updated[id];else updated[id]=next;
+        // Persist before telling the UI that a write succeeded.
+        storage.setItem(localKey(capturedUser),JSON.stringify(updated));
+        if(disposed||generation!==capturedGeneration)return {ok:false,error:'user-changed'};
+        notes=updated;notify();
+        return {ok:true,id,note:next};
+      }
+      if(storageMode!=='shared'||!database||!api)return {ok:false,error:'unavailable'};
+      const result=await api.runTransaction(api.ref(database,remotePath(capturedUser,id)),apply,{applyLocally:false});
+      if(disposed||generation!==capturedGeneration||selectedKey!==capturedUser||status!=='ready')
+        return {ok:false,error:'user-changed'};
+      return result.committed?{ok:true,id,note:result.snapshot?.val?.()??null}
+        :{ok:false,error:reason||'conflict'};
+    }catch{return {ok:false,error:'write-failed'}}
+  }
+  return Object.freeze({
+    readSnapshot:snapshot,setContext,dispatch,
+    subscribe(listener){
+      if(typeof listener!=='function')throw new TypeError('Listener required');
+      if(disposed)throw new Error('Sticky store destroyed');
+      subscribers.add(listener);listener(snapshot());
+      return()=>subscribers.delete(listener);
+    },
+    list:filters=>stickyList(notes,filters),
+    destroy(){
+      if(disposed)return;
+      disposed=true;reset();subscribers.clear();
     }
   });
 }
