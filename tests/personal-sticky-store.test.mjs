@@ -132,3 +132,12 @@ test('connection degradation forbids writes without silently creating a second l
   assert.equal(storage.size(),0,'remote failures must not copy notes into browser storage');
   a.destroy();
 });
+
+test('login-free store accepts existing Japanese room names without breaking app startup',async()=>{
+ const s=createBoardPersonalStickyStore({roomId:'病院業務 2026',storage:memoryStorage()});
+ s.setContext({user:'福冨',mode:'local-only'});
+ assert.equal(s.readSnapshot().status,'ready');
+ const result=await s.dispatch({type:'sticky.create',ownerUid:s.readSnapshot().ownerUid,ownerRoom:'病院業務 2026'});
+ assert.equal(result.ok,true);
+ s.destroy();
+});
