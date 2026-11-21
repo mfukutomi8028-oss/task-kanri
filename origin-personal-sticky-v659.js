@@ -251,7 +251,7 @@
         const id=color.dataset.id;
         if(await commit(id,'appearance',{color:color.dataset.stickyColor}).then(r=>r.ok)){
           panel.querySelectorAll('[data-sticky-color][data-id="'+id+'"]').forEach(b=>{
-            b.setAttribute('aria-pressed',String(b===color));
+            b.setAttribute('aria-pressed',String(b.dataset.stickyColor===color.dataset.stickyColor));
           });
           color.closest('.sticky-origin-card')?.style.setProperty('--sticky-paper',colorHex[color.dataset.stickyColor]);
         }
