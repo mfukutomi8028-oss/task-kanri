@@ -26,3 +26,17 @@ test('Origin sticky counter reserves space for desktop resize handle',()=>{
  assert.match(counter,/white-space:\s*nowrap/i);
  assert.match(source,/@media\(max-width:767px\)\{[\s\S]*?\.sticky-origin-foot\{padding-right:1[0-4]px\}/);
 });
+
+test('all six sticky paper colors are harmonized light pastel tones',()=>{
+ const palette=source.match(/const COLORS = \[([\s\S]*?)\n  \];/)?.[1]??'';
+ const found=Object.fromEntries([...palette.matchAll(/\['(ivory|lemon|peach|mint|sky|lavender)','[^']+','(#[0-9a-f]{6})'\]/g)].map(m=>[m[1],m[2]]));
+ assert.deepEqual(found,{
+  ivory:'#f6f2eb',lemon:'#faf3c9',peach:'#fae3db',
+  mint:'#dff0e6',sky:'#e1edf8',lavender:'#eee6f8'
+ });
+ for(const [name,hex] of Object.entries(found)){
+  const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
+  assert.ok(Math.min(...rgb)>=195, name+' is too dark for a pastel note');
+  assert.ok(Math.max(...rgb)-Math.min(...rgb)<=60,name+' is too saturated');
+ }
+});
