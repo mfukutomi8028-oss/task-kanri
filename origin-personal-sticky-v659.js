@@ -47,10 +47,10 @@
     @media(min-width:768px){.sticky-origin-card-head button:not(.sticky-origin-grip){min-width:36px;width:36px;min-height:44px;padding:0 2px;font-size:11px}}
     .sticky-origin-card textarea{display:block;flex:1;resize:none;min-height:68px;width:100%;padding:12px 14px;border:0;outline:0;background:transparent;color:#273040;font-size:14px;line-height:1.65;overflow:auto}
     .sticky-origin-card textarea:focus-visible{outline:2px solid #4659cc;outline-offset:-2px}
-    .sticky-origin-foot{padding:3px 10px 8px;padding-right:40px;font-size:11px;min-height:32px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center;color:#4f596c}
+    .sticky-origin-foot{padding:3px 8px 8px 10px;font-size:11px;min-height:32px;display:grid;grid-template-columns:minmax(0,1fr) auto auto 32px;gap:6px;align-items:center;color:#4f596c}
     .sticky-origin-foot [data-sticky-status]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .sticky-origin-char-count{white-space:nowrap;font-variant-numeric:tabular-nums;justify-self:end}
-    .sticky-origin-resize{position:absolute;right:0;bottom:0;width:28px;height:28px;border:0;background:transparent;color:#455067;cursor:nwse-resize;touch-action:none}
+    .sticky-origin-card button.sticky-origin-resize{position:static;min-width:32px;min-height:32px;width:32px;height:32px;border:0;background:transparent;color:#455067;cursor:nwse-resize;touch-action:none;padding:0;display:grid;place-items:center;justify-self:end}
     .sticky-origin-color-toggle{position:relative;border-radius:8px;padding:0;display:grid;place-items:center}
     /* An opaque neutral control distinguishes even the current paper color from its background. */
     .sticky-origin-card-head button.sticky-origin-color-toggle{background:#fff;border:1px solid #64718b;box-shadow:0 1px 3px rgba(30,42,64,.14)}
@@ -77,7 +77,7 @@
       .sticky-origin-card{position:relative!important;left:auto!important;top:auto!important;width:100%!important;height:260px!important;box-shadow:none}
       .sticky-origin-grip{cursor:default;touch-action:auto}
       .sticky-origin-order{display:flex}
-      .sticky-origin-foot{padding-right:12px}
+      .sticky-origin-foot{padding-right:12px;grid-template-columns:minmax(0,1fr) auto auto}
       .sticky-origin-resize,.sticky-origin-front,.sticky-origin-back,.sticky-origin-toolbar .sticky-fit{display:none}
     }
     @media(prefers-reduced-motion:no-preference){.sticky-origin-card{transition:box-shadow .16s ease}.sticky-origin-card:hover{box-shadow:0 10px 28px rgba(28,38,65,.14)}}
@@ -245,11 +245,12 @@
         option.value=String(index);pageMove.append(option);
       }
       pageMove.value=String(notePage(note));
-      foot.append(status,pageMove,createElement('span','sticky-origin-char-count',textarea.value.length+'/2000'));
       const resize=button('↘','sticky-origin-resize');
       resize.dataset.stickyResize=note.id;
       resize.setAttribute('aria-label','ドラッグで付箋の大きさを変更');
-      card.append(top,colors,textarea,foot,resize);
+      // Resize handle occupies its own footer grid cell; never overlays the counter.
+      foot.append(status,pageMove,createElement('span','sticky-origin-char-count',textarea.value.length+'/2000'),resize);
+      card.append(top,colors,textarea,foot);
       return card;
     }
     function refreshStickyCards(canvas) {
