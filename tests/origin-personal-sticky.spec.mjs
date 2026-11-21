@@ -173,3 +173,15 @@ test('Origin sticky keeps the newest draft when two writes overlap',async({page}
    window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text))
    .toBe('保存を待つ文章と追記');
 });
+
+test('Origin sticky search keeps focus and input through a remote snapshot',async({page})=>{
+ const root=await origin(page);
+ const search=root.locator('.sticky-origin-toolbar input[type="search"]');
+ await search.fill('日本語で検索中');
+ await expect(search).toBeFocused();
+ await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.dispatch({
+   type:'sticky.create',ownerUid:'uid_test',ownerRoom:'sticky-ui-test'
+ }));
+ await expect(search).toBeFocused();
+ await expect(search).toHaveValue('日本語で検索中');
+});
