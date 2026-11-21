@@ -20,7 +20,7 @@ test('Origin sticky color button is a compact round swatch in the footer',()=>{
  const swatch=style('.sticky-origin-color-preview');
  assert.match(swatch,/border-radius:\s*50%/i);
  assert.match(swatch,/border:\s*2px solid/i);
- assert.match(source,/top\.append\(grip,mobileActions,front,back\)/);
+ assert.match(source,/top\.append\(grip,mobileActions,front,back,focus,fold\)/);
  assert.match(source,/foot\.append\(colorToggle,remove,spacer,pageMove,createElement\('span','sticky-origin-char-count',textarea\.value\.length\+'\/2000'\),resize\)/);
  assert.match(source,/feedback\.textContent=show\?message:'';/);
  assert.match(source,/feedback\.hidden=!show;/);
