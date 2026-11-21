@@ -42,6 +42,8 @@
     .sticky-origin-grip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .sticky-origin-card-head button:not(.sticky-origin-grip){background:transparent;border:0;border-radius:8px;color:#293244;font-size:14px}
     .sticky-origin-card-head button:hover{background:rgba(255,255,255,.6)}
+    .sticky-origin-card-head button:focus-visible,.sticky-origin-page-move:focus-visible{outline:2px solid #4659cc;outline-offset:2px}
+    @media(min-width:768px){.sticky-origin-card-head button:not(.sticky-origin-grip){min-width:36px;width:36px;min-height:44px;padding:0 2px;font-size:11px}}
     .sticky-origin-card textarea{display:block;flex:1;resize:none;min-height:68px;width:100%;padding:12px 14px;border:0;outline:0;background:transparent;color:#273040;font-size:14px;line-height:1.65;overflow:auto}
     .sticky-origin-card textarea:focus-visible{outline:2px solid #4659cc;outline-offset:-2px}
     .sticky-origin-foot{padding:3px 10px 8px;font-size:11px;min-height:27px;display:flex;justify-content:space-between;align-items:center;color:#4f596c}
@@ -312,6 +314,7 @@
         if(label)label.textContent='P'+activePage+' · '+pageNotes().length+'枚 / 全'+data.length+'枚';
         return;
       }
+      if(stageObserver){stageObserver.disconnect();stageObserver=null;}
       panel.replaceChildren();
       const toolbar=createElement('div','sticky-origin-toolbar');
       const search=createElement('input');
@@ -462,6 +465,10 @@
       // Once writing has stopped, subsequent snapshots may safely repaint.
     });
     panel.addEventListener('click',async e=>{
+      if(!e.target.closest('[data-sticky-color-toggle],.sticky-origin-palette]')){
+        panel.querySelectorAll('.sticky-origin-palette').forEach(menu=>{menu.hidden=true;});
+        panel.querySelectorAll('[data-sticky-color-toggle]').forEach(toggle=>toggle.setAttribute('aria-expanded','false'));
+      }
       const pick=e.target.closest('[data-sticky-index-select]');
       if(pick){
         if(!isReady())return;
@@ -471,7 +478,10 @@
         // without changing any other card or the user's stored filter choices.
         query='';
         colorFilter='all';
-        if(notePage(note)!==activePage){activePage=notePage(note);savePage();draw();}
+        if(notePage(note)!==activePage){
+          activePage=notePage(note);savePage();
+          panel.querySelectorAll('[data-sticky-page]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.stickyPage)===activePage)));
+        }
         const search=panel.querySelector('.sticky-origin-toolbar input[type="search"]');
         const filter=panel.querySelector('[data-sticky-color-filter]');
         if(search)search.value='';
@@ -616,6 +626,16 @@
     });
     panel.addEventListener('pointercancel',()=>{activeMovement=null;draw();});
     panel.addEventListener('keydown',async e=>{
+      if(e.key==='Escape'){
+        const menu=panel.querySelector('.sticky-origin-palette:not([hidden])');
+        if(menu){
+          e.preventDefault();
+          menu.hidden=true;
+          const trigger=menu.closest('.sticky-origin-card')?.querySelector('[data-sticky-color-toggle]');
+          trigger?.setAttribute('aria-expanded','false');trigger?.focus();
+          return;
+        }
+      }
       const grip=e.target.closest('[data-sticky-move]');
       if(!grip||!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))return;
       const note=noteFromId(grip.dataset.stickyMove);
