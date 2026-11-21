@@ -96,3 +96,10 @@ test('mobile reorder computes a new safe rank without altering desktop placement
  assert.equal(planMobileMove([a,b,c],a.id,'up'),null);
  assert.equal(planMobileMove([a,b,c],'missing','up'),null);
 });
+
+test('existing Firebase-safe Japanese room identifiers remain supported',()=>{
+ const japanese=newSticky({id:'note_jp',ownerUid:'user_a',roomId:'病院業務 2026',now:stamp});
+ assert.equal(japanese.ok,true);
+ assert.equal(isStickyNote(japanese.note),true);
+ assert.equal(newSticky({id:'note_slash',ownerUid:'user_a',roomId:'院内/業務',now:stamp}).ok,false);
+});
