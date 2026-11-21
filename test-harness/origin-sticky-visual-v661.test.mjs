@@ -16,7 +16,7 @@ test('Origin sticky color button is a compact round swatch in the footer',()=>{
  const toggle=style('.sticky-origin-card button.sticky-origin-color-toggle');
  assert.match(toggle,/background:\s*#fff\b/i);
  assert.match(toggle,/border-radius:\s*50%/i);
- assert.match(toggle,/width:\s*30px/i);
+ assert.match(toggle,/width:\s*32px/i);
  const swatch=style('.sticky-origin-color-preview');
  assert.match(swatch,/border-radius:\s*50%/i);
  assert.match(swatch,/border:\s*2px solid/i);
@@ -26,14 +26,14 @@ test('Origin sticky color button is a compact round swatch in the footer',()=>{
 });
 test('Origin sticky character counter and resize handle use distinct footer cells',()=>{
  const footer=style('.sticky-origin-foot');
- assert.match(footer,/grid-template-columns:30px 30px minmax\(0,1fr\) 42px auto 32px/i);
+ assert.match(footer,/grid-template-columns:32px 32px minmax\(0,1fr\) 42px auto 32px/i);
  const resize=style('.sticky-origin-card button.sticky-origin-resize');
  assert.match(resize,/position:static/i);
  assert.match(resize,/min-width:32px/i);
  const counter=style('.sticky-origin-char-count');
  assert.match(counter,/white-space:\s*nowrap/i);
  assert.match(source,/foot\.append\(colorToggle,remove,spacer,pageMove,createElement\('span','sticky-origin-char-count',textarea\.value\.length\+'\/2000'\),resize\)/);
- assert.match(source,/\.sticky-origin-foot\{[^}]*grid-template-columns:36px 36px minmax\(0,1fr\) 44px auto\}/);
+ assert.match(source,/\.sticky-origin-foot\{[^}]*grid-template-columns:44px 44px minmax\(0,1fr\) 44px auto\}/);
  assert.match(source,/\.sticky-origin-card button\.sticky-origin-resize\{display:none\}/);
 });
 
