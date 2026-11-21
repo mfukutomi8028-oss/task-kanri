@@ -12,6 +12,8 @@
   const STYLES = `
     .sticky-origin-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
     .sticky-origin-toolbar input{max-width:290px;width:100%;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--paper);color:var(--ink)}
+    .sticky-origin-toolbar select,.sticky-origin-toolbar .sticky-fit{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--paper);color:var(--ink)}
+    .sticky-origin-toolbar :is(button,select,input):focus-visible{outline:2px solid var(--focus,#4659cc);outline-offset:2px}
     .sticky-origin-toolbar button,.sticky-origin-card button{font:inherit;min-width:44px;min-height:44px}
     .sticky-origin-toolbar .sticky-add{background:var(--accent);color:var(--on-accent);border:0;border-radius:10px;padding:9px 15px;font-weight:750}
     .sticky-origin-state{font-size:12px;color:var(--ink-soft);line-height:1.6}
@@ -22,6 +24,7 @@
     .sticky-origin-card-head{display:flex;align-items:center;gap:3px;min-height:45px;padding:2px 4px 2px 7px;border-bottom:1px solid rgba(25,40,60,.10)}
     .sticky-origin-grip{flex:1;display:flex;align-items:center;min-width:0;text-align:left;touch-action:none;border:0;color:#293244;background:transparent;font-weight:730;font-size:12px;cursor:grab;user-select:none}
     .sticky-origin-grip:active{cursor:grabbing}
+    .sticky-origin-front{border:0;background:transparent;border-radius:8px;color:#293244;font-size:12px;padding:0 6px;white-space:nowrap}
     .sticky-origin-order{display:none;gap:3px}
     .sticky-origin-order button{padding:0 6px;font-size:12px;background:transparent;border:0;border-radius:8px;color:#293244}
     .sticky-origin-order button:disabled{opacity:.32}
@@ -45,7 +48,7 @@
       .sticky-origin-card{position:relative!important;left:auto!important;top:auto!important;width:100%!important;height:260px!important;box-shadow:none}
       .sticky-origin-grip{cursor:default;touch-action:auto}
       .sticky-origin-order{display:flex}
-      .sticky-origin-resize{display:none}
+      .sticky-origin-resize,.sticky-origin-front,.sticky-origin-toolbar .sticky-fit{display:none}
     }
     @media(prefers-reduced-motion:no-preference){.sticky-origin-card{transition:box-shadow .16s ease}.sticky-origin-card:hover{box-shadow:0 10px 28px rgba(28,38,65,.14)}}
   `;
@@ -61,7 +64,7 @@
     let disposed = false;
     let data = [];
     let ownerUid = '', ownerRoom = '', state = 'locked';
-    let query = '', composing = false, saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
+    let query = '', colorFilter = 'all', allView = false, boardScale = 1, composing = false, saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
     const pendingWrites=new Set();
     const contentSaves=new Map();
     const panel = document.createElement('section');
@@ -165,7 +168,10 @@
         control.disabled=direction==='up'?mobileIndex===0:mobileIndex===byOrder.length-1;
         mobileActions.append(control);
       }
-      top.append(grip,mobileActions,remove);
+      const front=button('前面','sticky-origin-front');
+      front.dataset.stickyFront=note.id;
+      front.setAttribute('aria-label','この付箋を最前面へ');
+      top.append(grip,mobileActions,front,remove);
       const textarea=createElement('textarea');
       textarea.dataset.stickyText=note.id;
       textarea.setAttribute('aria-label','付箋本文');
@@ -196,21 +202,31 @@
     function refreshStickyCards(canvas) {
       if(!canvas)return;
       const term=query.normalize('NFKC').toLocaleLowerCase('ja');
-      const shown=data.filter(note=>!term
-        || note.content.text.normalize('NFKC').toLocaleLowerCase('ja').includes(term))
+      const shown=data.filter(note=>(colorFilter==='all'||note.appearance.color===colorFilter)
+        && (!term || note.content.text.normalize('NFKC').toLocaleLowerCase('ja').includes(term)))
         .sort((a,b)=>a.mobile.order-b.mobile.order||a.createdAt-b.createdAt||a.id.localeCompare(b.id));
       canvas.replaceChildren();
       if(!shown.length) {
         canvas.append(createElement('p','sticky-origin-empty',
-          term?'一致する付箋はありません':'まだ付箋はありません。「＋ 付箋を追加」で作成できます。'));
+          term||colorFilter!=='all'?'条件に合う付箋はありません':'まだ付箋はありません。「＋ 付箋を追加」で作成できます。'));
       } else shown.forEach(note=>canvas.append(buildCard(note)));
+    }
+    function applyBoardScale() {
+      const stage=panel.querySelector('.sticky-origin-stage');
+      const canvas=stage?.querySelector('.sticky-origin-canvas');
+      if(!stage||!canvas)return;
+      if(!allView||window.matchMedia('(max-width:767px)').matches){
+        boardScale=1;canvas.style.zoom='1';return;
+      }
+      boardScale=Math.max(.1,Math.min(1,(stage.clientWidth-18)/1400,(Math.max(440,stage.clientHeight)-18)/900));
+      canvas.style.zoom=String(boardScale);
     }
     function draw() {
       if (disposed) return;
       if (panel.querySelector('textarea:focus') || composing || activeMovement) return;
       // Synchronization while searching must not replace the focused input:
       // doing so interrupts Japanese IME and loses the keyboard cursor.
-      const focusedSearch=panel.querySelector('.sticky-origin-toolbar input[type="search"]:focus');
+      const focusedSearch=panel.querySelector('.sticky-origin-toolbar input[type="search"]:focus, .sticky-origin-toolbar select:focus');
       if(focusedSearch&&isReady()){
         refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
         const label=panel.querySelector('.sticky-origin-state');
@@ -227,6 +243,27 @@
         query=search.value;
         refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
       });
+      const colorSelect=createElement('select');
+      colorSelect.dataset.stickyColorFilter='';
+      colorSelect.setAttribute('aria-label','付箋の色で絞り込む');
+      for(const [key,label] of [['all','すべての色'],...COLORS]){
+        const option=createElement('option','',label);
+        option.value=key;colorSelect.append(option);
+      }
+      colorSelect.value=colorFilter;
+      colorSelect.addEventListener('change',()=>{
+        colorFilter=colorSelect.value;
+        refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
+      });
+      const fit=button(allView?'原寸表示':'全体表示','sticky-fit');
+      fit.dataset.stickyAllView='';
+      fit.setAttribute('aria-pressed',String(allView));
+      fit.addEventListener('click',()=>{
+        allView=!allView;
+        fit.textContent=allView?'原寸表示':'全体表示';
+        fit.setAttribute('aria-pressed',String(allView));
+        applyBoardScale();
+      });
       const add=button('＋ 付箋を追加','sticky-add');
       add.disabled=!isReady();
       add.addEventListener('click',async()=>{
@@ -238,7 +275,7 @@
       });
       const label=createElement('span','sticky-origin-state',state==='ready' ? data.length+'枚' :
         state==='loading' ? '読み込み中…' : '本人確認が完了していないため利用できません');
-      toolbar.append(search,add,label);panel.append(toolbar);
+      toolbar.append(search,colorSelect,fit,add,label);panel.append(toolbar);
       if (!isReady()) {
         const error=createElement('div','sticky-origin-error');
         error.append(createElement('strong','','個人付箋は本人確認後に利用できます'),
@@ -249,6 +286,7 @@
       const canvas=createElement('div','sticky-origin-canvas');
       refreshStickyCards(canvas);
       stage.append(canvas);panel.append(stage);
+      applyBoardScale();
     }
     let unsubscribe = () => {};
     if (service && typeof service.subscribe === 'function') {
@@ -300,6 +338,20 @@
       // Once writing has stopped, subsequent snapshots may safely repaint.
     });
     panel.addEventListener('click',async e=>{
+      const front=e.target.closest('[data-sticky-front]');
+      if(front){
+        if(!isReady())return;
+        const note=noteFromId(front.dataset.stickyFront);
+        if(!note)return;
+        const top=Math.max(0,...data.map(item=>item.layout.zIndex));
+        if(top>=1000000000){badge('これ以上前面に移動できません');return;}
+        const result=await commit(note.id,'layout',{zIndex:top+1});
+        if(result.ok){
+          const card=panel.querySelector('.sticky-origin-card[data-id="'+note.id+'"]');
+          if(card)card.style.zIndex=String(top+1);
+        }
+        return;
+      }
       const orderControl=e.target.closest('[data-sticky-order]');
       if(orderControl){
         if(!isReady())return;
@@ -345,7 +397,7 @@
     panel.addEventListener('pointermove',e=>{
       const d=activeMovement;
       if(!d||d.pointerId!==e.pointerId)return;
-      const dx=e.clientX-d.x,dy=e.clientY-d.y;
+      const dx=(e.clientX-d.x)/boardScale,dy=(e.clientY-d.y)/boardScale;
       if(Math.abs(dx)+Math.abs(dy)<3&&!d.moved)return;
       d.moved=true;
       if(d.isSize){
@@ -380,6 +432,7 @@
       const res=await commit(note.id,'layout',values);
       if(res.ok){grip.closest('.sticky-origin-card').style.left=values.x+'px';grip.closest('.sticky-origin-card').style.top=values.y+'px';}
     });
+    window.addEventListener('resize',applyBoardScale);
     draw();
     return {
       // Origin checks before changing route or memo type, so editing cannot
@@ -388,6 +441,7 @@
       destroy(){
         if(disposed)return;
         disposed=true;
+        window.removeEventListener('resize',applyBoardScale);
         unsubscribe();
         for(const timer of timers.values())clearTimeout(timer);
         timers.clear();drafts.clear();saving.clear();data=[];panel.replaceChildren();
