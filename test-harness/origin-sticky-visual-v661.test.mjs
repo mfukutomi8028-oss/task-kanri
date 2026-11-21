@@ -13,7 +13,7 @@ function style(selector){
 }
 
 test('Origin sticky color button keeps an opaque contrasting surface',()=>{
- const toggle=style('.sticky-origin-card-head .sticky-origin-color-toggle');
+ const toggle=style('.sticky-origin-card-head button.sticky-origin-color-toggle');
  assert.match(toggle,/background:\s*#fff\b/i);
  assert.match(toggle,/border:\s*1px solid\s+#[0-9a-f]{3,8}\b/i);
  const swatch=style('.sticky-origin-color-preview');
