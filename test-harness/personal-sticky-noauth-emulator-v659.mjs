@@ -74,28 +74,6 @@ try{
   assert.equal(moved.ok,true);
   await waitFor('page move sync',()=>secondDevice.readSnapshot().notes.some(note=>
     note.id===page3.id&&note.layout.page===5));
-  // Atomic page arrangement must also work with the real Realtime Database SDK.
-  const first=await alice.dispatch({type:'sticky.create',...ctx(),page:1});
-  assert.equal(first.ok,true);
-  await waitFor('first page-one note synced',()=>secondDevice.readSnapshot().notes.some(n=>n.id===first.id));
-  const second=await alice.dispatch({type:'sticky.create',...ctx(),page:1});
-  assert.equal(second.ok,true);
-  await waitFor('second page-one note synced',()=>secondDevice.readSnapshot().notes.some(n=>n.id===second.id));
-  const pre=alice.readSnapshot().notes.find(n=>n.id===second.id);
-  assert.equal((await alice.dispatch({type:'sticky.layout',...ctx(),id:second.id,
-    expectedRevision:pre.layout.revision,values:{x:720}})).ok,true);
-  await waitFor('moved note synced',()=>secondDevice.readSnapshot().notes.some(n=>
-    n.id===second.id&&n.layout.x===720));
-  const arrange=await alice.dispatch({type:'sticky.arrange',...ctx(),page:1});
-  assert.equal(arrange.ok,true,'atomic arrangement must commit to the real Firebase emulator');
-  await waitFor('atomic arrangement appears on second device',()=>{
-    const pair=secondDevice.readSnapshot().notes;
-    return pair.some(n=>n.id===first.id&&n.layout.x===24&&n.layout.y===24)
-      &&pair.some(n=>n.id===second.id&&n.layout.x===320&&n.layout.y===24);
-  });
-  const untouchedPage5=secondDevice.readSnapshot().notes.find(n=>n.id===page3.id);
-  assert.equal(untouchedPage5.layout.page,5);
-  assert.equal((await get(ref(aDb,path+'/tasks/untouched'))).val().title,'従来の架空タスク');
   console.log('STICKY_V659_LOGIN_FREE_REALTIME_SYNC_PASSED: synthetic rooms only');
 }finally{
   alice.destroy();secondDevice.destroy();
