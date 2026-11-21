@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { newSticky, updateSticky, canDeleteSticky, stickyList, isStickyNote, isStickyGroup, planStickyPlacement } from '../personal-sticky-core-v659.js';
+import { newSticky, updateSticky, canDeleteSticky, stickyList, isStickyNote, isStickyGroup, planStickyPlacement, planMobileMove } from '../personal-sticky-core-v659.js';
 
 const stamp = 1795230000000;
 const build = (id='note_a', uid='user_a', room='room_a') => newSticky({id,ownerUid:uid,roomId:room,now:stamp}).note;
@@ -84,4 +84,15 @@ test('new notes get distinct non-overlapping canvas positions and stacking order
    assert.ok(notes[i].layout.zIndex>notes[i-1].layout.zIndex);
    assert.ok(notes[i].mobile.order>notes[i-1].mobile.order);
  }
+});
+
+test('mobile reorder computes a new safe rank without altering desktop placement',()=>{
+ const a=build('rank_a'),b=build('rank_b'),c=build('rank_c');
+ a.mobile.order=1024;b.mobile.order=2048;c.mobile.order=3072;
+ const before=c.layout;
+ const move=planMobileMove([a,b,c],c.id,'up');
+ assert.deepEqual(move,{id:c.id,order:2047,expectedRevision:1});
+ assert.equal(c.layout,before);
+ assert.equal(planMobileMove([a,b,c],a.id,'up'),null);
+ assert.equal(planMobileMove([a,b,c],'missing','up'),null);
 });
