@@ -121,7 +121,8 @@ export function createBoardPersonalStickyStore({roomId,storage=null}={}) {
     const kind=String(command.type||'');
     if(!COMMANDS.has(kind))return {ok:false,error:'unsupported-command'};
     if(kind==='sticky.create'&&Object.keys(notes).length>=200)return {ok:false,error:'limit-reached'};
-    const placement=kind==='sticky.create'?planStickyPlacement(Object.values(notes)):null;
+    const page=Number(command.page??1);
+    const placement=kind==='sticky.create'?planStickyPlacement(Object.values(notes),page):null;
     const id=kind==='sticky.create'
       ? (globalThis.crypto?.randomUUID?.()
         ?? 'note_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,14))
@@ -139,7 +140,7 @@ export function createBoardPersonalStickyStore({roomId,storage=null}={}) {
         if(current){reason='already-exists';return undefined;}
         const created=newSticky({id,ownerUid:capturedUser,roomId,now,
           x:Number(command.x??placement.x),y:Number(command.y??placement.y),
-          zIndex:placement.zIndex,order:placement.order});
+          zIndex:placement.zIndex,order:placement.order,page});
         if(!created.ok){reason=created.error;return undefined;}
         return created.note;
       }
