@@ -40,7 +40,7 @@ try {
   '架空の既存タスク','legacy task reads remain compatible with the committed Rules');
  await assertSucceeds(set(at(anon,'rooms/legacy-room/tasks/new'),{title:'架空の追加タスク'}));
  await assertFails(get(at(anon,'rooms')));
- await assertFails(get(at(anon,'')));
+ await assertFails(get(ref(anon.database())));
  await assertFails(get(at(anon,'roomsV2/roomA')));
 
  for(const ctx of [bob,chief,stranger,anon]) {
