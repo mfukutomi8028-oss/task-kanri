@@ -228,3 +228,53 @@ test('Origin sticky all-view fits the complete canvas within the available stage
   const reset=await root.locator('.sticky-origin-canvas').evaluate(node=>node.getBoundingClientRect().width);
   expect(reset).toBeGreaterThan(1200);
 });
+
+
+test('Origin sticky navigator recovers a card hidden by filters and raises it above overlaps',async({page})=>{
+ const root=await origin(page);
+ await root.locator('.sticky-add').click();
+ const first=root.locator('.sticky-origin-card').first();
+ const firstId=await first.getAttribute('data-id');
+ await first.locator('textarea').fill('会議の配布資料');
+ await expect.poll(async()=>page.evaluate(id=>window.WorkBoardPersonalStickyStoreV659
+  .readSnapshot().notes.find(note=>note.id===id)?.content.text,firstId)).toBe('会議の配布資料');
+
+ await root.locator('.sticky-add').click();
+ const second=root.locator('.sticky-origin-card').last();
+ const secondId=await second.getAttribute('data-id');
+ await second.locator('textarea').fill('明日の確認');
+ await expect.poll(async()=>page.evaluate(id=>window.WorkBoardPersonalStickyStoreV659
+  .readSnapshot().notes.find(note=>note.id===id)?.content.text,secondId)).toBe('明日の確認');
+
+ await root.locator('[data-sticky-color-filter]').selectOption('mint');
+ await expect(root.locator('.sticky-origin-card')).toHaveCount(0);
+ await root.locator('[data-sticky-index-toggle]').click();
+ const navigator=root.locator('[data-sticky-index]');
+ await expect(navigator).toBeVisible();
+ await expect(navigator.locator('[data-sticky-index-select]')).toHaveCount(2);
+ await navigator.locator('[data-sticky-index-select="'+firstId+'"]').click();
+ await expect(root.locator('[data-sticky-color-filter]')).toHaveValue('all');
+ await expect(root.locator('.sticky-origin-card[data-id="'+firstId+'"] textarea')).toHaveValue('会議の配布資料');
+ await expect.poll(async()=>page.evaluate(id=>{
+   const notes=window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes;
+   const chosen=notes.find(note=>note.id===id);
+   return chosen.layout.zIndex>Math.max(...notes.filter(note=>note.id!==id).map(note=>note.layout.zIndex));
+ },firstId)).toBe(true);
+});
+
+test('Origin sticky navigator is keyboard accessible and does not alter desktop placement on mobile',async({page})=>{
+ const root=await origin(page,390);
+ await root.locator('.sticky-add').click();
+ await root.locator('.sticky-add').click();
+ const before=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659
+   .readSnapshot().notes.map(note=>({id:note.id,x:note.layout.x,y:note.layout.y})));
+ await root.locator('[data-sticky-index-toggle]').click();
+ const selection=root.locator('[data-sticky-index-select]').first();
+ await selection.focus();
+ await expect(selection).toBeFocused();
+ await page.keyboard.press('Enter');
+ const after=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659
+   .readSnapshot().notes.map(note=>({id:note.id,x:note.layout.x,y:note.layout.y})));
+ expect(after).toEqual(before);
+ await expect(root.locator('.sticky-origin-card').first()).toBeVisible();
+});
