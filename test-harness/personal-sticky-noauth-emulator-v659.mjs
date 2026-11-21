@@ -64,6 +64,16 @@ try{
   });
   assert.equal(deleted.ok,true);
   await waitFor('deleted note disappears remotely',()=>secondDevice.readSnapshot().notes.length===0);
+  // Page metadata remains in the same login-free shared collection.
+  const page3=await alice.dispatch({type:'sticky.create',...ctx(),page:3});
+  assert.equal(page3.ok,true);
+  await waitFor('page 3 sync',()=>secondDevice.readSnapshot().notes.some(note=>
+    note.id===page3.id&&note.layout.page===3));
+  const moved=await alice.dispatch({type:'sticky.layout',...ctx(),id:page3.id,
+    expectedRevision:page3.note.layout.revision,values:{page:5}});
+  assert.equal(moved.ok,true);
+  await waitFor('page move sync',()=>secondDevice.readSnapshot().notes.some(note=>
+    note.id===page3.id&&note.layout.page===5));
   console.log('STICKY_V659_LOGIN_FREE_REALTIME_SYNC_PASSED: synthetic rooms only');
 }finally{
   alice.destroy();secondDevice.destroy();
