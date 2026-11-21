@@ -78,7 +78,8 @@
       .sticky-origin-grip{cursor:default;touch-action:auto}
       .sticky-origin-order{display:flex}
       .sticky-origin-foot{padding-right:12px;grid-template-columns:minmax(0,1fr) auto auto}
-      .sticky-origin-resize,.sticky-origin-front,.sticky-origin-back,.sticky-origin-toolbar .sticky-fit{display:none}
+      .sticky-origin-card button.sticky-origin-resize{display:none}
+      .sticky-origin-front,.sticky-origin-back,.sticky-origin-toolbar .sticky-fit{display:none}
     }
     @media(prefers-reduced-motion:no-preference){.sticky-origin-card{transition:box-shadow .16s ease}.sticky-origin-card:hover{box-shadow:0 10px 28px rgba(28,38,65,.14)}}
   `;
