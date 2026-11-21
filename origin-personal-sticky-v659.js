@@ -105,7 +105,7 @@
     }
     async function commit(id, field, values) {
       const note = noteFromId(id);
-      if (!note || !isReady()) return {ok:false,error:'auth-required'};
+      if (!note || !isReady()) return {ok:false,error:'unavailable'};
       const committingUid=ownerUid;
       statusMessage(id, '保存中…');
       const token=Symbol('sticky-write');
