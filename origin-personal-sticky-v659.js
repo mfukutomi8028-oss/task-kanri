@@ -49,6 +49,7 @@
     .sticky-origin-card textarea:focus-visible{outline:2px solid #4659cc;outline-offset:-2px}
     .sticky-origin-foot{padding:4px 6px 6px;font-size:11px;min-height:38px;display:grid;grid-template-columns:32px 32px minmax(0,1fr) 42px auto 32px;gap:3px;align-items:center;color:#4f596c}
     .sticky-origin-foot-spacer{min-width:0;pointer-events:none}
+    .sticky-origin-save-feedback{position:absolute;left:8px;bottom:46px;z-index:2;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 6px;border:1px solid rgba(70,85,120,.16);border-radius:6px;background:rgba(255,255,255,.9);color:#4a5872;font-size:10px;line-height:1.5;pointer-events:none}
     .sticky-origin-char-count{white-space:nowrap;font-size:10px;letter-spacing:-.15px;font-variant-numeric:tabular-nums;justify-self:end}
     .sticky-origin-card button.sticky-origin-resize{position:static;min-width:32px;min-height:32px;width:32px;height:32px;border:0;background:transparent;color:#455067;cursor:nwse-resize;touch-action:none;padding:0;display:grid;place-items:center;justify-self:end}
     /* A soft, round swatch and an unobtrusive trash icon stay at the note's lower left. */
@@ -82,6 +83,7 @@
       .sticky-origin-foot{padding:4px 10px 7px;grid-template-columns:44px 44px minmax(0,1fr) 44px auto;gap:5px}
       .sticky-origin-card button.sticky-origin-color-toggle,.sticky-origin-card button.sticky-origin-delete{width:44px;height:44px;min-width:44px;min-height:44px}
       .sticky-origin-page-move{width:44px;min-width:44px;max-width:44px}
+      .sticky-origin-save-feedback{bottom:62px}
       .sticky-origin-card button.sticky-origin-resize{display:none}
       .sticky-origin-front,.sticky-origin-back,.sticky-origin-toolbar .sticky-fit{display:none}
     }
@@ -99,7 +101,7 @@
     let disposed = false;
     let data = [];
     let ownerUid = '', ownerRoom = '', state = 'locked';
-    let query = '', colorFilter = 'all', indexOpen = false, allView = false, boardScale = 1, activePage = 1, composing = false, timers = new Map(), drafts = new Map(), activeMovement = null;
+    let query = '', colorFilter = 'all', indexOpen = false, allView = false, boardScale = 1, activePage = 1, composing = false, saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
     const pendingWrites=new Set();
     const contentSaves=new Map();
     const panel = document.createElement('section');
@@ -127,9 +129,17 @@
     }
     function noteFromId(id) { return data.find(note => note.id === id); }
     function statusMessage(id, message) {
-      // Normal saves are intentionally silent; errors remain visible via Origin's notification.
-      if (message === '保存中…' || message === '保存済み' || message === '未保存') return;
-      badge(message.includes('競合') ? '保存できませんでした。最新の状態を確認してください' : message);
+      // Preserve pending/error feedback without displaying a permanent "saved" label.
+      const show = message !== '保存済み';
+      if (show) saving.set(id,message);
+      else saving.delete(id);
+      const feedback=panel.querySelector('[data-sticky-status="'+id+'"]');
+      if (feedback){
+        feedback.textContent=show?message:'';
+        feedback.hidden=!show;
+      }
+      if (message.includes('できません') || message.includes('競合'))
+        badge(message.includes('競合') ? '保存できませんでした。最新の状態を確認してください' : message);
     }
     async function commit(id, field, values) {
       const note = noteFromId(id);
@@ -249,6 +259,12 @@
         b.setAttribute('aria-pressed',String(note.appearance.color===key));
         colors.append(b);
       });
+      const initialFeedback=saving.get(note.id)||'';
+      const feedback=createElement('span','sticky-origin-save-feedback',initialFeedback);
+      feedback.dataset.stickyStatus=note.id;
+      feedback.setAttribute('role','status');
+      feedback.setAttribute('aria-live','polite');
+      feedback.hidden=!initialFeedback;
       const foot=createElement('div','sticky-origin-foot');
       const spacer=createElement('span','sticky-origin-foot-spacer');
       spacer.setAttribute('aria-hidden','true');
@@ -265,7 +281,7 @@
       resize.setAttribute('aria-label','ドラッグで付箋の大きさを変更');
       // Resize handle occupies its own footer grid cell; never overlays the counter.
       foot.append(colorToggle,remove,spacer,pageMove,createElement('span','sticky-origin-char-count',textarea.value.length+'/2000'),resize);
-      card.append(top,colors,textarea,foot);
+      card.append(top,colors,textarea,feedback,foot);
       return card;
     }
     function refreshStickyCards(canvas) {
@@ -448,7 +464,7 @@
         if(changedIdentity)activePage=readPage();
         if(changedIdentity||state!=='ready'){
           for(const timer of timers.values())clearTimeout(timer);
-          timers.clear();drafts.clear();activeMovement=null;
+          timers.clear();drafts.clear();saving.clear();activeMovement=null;
           // Clear immediately, even if an input was focused during signout.
           panel.replaceChildren();
         }
@@ -685,7 +701,7 @@
         unsubscribe();
         if(stageObserver)stageObserver.disconnect();
         for(const timer of timers.values())clearTimeout(timer);
-        timers.clear();drafts.clear();data=[];panel.replaceChildren();
+        timers.clear();drafts.clear();saving.clear();data=[];panel.replaceChildren();
       }
     };
   }
