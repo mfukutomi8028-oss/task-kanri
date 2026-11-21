@@ -73,3 +73,18 @@ test('Origin global schedule jump skips an unrelated event in the current week',
   await expect(host.locator('.mobile-agenda .agenda-entry')).toHaveCount(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
 });
+
+test('Origin desktop global search category tabs fit without a horizontal scrollbar',async({page})=>{
+ const host=await launchOrigin(page,'origin-search-tab-width-v664',1536);
+ const search=host.locator('#originSearchInput');
+ await search.fill('あ');
+ const menu=host.locator('#searchResults');
+ await expect(menu).toBeVisible();
+ const rail=menu.locator('.origin-search-filters');
+ const metrics=await rail.evaluate(el=>({scroll:el.scrollWidth,client:el.clientWidth,buttons:el.querySelectorAll('button').length}));
+ expect(metrics.buttons).toBeGreaterThanOrEqual(5);
+ expect(metrics.scroll).toBeLessThanOrEqual(metrics.client+1);
+ const rect=await menu.boundingBox();
+ expect(rect.x).toBeGreaterThanOrEqual(0);
+ expect(rect.x+rect.width).toBeLessThanOrEqual(1536);
+});
