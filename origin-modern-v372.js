@@ -3686,7 +3686,6 @@ function renderSearch(q){
  const sr=$('#searchResults'),input=$('#originSearchInput');
  const oldQuery=searchQuery;
  const oldKind=sr.querySelector('.origin-search-filters [aria-pressed="true"]')?.dataset.value;
- const oldRailScroll=sr.querySelector('.origin-search-filters')?.scrollLeft||0;
  const oldResultScroll=sr.scrollTop;
  const term=String(q||'').trim().toLocaleLowerCase();searchQuery=term;
  if(!term){closeSearch();return}
@@ -3711,8 +3710,6 @@ function renderSearch(q){
    +(results||'<p class="origin-search-empty">一致する項目がありません。別の種類やキーワードをお試しください。</p>')
    +'</div>';
  sr.hidden=false;input?.setAttribute('aria-expanded','true');
- const filterRail=sr.querySelector('.origin-search-filters');
- if(filterRail)filterRail.scrollLeft=oldRailScroll;
  // Data-refresh preserves the current result, a new query/type starts at the top.
  sr.scrollTop=oldQuery===term&&oldKind===searchKind?oldResultScroll:0;
 }
