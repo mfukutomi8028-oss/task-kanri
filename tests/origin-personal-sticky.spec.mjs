@@ -35,26 +35,6 @@ async function origin(page,width=1366) {
       mobile:{order:sequence,revision:1,updatedAt:now}});
      send();return {ok:true,id};
     }
-    if(cmd.type==='sticky.arrange'){
-     const ordered=rows.filter(n=>(n.layout.page??1)===cmd.page)
-       .sort((a,b)=>a.layout.y-b.layout.y||a.layout.x-b.layout.x);
-     let x=24,y=24,rowHeight=0,changed=0;
-     const planned=[];
-     for(const note of ordered){
-      if(x+note.layout.width>1376){x=24;y+=rowHeight+16;rowHeight=0;}
-      if(y+note.layout.height>876)return {ok:false,error:'no-space'};
-      planned.push({id:note.id,x,y});x+=note.layout.width+16;rowHeight=Math.max(rowHeight,note.layout.height);
-     }
-     for(const item of planned){
-      const note=rows.find(n=>n.id===item.id);
-      if(note.layout.x!==item.x||note.layout.y!==item.y){
-       note.layout={...note.layout,x:item.x,y:item.y,
-         revision:note.layout.revision+1,updatedAt:Date.now()};
-       changed++;
-      }
-     }
-     send();return {ok:true,changed,page:cmd.page};
-    }
     const note=rows.find(n=>n.id===cmd.id);
     if(!note)return {ok:false,error:'record-not-found'};
     if(cmd.type==='sticky.mobileMove'){
@@ -554,24 +534,52 @@ test('folded note shows only title until toggled open, retaining original conten
  await expect(card).not.toHaveClass(/sticky-origin-card-collapsed/);
  await expect(card.locator('textarea')).toHaveValue('折りたたみ対象の長いメモ');
 });
-test('arranging affects only the currently selected page and retains text and appearance',async({page})=>{
- const root=await origin(page);
+test('expanded note dialog is centered in the viewport rather than top-left',async({page})=>{
+ const root=await origin(page,1536);
  await root.locator('.sticky-add').click();
+ await root.locator('[data-sticky-expand]').first().click();
+ const bounds=await root.locator('dialog.sticky-origin-editor').boundingBox();
+ const view=page.viewportSize();
+ expect(Math.abs(bounds.x+bounds.width/2-view.width/2)).toBeLessThan(5);
+ expect(Math.abs(bounds.y+bounds.height/2-view.height/2)).toBeLessThan(5);
+});
+test('changing color and size preserves board and page scroll position',async({page})=>{
+ const root=await origin(page,1366);
  await root.locator('.sticky-add').click();
- await root.locator('.sticky-origin-card').first().locator('textarea').fill('変更しない');
- await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text)).toBe('変更しない');
- await root.locator('[data-sticky-page="2"]').click();
+ const card=root.locator('.sticky-origin-card').first();
+ await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
+ await root.locator('.sticky-origin-stage').evaluate(el=>{el.scrollTop=60;});
+ const prior=await page.evaluate(()=>({window:window.scrollY}));
+ const previous=await root.locator('.sticky-origin-stage').evaluate(el=>el.scrollTop);
+ await card.locator('[data-sticky-color-toggle]').click();
+ await card.locator('[data-sticky-color="sky"]').click();
+ await expect.poll(async()=>root.locator('.sticky-origin-stage').evaluate(el=>el.scrollTop)).toBe(previous);
+ expect(Math.abs((await page.evaluate(()=>window.scrollY))-prior.window)).toBeLessThan(3);
+ const handle=await card.locator('[data-sticky-resize]').boundingBox();
+ await page.mouse.move(handle.x+12,handle.y+12);
+ await page.mouse.down();await page.mouse.move(handle.x+50,handle.y+50,{steps:6});await page.mouse.up();
+ await expect.poll(async()=>root.locator('.sticky-origin-stage').evaluate(el=>el.scrollTop)).toBe(previous);
+ expect(Math.abs((await page.evaluate(()=>window.scrollY))-prior.window)).toBeLessThan(3);
+});
+test('full-board mode has a centered fitted board with no unused side bay',async({page})=>{
+ const root=await origin(page,1536);
+ await root.locator('.sticky-fit').click();
+ const b=await root.locator('.sticky-origin-stage').boundingBox();
+ const c=await root.locator('.sticky-origin-canvas').boundingBox();
+ expect(Math.abs((b.x+b.width/2)-(c.x+c.width/2))).toBeLessThan(4);
+ expect(b.width-c.width).toBeLessThan(12);
+});
+test('arrange and redundant privacy note are absent; Shift snaps drag to 28px grid',async({page})=>{
+ const root=await origin(page,1366);
+ await expect(root.locator('[data-sticky-arrange]')).toHaveCount(0);
+ await expect(root.locator('.sticky-origin-scope-note')).toHaveCount(0);
  await root.locator('.sticky-add').click();
- const before=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes);
- await root.locator('[data-sticky-page="1"]').click();
- page.once('dialog',dialog=>dialog.accept());
- await root.locator('[data-sticky-arrange]').click();
- const after=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes);
- const same=after.find(n=>n.layout.page===2);
- expect(same).toEqual(before.find(n=>n.id===same.id));
- expect(after.map(n=>n.content.text)).toEqual(before.map(n=>n.content.text));
- const firstPage=after.filter(n=>n.layout.page===1);
- expect(firstPage[0].layout.x).toBe(24);
- expect(firstPage[0].layout.y).toBe(24);
- expect(firstPage[1].layout.x).toBeGreaterThan(firstPage[0].layout.x);
+ const grip=root.locator('.sticky-origin-grip').first();
+ const p=await grip.boundingBox();
+ await page.mouse.move(p.x+24,p.y+18);
+ await page.keyboard.down('Shift');
+ await page.mouse.down();await page.mouse.move(p.x+165,p.y+90,{steps:9});await page.mouse.up();
+ await page.keyboard.up('Shift');
+ const layout=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0].layout);
+ expect(layout.x%28).toBe(0);expect(layout.y%28).toBe(0);
 });

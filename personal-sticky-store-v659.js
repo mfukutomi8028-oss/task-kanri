@@ -6,14 +6,14 @@
  */
 import {
   newSticky, updateSticky, canDeleteSticky, isStickyNote, isStickyId, isStickyRoomId,
-  stickyList, planStickyPlacement, planMobileMove, planStickyArrangement, stickyPage
+  stickyList, planStickyPlacement, planMobileMove
 } from './personal-sticky-core-v659.js';
 
 const COMMAND_FIELDS=Object.freeze({
   'sticky.content':'content','sticky.appearance':'appearance',
   'sticky.layout':'layout','sticky.mobile':'mobile'
 });
-const COMMANDS=new Set(['sticky.create','sticky.delete','sticky.mobileMove','sticky.arrange',...Object.keys(COMMAND_FIELDS)]);
+const COMMANDS=new Set(['sticky.create','sticky.delete','sticky.mobileMove',...Object.keys(COMMAND_FIELDS)]);
 
 export function userKeyFromDisplayName(value) {
   // Reuse the application's normalized 12-character user labels, not Auth UIDs.
@@ -151,74 +151,12 @@ export function createBoardPersonalStickyStore({roomId,storage=null}={}) {
     status=nextMode==='remote-degraded'?'error':'loading';
     notify();
   }
-  // Changes every layout in one collection transaction. On conflict or
-  // overflow no note is moved, including when another device writes mid-flight.
-  async function arrange(page) {
-    if(!Number.isSafeInteger(page)||page<1||page>5)return {ok:false,error:'invalid-page'};
-    const planned=planStickyArrangement(Object.values(notes),page);
-    if(!planned.ok)return {ok:false,error:planned.error};
-    const targets=planned.placements;
-    const changed=targets.filter(pos=>{
-      const note=notes[pos.id];
-      return note&&(note.layout.x!==pos.x||note.layout.y!==pos.y);
-    }).length;
-    if(!changed)return {ok:true,page,changed:0};
-    const capturedGeneration=generation,capturedUser=selectedKey,now=Date.now();
-    let reason='conflict';
-    const applyCollection=current=>{
-      if(disposed||generation!==capturedGeneration||status!=='ready'||selectedKey!==capturedUser){
-        reason='user-changed';return undefined;
-      }
-      if(!current||typeof current!=='object'||Array.isArray(current)){
-        reason='conflict';return undefined;
-      }
-      const currentPage=Object.values(current).filter(isStickyNote)
-        .filter(note=>note.ownerUid===capturedUser&&note.roomId===roomId&&stickyPage(note)===page);
-      if(currentPage.length!==targets.length){
-        reason='conflict';return undefined;
-      }
-      const updated={...current};
-      for(const pos of targets){
-        const note=current[pos.id];
-        if(!isStickyNote(note)||note.ownerUid!==capturedUser||note.roomId!==roomId
-          ||stickyPage(note)!==page||note.layout.revision!==pos.expectedRevision){
-          reason='conflict';return undefined;
-        }
-        if(note.layout.x===pos.x&&note.layout.y===pos.y)continue;
-        const result=updateSticky(note,{
-          field:'layout',expectedRevision:pos.expectedRevision,
-          values:{x:pos.x,y:pos.y},ownerUid:capturedUser,roomId,now
-        });
-        if(!result.ok){reason=result.error;return undefined;}
-        updated[pos.id]=result.note;
-      }
-      return updated;
-    };
-    try{
-      if(storageMode==='local'){
-        const next=applyCollection(notes);
-        if(next===undefined)return {ok:false,error:reason};
-        storage.setItem(localKey(capturedUser),JSON.stringify(next));
-        if(disposed||generation!==capturedGeneration)return {ok:false,error:'user-changed'};
-        notes=next;notify();
-        return {ok:true,page,changed};
-      }
-      if(storageMode!=='shared'||!database||!api)return {ok:false,error:'unavailable'};
-      const result=await api.runTransaction(
-        api.ref(database,remotePath(capturedUser)),applyCollection,{applyLocally:false}
-      );
-      if(disposed||generation!==capturedGeneration||selectedKey!==capturedUser||status!=='ready')
-        return {ok:false,error:'user-changed'};
-      return result.committed?{ok:true,page,changed}:{ok:false,error:reason};
-    }catch{return {ok:false,error:'write-failed'};}
-  }
   async function dispatch(command={}) {
     if(disposed || status!=='ready'
       || command.ownerUid!==selectedKey || command.ownerRoom!==roomId)
       return {ok:false,error:'unavailable'};
     const kind=String(command.type||'');
     if(!COMMANDS.has(kind))return {ok:false,error:'unsupported-command'};
-    if(kind==='sticky.arrange')return arrange(Number(command.page));
     if(kind==='sticky.create'&&Object.keys(notes).length>=200)return {ok:false,error:'limit-reached'};
     const page=Number(command.page??1);
     const placement=kind==='sticky.create'?planStickyPlacement(Object.values(notes),page):null;

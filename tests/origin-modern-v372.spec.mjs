@@ -1284,7 +1284,7 @@ test('Origin long titles and theme contrast fit at 320, 390 and desktop widths',
 });
 
 
-test('Origin 320px search keeps arrow-key results visible and remembers category rail scroll',async({page})=>{
+test('Origin 320px search keeps arrow-key results visible and wraps category tabs without horizontal scrolling',async({page})=>{
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-mobile-search-rail-v456-room',320);
  await page.evaluate(async()=>{
@@ -1315,17 +1315,19 @@ test('Origin 320px search keeps arrow-key results visible and remembers category
  expect(measured.top).toBeGreaterThanOrEqual(measured.visibleTop-2);
  expect(measured.bottom).toBeLessThanOrEqual(measured.visibleBottom-2);
  const rail=results.locator('.origin-search-filters');
- const priorRail=await rail.evaluate(el=>{
-   el.scrollLeft=el.scrollWidth-el.clientWidth;
-   return el.scrollLeft;
- });
- expect(priorRail).toBeGreaterThan(0);
- // Change facets without Playwright moving the rail itself.
+ const beforeTabs=await rail.evaluate(el=>({
+   overflow:el.scrollWidth-el.clientWidth,
+   rows:new Set([...el.querySelectorAll('button')].map(button=>Math.round(button.getBoundingClientRect().top))).size
+ }));
+ expect(beforeTabs.overflow).toBeLessThanOrEqual(1);
+ expect(beforeTabs.rows).toBeGreaterThan(1);
+ // Filtering retains the active facet without bringing back the old horizontal rail.
  await results.locator('[data-action="search-kind"][data-value="memos"]').evaluate(el=>el.click());
  await expect(results.locator('.search-hit')).toHaveCount(0);
  await expect(results.locator('[data-value="memos"]')).toHaveAttribute('aria-pressed','true');
- const afterRail=await rail.evaluate(el=>el.scrollLeft);
- expect(afterRail).toBeGreaterThanOrEqual(priorRail-2);
+ const afterTabs=await rail.evaluate(el=>({overflow:el.scrollWidth-el.clientWidth,scroll:el.scrollLeft}));
+ expect(afterTabs.overflow).toBeLessThanOrEqual(1);
+ expect(afterTabs.scroll).toBe(0);
  await expect(results).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
  await input.focus();
