@@ -17,6 +17,12 @@ async function origin(page,width=1366) {
    subscribe(cb){callbacks.add(cb);cb({status:'ready',ownerUid:'uid_test',ownerRoom:'sticky-ui-test',notes:structuredClone(rows)});return()=>callbacks.delete(cb);},
    readSnapshot(){return {status:'ready',ownerUid:'uid_test',ownerRoom:'sticky-ui-test',notes:structuredClone(rows)};},
    async dispatch(cmd){
+    if(cmd.type==='sticky.content' && window.__stickyHoldTextSave) {
+      await new Promise(resolve=>{
+        if(!window.__stickyWaitingSaves)window.__stickyWaitingSaves=[];
+        window.__stickyWaitingSaves.push(resolve);
+      });
+    }
     if(cmd.ownerUid!=='uid_test'||cmd.ownerRoom!=='sticky-ui-test')return {ok:false,error:'auth-required'};
     if(cmd.type==='sticky.create'){
      const id='demo_'+(++sequence),now=Date.now();
@@ -103,4 +109,23 @@ test('Origin sticky: no authenticated store shows locked mode without a write co
  await root.locator('[data-sticky-mode="personal"]').click();
  await expect(root.locator('.sticky-add')).toBeDisabled();
  await expect(root.locator('.sticky-origin-error')).toContainText('本人確認');
+});
+
+test('Origin sticky blocks navigation while a note has an uncommitted draft',async({page})=>{
+ const root=await origin(page);
+ await root.locator('.sticky-add').click();
+ await page.evaluate(()=>{window.__stickyHoldTextSave=true});
+ await root.locator('.sticky-origin-card textarea').fill('保存待ちの個人付箋');
+ await root.locator('#desktopNav [data-route="tasks"]').click();
+ // Default Playwright behavior dismisses the native confirm prompt.
+ await expect(root.locator('#originStickyMountV659')).toBeVisible();
+ await page.evaluate(()=>{
+   window.__stickyHoldTextSave=false;
+   for(const release of window.__stickyWaitingSaves||[])release();
+   window.__stickyWaitingSaves=[];
+ });
+ await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text))
+  .toBe('保存待ちの個人付箋');
+ await root.locator('#desktopNav [data-route="tasks"]').click();
+ await expect(root.locator('#originStickyMountV659')).toHaveCount(0);
 });
