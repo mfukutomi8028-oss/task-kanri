@@ -427,7 +427,7 @@ test('long character counter never overlaps the bottom-right resize handle at mi
  });
  // Use inline logical size; computed width is fractional under canvas zoom.
  await expect.poll(async()=>card.evaluate(el=>parseFloat(el.style.width))).toBe(220);
- const count=card.locator('.sticky-origin-foot span:last-child');
+ const count=card.locator('.sticky-origin-char-count');
  await expect(count).toHaveText('2000/2000');
  const countBox=await count.boundingBox();
  const resizeBox=await card.locator('.sticky-origin-resize').boundingBox();
