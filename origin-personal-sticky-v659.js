@@ -3,10 +3,11 @@
   'use strict';
   if (root.WorkBoardOriginStickyPanelV659) return;
 
+  // Keep canonical color keys stable: only their Origin presentation changes.
   const COLORS = [
-    ['ivory','白','#f4f0e5'], ['lemon','レモン','#fff1ad'],
-    ['peach','ピーチ','#ffdfd1'], ['mint','ミント','#d8f1d9'],
-    ['sky','スカイ','#daecfb'], ['lavender','ラベンダー','#ebe2fa']
+    ['ivory','白','#f6f2eb'], ['lemon','レモン','#faf3c9'],
+    ['peach','ピーチ','#fae3db'], ['mint','ミント','#dff0e6'],
+    ['sky','スカイ','#e1edf8'], ['lavender','ラベンダー','#eee6f8']
   ];
   const colorHex = Object.fromEntries(COLORS.map(([k,,c]) => [k,c]));
   const STYLES = `
@@ -30,7 +31,7 @@
     .sticky-origin-state{font-size:12px;color:var(--ink-soft);line-height:1.6}
     .sticky-origin-stage{background:color-mix(in srgb,var(--bg) 92%,#d0d6e3);border:1px solid var(--line);border-radius:16px;overflow-x:hidden;overflow-y:auto;max-height:min(72dvh,980px);min-height:440px;overscroll-behavior:contain}
     .sticky-origin-canvas{position:relative;width:1400px;height:900px;min-width:1400px;min-height:900px;background-image:linear-gradient(to right,rgba(104,113,140,.08) 1px,transparent 1px),linear-gradient(to bottom,rgba(104,113,140,.08) 1px,transparent 1px);background-size:28px 28px;isolation:isolate}
-    .sticky-origin-card{position:absolute;display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid rgba(25,40,60,.16);box-shadow:0 8px 22px rgba(28,38,65,.10);color:#273040;background:var(--sticky-paper,#fff1ad);min-height:160px;min-width:220px}
+    .sticky-origin-card{position:absolute;display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid rgba(25,40,60,.16);box-shadow:0 8px 22px rgba(28,38,65,.10);color:#273040;background:var(--sticky-paper,#faf3c9);min-height:160px;min-width:220px}
     .sticky-origin-card:focus-within{outline:2px solid #4659cc;outline-offset:2px}
     .sticky-origin-card-head{display:flex;align-items:center;gap:3px;min-height:45px;padding:2px 4px 2px 7px;border-bottom:1px solid rgba(25,40,60,.10)}
     .sticky-origin-grip{flex:1;display:flex;align-items:center;min-width:0;text-align:left;touch-action:none;border:0;color:#293244;background:transparent;font-weight:730;font-size:12px;cursor:grab;user-select:none}
