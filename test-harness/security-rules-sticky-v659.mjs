@@ -30,6 +30,19 @@ try {
  const alice=env.authenticatedContext('alice'),bob=env.authenticatedContext('bob');
  const chief=env.authenticatedContext('chief'),stranger=env.authenticatedContext('stranger');
  const anon=env.unauthenticatedContext();
+ // A staged sticky-only Auth rollout must not change the existing shared
+ // board's public /rooms API. The private /roomsV2 subtree is a sibling.
+ // Cross-room and root enumeration still must be forbidden.
+ await env.withSecurityRulesDisabled(async admin=>{
+  await set(at(admin,'rooms/legacy-room/tasks/existing'),{title:'架空の既存タスク'});
+ });
+ assert.equal((await assertSucceeds(get(at(anon,'rooms/legacy-room/tasks/existing')))).val().title,
+  '架空の既存タスク','legacy task reads remain compatible with the committed Rules');
+ await assertSucceeds(set(at(anon,'rooms/legacy-room/tasks/new'),{title:'架空の追加タスク'}));
+ await assertFails(get(at(anon,'rooms')));
+ await assertFails(get(at(anon,'')));
+ await assertFails(get(at(anon,'roomsV2/roomA')));
+
  for(const ctx of [bob,chief,stranger,anon]) {
   await assertFails(get(at(ctx,prefix+'personal/alice/stickyNotes')));
   await assertFails(set(at(ctx,notePath),blank()));
