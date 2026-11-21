@@ -153,3 +153,23 @@ test('Origin mobile order controls rearrange cards without touching desktop coor
  const after=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes);
  expect(after.map(n=>[n.layout.x,n.layout.y])).toEqual(oldCoords);
 });
+
+test('Origin sticky keeps the newest draft when two writes overlap',async({page})=>{
+ const root=await origin(page);
+ await root.locator('.sticky-add').click();
+ await page.evaluate(()=>{window.__stickyHoldTextSave=true});
+ const textarea=root.locator('.sticky-origin-card textarea');
+ await textarea.fill('保存を待つ文章');
+ await textarea.evaluate(element=>element.blur());
+ await expect.poll(async()=>page.evaluate(()=>(window.__stickyWaitingSaves||[]).length)).toBe(1);
+ await textarea.fill('保存を待つ文章と追記');
+ await textarea.evaluate(element=>element.blur());
+ await page.evaluate(()=>{
+   window.__stickyHoldTextSave=false;
+   for(const release of window.__stickyWaitingSaves||[])release();
+   window.__stickyWaitingSaves=[];
+ });
+ await expect.poll(async()=>page.evaluate(()=>
+   window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text))
+   .toBe('保存を待つ文章と追記');
+});
