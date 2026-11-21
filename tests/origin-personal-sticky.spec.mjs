@@ -293,3 +293,18 @@ test('Origin sticky navigator is keyboard accessible and does not alter desktop 
  expect(after).toEqual(before);
  await expect(root.locator('.sticky-origin-card').first()).toBeVisible();
 });
+
+test('Origin user selector confirms before switching away from an unsaved personal sticky',async({page})=>{
+ const root=await origin(page);
+ await root.locator('.sticky-add').click();
+ const text=root.locator('.sticky-origin-card textarea');
+ await text.fill('まだ保存していない利用者ごとの付箋');
+ const picker=root.locator('#originUserSelect');
+ const prior=await picker.inputValue();
+ const next=prior==='森井'?'福冨':'森井';
+ await expect(root.locator('[data-sticky-status]')).toContainText('未保存');
+ // The default Playwright dialog handler dismisses the native confirmation.
+ await picker.selectOption(next);
+ await expect(picker).toHaveValue(prior);
+ await expect(text).toHaveValue('まだ保存していない利用者ごとの付箋');
+});
