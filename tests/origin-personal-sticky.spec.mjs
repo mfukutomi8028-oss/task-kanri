@@ -216,7 +216,7 @@ test('Origin sticky filters by paper color and resets search without losing note
   await expect(root.locator('.sticky-origin-card')).toHaveCount(2);
   await root.locator('[data-sticky-color-filter]').selectOption('mint');
   await expect(root.locator('.sticky-origin-card')).toHaveCount(1);
-  await expect(root.locator('.sticky-origin-card')).toHaveCSS('background-color','rgb(216, 241, 217)');
+  await expect(root.locator('.sticky-origin-card')).toHaveCSS('background-color','rgb(223, 240, 230)');
   await root.locator('[data-sticky-color-filter]').selectOption('all');
   await expect(root.locator('.sticky-origin-card')).toHaveCount(2);
 });
@@ -399,6 +399,13 @@ test('sticky paper-color control stays visible against every paper color',async(
    expect(visual.border).toBe('solid');
    expect(visual.borderWidth).toBeGreaterThanOrEqual(1);
    expect(visual.swatchBorderWidth).toBeGreaterThanOrEqual(2);
+   const paper=await card.evaluate(el=>getComputedStyle(el).backgroundColor);
+   const pastelPaper={
+     ivory:'rgb(246, 242, 235)',lemon:'rgb(250, 243, 201)',
+     peach:'rgb(250, 227, 219)',mint:'rgb(223, 240, 230)',
+     sky:'rgb(225, 237, 248)',lavender:'rgb(238, 230, 248)'
+   };
+   expect(paper).toBe(pastelPaper[color]);
  }
 });
 
