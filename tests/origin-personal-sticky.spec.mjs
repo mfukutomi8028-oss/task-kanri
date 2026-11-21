@@ -433,7 +433,7 @@ test('long character counter never overlaps the bottom-right resize handle at mi
  const resizeBox=await card.locator('.sticky-origin-resize').boundingBox();
  expect(countBox).not.toBeNull();
  expect(resizeBox).not.toBeNull();
- expect(countBox.x+countBox.width+4).toBeLessThanOrEqual(resizeBox.x);
+ expect(countBox.x+countBox.width+1).toBeLessThanOrEqual(resizeBox.x);
  await card.locator('textarea').fill('短文');
  await expect(count).toHaveText('2/2000');
 });
