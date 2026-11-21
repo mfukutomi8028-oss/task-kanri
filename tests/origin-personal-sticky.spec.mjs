@@ -548,7 +548,7 @@ test('changing color and size preserves board and page scroll position',async({p
  await root.locator('.sticky-add').click();
  const card=root.locator('.sticky-origin-card').first();
  await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
- await root.locator('.sticky-origin-stage').evaluate(el=>{el.scrollTop=190;});
+ await root.locator('.sticky-origin-stage').evaluate(el=>{el.scrollTop=60;});
  const prior=await page.evaluate(()=>({window:window.scrollY}));
  const previous=await root.locator('.sticky-origin-stage').evaluate(el=>el.scrollTop);
  await card.locator('[data-sticky-color-toggle]').click();
