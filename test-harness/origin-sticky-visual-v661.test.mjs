@@ -22,7 +22,9 @@ test('Origin sticky color button is a compact round swatch in the footer',()=>{
  assert.match(swatch,/border:\s*2px solid/i);
  assert.match(source,/top\.append\(grip,mobileActions,front,back\)/);
  assert.match(source,/foot\.append\(colorToggle,remove,spacer,pageMove,createElement\('span','sticky-origin-char-count',textarea\.value\.length\+'\/2000'\),resize\)/);
- assert.doesNotMatch(source,/saving\.get\(note\.id\)|data-sticky-status\s*=|保存済み['"]\)/);
+ assert.match(source,/feedback\.textContent=show\?message:'';/);
+ assert.match(source,/feedback\.hidden=!show;/);
+ assert.doesNotMatch(source,/createElement\('span','',saving\.get\(note\.id\)\|\|'保存済み'\)/);
 });
 test('Origin sticky character counter and resize handle use distinct footer cells',()=>{
  const footer=style('.sticky-origin-foot');
