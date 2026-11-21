@@ -34,6 +34,16 @@ async function origin(page,width=1366) {
     }
     const note=rows.find(n=>n.id===cmd.id);
     if(!note)return {ok:false,error:'record-not-found'};
+    if(cmd.type==='sticky.mobileMove'){
+     const sorted=rows.slice().sort((a,b)=>a.mobile.order-b.mobile.order||a.createdAt-b.createdAt);
+     const i=sorted.findIndex(n=>n.id===cmd.id);
+     const other=cmd.direction==='up'?sorted[i-1]:sorted[i+1];
+     if(!other)return {ok:false,error:'reorder-unavailable'};
+     const order=other.mobile.order+(cmd.direction==='up'?-1:1);
+     if(order<0)return {ok:false,error:'reorder-unavailable'};
+     note.mobile={...note.mobile,order,revision:note.mobile.revision+1,updatedAt:Date.now()};
+     send();return {ok:true,id:note.id,note:structuredClone(note)};
+    }
     if(cmd.type==='sticky.delete'){
      if(Object.keys(cmd.expectedRevisions||{}).some(key=>note[key].revision!==cmd.expectedRevisions[key]))return {ok:false,error:'conflict'};
      rows.splice(rows.indexOf(note),1);send();return {ok:true};
@@ -128,4 +138,18 @@ test('Origin sticky blocks navigation while a note has an uncommitted draft',asy
   .toBe('保存待ちの個人付箋');
  await root.locator('#desktopNav [data-route="tasks"]').click();
  await expect(root.locator('#originStickyMountV659')).toHaveCount(0);
+});
+
+test('Origin mobile order controls rearrange cards without touching desktop coordinates',async({page})=>{
+ const root=await origin(page,390);
+ await root.locator('.sticky-add').click();
+ await root.locator('.sticky-add').click();
+ const before=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes);
+ assert.equal(before.length,2);
+ const secondId=before[1].id;
+ const oldCoords=before.map(n=>[n.layout.x,n.layout.y]);
+ await root.locator('.sticky-origin-card').nth(1).locator('[data-sticky-order="up"]').click();
+ await expect(root.locator('.sticky-origin-card').first()).toHaveAttribute('data-id',secondId);
+ const after=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes);
+ expect(after.map(n=>[n.layout.x,n.layout.y])).toEqual(oldCoords);
 });
