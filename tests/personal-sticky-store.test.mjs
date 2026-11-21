@@ -82,3 +82,15 @@ test('rules error clears notes immediately instead of retaining stale data',asyn
  assert.equal(h.store.readSnapshot().notes.length,0);
  h.store.destroy();
 });
+
+test('creating consecutive notes chooses different positions and mobile order',async()=>{
+ const h=harness();await h.login();
+ const opts={type:'sticky.create',ownerRoom:'room_a',ownerUid:'user_a'};
+ const first=await h.store.dispatch(opts),second=await h.store.dispatch(opts);
+ assert.equal(first.ok,true);assert.equal(second.ok,true);
+ assert.notEqual(first.id,second.id);
+ assert.notDeepEqual([first.note.layout.x,first.note.layout.y],[second.note.layout.x,second.note.layout.y]);
+ assert.ok(second.note.layout.zIndex>first.note.layout.zIndex);
+ assert.ok(second.note.mobile.order>first.note.mobile.order);
+ h.store.destroy();
+});
