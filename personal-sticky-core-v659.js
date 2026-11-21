@@ -11,7 +11,7 @@ export function stickyPage(note) {
   return Number.isSafeInteger(page) && page >= 1 && page <= STICKY_PAGE_COUNT ? page : 1;
 }
 export const STICKY_CANVAS = Object.freeze({ width: 1400, height: 900 });
-export const STICKY_SIZE = Object.freeze({ width: 280, height: 220, minWidth: 220, minHeight: 160, maxWidth: 480, maxHeight: 500 });
+export const STICKY_SIZE = Object.freeze({ width: 280, height: 220, minWidth: 220, minHeight: 160, maxWidth: 760, maxHeight: 720 });
 const KEY_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const ALLOWED_FIELDS = new Set(['content', 'appearance', 'layout', 'mobile']);
 export function isStickyId(id) {
@@ -76,6 +76,34 @@ export function planStickyPlacement(notes = [], page = 1) {
     zIndex,order
   };
 }
+/**
+ * Plan a complete, non-overlapping page layout without mutating any notes.
+ * Returns no placements if all current full-size cards cannot fit.
+ * Collapsed presentation state deliberately does not affect saved layout.
+ */
+export function planStickyArrangement(notes = [], page = 1) {
+  if (!Array.isArray(notes) || !integer(page, 1, STICKY_PAGE_COUNT))
+    return {ok:false,error:'invalid-page',placements:[]};
+  const ordered=notes.filter(isStickyNote).filter(note=>stickyPage(note)===page)
+    .sort((a,b)=>a.layout.y-b.layout.y || a.layout.x-b.layout.x
+      || a.createdAt-b.createdAt || a.id.localeCompare(b.id));
+  const margin=24, gap=16,placements=[];
+  let x=margin,y=margin,rowHeight=0;
+  for(const note of ordered){
+    const {width,height}=note.layout;
+    if(x+width>STICKY_CANVAS.width-margin){
+      x=margin;y+=rowHeight+gap;rowHeight=0;
+    }
+    if(y+height>STICKY_CANVAS.height-margin)
+      return {ok:false,error:'no-space',placements:[]};
+    placements.push({
+      id:note.id,x,y,width,height,expectedRevision:note.layout.revision
+    });
+    x+=width+gap;rowHeight=Math.max(rowHeight,height);
+  }
+  return {ok:true,placements};
+}
+
 /**
  * Move one note by a mobile list step using sparse integer ranks.
  * Reorder does not modify the desktop position or another user's records.
