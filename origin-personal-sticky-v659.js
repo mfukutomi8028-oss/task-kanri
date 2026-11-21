@@ -328,6 +328,50 @@
       card.append(top,colors,textarea,feedback,foot);
       return card;
     }
+    function openExpandedEditor(note) {
+      if(!note||!isReady())return;
+      const previous=panel.querySelector('dialog.sticky-origin-editor[open]');
+      if(previous)previous.close();
+      const dialog=createElement('dialog','sticky-origin-editor');
+      dialog.style.setProperty('--sticky-paper',colorHex[note.appearance.color]||colorHex.lemon);
+      dialog.setAttribute('aria-label','付箋の拡大編集');
+      dialog.dataset.stickyEditor=note.id;
+      const header=createElement('div','sticky-origin-editor-header');
+      const title=createElement('strong','',note.content.text.split('\n')[0].slice(0,70)||'新しい付箋');
+      const close=button('閉じる');
+      close.dataset.stickyExpandClose='';
+      close.setAttribute('aria-label','拡大編集を閉じる');
+      header.append(title,close);
+      const text=createElement('textarea');
+      text.dataset.stickyText=note.id;
+      text.setAttribute('aria-label','付箋本文を大きく編集');
+      text.maxLength=2000;
+      text.value=drafts.get(note.id)??note.content.text;
+      text.spellcheck=false;
+      const footer=createElement('div','sticky-origin-editor-footer');
+      const message=saving.get(note.id)||'';
+      const status=createElement('span','',message);
+      status.dataset.stickyStatus=note.id;
+      status.setAttribute('role','status');
+      status.setAttribute('aria-live','polite');
+      status.hidden=!message;
+      const count=createElement('span','sticky-origin-char-count',text.value.length+'/2000');
+      footer.append(status,count);
+      dialog.append(header,text,footer);
+      dialog.addEventListener('cancel',event=>{
+        if(composing)event.preventDefault();
+      });
+      dialog.addEventListener('close',()=>{
+        dialog.remove();
+        if(disposed)return;
+        // Preserve an unfinished autosave draft while returning to the board.
+        refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
+        panel.querySelector('[data-sticky-expand="'+note.id+'"]')?.focus({preventScroll:true});
+      },{once:true});
+      panel.append(dialog);
+      dialog.showModal();
+      text.focus();
+    }
     function refreshStickyCards(canvas) {
       if(!canvas)return;
       const term=query.normalize('NFKC').toLocaleLowerCase('ja');
@@ -446,6 +490,25 @@
           panel.insertBefore(index,panel.querySelector('.sticky-origin-stage'));
         }
       });
+      const arrange=button('整列','sticky-arrange');
+      arrange.dataset.stickyArrange='';
+      arrange.setAttribute('aria-label','このページの付箋を自動整列');
+      arrange.title='現在のページだけを左上から整列します';
+      arrange.disabled=!isReady()||pageNotes().length===0;
+      arrange.addEventListener('click',async()=>{
+        if(!isReady()||arranging)return;
+        if(composing||drafts.size||timers.size||pendingWrites.size||contentSaves.size||activeMovement){
+          badge('付箋の保存が終わってから整列してください');return;
+        }
+        if(!confirm('このページの付箋を重ならないように整列します。現在の位置は変更されます。よろしいですか？'))return;
+        arranging=true;arrange.disabled=true;
+        try{
+          const result=await service.dispatch({type:'sticky.arrange',page:activePage,ownerUid,ownerRoom});
+          if(result.ok)badge(result.changed?'このページの付箋を整列しました':'このページの付箋はすでに整列しています');
+          else if(result.error==='no-space')badge('付箋が大きく、このページ内に整列できません。付箋を小さくするか別ページへ移動してください');
+          else badge('整列できませんでした。ほかの端末の変更を確認してください');
+        }finally{arranging=false;arrange.disabled=!isReady()||pageNotes().length===0;}
+      });
       const add=button('＋ 付箋を追加','sticky-add');
       add.disabled=!isReady();
       add.addEventListener('click',async()=>{
@@ -473,7 +536,7 @@
         });
         pages.append(control);
       }
-      toolbar.append(search,colorSelect,indexToggle,fit,add,pages,label);panel.append(toolbar);
+      toolbar.append(search,colorSelect,indexToggle,fit,add,arrange,pages,label);panel.append(toolbar);
       panel.append(createElement('p','sticky-origin-scope-note',
         '付箋は選択中の利用者名ごとに表示されます。ログインによる閲覧制限はないため、機密情報は記載しないでください。'));
       if (!isReady()) {
@@ -505,7 +568,7 @@
         if (disposed) return;
         const changedIdentity=next.ownerUid!==ownerUid||next.ownerRoom!==ownerRoom;
         ownerUid=next.ownerUid;ownerRoom=next.ownerRoom;state=next.status;data=next.notes||[];
-        if(changedIdentity)activePage=readPage();
+        if(changedIdentity){activePage=readPage();collapsedIds=new Set(service.readCollapsedNotes?.()||[]);}
         if(changedIdentity||state!=='ready'){
           for(const timer of timers.values())clearTimeout(timer);
           timers.clear();drafts.clear();saving.clear();activeMovement=null;
@@ -535,7 +598,7 @@
     panel.addEventListener('input',e=>{
       if(e.target.matches('[data-sticky-text]')){
         const id=e.target.dataset.stickyText;
-        const len=e.target.closest('.sticky-origin-card')?.querySelector('.sticky-origin-char-count');
+        const len=e.target.closest('.sticky-origin-card,.sticky-origin-editor')?.querySelector('.sticky-origin-char-count');
         if(len)len.textContent=e.target.value.length+'/2000';
         if(!composing&&!e.isComposing)schedule(id,e.target.value);
       }
@@ -553,6 +616,23 @@
       if(!e.target.closest('[data-sticky-color-toggle],.sticky-origin-palette')){
         panel.querySelectorAll('.sticky-origin-palette').forEach(menu=>{menu.hidden=true;});
         panel.querySelectorAll('[data-sticky-color-toggle]').forEach(toggle=>toggle.setAttribute('aria-expanded','false'));
+      }
+      const closeEditor=e.target.closest('[data-sticky-expand-close]');
+      if(closeEditor){closeEditor.closest('dialog')?.close();return;}
+      const expand=e.target.closest('[data-sticky-expand]');
+      if(expand){openExpandedEditor(noteFromId(expand.dataset.stickyExpand));return;}
+      const collapse=e.target.closest('[data-sticky-collapse]');
+      if(collapse){
+        const id=collapse.dataset.stickyCollapse;
+        if(!isReady()||!noteFromId(id))return;
+        if(drafts.has(id)||timers.has(id)||contentSaves.has(id)){
+          badge('保存完了後に折りたたんでください');return;
+        }
+        if(collapsedIds.has(id))collapsedIds.delete(id);else collapsedIds.add(id);
+        service.saveCollapsedNotes?.([...collapsedIds]);
+        refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
+        panel.querySelector('[data-sticky-collapse="'+id+'"]')?.focus({preventScroll:true});
+        return;
       }
       const pick=e.target.closest('[data-sticky-index-select]');
       if(pick){
@@ -691,8 +771,8 @@
       if(Math.abs(dx)+Math.abs(dy)<3&&!d.moved)return;
       d.moved=true;
       if(d.isSize){
-        d.card.style.width=Math.max(220,Math.min(480,1400-d.initial.x,d.initial.width+Math.round(dx)))+'px';
-        d.card.style.height=Math.max(160,Math.min(500,900-d.initial.y,d.initial.height+Math.round(dy)))+'px';
+        d.card.style.width=Math.max(220,Math.min(760,1400-d.initial.x,d.initial.width+Math.round(dx)))+'px';
+        d.card.style.height=Math.max(160,Math.min(720,900-d.initial.y,d.initial.height+Math.round(dy)))+'px';
       } else {
         d.card.style.left=Math.max(0,Math.min(1400-d.initial.width,d.initial.x+Math.round(dx)))+'px';
         d.card.style.top=Math.max(0,Math.min(900-d.initial.height,d.initial.y+Math.round(dy)))+'px';
@@ -744,6 +824,7 @@
         window.removeEventListener('resize',applyBoardScale);
         unsubscribe();
         if(stageObserver)stageObserver.disconnect();
+        panel.querySelector('dialog.sticky-origin-editor[open]')?.close();
         for(const timer of timers.values())clearTimeout(timer);
         timers.clear();drafts.clear();saving.clear();data=[];panel.replaceChildren();
       }
