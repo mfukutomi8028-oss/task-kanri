@@ -28,7 +28,7 @@ async function origin(page,width=1366) {
      const id='demo_'+(++sequence),now=Date.now();
      rows.push({schemaVersion:1,id,ownerUid:'uid_test',roomId:'sticky-ui-test',createdAt:now,updatedAt:now,
       content:{text:'',revision:1,updatedAt:now},appearance:{color:'lemon',revision:1,updatedAt:now},
-      layout:{x:24+(sequence-1)*328,y:24,width:280,height:220,zIndex:sequence,revision:1,updatedAt:now},
+      layout:{x:24+(sequence-1)*328,y:24,width:280,height:220,zIndex:sequence,page:cmd.page??1,revision:1,updatedAt:now},
       mobile:{order:sequence,revision:1,updatedAt:now}});
      send();return {ok:true,id};
     }
@@ -60,7 +60,8 @@ async function origin(page,width=1366) {
  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
  const root=page.locator('#modernOriginRoot');
  await root.locator((width<=770?'#mobileNav':'#desktopNav')+' [data-route="notes"]').click();
- await root.locator('[data-sticky-mode="personal"]').click();
+ if(width<=770){await root.locator('[data-memo-header-mode="personal"]').click();}
+ else{await root.locator('#desktopNav .origin-memo-nav').hover();await root.locator('#desktopNav [data-memo-nav-mode="personal"]').click();}
  await expect(root.locator('#originStickyMountV659')).toBeVisible();
  return root;
 }
@@ -72,11 +73,14 @@ test('Origin sticky: create, Japanese text, paper color and business memo return
  await card.locator('textarea').fill('会議の確認事項');
  await expect(card.locator('[data-sticky-status]')).toContainText('未保存');
  await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text)).toBe('会議の確認事項');
+ await card.locator('[data-sticky-color-toggle]').click();
  await card.locator('[data-sticky-color="mint"]').click();
  await expect(card.locator('[data-sticky-color="mint"]')).toHaveAttribute('aria-pressed','true');
- await root.locator('[data-sticky-mode="business"]').click();
+ await root.locator('#desktopNav .origin-memo-nav').hover();
+ await root.locator('#desktopNav [data-memo-nav-mode="business"]').click();
  await expect(root.locator('#originMemoQuery')).toBeVisible();
- await root.locator('[data-sticky-mode="personal"]').click();
+ await root.locator('#desktopNav .origin-memo-nav').hover();
+ await root.locator('#desktopNav [data-memo-nav-mode="personal"]').click();
  await expect(root.locator('.sticky-origin-card textarea')).toHaveValue('会議の確認事項');
 });
 test('Origin sticky: layout drag persists only layout, search keeps note readable',async({page})=>{
@@ -117,7 +121,8 @@ test('Origin sticky is usable with no login and local-only fallback',async({page
  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
  const root=page.locator('#modernOriginRoot');
  await root.locator('[data-route="notes"]').first().click();
- await root.locator('[data-sticky-mode="personal"]').click();
+  await root.locator('#desktopNav .origin-memo-nav').hover();
+  await root.locator('#desktopNav [data-memo-nav-mode="personal"]').click();
  await expect(root.locator('.sticky-add')).toBeEnabled();
  await root.locator('.sticky-add').click();
  await root.locator('.sticky-origin-card textarea').fill('ログイン不要の個人付箋');
@@ -132,7 +137,8 @@ test('Origin sticky is usable with no login and local-only fallback',async({page
  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
  const reloaded=page.locator('#modernOriginRoot');
  await reloaded.locator('[data-route="notes"]').first().click();
- await reloaded.locator('[data-sticky-mode="personal"]').click();
+ await reloaded.locator('#desktopNav .origin-memo-nav').hover();
+ await reloaded.locator('#desktopNav [data-memo-nav-mode="personal"]').click();
  await expect(reloaded.locator('.sticky-origin-card textarea')).toHaveValue('ログイン不要の個人付箋');
 });
 
@@ -204,12 +210,13 @@ test('Origin sticky search keeps focus and input through a remote snapshot',asyn
 test('Origin sticky filters by paper color and resets search without losing notes',async({page})=>{
   const root=await origin(page);
   await root.locator('.sticky-add').click();
+  await root.locator('.sticky-origin-card').first().locator('[data-sticky-color-toggle]').click();
   await root.locator('.sticky-origin-card').first().locator('[data-sticky-color="mint"]').click();
   await root.locator('.sticky-add').click();
   await expect(root.locator('.sticky-origin-card')).toHaveCount(2);
   await root.locator('[data-sticky-color-filter]').selectOption('mint');
   await expect(root.locator('.sticky-origin-card')).toHaveCount(1);
-  await expect(root.locator('.sticky-origin-card [data-sticky-color="mint"]')).toHaveAttribute('aria-pressed','true');
+  await expect(root.locator('.sticky-origin-card')).toHaveCSS('background-color','rgb(216, 241, 217)');
   await root.locator('[data-sticky-color-filter]').selectOption('all');
   await expect(root.locator('.sticky-origin-card')).toHaveCount(2);
 });
@@ -241,7 +248,7 @@ test('Origin sticky all-view fits the complete canvas within the available stage
   expect(sizes.board).toBeLessThanOrEqual(sizes.stage+1);
   await root.locator('[data-sticky-all-view]').click();
   const reset=await root.locator('.sticky-origin-canvas').evaluate(node=>node.getBoundingClientRect().width);
-  expect(reset).toBeGreaterThan(1200);
+  expect(reset).toBeLessThanOrEqual(sizes.stage+1);
 });
 
 
@@ -318,4 +325,59 @@ test('Origin user selector confirms before switching away from an unsaved person
    for(const release of window.__stickyWaitingSaves||[])release();
    window.__stickyWaitingSaves=[];
  });
+});
+
+test('memo nav opens choices on hover and remembers the last opened memo',async({page})=>{
+ const root=await origin(page);
+ await root.locator('#desktopNav .origin-memo-nav').hover();
+ await expect(root.locator('#desktopNav [data-memo-nav-mode="business"]')).toBeVisible();
+ await root.locator('#desktopNav [data-memo-nav-mode="business"]').click();
+ await expect(root.locator('#originMemoQuery')).toBeVisible();
+ await root.locator('#desktopNav .origin-memo-nav').hover();
+ await root.locator('#desktopNav [data-memo-nav-mode="personal"]').click();
+ await root.locator('#desktopNav [data-route="tasks"]').click();
+ await root.locator('#desktopNav [data-route="notes"]').click();
+ await expect(root.locator('#originStickyMountV659')).toBeVisible();
+ await expect(root.locator('[data-sticky-mode]')).toHaveCount(0);
+});
+test('compact paper palette and send-to-back change only the selected card',async({page})=>{
+ const root=await origin(page);
+ await root.locator('.sticky-add').click();
+ await root.locator('.sticky-add').click();
+ const second=root.locator('.sticky-origin-card').last();
+ await expect(second.locator('.sticky-origin-palette')).toBeHidden();
+ await second.locator('[data-sticky-color-toggle]').click();
+ await expect(second.locator('.sticky-origin-palette')).toBeVisible();
+ await second.locator('[data-sticky-color="sky"]').click();
+ await second.locator('[data-sticky-back]').click();
+ const notes=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes);
+ expect(notes[1].layout.zIndex).toBeLessThan(notes[0].layout.zIndex);
+ expect(notes[1].appearance.color).toBe('sky');
+});
+test('five pages keep new notes separate and allow moving an existing note',async({page})=>{
+ const root=await origin(page);
+ await root.locator('.sticky-add').click();
+ await root.locator('[data-sticky-page="3"]').click();
+ await expect(root.locator('[data-sticky-page="3"]')).toHaveAttribute('aria-pressed','true');
+ await expect(root.locator('.sticky-origin-card')).toHaveCount(0);
+ await root.locator('.sticky-add').click();
+ await expect(root.locator('.sticky-origin-card')).toHaveCount(1);
+ await root.locator('[data-sticky-page="1"]').click();
+ await expect(root.locator('.sticky-origin-card')).toHaveCount(1);
+ await root.locator('.sticky-origin-card [data-sticky-page-move]').selectOption('5');
+ await expect(root.locator('.sticky-origin-card')).toHaveCount(0);
+ await root.locator('[data-sticky-page="5"]').click();
+ await expect(root.locator('.sticky-origin-card')).toHaveCount(1);
+ const pageNumbers=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes.map(n=>n.layout.page).sort());
+ expect(pageNumbers).toEqual([3,5]);
+});
+test('desktop canvas fits 1920 viewport without horizontal scrolling',async({page})=>{
+ const root=await origin(page);
+ await page.setViewportSize({width:1920,height:1080});
+ const size=await root.locator('.sticky-origin-stage').evaluate(stage=>({
+   client:stage.clientWidth,scroll:stage.scrollWidth,
+   page:document.documentElement.scrollWidth,viewport:innerWidth
+ }));
+ expect(size.scroll).toBeLessThanOrEqual(size.client+1);
+ expect(size.page).toBeLessThanOrEqual(size.viewport+1);
 });

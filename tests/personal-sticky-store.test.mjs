@@ -141,3 +141,38 @@ test('login-free store accepts existing Japanese room names without breaking app
  assert.equal(result.ok,true);
  s.destroy();
 });
+
+
+test('create and move notes across five synced pages without changing legacy contents',async()=>{
+ const storage=memoryStorage(),store=local(storage);
+ connectLocal(store,'福冨');
+ const legacy=await store.dispatch(ownerCommand(store,'sticky.create'));
+ const third=await store.dispatch(ownerCommand(store,'sticky.create',{page:3}));
+ assert.equal(legacy.ok,true);assert.equal(third.ok,true);
+ assert.equal(legacy.note.layout.page,1);
+ assert.equal(third.note.layout.page,3);
+ assert.deepEqual([legacy.note.layout.x,legacy.note.layout.y],[third.note.layout.x,third.note.layout.y]);
+ assert.equal((await store.dispatch(ownerCommand(store,'sticky.layout',{
+   id:legacy.id,expectedRevision:1,values:{page:5}
+ }))).ok,true);
+ assert.equal(store.readSnapshot().notes.find(x=>x.id===legacy.id).layout.page,5);
+ assert.equal((await store.dispatch(ownerCommand(store,'sticky.create',{page:0}))).ok,false);
+ store.destroy();
+});
+
+test('memo mode preference is stored by board store, independently for each chosen user',()=>{
+ const storage=memoryStorage();
+ const first=local(storage);
+ assert.equal(first.readMemoChoice('福冨'),'business');
+ assert.equal(first.saveMemoChoice('福冨','personal'),true);
+ assert.equal(first.readMemoChoice('福冨'),'personal');
+ assert.equal(first.readMemoChoice('森井'),'business');
+ assert.equal(first.saveMemoChoice('森井','business'),true);
+ assert.equal(first.saveMemoChoice('森井','wrong'),false);
+ assert.equal(first.saveMemoChoice('','personal'),false);
+ first.destroy();
+ const reloaded=local(storage);
+ assert.equal(reloaded.readMemoChoice('福冨'),'personal');
+ assert.equal(reloaded.readMemoChoice('森井'),'business');
+ reloaded.destroy();
+});

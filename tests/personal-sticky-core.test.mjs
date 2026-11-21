@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { newSticky, updateSticky, canDeleteSticky, stickyList, isStickyNote, isStickyGroup, planStickyPlacement, planMobileMove } from '../personal-sticky-core-v659.js';
+import { newSticky, updateSticky, canDeleteSticky, stickyList, isStickyNote, isStickyGroup, planStickyPlacement, planMobileMove, stickyPage } from '../personal-sticky-core-v659.js';
 
 const stamp = 1795230000000;
 const build = (id='note_a', uid='user_a', room='room_a') => newSticky({id,ownerUid:uid,roomId:room,now:stamp}).note;
@@ -102,4 +102,29 @@ test('existing Firebase-safe Japanese room identifiers remain supported',()=>{
  assert.equal(japanese.ok,true);
  assert.equal(isStickyNote(japanese.note),true);
  assert.equal(newSticky({id:'note_slash',ownerUid:'user_a',roomId:'院内/業務',now:stamp}).ok,false);
+});
+
+
+test('five sticky pages retain legacy records on page one',()=>{
+ const old=build('legacy_one'); delete old.layout.page;
+ assert.equal(isStickyNote(old),true);
+ assert.equal(stickyPage(old),1);
+ const second=newSticky({id:'page_two',ownerUid:'user_a',roomId:'room_a',now:stamp,page:2});
+ assert.equal(second.ok,true);
+ assert.equal(second.note.layout.page,2);
+ assert.equal(stickyPage(second.note),2);
+ assert.equal(newSticky({id:'outside',ownerUid:'user_a',roomId:'room_a',now:stamp,page:6}).ok,false);
+ assert.equal(updateSticky(old,{field:'layout',expectedRevision:1,values:{page:5},ownerUid:'user_a',roomId:'room_a',now:stamp+1}).note.layout.page,5);
+});
+test('page placement does not collide with or shift notes on another page',()=>{
+ const first=build('legacy_note');
+ const second=newSticky({id:'page_2',ownerUid:'user_a',roomId:'room_a',now:stamp,page:2}).note;
+ assert.deepEqual(
+   {x:planStickyPlacement([first],2).x,y:planStickyPlacement([first],2).y},
+   {x:24,y:24}
+ );
+ assert.notDeepEqual(
+   {x:planStickyPlacement([first,second],2).x,y:planStickyPlacement([first,second],2).y},
+   {x:24,y:24}
+ );
 });
