@@ -80,6 +80,7 @@
     .sticky-origin-card-collapsed .sticky-origin-order,.sticky-origin-card-collapsed .sticky-origin-front,
     .sticky-origin-card-collapsed .sticky-origin-back,.sticky-origin-card-collapsed .sticky-origin-expand{display:none!important}
     .sticky-origin-expand,.sticky-origin-collapse{padding:0 4px;white-space:nowrap}
+    .sticky-origin-expand{display:grid;place-items:center}
     .sticky-origin-expand svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
     .sticky-origin-editor:not([open]){display:none}
     .sticky-origin-editor[open]{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;gap:0;box-sizing:border-box;

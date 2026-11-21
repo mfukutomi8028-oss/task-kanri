@@ -632,3 +632,20 @@ test('header search result tabs fit without creating a horizontal scrollbar',asy
  expect(dims.popupWidth).toBeGreaterThanOrEqual(400);
  expect(dims.railScroll).toBeLessThanOrEqual(dims.railWidth+1);
 });
+
+
+test('sticky expanded-edit icon is centered inside its header button at desktop and mobile widths',async({page})=>{
+ for(const width of [1366,390]){
+  const root=await origin(page,width);
+  await root.locator('.sticky-add').click();
+  const button=root.locator('.sticky-origin-card [data-sticky-expand]').first();
+  const center=await button.evaluate(node=>{
+   const outer=node.getBoundingClientRect();
+   const icon=node.querySelector('svg').getBoundingClientRect();
+   return {dx:Math.abs(outer.left+outer.width/2-(icon.left+icon.width/2)),
+    dy:Math.abs(outer.top+outer.height/2-(icon.top+icon.height/2))};
+  });
+  expect(center.dx).toBeLessThanOrEqual(1);
+  expect(center.dy).toBeLessThanOrEqual(1);
+ }
+});
