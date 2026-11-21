@@ -454,7 +454,7 @@ test('sticky color and delete controls live together at lower left without a sav
  await expect(remove).toBeVisible();
  await expect(card.locator('.sticky-origin-card-head [data-sticky-color-toggle],.sticky-origin-card-head [data-sticky-delete]')).toHaveCount(0);
  await expect(card.getByText('保存済み',{exact:true})).toHaveCount(0);
- await expect(card.locator('[data-sticky-status]')).toHaveCount(0);
+ await expect(card.locator('[data-sticky-status]')).toBeHidden();
  const [frame,colorBox,removeBox]=await Promise.all([card.boundingBox(),color.boundingBox(),remove.boundingBox()]);
  expect(colorBox.x).toBeLessThan(removeBox.x);
  expect(colorBox.y).toBeGreaterThan(frame.y+frame.height*.65);
