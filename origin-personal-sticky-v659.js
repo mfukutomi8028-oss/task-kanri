@@ -460,7 +460,7 @@
     panel.addEventListener('input',e=>{
       if(e.target.matches('[data-sticky-text]')){
         const id=e.target.dataset.stickyText;
-        const len=e.target.closest('.sticky-origin-card')?.querySelector('.sticky-origin-foot span:last-child');
+        const len=e.target.closest('.sticky-origin-card')?.querySelector('.sticky-origin-char-count');
         if(len)len.textContent=e.target.value.length+'/2000';
         if(!composing&&!e.isComposing)schedule(id,e.target.value);
       }
