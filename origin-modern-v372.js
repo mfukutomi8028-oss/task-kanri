@@ -1889,7 +1889,7 @@ function originVisibleMemos(){
 }
 function renderNotes(){
  if(originStickyMemoModeV659==='personal'){
-   return `${head('PERSONAL SPACE · STICKY NOTES','個人付箋','自分だけの付箋を、自由に書いて配置します。')}
+   return `${head('PERSONAL SPACE · STICKY NOTES','個人付箋','利用者名ごとに付箋を整理できます。')}
      <div id="originStickyMountV659" aria-label="個人付箋"></div>`;
  }
  const query=memoQuery.trim().toLocaleLowerCase();
