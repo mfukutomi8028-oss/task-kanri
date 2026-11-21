@@ -22,6 +22,9 @@
     .sticky-origin-card-head{display:flex;align-items:center;gap:3px;min-height:45px;padding:2px 4px 2px 7px;border-bottom:1px solid rgba(25,40,60,.10)}
     .sticky-origin-grip{flex:1;display:flex;align-items:center;min-width:0;text-align:left;touch-action:none;border:0;color:#293244;background:transparent;font-weight:730;font-size:12px;cursor:grab;user-select:none}
     .sticky-origin-grip:active{cursor:grabbing}
+    .sticky-origin-order{display:none;gap:3px}
+    .sticky-origin-order button{padding:0 6px;font-size:12px;background:transparent;border:0;border-radius:8px;color:#293244}
+    .sticky-origin-order button:disabled{opacity:.32}
     .sticky-origin-grip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .sticky-origin-card-head button:not(.sticky-origin-grip){background:transparent;border:0;border-radius:8px;color:#293244;font-size:14px}
     .sticky-origin-card-head button:hover{background:rgba(255,255,255,.6)}
@@ -41,6 +44,7 @@
       .sticky-origin-canvas{display:grid;gap:12px;width:100%;height:auto;min-width:0;min-height:0;background:none}
       .sticky-origin-card{position:relative!important;left:auto!important;top:auto!important;width:100%!important;height:260px!important;box-shadow:none}
       .sticky-origin-grip{cursor:default;touch-action:auto}
+      .sticky-origin-order{display:flex}
       .sticky-origin-resize{display:none}
     }
     @media(prefers-reduced-motion:no-preference){.sticky-origin-card{transition:box-shadow .16s ease}.sticky-origin-card:hover{box-shadow:0 10px 28px rgba(28,38,65,.14)}}
@@ -129,7 +133,19 @@
       const remove=button('削除');
       remove.dataset.stickyDelete=note.id;
       remove.setAttribute('aria-label','この付箋を削除');
-      top.append(grip,remove);
+      const mobileActions=createElement('div','sticky-origin-order');
+      const byOrder=data.slice().sort((a,b)=>a.mobile.order-b.mobile.order
+        || a.createdAt-b.createdAt || a.id.localeCompare(b.id));
+      const mobileIndex=byOrder.findIndex(item=>item.id===note.id);
+      for(const [direction,label] of [['up','上へ'],['down','下へ']]){
+        const control=button(label);
+        control.dataset.stickyOrder=direction;
+        control.dataset.id=note.id;
+        control.setAttribute('aria-label','付箋を'+label+'移動');
+        control.disabled=direction==='up'?mobileIndex===0:mobileIndex===byOrder.length-1;
+        mobileActions.append(control);
+      }
+      top.append(grip,mobileActions,remove);
       const textarea=createElement('textarea');
       textarea.dataset.stickyText=note.id;
       textarea.setAttribute('aria-label','付箋本文');
@@ -256,6 +272,16 @@
       // Once writing has stopped, subsequent snapshots may safely repaint.
     });
     panel.addEventListener('click',async e=>{
+      const orderControl=e.target.closest('[data-sticky-order]');
+      if(orderControl){
+        if(!isReady())return;
+        const result=await service.dispatch({
+          type:'sticky.mobileMove',id:orderControl.dataset.id,
+          direction:orderControl.dataset.stickyOrder,ownerUid,ownerRoom
+        });
+        if(!result.ok)badge('並び順を変更できませんでした。再読み込みしてお試しください。');
+        return;
+      }
       const color=e.target.closest('[data-sticky-color]');
       if(color){
         const id=color.dataset.id;
