@@ -105,7 +105,7 @@ jobs:
       - name: Protocol and release-contract tests
         shell: bash
         run: npm run test:protocol 2>&1 | tee protocol-results.log
-      - name: Origin personal sticky core and auth-bound store tests
+      - name: Origin personal sticky core and login-free board store tests
         run: node --test tests/personal-sticky-core.test.mjs tests/personal-sticky-store.test.mjs
       - name: Cross-check PowerShell release entrypoint
         shell: pwsh
@@ -214,10 +214,6 @@ jobs:
         run: npm run test:rules:v568
       - name: Ver.577 isolated lossless-schema read-only Rules
         run: npm run test:rules:v577
-      - name: Ver.659 private sticky candidate Rules (synthetic users)
-        run: npm run test:rules:sticky:v659
-      - name: Ver.659 real Auth UID to personal sticky store (synthetic emulators)
-        run: npm run test:auth:sticky:v659
       - name: Ver.573 isolated Admin Auth and RTDB emulators
         run: npm run test:admin:v573
       - name: Ver.580 local Auth UI with real demo Emulators
