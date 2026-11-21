@@ -52,7 +52,7 @@
     .sticky-origin-resize{position:absolute;right:0;bottom:0;width:28px;height:28px;border:0;background:transparent;color:#455067;cursor:nwse-resize;touch-action:none}
     .sticky-origin-color-toggle{position:relative;border-radius:8px;padding:0;display:grid;place-items:center}
     /* An opaque neutral control distinguishes even the current paper color from its background. */
-    .sticky-origin-card-head .sticky-origin-color-toggle{background:#fff;border:1px solid #64718b;box-shadow:0 1px 3px rgba(30,42,64,.14)}
+    .sticky-origin-card-head button.sticky-origin-color-toggle{background:#fff;border:1px solid #64718b;box-shadow:0 1px 3px rgba(30,42,64,.14)}
     .sticky-origin-card-head .sticky-origin-color-toggle:hover{background:#f2f4ff;border-color:#4659b9}
     .sticky-origin-card-head .sticky-origin-color-toggle[aria-expanded="true"]{background:#eff0ff;border-color:#4659b9}
     .sticky-origin-card-head .sticky-origin-color-toggle::after{content:"";position:absolute;right:3px;bottom:4px;width:5px;height:5px;border-right:1.5px solid #36445d;border-bottom:1.5px solid #36445d;transform:rotate(45deg);pointer-events:none}
