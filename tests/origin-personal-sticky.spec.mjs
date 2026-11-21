@@ -185,3 +185,46 @@ test('Origin sticky search keeps focus and input through a remote snapshot',asyn
  await expect(search).toBeFocused();
  await expect(search).toHaveValue('日本語で検索中');
 });
+
+test('Origin sticky filters by paper color and resets search without losing notes',async({page})=>{
+  const root=await origin(page);
+  await root.locator('.sticky-add').click();
+  await root.locator('.sticky-origin-card').first().locator('[data-sticky-color="mint"]').click();
+  await root.locator('.sticky-add').click();
+  await expect(root.locator('.sticky-origin-card')).toHaveCount(2);
+  await root.locator('[data-sticky-color-filter]').selectOption('mint');
+  await expect(root.locator('.sticky-origin-card')).toHaveCount(1);
+  await expect(root.locator('.sticky-origin-card [data-sticky-color="mint"]')).toHaveAttribute('aria-pressed','true');
+  await root.locator('[data-sticky-color-filter]').selectOption('all');
+  await expect(root.locator('.sticky-origin-card')).toHaveCount(2);
+});
+
+test('Origin sticky brings a selected rear card in front without changing its text',async({page})=>{
+  const root=await origin(page);
+  await root.locator('.sticky-add').click();
+  await root.locator('.sticky-add').click();
+  const first=root.locator('.sticky-origin-card').first();
+  const firstId=await first.getAttribute('data-id');
+  await first.locator('[data-sticky-front]').click();
+  await expect.poll(async()=>page.evaluate(id=>{
+    const notes=window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes;
+    const selected=notes.find(x=>x.id===id);
+    return selected.layout.zIndex > Math.max(...notes.filter(x=>x.id!==id).map(x=>x.layout.zIndex));
+  },firstId)).toBe(true);
+  const notes=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes);
+  expect(notes.every(note=>note.content.revision===1)).toBe(true);
+});
+
+test('Origin sticky all-view fits the complete canvas within the available stage',async({page})=>{
+  const root=await origin(page,900);
+  await root.locator('.sticky-add').click();
+  await root.locator('[data-sticky-all-view]').click();
+  const sizes=await root.locator('.sticky-origin-stage').evaluate(stage=>{
+    const board=stage.querySelector('.sticky-origin-canvas');
+    return {stage:stage.getBoundingClientRect().width,board:board.getBoundingClientRect().width};
+  });
+  expect(sizes.board).toBeLessThanOrEqual(sizes.stage+1);
+  await root.locator('[data-sticky-all-view]').click();
+  const reset=await root.locator('.sticky-origin-canvas').evaluate(node=>node.getBoundingClientRect().width);
+  expect(reset).toBeGreaterThan(1200);
+});
