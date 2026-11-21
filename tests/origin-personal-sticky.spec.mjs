@@ -564,6 +564,13 @@ test('Origin full view displays only the centered fitted board without a right-h
 test('Origin note changes keep inner board and page scroll positions stable',async({page})=>{
  const root=await origin(page,1366);
  await root.locator('.sticky-add').click();
+ // Put the note fully inside the viewport at scrollTop=80; test actions must
+ // not trigger Playwright's intentional scrollIntoView before the saved update.
+ await page.evaluate(async()=>{
+  const store=window.WorkBoardPersonalStickyStoreV659,note=store.readSnapshot().notes[0];
+  await store.dispatch({type:'sticky.layout',id:note.id,values:{y:270},
+   expectedRevision:note.layout.revision,ownerUid:note.ownerUid,ownerRoom:note.roomId});
+ });
  const stage=root.locator('.sticky-origin-stage');
  const card=root.locator('.sticky-origin-card').first();
  await stage.evaluate(el=>{el.scrollTop=80});
