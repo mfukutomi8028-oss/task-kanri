@@ -47,20 +47,23 @@
     @media(min-width:768px){.sticky-origin-card-head button:not(.sticky-origin-grip){min-width:36px;width:36px;min-height:44px;padding:0 2px;font-size:11px}}
     .sticky-origin-card textarea{display:block;flex:1;resize:none;min-height:68px;width:100%;padding:12px 14px;border:0;outline:0;background:transparent;color:#273040;font-size:14px;line-height:1.65;overflow:auto}
     .sticky-origin-card textarea:focus-visible{outline:2px solid #4659cc;outline-offset:-2px}
-    .sticky-origin-foot{padding:3px 8px 8px 10px;font-size:11px;min-height:32px;display:grid;grid-template-columns:minmax(0,1fr) auto auto 32px;gap:6px;align-items:center;color:#4f596c}
-    .sticky-origin-foot [data-sticky-status]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .sticky-origin-char-count{white-space:nowrap;font-variant-numeric:tabular-nums;justify-self:end}
+    .sticky-origin-foot{padding:4px 6px 6px;font-size:11px;min-height:38px;display:grid;grid-template-columns:32px 32px minmax(0,1fr) 42px auto 32px;gap:3px;align-items:center;color:#4f596c}
+    .sticky-origin-foot-spacer{min-width:0;pointer-events:none}
+    .sticky-origin-save-feedback{position:absolute;left:8px;bottom:46px;z-index:2;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 6px;border:1px solid rgba(70,85,120,.16);border-radius:6px;background:rgba(255,255,255,.9);color:#4a5872;font-size:10px;line-height:1.5;pointer-events:none}
+    .sticky-origin-char-count{white-space:nowrap;font-size:10px;letter-spacing:-.15px;font-variant-numeric:tabular-nums;justify-self:end}
     .sticky-origin-card button.sticky-origin-resize{position:static;min-width:32px;min-height:32px;width:32px;height:32px;border:0;background:transparent;color:#455067;cursor:nwse-resize;touch-action:none;padding:0;display:grid;place-items:center;justify-self:end}
-    .sticky-origin-color-toggle{position:relative;border-radius:8px;padding:0;display:grid;place-items:center}
-    /* An opaque neutral control distinguishes even the current paper color from its background. */
-    .sticky-origin-card-head button.sticky-origin-color-toggle{background:#fff;border:1px solid #64718b;box-shadow:0 1px 3px rgba(30,42,64,.14)}
-    .sticky-origin-card-head .sticky-origin-color-toggle:hover{background:#f2f4ff;border-color:#4659b9}
-    .sticky-origin-card-head .sticky-origin-color-toggle[aria-expanded="true"]{background:#eff0ff;border-color:#4659b9}
-    .sticky-origin-card-head .sticky-origin-color-toggle::after{content:"";position:absolute;right:3px;bottom:4px;width:5px;height:5px;border-right:1.5px solid #36445d;border-bottom:1.5px solid #36445d;transform:rotate(45deg);pointer-events:none}
-    .sticky-origin-color-preview{display:block;width:22px;height:22px;border:2px solid #53617b;border-radius:7px;background:var(--sticky-paper);box-shadow:0 0 0 1px #fff}
-    .sticky-origin-palette{position:absolute;right:8px;top:48px;z-index:30;display:grid;grid-template-columns:repeat(3,44px);gap:5px;padding:8px;background:#fff;border:1px solid rgba(25,40,60,.2);border-radius:11px;box-shadow:0 8px 20px rgba(20,30,50,.18)}
+    /* A soft, round swatch and an unobtrusive trash icon stay at the note's lower left. */
+    .sticky-origin-card button.sticky-origin-color-toggle{position:relative;justify-self:start;box-sizing:border-box;display:grid;place-items:center;width:32px;height:32px;min-width:32px;min-height:32px;padding:0;border:1px solid #9ba6b9;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(30,42,64,.12);cursor:pointer}
+    .sticky-origin-card button.sticky-origin-color-toggle:hover{background:#f8f9ff;border-color:#65769b;box-shadow:0 2px 7px rgba(30,42,64,.16)}
+    .sticky-origin-card button.sticky-origin-color-toggle[aria-expanded="true"]{background:#f8f9ff;border-color:#4659b9;box-shadow:0 0 0 2px rgba(70,89,185,.14)}
+    .sticky-origin-color-preview{display:block;width:19px;height:19px;border:2px solid rgba(66,78,107,.50);border-radius:50%;background:var(--sticky-paper);box-shadow:0 0 0 1px rgba(255,255,255,.85)}
+    .sticky-origin-card button.sticky-origin-delete{justify-self:start;box-sizing:border-box;display:grid;place-items:center;width:32px;height:32px;min-width:32px;min-height:32px;padding:0;border:1px solid rgba(74,90,115,.22);border-radius:50%;background:rgba(255,255,255,.45);color:#53617b;cursor:pointer}
+    .sticky-origin-card button.sticky-origin-delete:hover{background:#fff0f0;border-color:#c88e96;color:#a14250}
+    .sticky-origin-delete svg{display:block;width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+    .sticky-origin-card button.sticky-origin-color-toggle:focus-visible,.sticky-origin-card button.sticky-origin-delete:focus-visible{outline:2px solid #4659cc;outline-offset:2px}
+    .sticky-origin-palette{position:absolute;left:8px;bottom:44px;right:auto;top:auto;z-index:30;display:grid;grid-template-columns:repeat(3,44px);gap:5px;padding:8px;background:#fff;border:1px solid rgba(25,40,60,.2);border-radius:11px;box-shadow:0 8px 20px rgba(20,30,50,.18)}
     .sticky-origin-palette[hidden]{display:none}
-    .sticky-origin-page-move{max-width:83px;min-height:36px;font-size:11px;border:1px solid rgba(30,40,60,.18);border-radius:6px;background:rgba(255,255,255,.4);color:#273040}
+    .sticky-origin-page-move{width:42px;min-width:42px;max-width:42px;min-height:30px;padding:0 1px;font-size:10px;border:1px solid rgba(30,40,60,.18);border-radius:6px;background:rgba(255,255,255,.4);color:#273040}
     .sticky-origin-pages{display:flex;align-items:center;gap:3px;margin-left:auto;white-space:nowrap}
     .sticky-origin-pages button{min-width:44px;min-height:44px;padding:6px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--ink-soft);font-size:12px;font-weight:800}
     .sticky-origin-pages button[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent-dark);border-color:var(--accent)}
@@ -77,7 +80,10 @@
       .sticky-origin-card{position:relative!important;left:auto!important;top:auto!important;width:100%!important;height:260px!important;box-shadow:none}
       .sticky-origin-grip{cursor:default;touch-action:auto}
       .sticky-origin-order{display:flex}
-      .sticky-origin-foot{padding-right:12px;grid-template-columns:minmax(0,1fr) auto auto}
+      .sticky-origin-foot{padding:4px 10px 7px;grid-template-columns:44px 44px minmax(0,1fr) 44px auto;gap:5px}
+      .sticky-origin-card button.sticky-origin-color-toggle,.sticky-origin-card button.sticky-origin-delete{width:44px;height:44px;min-width:44px;min-height:44px}
+      .sticky-origin-page-move{width:44px;min-width:44px;max-width:44px}
+      .sticky-origin-save-feedback{bottom:62px}
       .sticky-origin-card button.sticky-origin-resize{display:none}
       .sticky-origin-front,.sticky-origin-back,.sticky-origin-toolbar .sticky-fit{display:none}
     }
@@ -123,10 +129,17 @@
     }
     function noteFromId(id) { return data.find(note => note.id === id); }
     function statusMessage(id, message) {
-      saving.set(id, message);
-      const element = panel.querySelector('[data-sticky-status="'+id+'"]');
-      if (element) element.textContent = message;
-      badge(message);
+      // Preserve pending/error feedback without displaying a permanent "saved" label.
+      const show = message !== '保存済み';
+      if (show) saving.set(id,message);
+      else saving.delete(id);
+      const feedback=panel.querySelector('[data-sticky-status="'+id+'"]');
+      if (feedback){
+        feedback.textContent=show?message:'';
+        feedback.hidden=!show;
+      }
+      if (message.includes('できません') || message.includes('競合'))
+        badge(message.includes('競合') ? '保存できませんでした。最新の状態を確認してください' : message);
     }
     async function commit(id, field, values) {
       const note = noteFromId(id);
@@ -189,9 +202,18 @@
       grip.setAttribute('aria-label','付箋を移動。方向キーでも移動できます');
       const symbol=createElement('span','',note.content.text.split('\n')[0].slice(0,24)||'新しい付箋');
       grip.append(symbol);
-      const remove=button('削除');
+      const remove=button('','sticky-origin-delete');
       remove.dataset.stickyDelete=note.id;
       remove.setAttribute('aria-label','この付箋を削除');
+      remove.title='この付箋を削除';
+      const trashIcon=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      trashIcon.setAttribute('viewBox','0 0 24 24');
+      trashIcon.setAttribute('aria-hidden','true');
+      trashIcon.setAttribute('focusable','false');
+      const trashPath=document.createElementNS('http://www.w3.org/2000/svg','path');
+      trashPath.setAttribute('d','M4 7h16 M9 7V5h6v2 M7 7l1 12h8l1-12 M10 10v6 M14 10v6');
+      trashIcon.append(trashPath);
+      remove.append(trashIcon);
       const mobileActions=createElement('div','sticky-origin-order');
       const byOrder=pageNotes().slice().sort((a,b)=>a.mobile.order-b.mobile.order
         || a.createdAt-b.createdAt || a.id.localeCompare(b.id));
@@ -213,10 +235,12 @@
       const colorToggle=button('','sticky-origin-color-toggle');
       colorToggle.dataset.stickyColorToggle=note.id;
       colorToggle.setAttribute('aria-label','付箋の色を変更');
+      colorToggle.setAttribute('aria-haspopup','true');
+      colorToggle.title='付箋の色を変更';
       colorToggle.setAttribute('aria-expanded','false');
       colorToggle.setAttribute('aria-controls','stickyPalette-'+note.id);
       colorToggle.append(createElement('span','sticky-origin-color-preview'));
-      top.append(grip,mobileActions,front,back,colorToggle,remove);
+      top.append(grip,mobileActions,front,back);
       const textarea=createElement('textarea');
       textarea.dataset.stickyText=note.id;
       textarea.setAttribute('aria-label','付箋本文');
@@ -235,9 +259,15 @@
         b.setAttribute('aria-pressed',String(note.appearance.color===key));
         colors.append(b);
       });
+      const initialFeedback=saving.get(note.id)||'';
+      const feedback=createElement('span','sticky-origin-save-feedback',initialFeedback);
+      feedback.dataset.stickyStatus=note.id;
+      feedback.setAttribute('role','status');
+      feedback.setAttribute('aria-live','polite');
+      feedback.hidden=!initialFeedback;
       const foot=createElement('div','sticky-origin-foot');
-      const status=createElement('span','',saving.get(note.id)||'保存済み');
-      status.dataset.stickyStatus=note.id;
+      const spacer=createElement('span','sticky-origin-foot-spacer');
+      spacer.setAttribute('aria-hidden','true');
       const pageMove=createElement('select','sticky-origin-page-move');
       pageMove.dataset.stickyPageMove=note.id;
       pageMove.setAttribute('aria-label','付箋の移動先ページ');
@@ -250,8 +280,8 @@
       resize.dataset.stickyResize=note.id;
       resize.setAttribute('aria-label','ドラッグで付箋の大きさを変更');
       // Resize handle occupies its own footer grid cell; never overlays the counter.
-      foot.append(status,pageMove,createElement('span','sticky-origin-char-count',textarea.value.length+'/2000'),resize);
-      card.append(top,colors,textarea,foot);
+      foot.append(colorToggle,remove,spacer,pageMove,createElement('span','sticky-origin-char-count',textarea.value.length+'/2000'),resize);
+      card.append(top,colors,textarea,feedback,foot);
       return card;
     }
     function refreshStickyCards(canvas) {
