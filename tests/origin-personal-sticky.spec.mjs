@@ -43,7 +43,7 @@ async function origin(page,width=1366) {
  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
  const root=page.locator('#modernOriginRoot');
- await root.locator('[data-route="notes"]').first().click();
+ await root.locator((width<=770?'#mobileNav':'#desktopNav')+' [data-route="notes"]').click();
  await root.locator('[data-sticky-mode="personal"]').click();
  await expect(root.locator('#originStickyMountV659')).toBeVisible();
  return root;
