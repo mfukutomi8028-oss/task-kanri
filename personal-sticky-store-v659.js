@@ -6,22 +6,24 @@ import { newSticky, updateSticky, canDeleteSticky, isStickyNote, isStickyId, sti
  *  auth: object, database: object, roomId: string,
  *  firebase: {ref: Function, onValue: Function, runTransaction: Function, onAuthStateChanged: Function},
  *  approvedMember: (uid:string, roomId:string) => Promise<boolean>,
- *  accessCheckIntervalMs?: number
+ *  accessCheckIntervalMs?: number,
+ *  requireLiveConnection?: boolean
  * }} deps
  * This adapter cannot grant access: Firebase Rules MUST independently validate
  * Auth UID + approved room membership on every read and write.
  */
 export function createPersonalStickyStore({ auth, database, roomId, firebase, approvedMember,
-  accessCheckIntervalMs = 0 }) {
+  accessCheckIntervalMs = 0, requireLiveConnection = false }) {
   if (!isStickyId(roomId) || !auth || !database || !firebase
     || ['ref', 'onValue', 'runTransaction', 'onAuthStateChanged'].some(key => typeof firebase[key] !== 'function')
-    || typeof approvedMember !== 'function'
+    || typeof approvedMember !== 'function' || typeof requireLiveConnection !== 'boolean'
     || !Number.isSafeInteger(accessCheckIntervalMs)
     || (accessCheckIntervalMs !== 0 && (accessCheckIntervalMs < 200 || accessCheckIntervalMs > 60000)))
     throw new TypeError('Authenticated sticky dependencies are required');
 
   const subscribers = new Set();
-  let unsubscribeAuth = null, unsubscribeDb = null;
+  let unsubscribeAuth = null, unsubscribeDb = null, unsubscribeConnection = null;
+  let connectionOnline = !requireLiveConnection;
   let generation = 0, destroyed = false, uid = '', state = 'locked', notes = Object.create(null);
   const snapshot = () => Object.freeze({
     status: state, ownerUid: uid, ownerRoom: roomId,
@@ -45,13 +47,15 @@ export function createPersonalStickyStore({ auth, database, roomId, firebase, ap
   const changeAuth = async user => {
     clear();
     if (!user || typeof user.uid !== 'string' || !isStickyId(user.uid) || destroyed) return;
+    if (!connectionOnline) { state = 'offline'; notify(); return; }
     const runId = generation, candidate = user.uid;
     state = 'checking'; notify();
     try {
       const allowed = await approvedMember(candidate, roomId);
       // Re-check actual Firebase Auth identity after async membership lookup.
-      if (!allowed || destroyed || runId !== generation || auth.currentUser?.uid !== candidate) {
-        if (runId === generation) clear();
+      if (!allowed || destroyed || runId !== generation || !connectionOnline
+        || auth.currentUser?.uid !== candidate) {
+        if (runId === generation) clear(connectionOnline ? 'locked' : 'offline');
         return;
       }
       uid = candidate;
@@ -74,6 +78,24 @@ export function createPersonalStickyStore({ auth, database, roomId, firebase, ap
       if (runId === generation) clear('error');
     }
   };
+  if (requireLiveConnection) {
+    // RTDB get() can return cached membership while offline. Use the SDK's
+    // actual client connection signal and never display or queue private
+    // writes without an active connection to the database.
+    unsubscribeConnection = firebase.onValue(firebase.ref(database, '.info/connected'), snap => {
+      if (destroyed) return;
+      const next = snap.val() === true;
+      if (next === connectionOnline) return;
+      connectionOnline = next;
+      if (!next) clear('offline');
+      else if (auth.currentUser) void changeAuth(auth.currentUser);
+      else clear();
+    }, () => {
+      if (destroyed) return;
+      connectionOnline = false;
+      clear('offline');
+    });
+  }
   unsubscribeAuth = firebase.onAuthStateChanged(auth, changeAuth, () => clear('error'));
   // Approval changes can occur without an Auth state event. The verified
   // adapter must therefore recheck membership even while signed in.
@@ -90,7 +112,7 @@ export function createPersonalStickyStore({ auth, database, roomId, firebase, ap
       && !stillAllowed) clear('locked');
   }, accessCheckIntervalMs) : null;
   const requireIdentity = (ownerRoom, ownerUid) => {
-    if (destroyed || state !== 'ready' || !uid || ownerRoom !== roomId || ownerUid !== uid
+    if (destroyed || !connectionOnline || state !== 'ready' || !uid || ownerRoom !== roomId || ownerUid !== uid
       || auth.currentUser?.uid !== uid) return null;
     return uid;
   };
@@ -119,7 +141,7 @@ export function createPersonalStickyStore({ auth, database, roomId, firebase, ap
     let reason = '';
     try {
       const result = await firebase.runTransaction(firebase.ref(database, path(identity, id)), current => {
-        if (generation !== myGeneration || auth.currentUser?.uid !== identity || state !== 'ready') {
+        if (generation !== myGeneration || !connectionOnline || auth.currentUser?.uid !== identity || state !== 'ready') {
           reason = 'auth-changed'; return;
         }
         if (kind === 'sticky.create') {
@@ -167,6 +189,7 @@ export function createPersonalStickyStore({ auth, database, roomId, firebase, ap
       if (destroyed) return;
       destroyed = true;
       if (unsubscribeAuth) unsubscribeAuth();
+      if (unsubscribeConnection) unsubscribeConnection();
       if (accessTimer !== null) clearInterval(accessTimer);
       clear();
       subscribers.clear();
@@ -209,6 +232,7 @@ export function createVerifiedPersonalStickyStore({
     }
   };
   return createPersonalStickyStore({
-    auth, database, roomId, firebase, approvedMember, accessCheckIntervalMs
+    auth, database, roomId, firebase, approvedMember, accessCheckIntervalMs,
+    requireLiveConnection: true
   });
 }
