@@ -3,10 +3,11 @@
   'use strict';
   if (root.WorkBoardOriginStickyPanelV659) return;
 
+  // Keep canonical color keys stable: only their Origin presentation changes.
   const COLORS = [
-    ['ivory','白','#f4f0e5'], ['lemon','レモン','#fff1ad'],
-    ['peach','ピーチ','#ffdfd1'], ['mint','ミント','#d8f1d9'],
-    ['sky','スカイ','#daecfb'], ['lavender','ラベンダー','#ebe2fa']
+    ['ivory','白','#f6f2eb'], ['lemon','レモン','#faf3c9'],
+    ['peach','ピーチ','#fae3db'], ['mint','ミント','#dff0e6'],
+    ['sky','スカイ','#e1edf8'], ['lavender','ラベンダー','#eee6f8']
   ];
   const colorHex = Object.fromEntries(COLORS.map(([k,,c]) => [k,c]));
   const STYLES = `
@@ -30,7 +31,7 @@
     .sticky-origin-state{font-size:12px;color:var(--ink-soft);line-height:1.6}
     .sticky-origin-stage{background:color-mix(in srgb,var(--bg) 92%,#d0d6e3);border:1px solid var(--line);border-radius:16px;overflow-x:hidden;overflow-y:auto;max-height:min(72dvh,980px);min-height:440px;overscroll-behavior:contain}
     .sticky-origin-canvas{position:relative;width:1400px;height:900px;min-width:1400px;min-height:900px;background-image:linear-gradient(to right,rgba(104,113,140,.08) 1px,transparent 1px),linear-gradient(to bottom,rgba(104,113,140,.08) 1px,transparent 1px);background-size:28px 28px;isolation:isolate}
-    .sticky-origin-card{position:absolute;display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid rgba(25,40,60,.16);box-shadow:0 8px 22px rgba(28,38,65,.10);color:#273040;background:var(--sticky-paper,#fff1ad);min-height:160px;min-width:220px}
+    .sticky-origin-card{position:absolute;display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid rgba(25,40,60,.16);box-shadow:0 8px 22px rgba(28,38,65,.10);color:#273040;background:var(--sticky-paper,#faf3c9);min-height:160px;min-width:220px}
     .sticky-origin-card:focus-within{outline:2px solid #4659cc;outline-offset:2px}
     .sticky-origin-card-head{display:flex;align-items:center;gap:3px;min-height:45px;padding:2px 4px 2px 7px;border-bottom:1px solid rgba(25,40,60,.10)}
     .sticky-origin-grip{flex:1;display:flex;align-items:center;min-width:0;text-align:left;touch-action:none;border:0;color:#293244;background:transparent;font-weight:730;font-size:12px;cursor:grab;user-select:none}
@@ -46,10 +47,17 @@
     @media(min-width:768px){.sticky-origin-card-head button:not(.sticky-origin-grip){min-width:36px;width:36px;min-height:44px;padding:0 2px;font-size:11px}}
     .sticky-origin-card textarea{display:block;flex:1;resize:none;min-height:68px;width:100%;padding:12px 14px;border:0;outline:0;background:transparent;color:#273040;font-size:14px;line-height:1.65;overflow:auto}
     .sticky-origin-card textarea:focus-visible{outline:2px solid #4659cc;outline-offset:-2px}
-    .sticky-origin-foot{padding:3px 10px 8px;font-size:11px;min-height:27px;display:flex;justify-content:space-between;align-items:center;color:#4f596c}
-    .sticky-origin-resize{position:absolute;right:0;bottom:0;width:28px;height:28px;border:0;background:transparent;color:#455067;cursor:nwse-resize;touch-action:none}
-    .sticky-origin-color-toggle{position:relative;border-radius:8px;padding:0;border:0;display:grid;place-items:center}
-    .sticky-origin-color-preview{display:block;width:24px;height:24px;border:1px solid rgba(28,35,60,.25);border-radius:7px;background:var(--sticky-paper)}
+    .sticky-origin-foot{padding:3px 8px 8px 10px;font-size:11px;min-height:32px;display:grid;grid-template-columns:minmax(0,1fr) auto auto 32px;gap:6px;align-items:center;color:#4f596c}
+    .sticky-origin-foot [data-sticky-status]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .sticky-origin-char-count{white-space:nowrap;font-variant-numeric:tabular-nums;justify-self:end}
+    .sticky-origin-card button.sticky-origin-resize{position:static;min-width:32px;min-height:32px;width:32px;height:32px;border:0;background:transparent;color:#455067;cursor:nwse-resize;touch-action:none;padding:0;display:grid;place-items:center;justify-self:end}
+    .sticky-origin-color-toggle{position:relative;border-radius:8px;padding:0;display:grid;place-items:center}
+    /* An opaque neutral control distinguishes even the current paper color from its background. */
+    .sticky-origin-card-head button.sticky-origin-color-toggle{background:#fff;border:1px solid #64718b;box-shadow:0 1px 3px rgba(30,42,64,.14)}
+    .sticky-origin-card-head .sticky-origin-color-toggle:hover{background:#f2f4ff;border-color:#4659b9}
+    .sticky-origin-card-head .sticky-origin-color-toggle[aria-expanded="true"]{background:#eff0ff;border-color:#4659b9}
+    .sticky-origin-card-head .sticky-origin-color-toggle::after{content:"";position:absolute;right:3px;bottom:4px;width:5px;height:5px;border-right:1.5px solid #36445d;border-bottom:1.5px solid #36445d;transform:rotate(45deg);pointer-events:none}
+    .sticky-origin-color-preview{display:block;width:22px;height:22px;border:2px solid #53617b;border-radius:7px;background:var(--sticky-paper);box-shadow:0 0 0 1px #fff}
     .sticky-origin-palette{position:absolute;right:8px;top:48px;z-index:30;display:grid;grid-template-columns:repeat(3,44px);gap:5px;padding:8px;background:#fff;border:1px solid rgba(25,40,60,.2);border-radius:11px;box-shadow:0 8px 20px rgba(20,30,50,.18)}
     .sticky-origin-palette[hidden]{display:none}
     .sticky-origin-page-move{max-width:83px;min-height:36px;font-size:11px;border:1px solid rgba(30,40,60,.18);border-radius:6px;background:rgba(255,255,255,.4);color:#273040}
@@ -69,7 +77,9 @@
       .sticky-origin-card{position:relative!important;left:auto!important;top:auto!important;width:100%!important;height:260px!important;box-shadow:none}
       .sticky-origin-grip{cursor:default;touch-action:auto}
       .sticky-origin-order{display:flex}
-      .sticky-origin-resize,.sticky-origin-front,.sticky-origin-back,.sticky-origin-toolbar .sticky-fit{display:none}
+      .sticky-origin-foot{padding-right:12px;grid-template-columns:minmax(0,1fr) auto auto}
+      .sticky-origin-card button.sticky-origin-resize{display:none}
+      .sticky-origin-front,.sticky-origin-back,.sticky-origin-toolbar .sticky-fit{display:none}
     }
     @media(prefers-reduced-motion:no-preference){.sticky-origin-card{transition:box-shadow .16s ease}.sticky-origin-card:hover{box-shadow:0 10px 28px rgba(28,38,65,.14)}}
   `;
@@ -236,11 +246,12 @@
         option.value=String(index);pageMove.append(option);
       }
       pageMove.value=String(notePage(note));
-      foot.append(status,pageMove,createElement('span','',textarea.value.length+'/2000'));
       const resize=button('↘','sticky-origin-resize');
       resize.dataset.stickyResize=note.id;
       resize.setAttribute('aria-label','ドラッグで付箋の大きさを変更');
-      card.append(top,colors,textarea,foot,resize);
+      // Resize handle occupies its own footer grid cell; never overlays the counter.
+      foot.append(status,pageMove,createElement('span','sticky-origin-char-count',textarea.value.length+'/2000'),resize);
+      card.append(top,colors,textarea,foot);
       return card;
     }
     function refreshStickyCards(canvas) {
@@ -450,7 +461,7 @@
     panel.addEventListener('input',e=>{
       if(e.target.matches('[data-sticky-text]')){
         const id=e.target.dataset.stickyText;
-        const len=e.target.closest('.sticky-origin-card')?.querySelector('.sticky-origin-foot span:last-child');
+        const len=e.target.closest('.sticky-origin-card')?.querySelector('.sticky-origin-char-count');
         if(len)len.textContent=e.target.value.length+'/2000';
         if(!composing&&!e.isComposing)schedule(id,e.target.value);
       }
