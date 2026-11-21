@@ -5,7 +5,7 @@
  * show the same user's notes. Do not put confidential data in this collection.
  */
 import {
-  newSticky, updateSticky, canDeleteSticky, isStickyNote, isStickyId,
+  newSticky, updateSticky, canDeleteSticky, isStickyNote, isStickyId, isStickyRoomId,
   stickyList, planStickyPlacement, planMobileMove
 } from './personal-sticky-core-v659.js';
 
@@ -33,7 +33,7 @@ export function userKeyFromDisplayName(value) {
  * Remote failures never fall back to another writable local copy.
  */
 export function createBoardPersonalStickyStore({roomId,storage=null}={}) {
-  if(!isStickyId(roomId))throw new TypeError('Valid board room required');
+  if(!isStickyRoomId(roomId))throw new TypeError('Valid board room required');
   const subscribers=new Set();
   let disposed=false,generation=0,unsubscribeDb=null,selectedKey='',selection='',mode='initializing';
   let database=null,api=null,status='locked',storageMode='none',notes=Object.create(null);
