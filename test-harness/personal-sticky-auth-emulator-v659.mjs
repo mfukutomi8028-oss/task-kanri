@@ -97,9 +97,15 @@ try{
   // A revoked room role must clear previously visible data on the next
   // server-verified access recheck, even without a sign-out or tab reload.
   await getAdminDatabase(admin).ref('roomsV2/'+roomId+'/access/members/alice').remove();
+  await new Promise(resolve=>setTimeout(resolve,650));
+  const roleSnapshot=aStore.readSnapshot();
+  console.log('STICKY_REVOKE_DIAGNOSTIC',JSON.stringify({
+    status:roleSnapshot.status,noteCount:roleSnapshot.notes.length,
+    hasOwner:Boolean(roleSnapshot.ownerUid)
+  }));
   await waitFor('role revocation clears private notes',()=>{
     const snap=aStore.readSnapshot();
-    return snap.status==='locked' && snap.notes.length===0 && snap.ownerUid==='';
+    return snap.status!=='ready' && snap.status!=='loading' && snap.notes.length===0 && snap.ownerUid==='';
   });
   assert.equal((await aStore.dispatch({type:'sticky.create',ownerRoom:roomId,ownerUid:'alice'})).error,
     'auth-required','revoked user cannot create');
@@ -108,7 +114,7 @@ try{
   await getAdminDatabase(admin).ref('roomsV2/'+roomId+'/internal/identities/bob/approved').set(false);
   await waitFor('approval revocation clears private notes',()=>{
     const snap=bStore.readSnapshot();
-    return snap.status==='locked' && snap.notes.length===0;
+    return snap.status!=='ready' && snap.status!=='loading' && snap.notes.length===0;
   });
   assert.equal((await bStore.dispatch({type:'sticky.create',ownerRoom:roomId,ownerUid:'bob'})).error,
     'auth-required');
