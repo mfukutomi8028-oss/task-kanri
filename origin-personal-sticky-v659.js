@@ -17,7 +17,6 @@
     .sticky-origin-toolbar :is(button,select,input):focus-visible{outline:2px solid var(--focus,#4659cc);outline-offset:2px}
     .sticky-origin-toolbar button,.sticky-origin-card button{font:inherit;min-width:44px;min-height:44px}
     .sticky-origin-toolbar .sticky-add{background:var(--accent);color:var(--on-accent);border:0;border-radius:10px;padding:9px 15px;font-weight:750}
-    .sticky-origin-scope-note{font-size:12px;line-height:1.65;color:var(--ink-soft);margin:2px 0 12px}
     .sticky-origin-index-toggle{background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 13px}
     .sticky-origin-index{margin:0 0 12px;padding:12px;border:1px solid var(--line);border-radius:13px;background:var(--paper);max-height:260px;overflow:auto}
     .sticky-origin-index-label{margin:0 0 10px;color:var(--ink-soft);font-size:13px;font-weight:700}
@@ -82,9 +81,8 @@
     .sticky-origin-card-collapsed .sticky-origin-back,.sticky-origin-card-collapsed .sticky-origin-expand{display:none!important}
     .sticky-origin-expand,.sticky-origin-collapse{padding:0 4px;white-space:nowrap}
     .sticky-origin-expand svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-    .sticky-origin-toolbar button.sticky-arrange{white-space:nowrap}
     .sticky-origin-editor:not([open]){display:none}
-    .sticky-origin-editor[open]{display:flex;flex-direction:column;gap:0;box-sizing:border-box;
+    .sticky-origin-editor[open]{position:fixed;inset:0;display:flex;flex-direction:column;gap:0;box-sizing:border-box;
       width:min(960px,calc(100vw - 36px));height:min(780px,calc(100dvh - 36px));
       min-width:0;max-width:none;max-height:none;margin:auto;padding:0;border:1px solid rgba(34,45,72,.24);
       border-radius:17px;box-shadow:0 24px 76px rgba(20,31,52,.22);color:#273040;background:var(--sticky-paper,#faf3c9)}
@@ -105,7 +103,6 @@
       .sticky-origin-canvas{display:grid;gap:12px;width:100%;height:auto;min-width:0;min-height:0;background:none}
       .sticky-origin-card{position:relative!important;left:auto!important;top:auto!important;width:100%!important;height:260px!important;box-shadow:none}
       .sticky-origin-card.sticky-origin-card-collapsed{height:48px!important;min-height:48px!important}
-      .sticky-origin-toolbar button.sticky-arrange{display:none}
       .sticky-origin-grip{cursor:default;touch-action:auto}
       .sticky-origin-order{display:flex}
       .sticky-origin-foot{padding:4px 10px 7px;grid-template-columns:44px 44px minmax(0,1fr) 44px auto;gap:5px}
@@ -129,7 +126,7 @@
     let disposed = false;
     let data = [];
     let ownerUid = '', ownerRoom = '', state = 'locked';
-    let query = '', colorFilter = 'all', indexOpen = false, allView = false, boardScale = 1, activePage = 1, composing = false, arranging = false, collapsedIds = new Set(), saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
+    let query = '', colorFilter = 'all', indexOpen = false, allView = false, boardScale = 1, activePage = 1, composing = false, collapsedIds = new Set(), saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
     const pendingWrites=new Set();
     const contentSaves=new Map();
     const panel = document.createElement('section');
@@ -138,6 +135,10 @@
     container.replaceChildren(panel);
     const notePage = note => Number.isInteger(note?.layout?.page) && note.layout.page>=1 && note.layout.page<=5 ? note.layout.page : 1;
     const pageNotes = () => data.filter(note=>notePage(note)===activePage);
+    // The visible canvas grid is 28px. Only Shift opts into snapping.
+    function snapGrid(value,max){
+      return Math.max(0,Math.min(Math.floor(max/28)*28,Math.round(value/28)*28));
+    }
     const pageKey = () => 'originStickyPageV660:'+encodeURIComponent(ownerRoom)+':'+encodeURIComponent(ownerUid);
     function readPage(){try{const value=Number(localStorage.getItem(pageKey()));return Number.isInteger(value)&&value>=1&&value<=5?value:1;}catch{return 1;}}
     function savePage(){try{localStorage.setItem(pageKey(),String(activePage));}catch{}}
@@ -226,8 +227,8 @@
       const top=createElement('div','sticky-origin-card-head');
       const grip=button('','sticky-origin-grip');
       grip.dataset.stickyMove=note.id;
-      grip.title='ドラッグで移動。方向キーでも位置を調整できます';
-      grip.setAttribute('aria-label','付箋を移動。方向キーでも移動できます');
+      grip.title='ドラッグで自由に移動／Shift＋ドラッグで28pxのマス目に吸着。方向キーでも移動できます';
+      grip.setAttribute('aria-label','付箋を移動。Shiftキーを押しながらドラッグするとマス目に吸着します');
       const symbol=createElement('span','',note.content.text.split('\n')[0].slice(0,24)||'新しい付箋');
       grip.append(symbol);
       const remove=button('','sticky-origin-delete');
@@ -490,25 +491,6 @@
           panel.insertBefore(index,panel.querySelector('.sticky-origin-stage'));
         }
       });
-      const arrange=button('整列','sticky-arrange');
-      arrange.dataset.stickyArrange='';
-      arrange.setAttribute('aria-label','このページの付箋を自動整列');
-      arrange.title='現在のページだけを左上から整列します';
-      arrange.disabled=!isReady()||pageNotes().length===0;
-      arrange.addEventListener('click',async()=>{
-        if(!isReady()||arranging)return;
-        if(composing||drafts.size||timers.size||pendingWrites.size||contentSaves.size||activeMovement){
-          badge('付箋の保存が終わってから整列してください');return;
-        }
-        if(!confirm('このページの付箋を重ならないように整列します。現在の位置は変更されます。よろしいですか？'))return;
-        arranging=true;arrange.disabled=true;
-        try{
-          const result=await service.dispatch({type:'sticky.arrange',page:activePage,ownerUid,ownerRoom});
-          if(result.ok)badge(result.changed?'このページの付箋を整列しました':'このページの付箋はすでに整列しています');
-          else if(result.error==='no-space')badge('付箋が大きく、このページ内に整列できません。付箋を小さくするか別ページへ移動してください');
-          else badge('整列できませんでした。ほかの端末の変更を確認してください');
-        }finally{arranging=false;arrange.disabled=!isReady()||pageNotes().length===0;}
-      });
       const add=button('＋ 付箋を追加','sticky-add');
       add.disabled=!isReady();
       add.addEventListener('click',async()=>{
@@ -536,9 +518,7 @@
         });
         pages.append(control);
       }
-      toolbar.append(search,colorSelect,indexToggle,fit,add,arrange,pages,label);panel.append(toolbar);
-      panel.append(createElement('p','sticky-origin-scope-note',
-        '付箋は選択中の利用者名ごとに表示されます。ログインによる閲覧制限はないため、機密情報は記載しないでください。'));
+      toolbar.append(search,colorSelect,indexToggle,fit,add,pages,label);panel.append(toolbar);
       if (!isReady()) {
         const error=createElement('div','sticky-origin-error');
         error.append(createElement('strong','','付箋の保存先に接続できません'),
@@ -774,8 +754,10 @@
         d.card.style.width=Math.max(220,Math.min(760,1400-d.initial.x,d.initial.width+Math.round(dx)))+'px';
         d.card.style.height=Math.max(160,Math.min(720,900-d.initial.y,d.initial.height+Math.round(dy)))+'px';
       } else {
-        d.card.style.left=Math.max(0,Math.min(1400-d.initial.width,d.initial.x+Math.round(dx)))+'px';
-        d.card.style.top=Math.max(0,Math.min(900-d.initial.height,d.initial.y+Math.round(dy)))+'px';
+        const x=Math.max(0,Math.min(1400-d.initial.width,d.initial.x+Math.round(dx)));
+        const y=Math.max(0,Math.min(900-d.initial.height,d.initial.y+Math.round(dy)));
+        d.card.style.left=(e.shiftKey?snapGrid(x,1400-d.initial.width):x)+'px';
+        d.card.style.top=(e.shiftKey?snapGrid(y,900-d.initial.height):y)+'px';
       }
     });
     panel.addEventListener('pointerup',async e=>{
@@ -806,9 +788,11 @@
       const note=noteFromId(grip.dataset.stickyMove);
       if(!note||!isReady())return;
       e.preventDefault();
-      const amount=e.shiftKey?20:10;
-      const values={x:Math.max(0,Math.min(1400-note.layout.width,note.layout.x+(e.key==='ArrowLeft'?-amount:e.key==='ArrowRight'?amount:0))),
-        y:Math.max(0,Math.min(900-note.layout.height,note.layout.y+(e.key==='ArrowUp'?-amount:e.key==='ArrowDown'?amount:0)))};
+      const amount=e.shiftKey?28:10;
+      const maxX=1400-note.layout.width,maxY=900-note.layout.height;
+      const x=Math.max(0,Math.min(maxX,note.layout.x+(e.key==='ArrowLeft'?-amount:e.key==='ArrowRight'?amount:0)));
+      const y=Math.max(0,Math.min(maxY,note.layout.y+(e.key==='ArrowUp'?-amount:e.key==='ArrowDown'?amount:0)));
+      const values={x:e.shiftKey?snapGrid(x,maxX):x,y:e.shiftKey?snapGrid(y,maxY):y};
       const res=await commit(note.id,'layout',values);
       if(res.ok){grip.closest('.sticky-origin-card').style.left=values.x+'px';grip.closest('.sticky-origin-card').style.top=values.y+'px';}
     });
