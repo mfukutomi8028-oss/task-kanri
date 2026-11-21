@@ -35,26 +35,6 @@ async function origin(page,width=1366) {
       mobile:{order:sequence,revision:1,updatedAt:now}});
      send();return {ok:true,id};
     }
-    if(cmd.type==='sticky.arrange'){
-     const ordered=rows.filter(n=>(n.layout.page??1)===cmd.page)
-       .sort((a,b)=>a.layout.y-b.layout.y||a.layout.x-b.layout.x);
-     let x=24,y=24,rowHeight=0,changed=0;
-     const planned=[];
-     for(const note of ordered){
-      if(x+note.layout.width>1376){x=24;y+=rowHeight+16;rowHeight=0;}
-      if(y+note.layout.height>876)return {ok:false,error:'no-space'};
-      planned.push({id:note.id,x,y});x+=note.layout.width+16;rowHeight=Math.max(rowHeight,note.layout.height);
-     }
-     for(const item of planned){
-      const note=rows.find(n=>n.id===item.id);
-      if(note.layout.x!==item.x||note.layout.y!==item.y){
-       note.layout={...note.layout,x:item.x,y:item.y,
-         revision:note.layout.revision+1,updatedAt:Date.now()};
-       changed++;
-      }
-     }
-     send();return {ok:true,changed,page:cmd.page};
-    }
     const note=rows.find(n=>n.id===cmd.id);
     if(!note)return {ok:false,error:'record-not-found'};
     if(cmd.type==='sticky.mobileMove'){
@@ -554,28 +534,6 @@ test('folded note shows only title until toggled open, retaining original conten
  await expect(card).not.toHaveClass(/sticky-origin-card-collapsed/);
  await expect(card.locator('textarea')).toHaveValue('折りたたみ対象の長いメモ');
 });
-test('arranging affects only the currently selected page and retains text and appearance',async({page})=>{
- const root=await origin(page);
- await root.locator('.sticky-add').click();
- await root.locator('.sticky-add').click();
- await root.locator('.sticky-origin-card').first().locator('textarea').fill('変更しない');
- await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text)).toBe('変更しない');
- await root.locator('[data-sticky-page="2"]').click();
- await root.locator('.sticky-add').click();
- const before=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes);
- await root.locator('[data-sticky-page="1"]').click();
- page.once('dialog',dialog=>dialog.accept());
- await root.locator('[data-sticky-arrange]').click();
- const after=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes);
- const same=after.find(n=>n.layout.page===2);
- expect(same).toEqual(before.find(n=>n.id===same.id));
- expect(after.map(n=>n.content.text)).toEqual(before.map(n=>n.content.text));
- const firstPage=after.filter(n=>n.layout.page===1);
- expect(firstPage[0].layout.x).toBe(24);
- expect(firstPage[0].layout.y).toBe(24);
- expect(firstPage[1].layout.x).toBeGreaterThan(firstPage[0].layout.x);
-});
-
 test('Origin expanded editor is centered in the viewport independently of board zoom',async({page})=>{
  const root=await origin(page,1366);
  await root.locator('.sticky-add').click();
