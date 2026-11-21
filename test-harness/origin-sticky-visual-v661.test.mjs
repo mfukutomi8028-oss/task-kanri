@@ -29,6 +29,7 @@ test('Origin sticky character counter and resize handle use distinct footer cell
  assert.match(counter,/white-space:\s*nowrap/i);
  assert.match(source,/foot\.append\(status,pageMove,createElement\('span','sticky-origin-char-count',textarea\.value\.length\+'\/2000'\),resize\)/);
  assert.match(source,/\.sticky-origin-foot\{padding-right:12px;grid-template-columns:minmax\(0,1fr\) auto auto\}/);
+ assert.match(source,/\.sticky-origin-card button\.sticky-origin-resize\{display:none\}/);
 });
 
 test('all six sticky paper colors are harmonized light pastel tones',()=>{
