@@ -434,4 +434,6 @@ test('long character counter never overlaps the bottom-right resize handle at mi
  expect(countBox).not.toBeNull();
  expect(resizeBox).not.toBeNull();
  expect(countBox.x+countBox.width+4).toBeLessThanOrEqual(resizeBox.x);
+ await card.locator('textarea').fill('短文');
+ await expect(count).toHaveText('2/2000');
 });
