@@ -52,3 +52,21 @@ test('all six sticky paper colors are harmonized light pastel tones',()=>{
   assert.ok(Math.max(...rgb)-Math.min(...rgb)<=60,name+' is too saturated');
  }
 });
+
+test('Origin sticky keeps its board scroll when reactive store updates repaint controls',()=>{
+ assert.match(source,/const previousStage=panel\.querySelector\('\.sticky-origin-stage'\)/);
+ assert.match(source,/stage\.scrollTop=previousScrollTop/);
+ assert.doesNotMatch(source,/sticky-origin-scope-note/);
+});
+test('Origin sticky uses Shift for opt-in 28px grid drag and retains free drag',()=>{
+ assert.match(source,/e\.shiftKey/);
+ assert.match(source,/Math\.round\([^\n]*\/28\)\*28/);
+ assert.match(source,/Shift/);
+});
+test('obsolete automatic arrangement is absent from the sticky UI and store',()=>{
+ const core=readFileSync(new URL('../personal-sticky-core-v659.js',import.meta.url),'utf8');
+ const store=readFileSync(new URL('../personal-sticky-store-v659.js',import.meta.url),'utf8');
+ assert.doesNotMatch(source,/sticky-arrange|stickyArrange|sticky\.arrange|自動整列/);
+ assert.doesNotMatch(core,/planStickyArrangement/);
+ assert.doesNotMatch(store,/sticky\.arrange|planStickyArrangement|async function arrange/);
+});
