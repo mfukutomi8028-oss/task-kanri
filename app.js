@@ -12,6 +12,7 @@ import {
   isRecurringDeleteCandidate
 } from './recurrence-series-v354.js';
 import { createWorkspaceWriteCoordinator } from "./workspace-write-v538.js";
+import { createBoardPersonalStickyStore } from './personal-sticky-store-v659.js';
 import { TODO_MAX_LENGTH, TODO_MEMO_MAX_LENGTH, canonicalTodoRecord, isCanonicalTodoId, normalizeTodo, reduceTodoSync, sortTodos, todoSegment, canPromoteTodo, todoDataSignature } from './todo-sync-v136.js';
 
 let initializeApp, getDatabase, connectDatabaseEmulator, ref, get, onValue, set, update, push, remove, serverTimestamp, runTransaction;
@@ -144,6 +145,17 @@ const state = {
   deleteControllers: new Map()
 };
 
+// The board user selection is not an authentication identity. The sticky
+// store follows the same selected user and connection as tasks/ToDo.
+const personalStickyStoreV659 = window.WorkBoardPersonalStickyStoreV659
+  ? null : createBoardPersonalStickyStore({roomId:ROOM_ID,storage:window.localStorage});
+if(personalStickyStoreV659)window.WorkBoardPersonalStickyStoreV659=personalStickyStoreV659;
+function syncPersonalStickyContextV659() {
+  personalStickyStoreV659?.setContext({
+    user:getCurrentUser(),mode:state.connectionMode,
+    database:state.db,firebase:state.dbApi
+  });
+}
 const elements = {
   appShell: document.querySelector(".app-shell"),
   mainContent: $("mainContent"),
@@ -540,6 +552,7 @@ function markCollectionError(name, error) {
 
 function setConnectionMode(mode, detail = "") {
   state.connectionMode = mode;
+  syncPersonalStickyContextV659();
   const labels = {
     "local-only": "端末内保存（共有されません）",
     "remote-loading": "共同データを確認中（保存不可）",
@@ -2047,6 +2060,8 @@ function render() {
 }
 
 function renderCore() {
+  // Follow user switches even when managed by the Classic user editor.
+  syncPersonalStickyContextV659();
   syncUserUi();
   syncRoomUi();
   normalizeScopeForLayout();

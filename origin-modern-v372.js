@@ -890,6 +890,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  }
  finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
 }
+let originStickyMemoModeV659='business', originStickyControllerV659=null;
 let memoColorFilter='all',memoQuery='',memoSort='updated',memoLayout=window.innerWidth<=420?'list':'cards',memoVisibleLimit=24,memoComposing=false,scheduleView='week',scheduleAssignee='all',scheduleQuery='',scheduleComposing=false,scheduleFiltersOpen=false,scheduleSearchScope='week',scheduleAdvancedOpen=false,scheduleSearchLimit=30,scheduleCategory='all',scheduleDateFrom='',scheduleDateTo='',scheduleSearchSort='upcoming',quickTodoDraft='',todoCompletedOpen=false,todoSearchOpen=false,todoSearchHistory=false,todoQuery='',todoComposing=false,taskQuery='',taskSortMode='due',taskSortDirection='asc',taskSortSecondary='priority',taskSecondaryDirection='asc',taskSortAdvancedOpen=false,taskDensity='compact',taskComposing=false,taskAdvancedOpen=false,memoAdvancedOpen=false;
 let view='today',selectedDay=base,taskFilter='active',taskGrouping='deadline',taskCollapsedGroups=new Set(),taskVisibleLimits=new Map(),taskStatusChoice='',memoFilter='all',selectedBulk=new Set(),bulkStatusTarget='',toastTimer=0,previousSnapshot=null,panelOpen=false,panelDirty=false,searchQuery='',searchKind='all',searchComposing=false;
 // Detailed search is an Origin-only route that preserves the six main tabs.
@@ -1114,6 +1115,12 @@ function renderOriginTaskViewKeepingAnchor(change,{filterChange=false}={}){
  }
 }
 function render(){
+ // The personal sticky editor owns its own selected-user snapshots. Do not
+ // recreate its live input when tasks, schedules or shared memos synchronize.
+ if(view==='notes'&&originStickyMemoModeV659==='personal'&&originStickyControllerV659&&$('#originStickyMountV659')){
+   nav();return;
+ }
+ if(originStickyControllerV659){originStickyControllerV659.destroy();originStickyControllerV659=null;}
  const focus= captureOriginFocus();
  // Preserve a typed quick ToDo across canonical subscription updates.
  const previous=$('#workspace [data-form="quick-todo"] [name="title"]');
@@ -1129,6 +1136,32 @@ function render(){
  if($('#originInboxDialog')?.open)renderOriginInbox();
  const m={today:renderToday,tasks:renderTasks,todos:renderTodos,calendar:renderCalendar,notes:renderNotes,tools:renderOriginTools,search:renderOriginFullSearch};
  $('#workspace').innerHTML=m[view]();
+ if(view==='notes'){
+   const bar=document.createElement('nav');
+   bar.className='tab-pills';
+   bar.setAttribute('aria-label','メモの種類');
+   bar.style.marginBottom='15px';
+   for(const [mode,label] of [['business','業務メモ'],['personal','個人付箋']]){
+     const button=document.createElement('button');button.type='button';
+     button.dataset.stickyMode=mode;button.textContent=label;
+     button.classList.toggle('active',originStickyMemoModeV659===mode);
+     button.setAttribute('aria-pressed',String(originStickyMemoModeV659===mode));
+     bar.append(button);
+   }
+   const workspace=$('#workspace');
+   workspace.insertBefore(bar,workspace.firstChild);
+   if(originStickyMemoModeV659==='personal'){
+     const api=window.WorkBoardOriginStickyPanelV659;
+     const target=$('#originStickyMountV659');
+     if(api?.createPanel&&target){
+       originStickyControllerV659=api.createPanel({
+         container:target,shadowRoot:mount,
+         service:window.WorkBoardPersonalStickyStoreV659,
+         onStatus:message=>{if(message&&message.includes('できません'))notify(message);}
+       });
+     }else if(target)target.textContent='付箋画面を読み込めませんでした。';
+   }
+ }
  if(view==='tasks')syncOriginTaskListWriteFeedback();
  for(const el of $('#workspace').querySelectorAll('[data-origin-scroll-key]')){
    if(horizontalScroll.has(el.dataset.originScrollKey))
@@ -1855,6 +1888,10 @@ function originVisibleMemos(){
  });
 }
 function renderNotes(){
+ if(originStickyMemoModeV659==='personal'){
+   return `${head('PERSONAL SPACE · STICKY NOTES','個人付箋','利用者名ごとに付箋を整理できます。')}
+     <div id="originStickyMountV659" aria-label="個人付箋"></div>`;
+ }
  const query=memoQuery.trim().toLocaleLowerCase();
  const items=originVisibleMemos();
  const mountedMemos=items.slice(0,memoVisibleLimit);
@@ -3518,6 +3555,9 @@ function closeSearch(clear=false){
 }
 function handleRoute(route){
  if(!viewDefs.some(x=>x[0]===route))return;
+ if(view==='notes'&&originStickyMemoModeV659==='personal'&&route!==view
+   &&originStickyControllerV659?.hasPending()
+   &&!confirm('個人付箋に未保存の変更があります。移動すると保存されない可能性があります。このまま移動しますか？'))return;
  originInboxReturn=null;
  closeOriginInbox(false);
  closeOriginSettings();
@@ -4489,6 +4529,17 @@ $('#originInboxDialog').addEventListener('click',e=>{if(e.target===$('#originInb
 mount.addEventListener('click',e=>{
  const target=e.target;
  if(!target.closest('.origin-header-settings'))closeOriginSettings();
+ const stickyMode=target.closest('[data-sticky-mode]');
+ if(stickyMode&&view==='notes'){
+   const next=stickyMode.dataset.stickyMode;
+   if(next==='personal'||next==='business'){
+     if(next!==originStickyMemoModeV659&&originStickyMemoModeV659==='personal'
+       &&originStickyControllerV659?.hasPending()
+       &&!confirm('個人付箋に未保存の変更があります。切り替えると保存されない可能性があります。このまま切り替えますか？'))return;
+     if(next!==originStickyMemoModeV659){originStickyMemoModeV659=next;render();}
+     return;
+   }
+ }
  const route=target.closest('[data-route]');if(route){handleRoute(route.dataset.route);return}
  const action=target.closest('[data-action]');if(action){if(['todo-check','bulk-toggle','task-check'].includes(action.dataset.action))return;handleAction(action);return}
  if(!target.closest('#createMenu')&&!target.closest('#createBtn'))$('#createMenu').hidden=true;
@@ -4514,7 +4565,9 @@ mount.addEventListener('change',e=>{
    const draft=quick?.value||quickTodoDraft;
    const modified=panelOpen&&panelMode==='edit'&&formSnapshot($('#editForm'))!==initialFormSnapshot;
    const commentDraft=originDetailHasDraft()||Object.keys(originManagementDrafts).length>0;
-   if((modified||draft.trim()||commentDraft)&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？')){t.value=old;return}
+   const stickyDraft=view==='notes'&&originStickyMemoModeV659==='personal'
+     &&Boolean(originStickyControllerV659?.hasPending());
+   if((modified||draft.trim()||commentDraft||stickyDraft)&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？')){t.value=old;return}
    if(panelOpen)closePanel(true,false);
    detailSequence=null;detailTrail=[];panelReturnSearch=null;panelReturnAnchor=null;
    // Clear the live input as well: bridge subscribers can render synchronously.

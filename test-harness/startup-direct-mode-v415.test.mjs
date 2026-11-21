@@ -53,7 +53,7 @@ test('startup: parallel preload keeps dependency-sensitive JS execution order', 
 
 test('startup: load only the active screen bundle; keep cascade slots across later mode changes', () => {
   assert.match(manifest, /deferredDisplayAssets:\s*\{/);
-  assert.match(manifest, /modern:\s*\{ styles: \[\], scripts: \["origin-modern-v372\.js"\] \}/);
+  assert.match(manifest, /modern:\s*\{ styles: \[\], scripts: \["origin-personal-sticky-v659\.js", "origin-modern-v372\.js"\] \}/);
   assert.match(manifest, /journal:\s*\{ styles: \["journal-display-v367\.css"\], scripts: \["journal-display-v367\.js"\] \}/);
   assert.match(config, /const INITIAL_MODE = document\.documentElement\.dataset\.wbDisplay \|\| 'classic'/);
   assert.match(config, /const STYLES = ALL_STYLES\.filter/);
@@ -89,4 +89,14 @@ test('mode switch: failed assets are retried and the old selected view remains r
   assert.match(css, /#wbDisplaySwitchV459\[hidden\]/);
   assert.match(manifest, /journal-display-v367\.css"\]\[data-loaded="true"\]/);
   assert.match(modern, /journal-display-v367\.css"\]\[data-loaded="true"\]/);
+});
+
+test('Origin personal sticky loader is registered and executed before the Origin view', () => {
+  const dynamicLine = manifest.split('\n').find(line => line.trim().startsWith('dynamicScripts: ['));
+  assert.ok(dynamicLine, 'dynamicScripts declaration is present');
+  const sticky = dynamicLine.indexOf('"origin-personal-sticky-v659.js"');
+  const origin = dynamicLine.indexOf('"origin-modern-v372.js"');
+  assert.ok(sticky >= 0, 'Origin sticky must be in dynamicScripts, not only deferredDisplayAssets');
+  assert.ok(sticky < origin, 'Origin sticky loads before Origin view activates');
+  assert.ok(manifest.includes('modern: { styles: [], scripts: ["origin-personal-sticky-v659.js", "origin-modern-v372.js"] }'));
 });

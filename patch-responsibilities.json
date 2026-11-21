@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "658",
+  "baselineRelease": "659",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -234,7 +234,8 @@
       "assets": [
         "modern-display-v356.css",
         "modern-display-v356.js",
-        "origin-modern-v372.js"
+        "origin-modern-v372.js",
+        "origin-personal-sticky-v659.js"
       ]
     },
     {
