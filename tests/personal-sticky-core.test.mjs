@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { newSticky, updateSticky, canDeleteSticky, stickyList, isStickyNote, isStickyGroup } from '../personal-sticky-core-v659.js';
+import { newSticky, updateSticky, canDeleteSticky, stickyList, isStickyNote, isStickyGroup, planStickyPlacement } from '../personal-sticky-core-v659.js';
 
 const stamp = 1795230000000;
 const build = (id='note_a', uid='user_a', room='room_a') => newSticky({id,ownerUid:uid,roomId:room,now:stamp}).note;
@@ -63,4 +63,25 @@ test('search normalizes Japanese text and filters paper colors',()=>{
 test('rejects malformed groups including missing timestamp',()=>{
  assert.equal(isStickyGroup('content',{text:'hi',revision:1}),false);
  assert.equal(isStickyGroup('appearance',{color:'invalid',revision:1,updatedAt:stamp}),false);
+});
+
+test('new notes get distinct non-overlapping canvas positions and stacking order',()=>{
+ let notes=[];
+ for(let i=0;i<9;i++){
+   const position=planStickyPlacement(notes);
+   assert.ok(position.x>=0&&position.y>=0&&position.x+280<=1400&&position.y+220<=900);
+   assert.ok(notes.every(note=>!(position.x<note.layout.x+note.layout.width &&
+     position.x+280>note.layout.x && position.y<note.layout.y+note.layout.height &&
+     position.y+220>note.layout.y)),'new card must not obscure existing cards where space is available');
+   const created=newSticky({id:'note_'+i,ownerUid:'user_a',roomId:'room_a',
+     now:stamp+i,x:position.x,y:position.y,zIndex:position.zIndex,order:position.order});
+   assert.equal(created.ok,true);
+   assert.equal(created.note.layout.zIndex,position.zIndex);
+   assert.equal(created.note.mobile.order,position.order);
+   notes.push(created.note);
+ }
+ for(let i=1;i<notes.length;i++){
+   assert.ok(notes[i].layout.zIndex>notes[i-1].layout.zIndex);
+   assert.ok(notes[i].mobile.order>notes[i-1].mobile.order);
+ }
 });
