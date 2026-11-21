@@ -19,12 +19,16 @@ test('Origin sticky color button keeps an opaque contrasting surface',()=>{
  const swatch=style('.sticky-origin-color-preview');
  assert.match(swatch,/border:\s*2px solid\s+#[0-9a-f]{3,8}\b/i);
 });
-test('Origin sticky counter reserves space for desktop resize handle',()=>{
+test('Origin sticky character counter and resize handle use distinct footer cells',()=>{
  const footer=style('.sticky-origin-foot');
- assert.match(footer,/padding-right:\s*(3[6-9]|4[0-9])px\b/i);
+ assert.match(footer,/grid-template-columns:minmax\(0,1fr\) auto auto 32px/i);
+ const resize=style('.sticky-origin-card button.sticky-origin-resize');
+ assert.match(resize,/position:static/i);
+ assert.match(resize,/min-width:32px/i);
  const counter=style('.sticky-origin-char-count');
  assert.match(counter,/white-space:\s*nowrap/i);
- assert.match(source,/@media\(max-width:767px\)\{[\s\S]*?\.sticky-origin-foot\{padding-right:1[0-4]px\}/);
+ assert.match(source,/foot\.append\(status,pageMove,createElement\('span','sticky-origin-char-count',textarea\.value\.length\+'\/2000'\),resize\)/);
+ assert.match(source,/\.sticky-origin-foot\{padding-right:12px;grid-template-columns:minmax\(0,1fr\) auto auto\}/);
 });
 
 test('all six sticky paper colors are harmonized light pastel tones',()=>{
