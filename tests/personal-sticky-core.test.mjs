@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { newSticky, updateSticky, canDeleteSticky, stickyList, isStickyNote, isStickyGroup, planStickyPlacement, planMobileMove, stickyPage, planStickyArrangement, STICKY_SIZE } from '../personal-sticky-core-v659.js';
+import { newSticky, updateSticky, canDeleteSticky, stickyList, isStickyNote, isStickyGroup, planStickyPlacement, planMobileMove, stickyPage, STICKY_SIZE } from '../personal-sticky-core-v659.js';
 
 const stamp = 1795230000000;
 const build = (id='note_a', uid='user_a', room='room_a') => newSticky({id,ownerUid:uid,roomId:room,now:stamp}).note;
@@ -139,33 +139,4 @@ test('large notes allow 760 x 720 pixels without loosening their original minimu
   assert.equal(updateSticky(note,{...base,values:dims}).ok,false);
  }
  assert.deepEqual([STICKY_SIZE.width,STICKY_SIZE.height],[280,220]);
-});
-test('arrangement gives deterministic non-overlapping placements on selected page only',()=>{
- const a=build('arrange_a'),b=build('arrange_b'),c=build('arrange_c');
- a.layout={...a.layout,width:760,height:500,x:500,y:100};
- b.layout={...b.layout,width:300,height:250,x:20,y:30};
- c.layout={...c.layout,page:2,x:700,y:100};
- const planned=planStickyArrangement([a,b,c],1);
- assert.equal(planned.ok,true);
- assert.deepEqual(planned.placements.map(p=>p.id),['arrange_b','arrange_a']);
- for(const item of planned.placements){
-  const n=[a,b,c].find(note=>note.id===item.id);
-  assert.ok(item.x>=0&&item.y>=0);
-  assert.ok(item.x+n.layout.width<=1400&&item.y+n.layout.height<=900);
-  assert.equal(item.expectedRevision,1);
- }
- const [p,q]=planned.placements;
- assert.equal(p.x+p.width+16<=q.x||q.x+q.width+16<=p.x||p.y+p.height+16<=q.y||q.y+q.height+16<=p.y,true);
- assert.equal(planStickyArrangement([a,b,c],1).placements.length,2);
- assert.equal(planStickyArrangement([a,b,c],2).placements[0].id,c.id);
-});
-test('arrangement refuses oversubscribed boards without providing partial placements',()=>{
- const a=build('too_big_a'),b=build('too_big_b');
- a.layout={...a.layout,width:760,height:720};
- b.layout={...b.layout,width:760,height:720};
- const result=planStickyArrangement([a,b],1);
- assert.equal(result.ok,false);
- assert.equal(result.error,'no-space');
- assert.deepEqual(result.placements,[]);
- assert.equal(planStickyArrangement([a],6).ok,false);
 });
