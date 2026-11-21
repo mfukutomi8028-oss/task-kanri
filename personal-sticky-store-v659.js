@@ -1,5 +1,5 @@
 /* Auth-bound personal sticky persistence. Never connected to legacy /rooms. */
-import { newSticky, updateSticky, canDeleteSticky, isStickyNote, isStickyId, stickyList } from './personal-sticky-core-v659.js';
+import { newSticky, updateSticky, canDeleteSticky, isStickyNote, isStickyId, stickyList, planStickyPlacement } from './personal-sticky-core-v659.js';
 
 /**
  * @param {{
@@ -79,6 +79,9 @@ export function createPersonalStickyStore({ auth, database, roomId, firebase, ap
     const identity = requireIdentity(command.ownerRoom, command.ownerUid);
     if (!identity) return { ok: false, error: 'auth-required' };
     const kind = String(command.type || '');
+    if (kind==='sticky.create' && Object.keys(notes).length >= 200)
+      return { ok:false,error:'limit-reached' };
+    const placement=kind==='sticky.create' ? planStickyPlacement(Object.values(notes)) : null;
     const id = kind === 'sticky.create'
       ? (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : '')
       : String(command.id || '');
@@ -99,7 +102,8 @@ export function createPersonalStickyStore({ auth, database, roomId, firebase, ap
         }
         if (kind === 'sticky.create') {
           if (current) { reason = 'already-exists'; return; }
-          const created = newSticky({ id, ownerUid: identity, roomId, now, x: Number(command.x ?? 24), y: Number(command.y ?? 24) });
+          const created = newSticky({ id, ownerUid: identity, roomId, now, x: Number(command.x ?? placement.x), y: Number(command.y ?? placement.y),
+            zIndex: placement.zIndex, order: placement.order });
           if (!created.ok) { reason = created.error; return; }
           return created.note;
         }
