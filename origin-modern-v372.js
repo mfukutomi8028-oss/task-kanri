@@ -1115,7 +1115,7 @@ function renderOriginTaskViewKeepingAnchor(change,{filterChange=false}={}){
  }
 }
 function render(){
- // The personal sticky editor owns its own authenticated snapshots. Do not
+ // The personal sticky editor owns its own selected-user snapshots. Do not
  // recreate its live input when tasks, schedules or shared memos synchronize.
  if(view==='notes'&&originStickyMemoModeV659==='personal'&&originStickyControllerV659&&$('#originStickyMountV659')){
    nav();return;
@@ -4565,7 +4565,9 @@ mount.addEventListener('change',e=>{
    const draft=quick?.value||quickTodoDraft;
    const modified=panelOpen&&panelMode==='edit'&&formSnapshot($('#editForm'))!==initialFormSnapshot;
    const commentDraft=originDetailHasDraft()||Object.keys(originManagementDrafts).length>0;
-   if((modified||draft.trim()||commentDraft)&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？')){t.value=old;return}
+   const stickyDraft=view==='notes'&&originStickyMemoModeV659==='personal'
+     &&Boolean(originStickyControllerV659?.hasPending());
+   if((modified||draft.trim()||commentDraft||stickyDraft)&&!window.confirm('入力中の変更を破棄して利用者を切り替えますか？')){t.value=old;return}
    if(panelOpen)closePanel(true,false);
    detailSequence=null;detailTrail=[];panelReturnSearch=null;panelReturnAnchor=null;
    // Clear the live input as well: bridge subscribers can render synchronously.
