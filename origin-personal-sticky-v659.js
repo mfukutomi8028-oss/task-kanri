@@ -471,6 +471,7 @@
         // without changing any other card or the user's stored filter choices.
         query='';
         colorFilter='all';
+        if(notePage(note)!==activePage){activePage=notePage(note);savePage();draw();}
         const search=panel.querySelector('.sticky-origin-toolbar input[type="search"]');
         const filter=panel.querySelector('[data-sticky-color-filter]');
         if(search)search.value='';
@@ -478,7 +479,7 @@
         refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
         let zIndex=note.layout.zIndex;
         if(!window.matchMedia('(max-width:767px)').matches){
-          const maxZ=Math.max(0,...data.map(item=>item.layout.zIndex));
+          const maxZ=Math.max(0,...pageNotes().map(item=>item.layout.zIndex));
           if(zIndex<maxZ&&maxZ<1000000000){
             const moved=await commit(note.id,'layout',{zIndex:maxZ+1});
             if(moved.ok)zIndex=maxZ+1;
@@ -498,13 +499,38 @@
         if(!isReady())return;
         const note=noteFromId(front.dataset.stickyFront);
         if(!note)return;
-        const top=Math.max(0,...data.map(item=>item.layout.zIndex));
+        const top=Math.max(0,...pageNotes().map(item=>item.layout.zIndex));
         if(top>=1000000000){badge('これ以上前面に移動できません');return;}
         const result=await commit(note.id,'layout',{zIndex:top+1});
         if(result.ok){
           const card=panel.querySelector('.sticky-origin-card[data-id="'+note.id+'"]');
           if(card)card.style.zIndex=String(top+1);
         }
+        return;
+      }
+      const back=e.target.closest('[data-sticky-back]');
+      if(back){
+        if(!isReady())return;
+        const note=noteFromId(back.dataset.stickyBack);
+        if(!note)return;
+        const bottom=Math.min(0,...pageNotes().map(item=>item.layout.zIndex));
+        if(bottom<=-1000000000){badge('これ以上背面に移動できません');return;}
+        const result=await commit(note.id,'layout',{zIndex:bottom-1});
+        if(result.ok){
+          const card=panel.querySelector('.sticky-origin-card[data-id="'+note.id+'"]');
+          if(card)card.style.zIndex=String(bottom-1);
+        }
+        return;
+      }
+      const colorToggle=e.target.closest('[data-sticky-color-toggle]');
+      if(colorToggle){
+        const card=colorToggle.closest('.sticky-origin-card');
+        const menu=card?.querySelector('.sticky-origin-palette');
+        if(!menu)return;
+        const opening=menu.hidden;
+        panel.querySelectorAll('.sticky-origin-palette').forEach(other=>{other.hidden=true;});
+        panel.querySelectorAll('[data-sticky-color-toggle]').forEach(button=>button.setAttribute('aria-expanded','false'));
+        menu.hidden=!opening;colorToggle.setAttribute('aria-expanded',String(opening));
         return;
       }
       const orderControl=e.target.closest('[data-sticky-order]');
@@ -525,6 +551,9 @@
             b.setAttribute('aria-pressed',String(b.dataset.stickyColor===color.dataset.stickyColor));
           });
           color.closest('.sticky-origin-card')?.style.setProperty('--sticky-paper',colorHex[color.dataset.stickyColor]);
+          const menu=color.closest('.sticky-origin-palette');if(menu)menu.hidden=true;
+          const toggle=color.closest('.sticky-origin-card')?.querySelector('[data-sticky-color-toggle]');
+          if(toggle)toggle.setAttribute('aria-expanded','false');
         }
         return;
       }
@@ -536,6 +565,17 @@
         const result=await service.dispatch({type:'sticky.delete',id:note.id,ownerUid,ownerRoom,expectedRevisions});
         if(!result.ok)badge('削除できませんでした。最新の内容を確認してください。');
       }
+    });
+    panel.addEventListener('change',async e=>{
+      const select=e.target.closest('[data-sticky-page-move]');
+      if(!select||!isReady())return;
+      const note=noteFromId(select.dataset.stickyPageMove);
+      if(!note)return;
+      const page=Number(select.value);
+      if(page===notePage(note))return;
+      const result=await commit(note.id,'layout',{page});
+      if(!result.ok){select.value=String(notePage(note));badge('付箋のページを移動できませんでした');}
+      else draw();
     });
     panel.addEventListener('pointerdown',e=>{
       const target=e.target.closest('[data-sticky-move],[data-sticky-resize]');
