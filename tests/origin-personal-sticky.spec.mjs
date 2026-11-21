@@ -28,7 +28,7 @@ async function origin(page,width=1366) {
      const id='demo_'+(++sequence),now=Date.now();
      rows.push({schemaVersion:1,id,ownerUid:'uid_test',roomId:'sticky-ui-test',createdAt:now,updatedAt:now,
       content:{text:'',revision:1,updatedAt:now},appearance:{color:'lemon',revision:1,updatedAt:now},
-      layout:{x:24,y:24,width:280,height:220,zIndex:1,revision:1,updatedAt:now},
+      layout:{x:24+(sequence-1)*328,y:24,width:280,height:220,zIndex:sequence,revision:1,updatedAt:now},
       mobile:{order:sequence,revision:1,updatedAt:now}});
      send();return {ok:true,id};
     }
