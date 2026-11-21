@@ -193,25 +193,39 @@
       card.append(top,textarea,colors,foot,resize);
       return card;
     }
+    function refreshStickyCards(canvas) {
+      if(!canvas)return;
+      const term=query.normalize('NFKC').toLocaleLowerCase('ja');
+      const shown=data.filter(note=>!term
+        || note.content.text.normalize('NFKC').toLocaleLowerCase('ja').includes(term))
+        .sort((a,b)=>a.mobile.order-b.mobile.order||a.createdAt-b.createdAt||a.id.localeCompare(b.id));
+      canvas.replaceChildren();
+      if(!shown.length) {
+        canvas.append(createElement('p','sticky-origin-empty',
+          term?'一致する付箋はありません':'まだ付箋はありません。「＋ 付箋を追加」で作成できます。'));
+      } else shown.forEach(note=>canvas.append(buildCard(note)));
+    }
     function draw() {
       if (disposed) return;
       if (panel.querySelector('textarea:focus') || composing || activeMovement) return;
+      // Synchronization while searching must not replace the focused input:
+      // doing so interrupts Japanese IME and loses the keyboard cursor.
+      const focusedSearch=panel.querySelector('.sticky-origin-toolbar input[type="search"]:focus');
+      if(focusedSearch&&isReady()){
+        refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
+        const label=panel.querySelector('.sticky-origin-state');
+        if(label)label.textContent=data.length+'枚';
+        return;
+      }
       panel.replaceChildren();
       const toolbar=createElement('div','sticky-origin-toolbar');
       const search=createElement('input');
       search.type='search';search.setAttribute('aria-label','個人付箋を検索');
       search.placeholder='付箋の本文を検索';search.value=query;
       search.addEventListener('input',()=>{
-        // Keep the search field and Japanese IME composition node mounted.
+        // Leave the search input mounted while filtering and composing Japanese.
         query=search.value;
-        const canvas=panel.querySelector('.sticky-origin-canvas');
-        if(!canvas)return;
-        const term=query.normalize('NFKC').toLocaleLowerCase('ja');
-        const shown=data.filter(note=>!term||note.content.text.normalize('NFKC').toLocaleLowerCase('ja').includes(term))
-          .sort((x,y)=>x.mobile.order-y.mobile.order||x.createdAt-y.createdAt);
-        canvas.replaceChildren();
-        if(!shown.length)canvas.append(createElement('p','sticky-origin-empty','一致する付箋はありません'));
-        else shown.forEach(note=>canvas.append(buildCard(note)));
+        refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
       });
       const add=button('＋ 付箋を追加','sticky-add');
       add.disabled=!isReady();
@@ -233,12 +247,7 @@
       }
       const stage=createElement('div','sticky-origin-stage');
       const canvas=createElement('div','sticky-origin-canvas');
-      const shown=data.filter(note=>{
-        const text=note.content.text.normalize('NFKC').toLocaleLowerCase('ja');
-        return !query||text.includes(query.normalize('NFKC').toLocaleLowerCase('ja'));
-      }).sort((a,b)=>a.mobile.order-b.mobile.order||a.createdAt-b.createdAt);
-      if(!shown.length) canvas.append(createElement('p','sticky-origin-empty',query?'一致する付箋はありません':'まだ付箋はありません。「＋ 付箋を追加」で作成できます。'));
-      else shown.forEach(note=>canvas.append(buildCard(note)));
+      refreshStickyCards(canvas);
       stage.append(canvas);panel.append(stage);
     }
     let unsubscribe = () => {};
