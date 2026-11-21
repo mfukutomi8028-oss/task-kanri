@@ -8,8 +8,14 @@ const ALLOWED_FIELDS = new Set(['content', 'appearance', 'layout', 'mobile']);
 export function isStickyId(id) {
   return typeof id === 'string' && KEY_PATTERN.test(id);
 }
+// The existing board room IDs allow Japanese and spaces. Only Firebase's
+// forbidden path characters are rejected; sticky note/user IDs stay strict.
+export function isStickyRoomId(roomId) {
+  return typeof roomId === 'string' && roomId.length >= 1 && roomId.length <= 60
+    && !/[.#$/\[\]\x00-\x1F\x7F]/.test(roomId);
+}
 export function isStickyOwner(uid, roomId) {
-  return isStickyId(uid) && isStickyId(roomId);
+  return isStickyId(uid) && isStickyRoomId(roomId);
 }
 export function isRevision(value) {
   return Number.isSafeInteger(value) && value >= 0;
