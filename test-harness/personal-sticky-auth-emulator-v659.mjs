@@ -7,7 +7,7 @@ import { getDatabase as getAdminDatabase } from 'firebase-admin/database';
 import { initializeApp as initializeClient, deleteApp as deleteClient } from 'firebase/app';
 import { initializeAuth, inMemoryPersistence, connectAuthEmulator,
   signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getDatabase, connectDatabaseEmulator, ref, get, onValue, runTransaction } from 'firebase/database';
+import { getDatabase, connectDatabaseEmulator, ref, get, onValue, runTransaction, goOffline, goOnline } from 'firebase/database';
 import * as sticky from '../personal-sticky-store-v659.js';
 
 const authHost='127.0.0.1:9099', dbHost='127.0.0.1:9001';
@@ -93,6 +93,23 @@ try{
     id:created.id,expectedRevision:2,values:{text:'侵入'}})).error,'auth-required');
   const bobOwn=await bStore.dispatch({type:'sticky.create',ownerRoom:roomId,ownerUid:'bob'});
   assert.equal(bobOwn.ok,true,'viewer may write only his personal sticky notes');
+
+  // Realtime Database get() can fall back to cached membership when offline.
+  // A verified store must use the actual per-client connection state to
+  // hide private data and prevent offline writes, then re-verify on reconnect.
+  await waitFor('Bob note is visible before disconnection',()=>bStore.readSnapshot().notes.length===1);
+  goOffline(bob.db);
+  await waitFor('offline hides every personal note',()=>{
+    const state=bStore.readSnapshot();
+    return state.status==='offline' && state.notes.length===0 && state.ownerUid==='';
+  });
+  assert.equal((await bStore.dispatch({type:'sticky.create',ownerRoom:roomId,ownerUid:'bob'})).error,
+    'auth-required','offline database must not queue private writes');
+  goOnline(bob.db);
+  await waitFor('online revalidation before restoring Bob',()=>{
+    const state=bStore.readSnapshot();
+    return state.status==='ready' && state.ownerUid==='bob' && state.notes.length===1;
+  });
 
   // A revoked room role must clear previously visible data on the next
   // server-verified access recheck, even without a sign-out or tab reload.
