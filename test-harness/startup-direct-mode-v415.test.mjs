@@ -92,11 +92,11 @@ test('mode switch: failed assets are retried and the old selected view remains r
 });
 
 test('Origin personal sticky loader is registered and executed before the Origin view', () => {
-  const scriptsLiteral = manifest.match(/dynamicScripts:\\s*\\[([^\\]]*)\\]/)?.[1] || '';
-  const scripts = JSON.parse('[' + scriptsLiteral + ']');
-  const sticky = scripts.indexOf('origin-personal-sticky-v659.js');
-  const origin = scripts.indexOf('origin-modern-v372.js');
+  const dynamicLine = manifest.split('\n').find(line => line.trim().startsWith('dynamicScripts: ['));
+  assert.ok(dynamicLine, 'dynamicScripts declaration is present');
+  const sticky = dynamicLine.indexOf('"origin-personal-sticky-v659.js"');
+  const origin = dynamicLine.indexOf('"origin-modern-v372.js"');
   assert.ok(sticky >= 0, 'Origin sticky must be in dynamicScripts, not only deferredDisplayAssets');
-  assert.ok(sticky < origin, 'Origin sticky panel should register before Origin view activates');
-  assert.match(manifest, /modern:\\s*\\{ styles: \\[\\], scripts: \\["origin-personal-sticky-v659\\.js", "origin-modern-v372\\.js"\\] \\}/);
+  assert.ok(sticky < origin, 'Origin sticky loads before Origin view activates');
+  assert.ok(manifest.includes('modern: { styles: [], scripts: ["origin-personal-sticky-v659.js", "origin-modern-v372.js"] }'));
 });
