@@ -58,6 +58,7 @@
     let data = [];
     let ownerUid = '', ownerRoom = '', state = 'locked';
     let query = '', composing = false, saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
+    const pendingWrites=new Set();
     const panel = document.createElement('section');
     panel.className = 'sticky-origin-panel';
     panel.setAttribute('aria-label', '個人付箋ボード');
@@ -87,11 +88,20 @@
       const note = noteFromId(id);
       if (!note || !isReady()) return {ok:false,error:'auth-required'};
       statusMessage(id, '保存中…');
-      const result = await service.dispatch({
-        type:'sticky.'+field, id, values,
-        expectedRevision:note[field].revision,
-        ownerUid, ownerRoom
-      });
+      const token=Symbol('sticky-write');
+      pendingWrites.add(token);
+      let result;
+      try {
+        result=await service.dispatch({
+          type:'sticky.'+field, id, values,
+          expectedRevision:note[field].revision,
+          ownerUid, ownerRoom
+        });
+      } catch {
+        result={ok:false,error:'write-failed'};
+      } finally {
+        pendingWrites.delete(token);
+      }
       if (disposed) return result;
       statusMessage(id, result.ok ? '保存済み' : (result.error === 'conflict' ? '競合：最新を確認してください' : '保存できませんでした'));
       if (!result.ok && result.error === 'conflict') {
@@ -318,6 +328,9 @@
     });
     draw();
     return {
+      // Origin checks before changing route or memo type, so editing cannot
+      // silently discard delayed or rejected writes.
+      hasPending(){return !disposed && (composing || drafts.size>0 || timers.size>0 || pendingWrites.size>0);},
       destroy(){
         if(disposed)return;
         disposed=true;
