@@ -244,13 +244,13 @@
     function refreshStickyCards(canvas) {
       if(!canvas)return;
       const term=query.normalize('NFKC').toLocaleLowerCase('ja');
-      const shown=data.filter(note=>(colorFilter==='all'||note.appearance.color===colorFilter)
+      const shown=pageNotes().filter(note=>(colorFilter==='all'||note.appearance.color===colorFilter)
         && (!term || note.content.text.normalize('NFKC').toLocaleLowerCase('ja').includes(term)))
         .sort((a,b)=>a.mobile.order-b.mobile.order||a.createdAt-b.createdAt||a.id.localeCompare(b.id));
       canvas.replaceChildren();
       if(!shown.length) {
         canvas.append(createElement('p','sticky-origin-empty',
-          term||colorFilter!=='all'?'条件に合う付箋はありません':'まだ付箋はありません。「＋ 付箋を追加」で作成できます。'));
+          term||colorFilter!=='all'?'条件に合う付箋はありません':'このページにはまだ付箋がありません。「＋ 付箋を追加」で作成できます。'));
       } else shown.forEach(note=>canvas.append(buildCard(note)));
     }
     // This index is independent of canvas overlap and active filters.
@@ -258,7 +258,7 @@
     function populateStickyIndex(index) {
       if(!index)return;
       index.replaceChildren();
-      index.append(createElement('p','sticky-origin-index-label','付箋一覧 · '+data.length+'枚'));
+      index.append(createElement('p','sticky-origin-index-label','全ページの付箋一覧 · '+data.length+'枚'));
       const grid=createElement('div','sticky-origin-index-grid');
       const ordered=data.slice().sort((a,b)=>a.mobile.order-b.mobile.order
         || a.createdAt-b.createdAt || a.id.localeCompare(b.id));
@@ -270,7 +270,7 @@
         const swatch=createElement('span','sticky-origin-index-swatch');
         swatch.style.backgroundColor=colorHex[note.appearance.color]||colorHex.lemon;
         swatch.setAttribute('aria-hidden','true');
-        entry.append(swatch,createElement('span','sticky-origin-index-title',title));
+        entry.append(swatch,createElement('span','sticky-origin-index-title','P'+notePage(note)+' · '+title));
         grid.append(entry);
       }
       if(!ordered.length)grid.append(createElement('p','sticky-origin-index-empty','付箋はまだありません'));
@@ -283,14 +283,19 @@
       populateStickyIndex(index);
       return index;
     }
+    let stageObserver=null;
     function applyBoardScale() {
       const stage=panel.querySelector('.sticky-origin-stage');
       const canvas=stage?.querySelector('.sticky-origin-canvas');
       if(!stage||!canvas)return;
-      if(!allView||window.matchMedia('(max-width:767px)').matches){
+      if(window.matchMedia('(max-width:767px)').matches){
         boardScale=1;canvas.style.zoom='1';return;
       }
-      boardScale=Math.max(.1,Math.min(1,(stage.clientWidth-18)/1400,(Math.max(440,stage.clientHeight)-18)/900));
+      // Keep the 1400px logical board; fit it to the actual visible width.
+      // Drag/pointer calculations continue to use boardScale.
+      const widthScale=Math.max(.1,(stage.clientWidth-12)/1400);
+      const heightScale=allView?Math.max(.1,(Math.max(440,stage.clientHeight)-18)/900):1;
+      boardScale=Math.max(.1,Math.min(1,widthScale,heightScale));
       canvas.style.zoom=String(boardScale);
     }
     function draw() {
@@ -304,7 +309,7 @@
         refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
         if(focusedToolbar)populateStickyIndex(panel.querySelector('[data-sticky-index]'));
         const label=panel.querySelector('.sticky-origin-state');
-        if(label)label.textContent=data.length+'枚';
+        if(label)label.textContent='P'+activePage+' · '+pageNotes().length+'枚 / 全'+data.length+'枚';
         return;
       }
       panel.replaceChildren();
@@ -357,14 +362,30 @@
       add.disabled=!isReady();
       add.addEventListener('click',async()=>{
         if (!isReady()) return;
-        const result=await service.dispatch({type:'sticky.create',ownerUid,ownerRoom});
+        const result=await service.dispatch({type:'sticky.create',ownerUid,ownerRoom,page:activePage});
         if (!result.ok) {badge('付箋を作成できませんでした');return;}
         const newId=result.id;
         requestAnimationFrame(()=>panel.querySelector('[data-sticky-text="'+newId+'"]')?.focus());
       });
-      const label=createElement('span','sticky-origin-state',state==='ready' ? data.length+'枚' :
+      const label=createElement('span','sticky-origin-state',state==='ready' ? 'P'+activePage+' · '+pageNotes().length+'枚 / 全'+data.length+'枚' :
         state==='loading' ? '読み込み中…' : '付箋データを利用できません');
-      toolbar.append(search,colorSelect,indexToggle,fit,add,label);panel.append(toolbar);
+      const pages=createElement('div','sticky-origin-pages');
+      pages.setAttribute('role','group');pages.setAttribute('aria-label','付箋ページ');
+      for(let number=1;number<=5;number++){
+        const control=button(String(number));
+        control.dataset.stickyPage=String(number);
+        control.setAttribute('aria-label','付箋の'+number+'ページ目');
+        control.setAttribute('aria-pressed',String(activePage===number));
+        control.addEventListener('click',()=>{
+          if(activePage===number)return;
+          if((composing||drafts.size||timers.size||pendingWrites.size||contentSaves.size)
+             &&!confirm('この付箋には未保存の変更があります。ページを切り替えますか？'))return;
+          activePage=number;savePage();
+          draw();
+        });
+        pages.append(control);
+      }
+      toolbar.append(search,colorSelect,indexToggle,fit,add,pages,label);panel.append(toolbar);
       panel.append(createElement('p','sticky-origin-scope-note',
         '付箋は選択中の利用者名ごとに表示されます。ログインによる閲覧制限はないため、機密情報は記載しないでください。'));
       if (!isReady()) {
@@ -383,6 +404,11 @@
         panel.append(index);
       }
       panel.append(stage);
+      if(stageObserver)stageObserver.disconnect();
+      if(typeof ResizeObserver!=='undefined'){
+        stageObserver=new ResizeObserver(applyBoardScale);
+        stageObserver.observe(stage);
+      }
       applyBoardScale();
     }
     let unsubscribe = () => {};
@@ -391,6 +417,7 @@
         if (disposed) return;
         const changedIdentity=next.ownerUid!==ownerUid||next.ownerRoom!==ownerRoom;
         ownerUid=next.ownerUid;ownerRoom=next.ownerRoom;state=next.status;data=next.notes||[];
+        if(changedIdentity)activePage=readPage();
         if(changedIdentity||state!=='ready'){
           for(const timer of timers.values())clearTimeout(timer);
           timers.clear();drafts.clear();saving.clear();activeMovement=null;
@@ -571,6 +598,7 @@
         disposed=true;
         window.removeEventListener('resize',applyBoardScale);
         unsubscribe();
+        if(stageObserver)stageObserver.disconnect();
         for(const timer of timers.values())clearTimeout(timer);
         timers.clear();drafts.clear();saving.clear();data=[];panel.replaceChildren();
       }
