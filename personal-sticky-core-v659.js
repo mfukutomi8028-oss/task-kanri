@@ -60,6 +60,32 @@ export function planStickyPlacement(notes = []) {
     zIndex,order
   };
 }
+/**
+ * Move one note by a mobile list step using sparse integer ranks.
+ * Reorder does not modify the desktop position or another user's records.
+ * When adjacent ranks have no free integer, refuse instead of partially
+ * renumbering multiple notes or silently overwriting concurrent changes.
+ */
+export function planMobileMove(notes, id, direction) {
+  if (!Array.isArray(notes) || !['up', 'down'].includes(direction)) return null;
+  const ordered=notes.filter(isStickyNote).sort((a,b)=>a.mobile.order-b.mobile.order
+    || a.createdAt-b.createdAt || a.id.localeCompare(b.id));
+  const index=ordered.findIndex(note=>note.id===id);
+  if(index<0)return null;
+  const note=ordered[index];
+  if(direction==='up'){
+    if(index===0)return null;
+    const previous=ordered[index-1],before=ordered[index-2];
+    const order=previous.mobile.order-1;
+    if(order<0||(before&&order<=before.mobile.order))return null;
+    return {id,order,expectedRevision:note.mobile.revision};
+  }
+  if(index===ordered.length-1)return null;
+  const next=ordered[index+1],after=ordered[index+2];
+  const order=next.mobile.order+1;
+  if(order>1000000000||(after&&order>=after.mobile.order))return null;
+  return {id,order,expectedRevision:note.mobile.revision};
+}
 export function newSticky({ id, ownerUid, roomId, now, x = 24, y = 24, zIndex = 1, order = 0 }) {
   if (!isStickyId(id) || !isStickyOwner(ownerUid, roomId) || !integer(now, 1, Number.MAX_SAFE_INTEGER)
     || !integer(x, 0, STICKY_CANVAS.width) || !integer(y, 0, STICKY_CANVAS.height)
