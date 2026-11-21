@@ -63,6 +63,7 @@
     let ownerUid = '', ownerRoom = '', state = 'locked';
     let query = '', composing = false, saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
     const pendingWrites=new Set();
+    const contentSaves=new Map();
     const panel = document.createElement('section');
     panel.className = 'sticky-origin-panel';
     panel.setAttribute('aria-label', '個人付箋ボード');
@@ -91,6 +92,7 @@
     async function commit(id, field, values) {
       const note = noteFromId(id);
       if (!note || !isReady()) return {ok:false,error:'auth-required'};
+      const committingUid=ownerUid;
       statusMessage(id, '保存中…');
       const token=Symbol('sticky-write');
       pendingWrites.add(token);
@@ -106,13 +108,31 @@
       } finally {
         pendingWrites.delete(token);
       }
-      if (disposed) return result;
+      if (disposed || !isReady() || ownerUid!==committingUid) return result;
+      if(result.ok&&result.note&&result.note.ownerUid===ownerUid&&result.note.roomId===ownerRoom){
+        const current=noteFromId(id);
+        if(current&&result.note[field]?.revision>current[field]?.revision)
+          data=data.map(item=>item.id===id?result.note:item);
+      }
       statusMessage(id, result.ok ? '保存済み' : (result.error === 'conflict' ? '競合：最新を確認してください' : '保存できませんでした'));
       if (!result.ok && result.error === 'conflict') {
         const draft=drafts.get(id);
         if (draft && field==='content') drafts.set(id,draft);
       }
       return result;
+    }
+    function saveContent(id,text) {
+      // One in-flight text transaction per note: later edits wait for a fresh
+      // content revision, so a slow first write cannot erase a newer draft.
+      const earlier=contentSaves.get(id) || Promise.resolve({ok:true});
+      const next=earlier.then(()=>commit(id,'content',{text}),()=>commit(id,'content',{text}))
+        .then(result=>{
+          if(result.ok && drafts.get(id)===text)drafts.delete(id);
+          return result;
+        });
+      contentSaves.set(id,next);
+      void next.finally(()=>{if(contentSaves.get(id)===next)contentSaves.delete(id);});
+      return next;
     }
     function buildCard(note) {
       const card=createElement('article','sticky-origin-card');
@@ -249,8 +269,7 @@
         timers.delete(id);
         const draft=drafts.get(id);
         if(draft===undefined||!isReady())return;
-        const result=await commit(id,'content',{text:draft});
-        if(result.ok)drafts.delete(id);
+        await saveContent(id,draft);
       },700));
       statusMessage(id,'未保存');
     }
@@ -267,7 +286,7 @@
       const id=e.target.dataset.stickyText;
       if(timers.has(id)){clearTimeout(timers.get(id));timers.delete(id);
         const text=drafts.get(id);
-        if(text!==undefined)void commit(id,'content',{text}).then(r=>{if(r.ok)drafts.delete(id)});
+        if(text!==undefined)void saveContent(id,text);
       }
       // Once writing has stopped, subsequent snapshots may safely repaint.
     });
@@ -356,7 +375,7 @@
     return {
       // Origin checks before changing route or memo type, so editing cannot
       // silently discard delayed or rejected writes.
-      hasPending(){return !disposed && (composing || drafts.size>0 || timers.size>0 || pendingWrites.size>0);},
+      hasPending(){return !disposed && (composing || drafts.size>0 || timers.size>0 || pendingWrites.size>0 || contentSaves.size>0);},
       destroy(){
         if(disposed)return;
         disposed=true;
