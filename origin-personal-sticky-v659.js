@@ -375,11 +375,16 @@
       const shown=pageNotes().filter(note=>(colorFilter==='all'||note.appearance.color===colorFilter)
         && (!term || note.content.text.normalize('NFKC').toLocaleLowerCase('ja').includes(term)))
         .sort((a,b)=>a.mobile.order-b.mobile.order||a.createdAt-b.createdAt||a.id.localeCompare(b.id));
-      preserveScroll(()=>canvas.replaceChildren());
-      if(!shown.length) {
-        canvas.append(createElement('p','sticky-origin-empty',
-          term||colorFilter!=='all'?'条件に合う付箋はありません':'このページにはまだ付箋がありません。「＋ 付箋を追加」で作成できます。'));
-      } else shown.forEach(note=>canvas.append(buildCard(note)));
+      preserveScroll(()=>{
+        if(!shown.length){
+          canvas.replaceChildren(createElement('p','sticky-origin-empty',
+            term||colorFilter!=='all'?'条件に合う付箋はありません':'このページにはまだ付箋がありません。「＋ 付箋を追加」で作成できます。'));
+        }else{
+          // Replace the old cards in one operation to prevent scroll anchoring
+          // from jumping during a transient empty canvas.
+          canvas.replaceChildren(...shown.map(buildCard));
+        }
+      });
     }
     // This index is independent of canvas overlap and active filters.
     // Labels come from plain text; never render personal note content as HTML.
