@@ -4,6 +4,12 @@
  */
 export const STICKY_COLORS = Object.freeze(['ivory', 'lemon', 'peach', 'mint', 'sky', 'lavender']);
 export const STICKY_TEXT_LIMIT = 2000;
+export const STICKY_PAGE_COUNT = 5;
+// Legacy records have no page property. They belong to page one without migration.
+export function stickyPage(note) {
+  const page = note?.layout?.page;
+  return Number.isSafeInteger(page) && page >= 1 && page <= STICKY_PAGE_COUNT ? page : 1;
+}
 export const STICKY_CANVAS = Object.freeze({ width: 1400, height: 900 });
 export const STICKY_SIZE = Object.freeze({ width: 280, height: 220, minWidth: 220, minHeight: 160, maxWidth: 480, maxHeight: 500 });
 const KEY_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -40,15 +46,16 @@ export function isStickyGroup(field, value) {
   if (field === 'layout') return integer(value.x, 0, 1400) && integer(value.y, 0, 900)
     && integer(value.width, STICKY_SIZE.minWidth, STICKY_SIZE.maxWidth)
     && integer(value.height, STICKY_SIZE.minHeight, STICKY_SIZE.maxHeight)
-    && integer(value.zIndex, 0, 1000000000);
+    && integer(value.zIndex, -1000000000, 1000000000)
+    && (value.page === undefined || integer(value.page, 1, STICKY_PAGE_COUNT));
   return integer(value.order, 0, 1000000000);
 }
 /**
  * Propose an unused placement without moving any existing note.
  * Only the create command may apply this proposal; UI themes share the result.
  */
-export function planStickyPlacement(notes = []) {
-  const entries=Array.isArray(notes)?notes.filter(isStickyNote):[];
+export function planStickyPlacement(notes = [], page = 1) {
+  const entries=Array.isArray(notes)?notes.filter(isStickyNote).filter(note=>stickyPage(note)===page):[];
   const zIndex=Math.min(1000000000,1+Math.max(0,...entries.map(n=>n.layout.zIndex)));
   const order=Math.min(1000000000,1024+Math.max(0,...entries.map(n=>n.mobile.order)));
   const gap=24;
@@ -77,7 +84,9 @@ export function planStickyPlacement(notes = []) {
  */
 export function planMobileMove(notes, id, direction) {
   if (!Array.isArray(notes) || !['up', 'down'].includes(direction)) return null;
-  const ordered=notes.filter(isStickyNote).sort((a,b)=>a.mobile.order-b.mobile.order
+  const selected=notes.find(note=>isStickyNote(note)&&note.id===id);
+  if(!selected)return null;
+  const ordered=notes.filter(isStickyNote).filter(note=>stickyPage(note)===stickyPage(selected)).sort((a,b)=>a.mobile.order-b.mobile.order
     || a.createdAt-b.createdAt || a.id.localeCompare(b.id));
   const index=ordered.findIndex(note=>note.id===id);
   if(index<0)return null;
@@ -95,10 +104,11 @@ export function planMobileMove(notes, id, direction) {
   if(order>1000000000||(after&&order>=after.mobile.order))return null;
   return {id,order,expectedRevision:note.mobile.revision};
 }
-export function newSticky({ id, ownerUid, roomId, now, x = 24, y = 24, zIndex = 1, order = 0 }) {
+export function newSticky({ id, ownerUid, roomId, now, x = 24, y = 24, zIndex = 1, order = 0, page = 1 }) {
   if (!isStickyId(id) || !isStickyOwner(ownerUid, roomId) || !integer(now, 1, Number.MAX_SAFE_INTEGER)
     || !integer(x, 0, STICKY_CANVAS.width) || !integer(y, 0, STICKY_CANVAS.height)
-    || !integer(zIndex, 0, 1000000000) || !integer(order, 0, 1000000000)) {
+    || !integer(zIndex, -1000000000, 1000000000) || !integer(order, 0, 1000000000)
+    || !integer(page, 1, STICKY_PAGE_COUNT)) {
     return { ok: false, error: 'invalid-create' };
   }
   return {
@@ -107,7 +117,7 @@ export function newSticky({ id, ownerUid, roomId, now, x = 24, y = 24, zIndex = 
       schemaVersion: 1, id, ownerUid, roomId, createdAt: now, updatedAt: now,
       content: group(1, { text: '', updatedAt: now }),
       appearance: group(1, { color: 'lemon', updatedAt: now }),
-      layout: group(1, { x, y, width: STICKY_SIZE.width, height: STICKY_SIZE.height, zIndex, updatedAt: now }),
+      layout: group(1, { x, y, width: STICKY_SIZE.width, height: STICKY_SIZE.height, zIndex, page, updatedAt: now }),
       mobile: group(1, { order, updatedAt: now })
     }
   };
@@ -127,7 +137,7 @@ export function updateSticky(note, { field, expectedRevision, values, ownerUid, 
   }
   if (note[field].revision !== expectedRevision) return { ok: false, error: 'conflict' };
   const fields = { content: ['text'], appearance: ['color'],
-    layout: ['x','y','width','height','zIndex'], mobile: ['order'] };
+    layout: ['x','y','width','height','zIndex','page'], mobile: ['order'] };
   const allowed = fields[field];
   if (Object.keys(values).some(key => !allowed.includes(key))) return { ok: false, error: 'invalid-update' };
   const next = { ...note[field], ...values, revision: expectedRevision + 1, updatedAt: now };
