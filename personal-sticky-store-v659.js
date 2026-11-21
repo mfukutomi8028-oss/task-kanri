@@ -5,15 +5,20 @@ import { newSticky, updateSticky, canDeleteSticky, isStickyNote, isStickyId, sti
  * @param {{
  *  auth: object, database: object, roomId: string,
  *  firebase: {ref: Function, onValue: Function, runTransaction: Function, onAuthStateChanged: Function},
- *  approvedMember: (uid:string, roomId:string) => Promise<boolean>
+ *  approvedMember: (uid:string, roomId:string) => Promise<boolean>,
+ *  accessCheckIntervalMs?: number
  * }} deps
  * This adapter cannot grant access: Firebase Rules MUST independently validate
  * Auth UID + approved room membership on every read and write.
  */
-export function createPersonalStickyStore({ auth, database, roomId, firebase, approvedMember }) {
+export function createPersonalStickyStore({ auth, database, roomId, firebase, approvedMember,
+  accessCheckIntervalMs = 0 }) {
   if (!isStickyId(roomId) || !auth || !database || !firebase
     || ['ref', 'onValue', 'runTransaction', 'onAuthStateChanged'].some(key => typeof firebase[key] !== 'function')
-    || typeof approvedMember !== 'function') throw new TypeError('Authenticated sticky dependencies are required');
+    || typeof approvedMember !== 'function'
+    || !Number.isSafeInteger(accessCheckIntervalMs)
+    || (accessCheckIntervalMs !== 0 && (accessCheckIntervalMs < 200 || accessCheckIntervalMs > 60000)))
+    throw new TypeError('Authenticated sticky dependencies are required');
 
   const subscribers = new Set();
   let unsubscribeAuth = null, unsubscribeDb = null;
@@ -70,6 +75,20 @@ export function createPersonalStickyStore({ auth, database, roomId, firebase, ap
     }
   };
   unsubscribeAuth = firebase.onAuthStateChanged(auth, changeAuth, () => clear('error'));
+  // Approval changes can occur without an Auth state event. The verified
+  // adapter must therefore recheck membership even while signed in.
+  let checkingAccess = false;
+  const accessTimer = accessCheckIntervalMs > 0 ? setInterval(async () => {
+    if (checkingAccess || destroyed || state !== 'ready' || !uid) return;
+    checkingAccess = true;
+    const currentUid = uid, ticket = generation;
+    let stillAllowed = false;
+    try { stillAllowed = await approvedMember(currentUid, roomId) === true; }
+    catch { /* Verification failures lock instead of retaining private data. */ }
+    finally { checkingAccess = false; }
+    if (!destroyed && ticket === generation && auth.currentUser?.uid === currentUid
+      && !stillAllowed) clear('locked');
+  }, accessCheckIntervalMs) : null;
   const requireIdentity = (ownerRoom, ownerUid) => {
     if (destroyed || state !== 'ready' || !uid || ownerRoom !== roomId || ownerUid !== uid
       || auth.currentUser?.uid !== uid) return null;
@@ -148,8 +167,48 @@ export function createPersonalStickyStore({ auth, database, roomId, firebase, ap
       if (destroyed) return;
       destroyed = true;
       if (unsubscribeAuth) unsubscribeAuth();
+      if (accessTimer !== null) clearInterval(accessTimer);
       clear();
       subscribers.clear();
     }
+  });
+}
+
+
+/**
+ * Verified client SDK adapter for a future authenticated Origin session.
+ * Not wired into the legacy /rooms app. The membership read is allowed only
+ * for this Firebase Auth UID when the selected room has approved it.
+ *
+ * Never trust a selected display name, cached role, or caller-supplied UID.
+ * Production Realtime Database Rules must independently protect all writes.
+ */
+export function createVerifiedPersonalStickyStore({
+  auth, database, roomId, firebase, accessCheckIntervalMs = 5000
+}) {
+  if (!firebase || typeof firebase.get !== 'function'
+    || !Number.isSafeInteger(accessCheckIntervalMs)
+    || accessCheckIntervalMs < 200 || accessCheckIntervalMs > 60000) {
+    throw new TypeError('Verified Auth and periodic access checks are required');
+  }
+  const approvedMember = async (candidate, requestedRoom) => {
+    if (!isStickyId(candidate) || !isStickyId(requestedRoom)
+      || auth?.currentUser?.uid !== candidate) return false;
+    try {
+      // This leaf's Firebase Rules require approved identity + membership
+      // AND auth.uid === candidate. Display names cannot grant access.
+      const accessRef = firebase.ref(database,
+        `roomsV2/${requestedRoom}/access/members/${candidate}`);
+      const access = await firebase.get(accessRef);
+      return auth.currentUser?.uid === candidate
+        && ['viewer', 'editor', 'admin'].includes(access.val());
+    } catch {
+      // Permission denied, offline, expired identity or missing membership
+      // must all fail closed. Never fall back to localStorage or /rooms.
+      return false;
+    }
+  };
+  return createPersonalStickyStore({
+    auth, database, roomId, firebase, approvedMember, accessCheckIntervalMs
   });
 }
