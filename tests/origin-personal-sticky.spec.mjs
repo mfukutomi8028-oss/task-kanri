@@ -393,12 +393,16 @@ test('sticky paper-color control stays visible against every paper color',async(
    await card.locator('[data-sticky-color="'+color+'"]').click();
    const visual=await toggle.evaluate(el=>{
      const surface=getComputedStyle(el),swatch=getComputedStyle(el.querySelector('.sticky-origin-color-preview'));
-     return {background:surface.backgroundColor,border:surface.borderTopStyle,borderWidth:parseFloat(surface.borderTopWidth),swatchBorderWidth:parseFloat(swatch.borderTopWidth)};
+     const canvas=el.closest('.sticky-origin-canvas');
+     const zoom=Math.max(.1,parseFloat(getComputedStyle(canvas).zoom)||1);
+     return {background:surface.backgroundColor,border:surface.borderTopStyle,
+       borderWidth:parseFloat(surface.borderTopWidth),swatchLogicalBorderWidth:parseFloat(swatch.borderTopWidth)/zoom};
    });
    expect(visual.background).toBe('rgb(255, 255, 255)');
    expect(visual.border).toBe('solid');
    expect(visual.borderWidth).toBeGreaterThanOrEqual(1);
-   expect(visual.swatchBorderWidth).toBeGreaterThanOrEqual(2);
+   // Chromium computes zoomed border widths as fractional CSS pixels.
+   expect(visual.swatchLogicalBorderWidth).toBeGreaterThanOrEqual(1.9);
    const paper=await card.evaluate(el=>getComputedStyle(el).backgroundColor);
    const pastelPaper={
      ivory:'rgb(246, 242, 235)',lemon:'rgb(250, 243, 201)',
@@ -422,7 +426,8 @@ test('long character counter never overlaps the bottom-right resize handle at mi
    const updated=service.readSnapshot().notes[0];
    await service.dispatch({type:'sticky.layout',...owner,expectedRevision:updated.layout.revision,values:{width:220,height:160}});
  });
- await expect(card).toHaveCSS('width','220px');
+ // Use inline logical size; computed width is fractional under canvas zoom.
+ await expect.poll(async()=>card.evaluate(el=>parseFloat(el.style.width))).toBe(220);
  const count=card.locator('.sticky-origin-foot span:last-child');
  await expect(count).toHaveText('2000/2000');
  const countBox=await count.boundingBox();
