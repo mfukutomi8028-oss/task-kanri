@@ -1284,7 +1284,7 @@ test('Origin long titles and theme contrast fit at 320, 390 and desktop widths',
 });
 
 
-test('Origin 320px search keeps arrow-key results visible and remembers category rail scroll',async({page})=>{
+test('Origin 320px search keeps arrow-key results visible with wrapped category tabs',async({page})=>{
  test.setTimeout(90000);
  const host=await launchOriginV415(page,'origin-mobile-search-rail-v456-room',320);
  await page.evaluate(async()=>{
@@ -1315,17 +1315,18 @@ test('Origin 320px search keeps arrow-key results visible and remembers category
  expect(measured.top).toBeGreaterThanOrEqual(measured.visibleTop-2);
  expect(measured.bottom).toBeLessThanOrEqual(measured.visibleBottom-2);
  const rail=results.locator('.origin-search-filters');
- const priorRail=await rail.evaluate(el=>{
-   el.scrollLeft=el.scrollWidth-el.clientWidth;
-   return el.scrollLeft;
- });
- expect(priorRail).toBeGreaterThan(0);
- // Change facets without Playwright moving the rail itself.
+ // The requested UX now wraps all category tabs instead of scrolling them.
+ const before=await rail.evaluate(el=>({width:el.clientWidth,scrollWidth:el.scrollWidth,scrollLeft:el.scrollLeft}));
+ expect(before.scrollWidth).toBeLessThanOrEqual(before.width+1);
+ expect(before.scrollLeft).toBe(0);
+ await expect(rail.locator('button')).toHaveCount(5);
+ for(const item of await rail.locator('button').all())await expect(item).toBeInViewport();
  await results.locator('[data-action="search-kind"][data-value="memos"]').evaluate(el=>el.click());
  await expect(results.locator('.search-hit')).toHaveCount(0);
  await expect(results.locator('[data-value="memos"]')).toHaveAttribute('aria-pressed','true');
- const afterRail=await rail.evaluate(el=>el.scrollLeft);
- expect(afterRail).toBeGreaterThanOrEqual(priorRail-2);
+ const after=await rail.evaluate(el=>({width:el.clientWidth,scrollWidth:el.scrollWidth,scrollLeft:el.scrollLeft}));
+ expect(after.scrollWidth).toBeLessThanOrEqual(after.width+1);
+ expect(after.scrollLeft).toBe(0);
  await expect(results).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(323);
  await input.focus();
