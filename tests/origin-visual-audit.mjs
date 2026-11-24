@@ -69,7 +69,14 @@ async function capture(side,url,width,height,theme){
    const metrics=await root.evaluate(el=>{
     const r=el.shadowRoot,w=r.querySelector('#workspace'),h=w.querySelector('.page-heading');
     const box=h?.getBoundingClientRect(),visible=e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden';
-    return {release:el.dataset.releaseVersion,title:h?.querySelector('h1')?.textContent,headingHeight:box?.height,overflow:document.documentElement.scrollWidth-innerWidth,workspaceWidth:w.getBoundingClientRect().width,controls:[...r.querySelectorAll('button,input,select,textarea,a[href]')].filter(visible).map(e=>({name:(e.getAttribute('aria-label')||e.innerText||e.title||e.placeholder||e.name||'').trim().slice(0,100),width:Math.round(e.getBoundingClientRect().width),height:Math.round(e.getBoundingClientRect().height)}))};
+    const position=(selector)=>{
+      const el=r.querySelector(selector);
+      if(!el||!visible(el))return null;
+      const bounds=el.getBoundingClientRect();
+      return {top:bounds.top,bottom:bounds.bottom};
+    };
+    const recordPositions={task:position('.origin-board-card .item-name'),memo:position('.memo-card'),mobileNav:position('#mobileNav')};
+    return {recordPositions,release:el.dataset.releaseVersion,title:h?.querySelector('h1')?.textContent,headingHeight:box?.height,overflow:document.documentElement.scrollWidth-innerWidth,workspaceWidth:w.getBoundingClientRect().width,controls:[...r.querySelectorAll('button,input,select,textarea,a[href]')].filter(visible).map(e=>({name:(e.getAttribute('aria-label')||e.innerText||e.title||e.placeholder||e.name||'').trim().slice(0,100),width:Math.round(e.getBoundingClientRect().width),height:Math.round(e.getBoundingClientRect().height)}))};
    });
    records.push({side,width,height,theme,route,name,...metrics,errors:[...errors]});
    await writeFile(join(out,'metrics.json'),JSON.stringify(records,null,2));

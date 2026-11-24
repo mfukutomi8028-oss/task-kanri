@@ -19,9 +19,9 @@ test('Origin headings render one meaningful title and omit empty or decorative l
 
 test('Origin task command keeps search, density, view switching and sorting in DOM reading order',()=>{
  const start=source.indexOf('return `${head(',source.indexOf('function renderTasks('));
- const end=source.indexOf('<div class="origin-mobile-advanced-switch">',start);
+ const end=source.indexOf('id="originTaskStatusRail"',start);
  const markup=source.slice(start,end);
- const order=['id="originTaskQuery"','data-action="task-density"','class="origin-layout-controls"','id="originTaskSort"'].map(key=>markup.indexOf(key));
+ const order=['id="originTaskQuery"','data-action="task-density"','class="origin-layout-controls"','data-action="task-advanced-toggle"','id="originTaskSort"'].map(key=>markup.indexOf(key));
  assert.ok(order.every(n=>n>=0));
  assert.deepEqual(order,[...order].sort((a,b)=>a-b));
  assert.doesNotMatch(source,/origin-task-tools>\.origin-(?:task-order-pair|density-button)\{order:/);
