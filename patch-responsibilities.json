@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineRelease": "671",
+  "baselineRelease": "672",
   "purpose": "Inventory every dynamically loaded CSS/JS patch so cleanup work cannot silently drop or duplicate a live patch.",
   "groups": [
     {
@@ -243,7 +243,7 @@
       "label": "Origin業務メモ・個人付箋の文字書式",
       "risk": "medium",
       "consolidation": "hold",
-      "reason": "書式材料は正本保存と表示が共用する許可済み範囲モデル、編集と安全な描画はOrigin専用。検索対象の旧平文と保存トランザクション・既存の読書権限を維持。",
+      "reason": "書式材料は正本保存と表示が共用する許可済み範囲モデル。業務メモ・個人付箋の直接編集と安全な描画はOrigin専用共通エディタに集約し、旧プレビュー処理を撤去。検索対象の旧平文と保存トランザクション・既存の読書権限を維持。",
       "assets": [
         "note-text-format-v671.js",
         "origin-note-editor-v671.js"

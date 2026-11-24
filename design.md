@@ -47,3 +47,9 @@ PR #1005 was merged first as Ver.668. The Hallmark candidate is therefore Ver.66
 - Re-rendering restores the exact date control and notification identity, not merely a common action or task ID. Search Enter respects the explicit completed-history opt-in.
 - Today and Schedule use the same current-week helper. The explicit all-tasks shortcut clears search/status restrictions while ordinary navigation restores them; focus the task heading and keep the layout preference.
 - Integrate these behaviors into the existing owner functions. Do not change persistence or duplicate navigation handlers. Retain the original six tests and Hallmark assertions.
+
+## Direct note editing (Ver.672)
+
+- Business memo and personal sticky notes use the same direct rich-text editor. Selected text changes in place; never show a second preview or hide formatting when typing. Keep all seven existing formatting commands (bold, italic, underline, strike, color, size, clear) and 44px controls. Keep the complete toolbar in the sticky expanded editor; the compact card remains editable and transfers its current selection when expanded.
+- Canonical plain text and validated range metadata remain the storage and search contract. The backing textarea is a hidden form/constraint owner only; visible contenteditable has an accessible multiline textbox name and invalid-state/focus mapping. Never persist or render arbitrary HTML. Clipboard text is plain, input limits and IME composition boundaries are preserved, undo/redo restores text and formatting, and the caret remains visible in a scrolling field.
+- Preserve per-note revision checks, pending-save handling and all canvas layout operations. Test formatting and typing in the same field, selection, reload, conflict, clipboard, mobile controls, and existing views before release.

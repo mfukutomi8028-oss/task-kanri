@@ -1031,7 +1031,7 @@ test('Origin memo consecutive saves restore the updated card focus and the list 
  // Open the same canonical memo again without revisiting the navigation.
  await card.evaluate(el=>el.click());
  await sheet.locator('[data-action="edit"]').click();
- await sheet.locator('#editForm [name="body"]').fill('連続編集の2回目の内容');
+ await sheet.locator('#editForm [data-origin-note-editor]').fill('連続編集の2回目の内容');
  await sheet.locator('button[form="editForm"]').click();
  await expect(host.locator('#overlay')).toBeHidden();
  await expect(card).toBeFocused();
@@ -2586,14 +2586,14 @@ test('Origin task, ToDo and note rows edit directly and restore the inspected li
   first:el.firstElementChild?.querySelector('input[name="title"]')!==null,
   second:el.children[1]?.querySelector('input[name="paperColor"]')!==null,
   columns:getComputedStyle(el.querySelector('.origin-memo-palette')).gridTemplateColumns.split(' ').length,
-  bodyHeight:el.querySelector('[name="body"]').getBoundingClientRect().height
+  bodyHeight:el.querySelector('[data-origin-note-editor]').getBoundingClientRect().height
  }));
  expect(memoStructure.first).toBe(true);
  expect(memoStructure.second).toBe(true);
  expect(memoStructure.columns).toBe(3);
  expect(memoStructure.bodyHeight).toBeGreaterThanOrEqual(160);
  await expect(memoFields.locator('input[name="paperColor"]')).toHaveCount(6);
- await memoForm.locator('[name="body"]').fill('一覧から本文を更新');
+ await memoForm.locator('[data-origin-note-editor]').fill('一覧から本文を更新');
  await sheet.locator('button[form="editForm"]').click();
  await expect(note.locator('[data-action="list-quick-edit"]')).toBeFocused();
  await expect(note.locator('[data-action="memo-color"]')).not.toHaveCount(0);
@@ -2686,7 +2686,7 @@ test('Origin memo revision conflict retains the draft and exposes safe copying',
  await host.locator('.origin-memo-shell',{hasText:'更新競合の確認'}).locator('[data-action="list-quick-edit"]').click();
  const form=host.locator('#editForm[data-kind="memos"]');
  await expect(form).toBeVisible();
- await form.locator('[name="body"]').fill('編集中の本文は退避したい');
+ await form.locator('[data-origin-note-editor]').fill('編集中の本文は退避したい');
  await page.evaluate(async()=>{
    const b=window.WorkBoardPaletteMemoBridgeV369,s=window.WorkBoardPaletteBridge.readSnapshot();
    const memo=b.readSnapshot().find(item=>item.title==='更新競合の確認');
@@ -2746,7 +2746,7 @@ test('Origin offers a guarded explicit retry after a failed existing memo update
  await host.locator('#mobileNav [data-route="notes"]').click();
  await host.locator('.origin-memo-shell',{hasText:'通信失敗の確認'}).locator('[data-action="list-quick-edit"]').click();
  const form=host.locator('#editForm[data-kind="memos"]');
- await form.locator('[name="body"]').fill('通信回復後に保存する本文');
+ await form.locator('[data-origin-note-editor]').fill('通信回復後に保存する本文');
 
  await host.locator('button[form="editForm"]').click();
  await expect(form).toBeVisible();

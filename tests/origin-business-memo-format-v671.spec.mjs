@@ -1,3 +1,4 @@
+import {selectNoteText} from './helpers/origin-note-editing.mjs';
 import {test,expect} from '@playwright/test';
 
 async function launch(page,baseURL,room,width=1366){
@@ -72,14 +73,15 @@ test('Origin business memo keeps formatting-only drafts and renders saved marks 
  expect(created.ok).toBe(true);
  const edit=()=>root.locator('[data-action="list-quick-edit"][data-kind="memos"]');
  await edit().click();
- let body=root.locator('#editForm textarea[name="body"]');
- await expect(body).toHaveValue('手順 手順\n次の対応');
- await body.evaluate(el=>{el.focus();el.setSelectionRange(3,5)});
+ let body=root.locator('#editForm [data-origin-note-editor]');
+ await expect(body).toHaveText('手順 手順\n次の対応');
+ await selectNoteText(body,3,5);
  const bold=root.getByRole('button',{name:'太字',exact:true});
  await expect(bold).toBeVisible({timeout:2500});
  await bold.click();
- const preview=root.locator('.origin-note-format-preview');
- await expect(preview.locator('strong')).toHaveText('手順');
+ await expect(body.locator('strong')).toHaveText('手順');
+ await expect(root.locator('.origin-note-format-preview')).toHaveCount(0);
+ await expect(body).toBeFocused();
  const draft=root.locator('#originDraftState');
  await expect(draft).toHaveAttribute('data-unsaved','true');
  const dialog=page.waitForEvent('dialog');
@@ -88,7 +90,7 @@ test('Origin business memo keeps formatting-only drafts and renders saved marks 
  expect(confirm.message()).toContain('破棄');
  await confirm.dismiss();
  await close;
- await expect(body).toHaveValue('手順 手順\n次の対応');
+ await expect(body).toHaveText('手順 手順\n次の対応');
 
  await root.getByRole('button',{name:'変更を保存',exact:true}).click();
  const card=root.locator('.memo-card').filter({hasText:'書式付き手順'});
@@ -110,7 +112,7 @@ test('Escape at the IME candidate stage does not close the memo editor',async({p
  const root=await launch(page,baseURL,'origin-memo-format-ime',320);
  expect((await writeMemo(page,{type:'memo.create',body:'編集中の本文'})).ok).toBe(true);
  await root.locator('[data-action="list-quick-edit"][data-kind="memos"]').click();
- const body=root.locator('#editForm textarea[name="body"]');
+ const body=root.locator('#editForm [data-origin-note-editor]');
  const accepted=await body.evaluate(el=>{
    el.focus();
    el.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,composed:true,data:'編'}));
@@ -122,4 +124,19 @@ test('Escape at the IME candidate stage does not close the memo editor',async({p
  await body.evaluate(el=>el.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,composed:true,data:''})));
  await body.press('Escape');
  await expect(body).toBeHidden();
+});
+
+test('Origin direct memo editor keeps native required validation and focuses the visible body',async({page,baseURL})=>{
+ const root=await launch(page,baseURL,'origin-memo-direct-validation',320);
+ expect((await writeMemo(page,{type:'memo.create',body:'入力済みの内容'})).ok).toBe(true);
+ await root.locator('[data-action="list-quick-edit"][data-kind="memos"]').click();
+ const body=root.locator('#editForm [data-origin-note-editor]');
+ await body.fill('');
+ await root.getByRole('button',{name:'変更を保存',exact:true}).click();
+ await expect(body).toHaveAttribute('aria-invalid','true');
+ await expect(body).toBeFocused();
+ await body.fill('新しい内容');
+ await expect(body).not.toHaveAttribute('aria-invalid','true');
+ await root.getByRole('button',{name:'変更を保存',exact:true}).click();
+ await expect(root.locator('.memo-card')).toContainText('新しい内容');
 });

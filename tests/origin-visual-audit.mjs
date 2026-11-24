@@ -76,7 +76,7 @@ async function capture(side,url,width,height,theme){
       return {top:bounds.top,bottom:bounds.bottom};
     };
     const recordPositions={task:position('.origin-board-card .item-name'),memo:position('.memo-card'),mobileNav:position('#mobileNav')};
-    return {recordPositions,release:el.dataset.releaseVersion,title:h?.querySelector('h1')?.textContent,headingHeight:box?.height,overflow:document.documentElement.scrollWidth-innerWidth,workspaceWidth:w.getBoundingClientRect().width,controls:[...r.querySelectorAll('button,input,select,textarea,a[href]')].filter(visible).map(e=>({name:(e.getAttribute('aria-label')||e.innerText||e.title||e.placeholder||e.name||'').trim().slice(0,100),width:Math.round(e.getBoundingClientRect().width),height:Math.round(e.getBoundingClientRect().height)}))};
+    return {recordPositions,release:el.dataset.releaseVersion,title:h?.querySelector('h1')?.textContent,headingHeight:box?.height,overflow:document.documentElement.scrollWidth-innerWidth,workspaceWidth:w.getBoundingClientRect().width,controls:[...r.querySelectorAll('button,input,select,textarea,[data-origin-note-editor],a[href]')].filter(visible).map(e=>({name:(e.getAttribute('aria-label')||e.innerText||e.title||e.placeholder||e.name||'').trim().slice(0,100),width:Math.round(e.getBoundingClientRect().width),height:Math.round(e.getBoundingClientRect().height)}))};
    });
    records.push({side,width,height,theme,route,name,...metrics,errors:[...errors]});
    await writeFile(join(out,'metrics.json'),JSON.stringify(records,null,2));
@@ -95,7 +95,7 @@ async function capture(side,url,width,height,theme){
     if(width<=770)await root.locator('[data-memo-header-mode="personal"]').click();
     else{await nav.locator('.origin-memo-nav').hover();await nav.locator('[data-memo-nav-mode="personal"]').click();}
     await expect(root.locator('.sticky-add')).toBeEnabled();await root.locator('.sticky-add').click();
-    await root.locator('.sticky-origin-card textarea').first().fill('テスト用の個人付箋');
+    await root.locator('.sticky-origin-card [data-sticky-text]').first().fill('テスト用の個人付箋');
     await expect.poll(()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text)).toBe('テスト用の個人付箋');
     await shot('sticky');
    }

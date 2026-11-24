@@ -283,7 +283,7 @@
 #editForm[data-kind="todos"] .origin-todo-edit-fields>.form-field,#editForm[data-kind="memos"] .origin-memo-edit-fields>.form-field{margin:0}
 #editForm[data-kind="todos"] .origin-todo-status-field{display:grid;grid-template-columns:55px minmax(0,1fr);align-items:center;gap:8px}
 #editForm[data-kind="todos"] .origin-todo-status-field select{min-width:0;max-width:220px}
-#editForm[data-kind="memos"] .origin-memo-body-input{resize:vertical;min-height:260px}
+#editForm[data-kind="memos"] .origin-memo-body-input{resize:vertical;min-height:260px;height:clamp(260px,48dvh,480px)}
 #editForm[data-kind="memos"] .origin-memo-edit-fields>fieldset{margin:0;min-width:0}
 @media(max-width:770px){
  #editForm[data-kind="tasks"] .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:9px;row-gap:3px}
@@ -298,7 +298,7 @@
  #editForm[data-kind="memos"] .origin-memo-palette label{min-width:0;min-height:44px;padding:6px 4px;justify-content:center;gap:5px;font-size:11px}
  #editForm[data-kind="memos"] .origin-memo-palette input[type="radio"]{width:16px!important;min-width:16px;min-height:16px!important;height:16px!important}
  #editForm[data-kind="memos"] .origin-memo-swatch{width:17px;height:17px;flex-basis:17px}
- #editForm[data-kind="memos"] .origin-memo-body-input{min-height:clamp(165px,32dvh,260px)}
+ #editForm[data-kind="memos"] .origin-memo-body-input{min-height:180px;height:clamp(180px,38dvh,320px)}
 }
 `));
     mount.querySelector('style').appendChild(document.createTextNode(`
@@ -3270,18 +3270,18 @@ function syncOriginEditorViewport(){
  sheet.style.setProperty('--origin-visible-height',Math.max(220,Math.round(height))+'px');
  sheet.style.transform=viewport?.offsetTop>0?'translateY('+Math.round(viewport.offsetTop)+'px)':'';
  const focused=mount.activeElement;
- const fieldFocused=Boolean(focused&&sheet.contains(focused)&&focused.matches('input,select,textarea'));
+ const fieldFocused=Boolean(focused&&sheet.contains(focused)&&focused.matches('input,select,textarea,[data-origin-note-editor]'));
  sheet.dataset.originKeyboard=String(fieldFocused&&(window.innerHeight-height>110||originEditorInitialHeight-height>110));
  keepOriginEditorFieldVisible();
 }
 function keepOriginEditorFieldVisible(field=mount.activeElement){
  if(!panelOpen||panelMode!=='edit'||window.innerWidth>770)return;
  const body=$('#sheet .sheet-body');
- if(!body||!field||!body.contains(field)||!field.matches('input,select,textarea'))return;
+ if(!body||!field||!body.contains(field)||!field.matches('input,select,textarea,[data-origin-note-editor]'))return;
  const viewport=body.getBoundingClientRect(),bounds=field.getBoundingClientRect();
  const top=viewport.top+12,bottom=viewport.bottom-22;
  // When a field is invalid, keep its inline explanation visible as well.
- const note=field.dataset.originFieldInvalid==='true'?body.querySelector('#originFieldError'):null;
+ const note=field.dataset.originFieldInvalid==='true'||field.getAttribute('aria-invalid')==='true'?body.querySelector('#originFieldError'):null;
  const visibleEnd=Math.max(bounds.bottom,note?.getBoundingClientRect().bottom||bounds.bottom);
  if(visibleEnd>bottom)body.scrollTop+=visibleEnd-bottom;
  const updated=field.getBoundingClientRect();
@@ -3292,6 +3292,11 @@ function clearOriginFieldError(form){
  const field=form.querySelector('[data-origin-field-invalid="true"]');
  if(field){
    field.removeAttribute('aria-invalid');
+   if(field.name==='body'){
+     const surface=originMemoEditors.get(form)?.surface;
+     surface?.removeAttribute('aria-invalid');
+     surface?.removeAttribute('aria-describedby');
+   }
    delete field.dataset.originFieldInvalid;
    delete field.dataset.originErrorCode;
    const ids=(field.getAttribute('aria-describedby')||'').split(/\s+/).filter(id=>id&&id!=='originFieldError');
@@ -3354,11 +3359,13 @@ function markOriginInvalidField(form,name,message){
  field.setAttribute('aria-invalid','true');
  const existing=field.getAttribute('aria-describedby');
  field.setAttribute('aria-describedby',[existing,note.id].filter(Boolean).join(' '));
- field.focus({preventScroll:true});
+ const target=name==='body'?(originMemoEditors.get(form)?.surface||field):field;
+ if(target!==field){target.setAttribute('aria-invalid','true');target.setAttribute('aria-describedby',note.id);}
+ target.focus({preventScroll:true});
  requestAnimationFrame(()=>{
-   if(!form.isConnected||!field.isConnected)return;
-   if(mount.activeElement!==field)field.focus({preventScroll:true});
-   keepOriginEditorFieldVisible(field);
+   if(!form.isConnected||!target.isConnected)return;
+   if(mount.activeElement!==target)target.focus({preventScroll:true});
+   keepOriginEditorFieldVisible(target);
  });
  return true;
 }

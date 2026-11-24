@@ -81,7 +81,7 @@ test('Origin duplicates a schedule with unsaved edits and saves memo tags',async
  expect(titles).toContain('複製元');expect(titles).toContain('複製先');
  const memo=await createPanel(root,'memos');
  await memo.locator('[name="title"]').fill('タグ付きメモ');
- await memo.locator('[name="body"]').fill('メモ本文');
+ await memo.locator('[data-origin-note-editor]').fill('メモ本文');
  await memo.locator('[name="tags"]').fill('運用, 引継ぎ');
  await root.locator('[form="editForm"]').click();
  await expect(root.locator('#editForm')).toHaveCount(0);
