@@ -89,3 +89,33 @@ test('direct editor preserves plain backing text, multiline insertion, caret scr
  await expect.poll(()=>note.evaluate(el=>el.scrollTop)).toBeGreaterThan(0);
  await expect(page.locator('textarea')).toHaveValue(long);
 });
+
+test('toolbar uses the selected text even if native selection collapses while choosing a color',async({page})=>{
+ await boot(page,390);
+ const note=page.getByRole('textbox',{name:'本文'});
+ await note.click();
+ await note.press('Home');
+ for(let i=0;i<3;i++)await note.press('ArrowRight');
+ await note.press('Shift+ArrowRight');
+ await note.press('Shift+ArrowRight');
+ const color=page.getByRole('combobox',{name:'文字色'});
+ await color.focus();
+ // Model the native select/focus transition: the browser no longer retains
+ // the editor range. The toolbar must keep the range from before that transition.
+ await note.evaluate(el=>el.ownerDocument.getSelection().collapse(el.firstChild,0));
+ await color.selectOption('red');
+ await expect(note.locator('[data-note-format-color=red]')).toHaveText('太字');
+ await expect(note.locator('[data-note-format-color=red]')).toHaveCSS('color','rgb(143, 32, 52)');
+ await expect(note).toBeFocused();
+ await page.getByRole('button',{name:'下線',exact:true}).click();
+ await expect(note.locator('u')).toHaveText('太字');
+ await expect(note.locator('u')).toHaveCSS('text-decoration-line','underline');
+ await expect(page.getByRole('button',{name:'下線',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.getByRole('button',{name:'取り消し線',exact:true}).click();
+ await expect(note.locator('s')).toHaveText('太字');
+ await expect(note.locator('s')).toHaveCSS('text-decoration-line','line-through');
+ // A genuinely new selection must replace the preserved range.
+ await selectNoteText(note,0,2);
+ await page.getByRole('button',{name:'太字',exact:true}).click();
+ await expect(note.locator('strong')).toHaveText('共通');
+});

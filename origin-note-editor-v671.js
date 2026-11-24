@@ -24,6 +24,11 @@
   [data-note-format-color=amber]{color:var(--origin-note-amber,#714411)}
   [data-note-format-size=small]{font-size:.875em}
   [data-note-format-size=large]{font-size:1.25em}
+  /* Origin disables synthetic font faces globally. Explicit note marks need
+     a local exception for Japanese fonts without native italic faces. */
+  :is(.origin-note-editable,.memo-document,.memo-card>p,.origin-note-format-tools) em{font-style:italic;font-synthesis:weight style}
+  :is(.origin-note-editable,.memo-document,.memo-card>p,.origin-note-format-tools) u{text-decoration-line:underline}
+  :is(.origin-note-editable,.memo-document,.memo-card>p,.origin-note-format-tools) s{text-decoration-line:line-through}
   .origin-note-format-tools{display:flex;flex:0 0 auto;align-items:center;flex-wrap:wrap;gap:4px;min-width:0;
     padding:4px 0;color:var(--ink,#252b37);font-size:12px}
   .origin-note-format-tools button,.origin-note-format-tools select{
@@ -118,7 +123,7 @@
     if(stickyId){surface.dataset.stickyText=stickyId;delete textarea.dataset.stickyText;surface.dataset.originNoteSurface='light';}
     textarea.dataset.originNoteBacking='';textarea.hidden=true;
     let text=textarea.value,value=model.envelope(text,model.read(text,format));
-    let composing=false,edit=null,syncing=false,selected={start:0,end:0,backward:false};
+    let composing=false,edit=null,syncing=false,selected={start:0,end:0,backward:false},toolbarRange=null;
     const undo=[],redo=[],buttons=[],limit=textarea.maxLength<0?6000:textarea.maxLength;
     const controller=new AbortController();
     const listen=(target,name,f)=>target.addEventListener(name,f,{signal:controller.signal});
@@ -130,15 +135,23 @@
       const a=offset(s.anchorNode,s.anchorOffset),b=offset(s.focusNode,s.focusOffset);
       return {start:Math.min(a,b),end:Math.max(a,b),backward:a>b};
     }
-    function remember(){const r=readSelection();if(r)selected=r;return selected;}
+    function remember(){
+      // A native select/button may leave behind a collapsed range after it
+      // takes focus. Only the active text surface owns a new selection.
+      if(surface.getRootNode().activeElement===surface){const r=readSelection();if(r)selected=r;}
+      return selected;
+    }
     function focusSelection(r=selected){
       const normalize=n=>Math.max(0,Math.min(text.length,n));
-      selected={start:normalize(r.start),end:normalize(r.end),backward:Boolean(r.backward)};
+      const restored={start:normalize(r.start),end:normalize(r.end),backward:Boolean(r.backward)};
       const point=n=>{const walker=doc.createTreeWalker(surface,4);let node;while((node=walker.nextNode())){if(n<=node.length)return [node,n];n-=node.length;}return [surface,surface.childNodes.length];};
-      const a=point(selected.backward?selected.end:selected.start),b=point(selected.backward?selected.start:selected.end);
+      const a=point(restored.backward?restored.end:restored.start),b=point(restored.backward?restored.start:restored.end);
       surface.focus({preventScroll:true});const s=selection();
       if(s?.setBaseAndExtent)s.setBaseAndExtent(...a,...b);
-      else if(s){const range=doc.createRange();range.setStart(...point(selected.start));range.setEnd(...point(selected.end));s.removeAllRanges();s.addRange(range);}
+      else if(s){const range=doc.createRange();range.setStart(...point(restored.start));range.setEnd(...point(restored.end));s.removeAllRanges();s.addRange(range);}
+      // focus() fires synchronously and may temporarily replace the cached
+      // selection. Publish the restored range only after setting it in the DOM.
+      selected=restored;
       // Replacing styled text nodes must not leave the caret outside the editor.
       const caret=doc.createRange();caret.setStart(...b);caret.collapse(true);
       const rect=caret.getBoundingClientRect(),frame=surface.getBoundingClientRect();
@@ -193,32 +206,48 @@
       if(!from.length)return;
       remember();to.push(state());const next=from.pop();setState(next.text,next.format,next.range,{record:false});
     }
-    function formatSelection(change){
+    function formatSelection(change,r=remember()){
       if(composing)return;
-      const r=remember(),a=r.start,b=r.end;
+      const a=r.start,b=r.end;
       if(a===b){hint.textContent='先に本文で書式を変更したい文字を選択してください。';focusSelection(r);return;}
       const patch=typeof change==='function'?change(a,b):change;
       setState(text,model.apply(text,value,a,b,patch),r);
       hint.textContent='本文の文字を選択してから書式を変更できます。';
     }
     const toggler=flag=>(a,b)=>model.hasFlag(text,value,a,b,flag)?{removeFlag:flag}:{flags:flag};
+    function applyToolbar(change){
+      const range=toolbarRange||{...remember()};
+      toolbarRange=null;
+      formatSelection(change,range);
+    }
     if(toolbar){
       for(const [flag,label,glyph,tag] of FORMAT_BUTTONS){
         const button=element('button'),icon=element(tag,glyph);
         button.type='button';button.setAttribute('aria-label',label);button.title=label;
         icon.setAttribute('aria-hidden','true');button.append(icon);
-        listen(button,'click',()=>formatSelection(toggler(flag)));buttons.push([button,flag]);holder.append(button);
+        listen(button,'click',()=>applyToolbar(toggler(flag)));buttons.push([button,flag]);holder.append(button);
       }
       function choices(label,key,entries){
         const control=element('select');control.setAttribute('aria-label',label);
         const placeholder=element('option',label);placeholder.value='';placeholder.disabled=true;control.append(placeholder);
         for(const [id,name] of entries){const option=element('option',name);option.value=id;control.append(option);}
-        control.value='';listen(control,'change',()=>{const pick=control.value;if(pick)formatSelection({[key]:pick==='default'?null:pick});control.value='';});return control;
+        control.value='';listen(control,'change',()=>{const pick=control.value;if(pick)applyToolbar({[key]:pick==='default'?null:pick});control.value='';});return control;
       }
       holder.append(choices('文字色','color',[['default','標準色'],...model.COLORS.map(c=>[c,COLOR_LABELS[c]])]));
       holder.append(choices('文字サイズ','size',[['small','小'],['default','標準'],['large','大']]));
-      const clear=element('button','書式解除');clear.type='button';clear.setAttribute('aria-label','書式を解除する');listen(clear,'click',()=>formatSelection({clear:true}));holder.append(clear);
-      listen(holder,'pointerdown',remember);textarea.before(holder);
+      const clear=element('button','書式解除');clear.type='button';clear.setAttribute('aria-label','書式を解除する');listen(clear,'click',()=>applyToolbar({clear:true}));holder.append(clear);
+      // Capture before the browser changes focus, including native color and
+      // size pickers. Preserve mouse selection when pressing a toolbar button;
+      // keyboard/touch controls and native selects retain their default focus.
+      listen(holder,'pointerdown',event=>{
+        const control=event.target.closest('button,select');if(!control)return;
+        toolbarRange={...remember()};
+        if(event.button===0&&event.pointerType==='mouse'&&control.matches('button'))event.preventDefault();
+      });
+      listen(holder,'focusin',event=>{
+        if(!holder.contains(event.relatedTarget)&&!toolbarRange)toolbarRange={...selected};
+      });
+      textarea.before(holder);
     }
     textarea.before(surface);
     for(const label of labels)listen(label,'click',()=>surface.focus());
@@ -242,8 +271,15 @@
     listen(surface,'drop',ev=>ev.preventDefault());
     listen(surface,'input',ev=>{if(!composing&&!ev.isComposing)commitNative();});
     listen(textarea,'input',()=>{if(syncing||composing||textarea.value===text)return;const next=clipped(textarea.value,limit);setState(next,model.retarget(text,next,value),{start:next.length,end:next.length,backward:false},{focus:false});});
-    for(const name of ['keyup','pointerup','focus','focusout'])listen(surface,name,()=>{remember();updatePressed();});
+    for(const name of ['keyup','pointerup','focus'])listen(surface,name,()=>{remember();updatePressed();});
+    listen(surface,'focusout',()=>{
+      const range=readSelection();
+      if(range&&(range.start!==range.end||selected.start===selected.end))selected=range;
+      updatePressed();
+    });
+    listen(surface,'pointerdown',()=>{toolbarRange=null;});
     listen(surface,'keydown',ev=>{
+      toolbarRange=null;
       if(ev.isComposing||composing||ev.altKey||(!ev.ctrlKey&&!ev.metaKey))return;
       const key=ev.key.toLowerCase();
       if(key==='z'||key==='y'){ev.preventDefault();history(key==='z'&&!ev.shiftKey);return;}

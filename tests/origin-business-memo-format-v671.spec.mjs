@@ -140,3 +140,35 @@ test('Origin direct memo editor keeps native required validation and focuses the
  await root.getByRole('button',{name:'変更を保存',exact:true}).click();
  await expect(root.locator('.memo-card')).toContainText('新しい内容');
 });
+
+test('Origin Japanese italic is visually enabled in the live memo, card and saved reader',async({page,baseURL})=>{
+ const root=await launch(page,baseURL,'origin-memo-italic-v673',1366);
+ const created=await writeMemo(page,{type:'memo.create',body:'重要な手順 ABC'});
+ expect(created.ok).toBe(true);
+ await root.locator('[data-action="list-quick-edit"][data-kind="memos"]').click();
+ const body=root.locator('#editForm [data-origin-note-editor]');
+ await body.click();
+ await body.press('Home');
+ await body.press('Shift+ArrowRight');
+ await body.press('Shift+ArrowRight');
+ const italic=root.getByRole('button',{name:'斜体',exact:true});
+ await italic.click();
+ const mark=body.locator('em');
+ await expect(mark).toHaveText('重要');
+ await expect(mark).toHaveCSS('font-style','italic');
+ // Origin's host disables synthetic glyphs. Japanese fonts often have no
+ // actual italic face; the note-specific mark must opt into synthesis.
+ await expect(mark).toHaveCSS('font-synthesis-style','auto');
+ await expect(italic).toHaveAttribute('aria-pressed','true');
+ await root.getByRole('button',{name:'変更を保存',exact:true}).click();
+ expect((await readMemo(page,created.id)).bodyFormat).toEqual({text:'重要な手順 ABC',runs:[{start:0,end:2,flags:2}]});
+ const card=root.locator('.memo-card').filter({hasText:'書式付き手順'});
+ await expect(card.locator('em')).toHaveCSS('font-synthesis-style','auto');
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+ await root.locator('#desktopNav [data-route="notes"]').click();
+ await card.click();
+ await expect(root.locator('.memo-document em')).toHaveText('重要');
+ await expect(root.locator('.memo-document em')).toHaveCSS('font-style','italic');
+ await expect(root.locator('.memo-document em')).toHaveCSS('font-synthesis-style','auto');
+});
