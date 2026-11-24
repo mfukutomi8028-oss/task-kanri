@@ -1,3 +1,4 @@
+import {selectNoteText} from './helpers/origin-note-editing.mjs';
 import {test,expect} from '@playwright/test';
 
 test.use({locale:'ja-JP',serviceWorkers:'block'});
@@ -39,7 +40,7 @@ for(const width of [320,1366]){
   const dialog=root.getByRole('dialog',{name:'付箋の拡大編集'});
   const editor=dialog.getByRole('textbox',{name:'付箋本文を大きく編集'});
   const bold=dialog.getByRole('button',{name:/太字/});
-  await editor.evaluate(node=>node.setSelectionRange(0,4));
+  await selectNoteText(editor,0,4);
   await expect(bold).toBeVisible({timeout:3000});
   await bold.click();
   await expect.poll(()=>readContent(page)).toMatchObject({text,revision:initial.revision+1,format:{revision:initial.revision+1}});
@@ -57,11 +58,10 @@ for(const width of [320,1366]){
    });
    await expect(bold).toBeFocused();
    // Drive native event shape without depending on a Japanese OS input method.
-   await editor.focus();
+   await selectNoteText(editor,text.length);
    await editor.evaluate(node=>{
-    node.setSelectionRange(node.value.length,node.value.length);
     node.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));
-    node.value+='（確認中）';
+    node.append(document.createTextNode('（確認中）'));
     node.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true,inputType:'insertCompositionText'}));
    });
    await page.waitForTimeout(800);
@@ -76,30 +76,28 @@ for(const width of [320,1366]){
   await dialog.getByRole('button',{name:'拡大編集を閉じる'}).click();
   await expect(dialog).toBeHidden();
   await expect(card.locator('[data-sticky-expand]')).toBeFocused();
-  const preview=card.locator('[data-sticky-format-preview]');
-  await expect(preview).toBeVisible();
-  await expect(preview).toHaveText(text,{useInnerText:false});
-  const formattedText=preview.getByText('重要事項',{exact:true});
+  await expect(card.locator('[data-sticky-format-preview]')).toHaveCount(0);
+  await expect(boardText).toHaveText(text);
+  const formattedText=boardText.locator('strong');
   await expect(formattedText).toBeVisible();
   expect(await formattedText.evaluate(e=>parseInt(getComputedStyle(e).fontWeight,10))).toBeGreaterThanOrEqual(600);
-  await preview.click();
-  await boardText.evaluate(node=>node.setSelectionRange(0,0));
+  await selectNoteText(boardText,0);
   await page.keyboard.insertText('確認：');
-  await expect(preview).toBeHidden();
+  await expect(boardText.locator('strong')).toHaveText('重要事項');
+  await expect(boardText).toBeFocused();
   text='確認：'+text;
   await expect.poll(()=>readContent(page)).toMatchObject({text,format:{runs:[{start:3,end:7,flags:1}]}});
 
   await page.reload();
   const reopened=await openStickyBoard(page,width);
   const reopenedCard=reopened.locator('.sticky-origin-card');
-  await expect(reopenedCard.getByRole('textbox',{name:'付箋本文',exact:true})).toHaveValue(text);
-  const reopenedMark=reopenedCard.locator('[data-sticky-format-preview]').getByText('重要事項',{exact:true});
+  await expect(reopenedCard.getByRole('textbox',{name:'付箋本文',exact:true})).toHaveText(text);
+  const reopenedMark=reopenedCard.locator('[data-sticky-text] strong');
   await expect(reopenedMark).toBeVisible();
   expect(await reopenedMark.evaluate(e=>parseInt(getComputedStyle(e).fontWeight,10))).toBeGreaterThanOrEqual(600);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   const replacement=reopenedCard.getByRole('textbox',{name:'付箋本文',exact:true});
-  await reopenedCard.locator('[data-sticky-format-preview]').click();
-  await replacement.evaluate(node=>node.setSelectionRange(3,7));
+  await selectNoteText(replacement,3,7);
   await page.keyboard.insertText('更新済み');
   await expect.poll(()=>readContent(page)).toMatchObject({text:text.replace('重要事項','更新済み')});
   expect(await readContent(page)).not.toHaveProperty('format');
@@ -123,7 +121,7 @@ test('Origin does not write a stale sticky editor over text changed during toolb
  await card.locator('[data-sticky-expand]').click();
  const dialog=root.getByRole('dialog',{name:'付箋の拡大編集'});
  const editor=dialog.getByRole('textbox',{name:'付箋本文を大きく編集'});
- await editor.evaluate(node=>node.setSelectionRange(0,3));
+ await selectNoteText(editor,0,3);
  const bold=dialog.getByRole('button',{name:'太字',exact:true});
  await bold.focus();
  await page.evaluate(async()=>{
@@ -138,7 +136,7 @@ test('Origin does not write a stale sticky editor over text changed during toolb
  await bold.click();
  await expect(dialog.locator('.sticky-origin-editor-footer [data-sticky-status]')).toContainText('競合',{timeout:2500});
  expect(await readContent(page)).toEqual(remote);
- await expect(editor).toHaveValue('変更前の本文');
+ await expect(editor).toHaveText('変更前の本文');
 });
 
 test('Origin displays old sticky text but suppresses marks carried through an older edit round trip',async({page,baseURL})=>{
@@ -164,8 +162,9 @@ test('Origin displays old sticky text but suppresses marks carried through an ol
  await page.reload();
  const reopened=await openStickyBoard(page,1366);
  const card=reopened.locator('.sticky-origin-card');
- await expect(card.getByRole('textbox',{name:'付箋本文',exact:true})).toHaveValue('以前の一意な本文');
- await expect(card.locator('[data-sticky-format-preview]')).toBeHidden();
+ await expect(card.getByRole('textbox',{name:'付箋本文',exact:true})).toHaveText('以前の一意な本文');
+ await expect(card.locator('[data-sticky-text] strong')).toHaveCount(0);
+ await expect(card.locator('[data-sticky-format-preview]')).toHaveCount(0);
 });
 
 test('Origin long formatted sticky cards scroll their visible text and still open direct editing',async({page,baseURL})=>{
@@ -190,13 +189,46 @@ test('Origin long formatted sticky cards scroll their visible text and still ope
   if(!result.ok)throw Error('synthetic long sticky: '+result.error);
  });
  const card=root.locator('.sticky-origin-card');
- const preview=card.locator('[data-sticky-format-preview]');
- await expect(preview).toBeVisible();
- const box=await preview.boundingBox();
+ const editor=card.getByRole('textbox',{name:'付箋本文',exact:true});
+ await expect(editor.locator('strong')).toBeVisible();
+ const box=await editor.boundingBox();
  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
  await page.mouse.wheel(0,250);
- await expect.poll(()=>preview.evaluate(node=>node.scrollTop),{timeout:2500}).toBeGreaterThan(0);
- await preview.click();
- await expect(card.getByRole('textbox',{name:'付箋本文',exact:true})).toBeFocused();
- await expect(preview).toBeHidden();
+ await expect.poll(()=>editor.evaluate(node=>node.scrollTop),{timeout:2500}).toBeGreaterThan(0);
+ await editor.click();
+ await expect(editor).toBeFocused();
+ await expect(editor.locator('strong')).toBeVisible();
+});
+
+test('Origin sticky transfers the card selection to the complete live formatting toolbar',async({page,baseURL})=>{
+ const room='sticky-format-v672-colors';
+ await page.route('**/*',route=>new URL(route.request().url()).origin===baseURL?route.continue():route.abort());
+ await page.addInitScript(room=>{
+  Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
+  localStorage.setItem('systemTaskUser','OriginStickyQA');
+  localStorage.setItem('systemTaskRoomId',room);
+ },room);
+ await page.goto('/?room='+room);
+ const root=await openStickyBoard(page,390);
+ await root.locator('.sticky-add').click();
+ const card=root.locator('.sticky-origin-card'),body=card.getByRole('textbox',{name:'付箋本文',exact:true});
+ await body.fill('重要な手順');
+ await expect.poll(()=>readContent(page)).toMatchObject({text:'重要な手順'});
+ await selectNoteText(body,0,2);
+ await card.locator('[data-sticky-expand]').click();
+ const dialog=root.getByRole('dialog',{name:'付箋の拡大編集'});
+ const editor=dialog.getByRole('textbox',{name:'付箋本文を大きく編集'});
+ await dialog.getByRole('button',{name:'太字',exact:true}).click();
+ await dialog.getByRole('button',{name:'斜体',exact:true}).click();
+ await dialog.getByRole('button',{name:'下線',exact:true}).click();
+ await dialog.getByRole('button',{name:'取り消し線',exact:true}).click();
+ await dialog.getByRole('combobox',{name:'文字色'}).selectOption('red');
+ await dialog.getByRole('combobox',{name:'文字サイズ'}).selectOption('large');
+ await expect(editor.locator('[data-note-format-color=red][data-note-format-size=large] s u em strong')).toHaveText('重要');
+ await expect(dialog.locator('.origin-note-format-preview')).toHaveCount(0);
+ await expect.poll(()=>readContent(page)).toMatchObject({format:{runs:[{start:0,end:2,flags:15,color:'red',size:'large'}]}});
+ await dialog.getByRole('button',{name:'拡大編集を閉じる'}).click();
+ await expect(body.locator('[data-note-format-color=red][data-note-format-size=large]')).toHaveText('重要');
+ await body.focus();
+ await expect(body.locator('strong')).toHaveText('重要');
 });

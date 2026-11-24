@@ -93,7 +93,7 @@ test('Origin sticky: create, Japanese text, paper color and business memo return
  await root.locator('.sticky-add').click();
  const card=root.locator('.sticky-origin-card');
  await expect(card).toHaveCount(1);
- await card.locator('textarea').fill('会議の確認事項');
+ await card.locator('[data-sticky-text]').fill('会議の確認事項');
  await expect(card.locator('[data-sticky-status]')).toContainText('未保存');
  await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text)).toBe('会議の確認事項');
  await card.locator('[data-sticky-color-toggle]').click();
@@ -104,7 +104,7 @@ test('Origin sticky: create, Japanese text, paper color and business memo return
  await expect(root.locator('#originMemoQuery')).toBeVisible();
  await root.locator('#desktopNav .origin-memo-nav').hover();
  await root.locator('#desktopNav [data-memo-nav-mode="personal"]').click();
- await expect(root.locator('.sticky-origin-card textarea')).toHaveValue('会議の確認事項');
+ await expect(root.locator('.sticky-origin-card [data-sticky-text]')).toHaveText('会議の確認事項');
 });
 test('Origin sticky: layout drag persists only layout, search keeps note readable',async({page})=>{
  const root=await origin(page);
@@ -127,7 +127,7 @@ test('Origin sticky: mobile uses list instead of overwriting canvas coordinates'
  await expect(root.locator('.sticky-origin-resize')).toBeHidden();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
  const original=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0].layout.x);
- await root.locator('.sticky-origin-card textarea').fill('スマートフォンの付箋');
+ await root.locator('.sticky-origin-card [data-sticky-text]').fill('スマートフォンの付箋');
  await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text)).toBe('スマートフォンの付箋');
  expect(await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0].layout.x)).toBe(original);
 });
@@ -148,13 +148,13 @@ test('Origin sticky is usable with no login and local-only fallback',async({page
   await root.locator('#desktopNav [data-memo-nav-mode="personal"]').click();
  await expect(root.locator('.sticky-add')).toBeEnabled();
  await root.locator('.sticky-add').click();
- await root.locator('.sticky-origin-card textarea').fill('ログイン不要の個人付箋');
+ await root.locator('.sticky-origin-card [data-sticky-text]').fill('ログイン不要の個人付箋');
  await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659?.readSnapshot().notes[0]?.content.text))
    .toBe('ログイン不要の個人付箋');
  await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('森井'));
  await expect(root.locator('.sticky-origin-card')).toHaveCount(0);
  await page.evaluate(()=>window.WorkBoardPaletteBridge.selectUser('福冨'));
- await expect(root.locator('.sticky-origin-card textarea')).toHaveValue('ログイン不要の個人付箋');
+ await expect(root.locator('.sticky-origin-card [data-sticky-text]')).toHaveText('ログイン不要の個人付箋');
  await page.reload();
  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
@@ -162,14 +162,14 @@ test('Origin sticky is usable with no login and local-only fallback',async({page
  await reloaded.locator('[data-route="notes"]').first().click();
  await reloaded.locator('#desktopNav .origin-memo-nav').hover();
  await reloaded.locator('#desktopNav [data-memo-nav-mode="personal"]').click();
- await expect(reloaded.locator('.sticky-origin-card textarea')).toHaveValue('ログイン不要の個人付箋');
+ await expect(reloaded.locator('.sticky-origin-card [data-sticky-text]')).toHaveText('ログイン不要の個人付箋');
 });
 
 test('Origin sticky blocks navigation while a note has an uncommitted draft',async({page})=>{
  const root=await origin(page);
  await root.locator('.sticky-add').click();
  await page.evaluate(()=>{window.__stickyHoldTextSave=true});
- await root.locator('.sticky-origin-card textarea').fill('保存待ちの個人付箋');
+ await root.locator('.sticky-origin-card [data-sticky-text]').fill('保存待ちの個人付箋');
  await root.locator('#desktopNav [data-route="tasks"]').click();
  // Default Playwright behavior dismisses the native confirm prompt.
  await expect(root.locator('#originStickyMountV659')).toBeVisible();
@@ -202,7 +202,7 @@ test('Origin sticky keeps the newest draft when two writes overlap',async({page}
  const root=await origin(page);
  await root.locator('.sticky-add').click();
  await page.evaluate(()=>{window.__stickyHoldTextSave=true});
- const textarea=root.locator('.sticky-origin-card textarea');
+ const textarea=root.locator('.sticky-origin-card [data-sticky-text]');
  await textarea.fill('保存を待つ文章');
  await textarea.evaluate(element=>element.blur());
  await expect.poll(async()=>page.evaluate(()=>(window.__stickyWaitingSaves||[]).length)).toBe(1);
@@ -280,14 +280,14 @@ test('Origin sticky navigator recovers a card hidden by filters and raises it ab
  await root.locator('.sticky-add').click();
  const first=root.locator('.sticky-origin-card').first();
  const firstId=await first.getAttribute('data-id');
- await first.locator('textarea').fill('会議の配布資料');
+ await first.locator('[data-sticky-text]').fill('会議の配布資料');
  await expect.poll(async()=>page.evaluate(id=>window.WorkBoardPersonalStickyStoreV659
   .readSnapshot().notes.find(note=>note.id===id)?.content.text,firstId)).toBe('会議の配布資料');
 
  await root.locator('.sticky-add').click();
  const second=root.locator('.sticky-origin-card').last();
  const secondId=await second.getAttribute('data-id');
- await second.locator('textarea').fill('明日の確認');
+ await second.locator('[data-sticky-text]').fill('明日の確認');
  await expect.poll(async()=>page.evaluate(id=>window.WorkBoardPersonalStickyStoreV659
   .readSnapshot().notes.find(note=>note.id===id)?.content.text,secondId)).toBe('明日の確認');
 
@@ -299,7 +299,7 @@ test('Origin sticky navigator recovers a card hidden by filters and raises it ab
  await expect(navigator.locator('[data-sticky-index-select]')).toHaveCount(2);
  await navigator.locator('[data-sticky-index-select="'+firstId+'"]').click();
  await expect(root.locator('[data-sticky-color-filter]')).toHaveValue('all');
- await expect(root.locator('.sticky-origin-card[data-id="'+firstId+'"] textarea')).toHaveValue('会議の配布資料');
+ await expect(root.locator('.sticky-origin-card[data-id="'+firstId+'"] [data-sticky-text]')).toHaveText('会議の配布資料');
  await expect.poll(async()=>page.evaluate(id=>{
    const notes=window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes;
    const chosen=notes.find(note=>note.id===id);
@@ -328,7 +328,7 @@ test('Origin user selector confirms before switching away from an unsaved person
  const root=await origin(page);
  await root.locator('.sticky-add').click();
  await page.evaluate(()=>{window.__stickyHoldTextSave=true});
- const text=root.locator('.sticky-origin-card textarea');
+ const text=root.locator('.sticky-origin-card [data-sticky-text]');
  await text.fill('まだ保存していない利用者ごとの付箋');
  const picker=root.locator('#originUserSelect');
  const prior=await picker.inputValue();
@@ -342,7 +342,7 @@ test('Origin user selector confirms before switching away from an unsaved person
    element.dispatchEvent(new Event('change',{bubbles:true,composed:true}));
  },next);
  await expect(picker).toHaveValue(prior);
- await expect(text).toHaveValue('まだ保存していない利用者ごとの付箋');
+ await expect(text).toHaveText('まだ保存していない利用者ごとの付箋');
  await page.evaluate(()=>{
    window.__stickyHoldTextSave=false;
    for(const release of window.__stickyWaitingSaves||[])release();
@@ -470,7 +470,7 @@ test('long character counter never overlaps the bottom-right resize handle at mi
  const root=await origin(page);
  await root.locator('.sticky-add').click();
  const card=root.locator('.sticky-origin-card').first();
- await card.locator('textarea').evaluate(el=>el.blur());
+ await card.locator('[data-sticky-text]').evaluate(el=>el.blur());
  await page.evaluate(async()=>{
    const service=window.WorkBoardPersonalStickyStoreV659;
    const note=service.readSnapshot().notes[0];
@@ -494,7 +494,7 @@ test('long character counter never overlaps the bottom-right resize handle at mi
  for(let i=1;i<footerRects.length;i++){
    expect(footerRects[i-1].x+footerRects[i-1].width).toBeLessThanOrEqual(footerRects[i].x+.75);
  }
- await card.locator('textarea').fill('短文');
+ await card.locator('[data-sticky-text]').fill('短文');
  await expect(count).toHaveText('2/2000');
 });
 
@@ -562,11 +562,11 @@ test('temporary expanded editor shares saved text but never changes persisted no
  await card.locator('[data-sticky-expand]').click();
  const modal=root.locator('dialog.sticky-origin-editor');
  await expect(modal).toBeVisible();
- await modal.locator('textarea[data-sticky-text]').fill('拡大編集で入力した内容');
+ await modal.locator('[data-sticky-text]').fill('拡大編集で入力した内容');
  await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text)).toBe('拡大編集で入力した内容');
  await modal.locator('[data-sticky-expand-close]').click();
  await expect(modal).toHaveCount(0);
- await expect(root.locator('.sticky-origin-card textarea')).toHaveValue('拡大編集で入力した内容');
+ await expect(root.locator('.sticky-origin-card [data-sticky-text]')).toHaveText('拡大編集で入力した内容');
  const after=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0].layout);
  expect([after.x,after.y,after.width,after.height]).toEqual([before.x,before.y,before.width,before.height]);
 });
@@ -574,16 +574,16 @@ test('folded note shows only title until toggled open, retaining original conten
  const root=await origin(page);
  await root.locator('.sticky-add').click();
  const card=root.locator('.sticky-origin-card').first();
- await card.locator('textarea').fill('折りたたみ対象の長いメモ');
+ await card.locator('[data-sticky-text]').fill('折りたたみ対象の長いメモ');
  await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0]?.content.text)).toBe('折りたたみ対象の長いメモ');
  await expect(card.locator('[data-sticky-status]')).toBeHidden();
  await card.locator('[data-sticky-collapse]').click();
  await expect(card).toHaveClass(/sticky-origin-card-collapsed/);
- await expect(card.locator('textarea')).toBeHidden();
+ await expect(card.locator('[data-sticky-text]')).toBeHidden();
  await expect(card.locator('[data-sticky-collapse]')).toHaveAttribute('aria-pressed','true');
  await card.locator('[data-sticky-collapse]').click();
  await expect(card).not.toHaveClass(/sticky-origin-card-collapsed/);
- await expect(card.locator('textarea')).toHaveValue('折りたたみ対象の長いメモ');
+ await expect(card.locator('[data-sticky-text]')).toHaveText('折りたたみ対象の長いメモ');
 });
 
 test('Origin sticky no longer offers automatic arrangement or the login information line',async({page})=>{

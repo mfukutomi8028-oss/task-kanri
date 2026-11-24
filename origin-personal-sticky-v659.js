@@ -45,12 +45,8 @@
     .sticky-origin-card-head button:focus-visible,.sticky-origin-page-move:focus-visible{outline:2px solid #4659cc;outline-offset:2px}
     @media(min-width:768px){.sticky-origin-card-head button:not(.sticky-origin-grip){min-width:36px;width:36px;min-height:44px;padding:0 2px;font-size:11px}}
     .sticky-origin-note-body{display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);flex:1;min-height:68px}
-    .sticky-origin-note-body>:is(textarea,.sticky-origin-format-preview){grid-area:1/1;padding:12px 14px;font:inherit;font-size:14px;line-height:1.65}
-    .sticky-origin-card textarea{display:block;resize:none;min-height:0;width:100%;border:0;outline:0;background:transparent;color:inherit;overflow:auto}
-    .sticky-origin-format-preview{min-width:0;overflow:auto;scrollbar-width:thin;cursor:text;white-space:pre-wrap;overflow-wrap:anywhere}
-    .sticky-origin-note-body textarea:focus+.sticky-origin-format-preview{display:none}
-    .sticky-origin-note-body textarea:not(:focus):has(+.sticky-origin-format-preview:not([hidden])){color:transparent;scrollbar-width:none}
-    .sticky-origin-card textarea:focus-visible{outline:2px solid #4659cc;outline-offset:-2px}
+    .sticky-origin-note-body>.origin-note-editable{grid-area:1/1;padding:12px 14px;font:inherit;font-size:14px;line-height:1.65;min-width:0;min-height:0;height:100%;border:0;border-radius:0;background:transparent;color:inherit;overflow:auto;resize:none}
+    .sticky-origin-card .origin-note-editable:focus-visible{outline:2px solid #4659cc;outline-offset:-2px}
     .sticky-origin-foot{padding:4px 6px 6px;font-size:11px;min-height:38px;display:grid;grid-template-columns:32px 32px minmax(0,1fr) 42px auto 32px;gap:3px;align-items:center;color:#4f596c}
     .sticky-origin-foot-spacer{min-width:0;pointer-events:none}
     .sticky-origin-save-feedback{position:absolute;left:8px;bottom:46px;z-index:2;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 6px;border:1px solid rgba(70,85,120,.16);border-radius:6px;background:rgba(255,255,255,.9);color:#4a5872;font-size:10px;line-height:1.5;pointer-events:none}
@@ -99,11 +95,11 @@
     .sticky-origin-editor-header button{min-width:44px;min-height:44px;border:1px solid rgba(27,37,61,.2);
       border-radius:10px;background:rgba(255,255,255,.55);color:#273040;cursor:pointer}
     .sticky-origin-editor-body{display:flex;flex:1;min-height:0;flex-direction:column;overflow:auto;overscroll-behavior:contain}
-    .sticky-origin-editor textarea{flex:1 0 128px;min-height:128px;width:100%;resize:none;border:0;outline:0;padding:16px 20px;
-      background:transparent;color:inherit;font-size:16px;line-height:1.85;overflow:auto}
-    .sticky-origin-editor-body>.origin-note-format-tools,.sticky-origin-editor-body>.origin-note-format-preview{flex:none;margin:8px 12px}
+    .sticky-origin-editor .origin-note-editable{flex:1 0 128px;min-height:128px;width:100%;resize:none;border:0;outline:0;padding:16px 20px;
+      background:transparent;color:inherit;font-size:16px;line-height:1.85;overflow:auto;border-radius:0}
+    .sticky-origin-editor-body>.origin-note-format-tools{flex:none;margin:8px 12px}
     .sticky-origin-editor-body>.origin-note-format-tools{padding:8px;border-radius:8px;background:var(--paper)}
-    .sticky-origin-editor textarea:focus-visible{outline:2px solid #4659cc;outline-offset:-3px}
+    .sticky-origin-editor .origin-note-editable:focus-visible{outline:2px solid #4659cc;outline-offset:-3px}
     .sticky-origin-editor-footer{border-top:1px solid rgba(25,40,60,.12);font-size:12px}
     .sticky-origin-editor-footer [data-sticky-status][hidden]{display:none}
     @media(max-width:767px){
@@ -126,6 +122,8 @@
 
   function createPanel({ container, shadowRoot, service, onStatus } = {}) {
     if (!container || !shadowRoot || typeof shadowRoot.querySelector !== 'function') throw new TypeError('Sticky panel requires Origin ShadowRoot');
+    const noteEditor=root.WorkBoardOriginNoteEditorV671;
+    if(!noteEditor)throw new TypeError('Sticky panel requires the shared Origin note editor');
     if (!shadowRoot.querySelector('#originStickyStylesV659')) {
       const style = document.createElement('style');
       style.id = 'originStickyStylesV659';
@@ -138,7 +136,7 @@
     let query = '', colorFilter = 'all', indexOpen = false, allView = false, boardScale = 1, activePage = 1, composing = false, collapsedIds = new Set(), saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
     const pendingWrites=new Set();
     const contentSaves=new Map();
-    const boardTextState=new WeakMap(),boardSelection=new WeakMap(),richTextareas=new WeakSet();
+    const boardEditors=new WeakMap();
     let expandedEditor=null;
     const draftState=note=>{
       const {text,revision,format}=note.content;
@@ -149,7 +147,7 @@
     panel.className = 'sticky-origin-panel';
     panel.setAttribute('aria-label', '個人付箋ボード');
     container.replaceChildren(panel);
-    root.WorkBoardOriginNoteEditorV671?.installStyles(panel);
+    noteEditor.installStyles(panel);
     const notePage = note => Number.isInteger(note?.layout?.page) && note.layout.page>=1 && note.layout.page<=5 ? note.layout.page : 1;
     const pageNotes = () => data.filter(note=>notePage(note)===activePage);
     const pageKey = () => 'originStickyPageV660:'+encodeURIComponent(ownerRoom)+':'+encodeURIComponent(ownerUid);
@@ -237,14 +235,6 @@
       void next.finally(()=>{if(contentSaves.get(id)===next)contentSaves.delete(id);});
       return next;
     }
-    function showBoardFormatting(textarea,draft) {
-      const preview=textarea.nextElementSibling;
-      const editor=root.WorkBoardOriginNoteEditorV671;
-      if(!preview?.hasAttribute('data-sticky-format-preview'))return;
-      preview.hidden=!editor||!root.WorkBoardNoteTextFormatV671?.read(draft.text,draft.format).length;
-      if(preview.hidden)preview.replaceChildren();
-      else editor.renderInto(preview,draft.text,draft.format);
-    }
     function buildCard(note) {
       const card=createElement('article','sticky-origin-card');
       card.dataset.id=note.id;
@@ -295,7 +285,7 @@
       const focus=button('','sticky-origin-expand');
       focus.dataset.stickyExpand=note.id;
       focus.setAttribute('aria-label','付箋を大きく編集');
-      focus.title='大きく編集（元のサイズは保持します）';
+      focus.title='書式を変更・大きく編集（元のサイズは保持します）';
       const maximize=document.createElementNS('http://www.w3.org/2000/svg','svg');
       maximize.setAttribute('viewBox','0 0 24 24');
       maximize.setAttribute('aria-hidden','true');
@@ -324,23 +314,15 @@
       const draft=draftState(note);
       textarea.value=draft.text;
       textarea.spellcheck=false;
-      boardTextState.set(textarea,draft);
       const body=createElement('div','sticky-origin-note-body');
-      const preview=createElement('div','sticky-origin-format-preview');
-      preview.dataset.stickyFormatPreview='';
-      preview.dataset.originNoteSurface='light';
-      // The overlaid native textarea is the accessible editable representation.
-      preview.setAttribute('aria-hidden','true');
-      preview.tabIndex=-1;
-      preview.title='クリックして付箋を編集';
-      preview.addEventListener('click',()=>{
-        const range=preview.scrollHeight-preview.clientHeight;
-        const ratio=range>0?preview.scrollTop/range:0;
-        textarea.focus({preventScroll:true});
-        textarea.scrollTop=ratio*(textarea.scrollHeight-textarea.clientHeight);
-      });
-      body.append(textarea,preview);
-      showBoardFormatting(textarea,draft);
+      body.append(textarea);
+      const instance=noteEditor.attach(textarea,{toolbar:false,format:draft.format,onChange(next){
+        if(disposed)return;
+        const count=card.querySelector('.sticky-origin-char-count');
+        if(count)count.textContent=next.text.length+'/2000';
+        schedule(note.id,{...next,session:draft.session});
+      }});
+      boardEditors.set(card,instance);
       const colors=createElement('div','sticky-origin-palette');
       colors.hidden=true;colors.id='stickyPalette-'+note.id;
       colors.setAttribute('role','group');colors.setAttribute('aria-label','付箋の色');
@@ -402,7 +384,7 @@
       const draft=draftState(note);
       text.value=draft.text;
       text.spellcheck=false;
-      boardTextState.set(text,draft);
+
       const footer=createElement('div','sticky-origin-editor-footer');
       const message=saving.get(note.id)||'';
       const status=createElement('span','',message);
@@ -416,7 +398,7 @@
       body.append(text);
       dialog.append(header,body,footer);
       panel.append(dialog);
-      const instance=root.WorkBoardOriginNoteEditorV671?.attach(text,{
+      const instance=noteEditor.attach(text,{
         format:draft.format,
         onChange(next){
           if(expandedEditor?.dialog!==dialog||disposed)return;
@@ -425,7 +407,7 @@
         }
       });
       expandedEditor={dialog,instance};
-      if(instance)richTextareas.add(text);
+
       dialog.addEventListener('cancel',event=>{
         if(composing)event.preventDefault();
       });
@@ -440,8 +422,10 @@
         refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
         panel.querySelector('[data-sticky-expand="'+note.id+'"]')?.focus({preventScroll:true});
       },{once:true});
+      const card=panel.querySelector('.sticky-origin-card[data-id="'+note.id+'"]');
+      const range=card&&boardEditors.get(card)?.getSelection();
       dialog.showModal();
-      text.focus();
+      if(range)instance.focusSelection(range);else instance.surface.focus();
     }
     function refreshStickyCards(canvas) {
       if(!canvas)return;
@@ -502,7 +486,7 @@
     }
     function draw() {
       if (disposed) return;
-      if (panel.querySelector('textarea:focus,dialog.sticky-origin-editor[open]') || composing || activeMovement) return;
+      if (panel.querySelector('[data-sticky-text]:focus,dialog.sticky-origin-editor[open]') || composing || activeMovement) return;
       // Synchronization while searching must not replace the focused input:
       // doing so interrupts Japanese IME and loses the keyboard cursor.
       const focusedToolbar=panel.querySelector('.sticky-origin-toolbar input[type="search"]:focus, .sticky-origin-toolbar select:focus');
@@ -636,39 +620,11 @@
         draw();
       });
     }
-    function readBoardInput(textarea) {
-      const prior=boardTextState.get(textarea);
-      const known=boardSelection.get(textarea);
-      boardSelection.delete(textarea);
-      if(!prior||prior.text===textarea.value)return;
-      const text=textarea.value;
-      if(known&&known.start===known.end){
-        const removed=prior.text.length-text.length;
-        if(removed>0&&/Backward$/.test(known.type))known.start-=removed;
-        else if(removed>0&&/Forward$/.test(known.type))known.end+=removed;
-      }
-      const format=root.WorkBoardNoteTextFormatV671?.retarget(prior.text,text,prior.format,known)??null;
-      const draft={text,format,session:prior.session};
-      boardTextState.set(textarea,draft);
-      showBoardFormatting(textarea,draft);
-      schedule(textarea.dataset.stickyText,draft);
-    }
-    function rememberBoardSelection(textarea,type='') {
-      if(boardTextState.has(textarea)&&!richTextareas.has(textarea))
-        boardSelection.set(textarea,{start:textarea.selectionStart,end:textarea.selectionEnd,type});
-    }
     panel.addEventListener('compositionstart',e=>{
-      if(!e.target.matches('[data-sticky-text]'))return;
-      composing=true;
-      rememberBoardSelection(e.target);
+      if(e.target.matches('[data-sticky-text]'))composing=true;
     });
     panel.addEventListener('compositionend',e=>{
-      if(!e.target.matches('[data-sticky-text]'))return;
-      composing=false;
-      if(!richTextareas.has(e.target))readBoardInput(e.target);
-    });
-    panel.addEventListener('beforeinput',e=>{
-      if(!composing&&!e.isComposing)rememberBoardSelection(e.target,e.inputType);
+      if(e.target.matches('[data-sticky-text]'))composing=false;
     });
     function schedule(id,draft) {
       drafts.set(id,draft);
@@ -682,12 +638,6 @@
       const draft=drafts.get(id);
       if(draft!==undefined&&isReady())void saveContent(id,draft);
     }
-    panel.addEventListener('input',e=>{
-      if(!e.target.matches('[data-sticky-text]'))return;
-      const len=e.target.closest('.sticky-origin-card,.sticky-origin-editor')?.querySelector('.sticky-origin-char-count');
-      if(len)len.textContent=e.target.value.length+'/2000';
-      if(!composing&&!e.isComposing&&!richTextareas.has(e.target))readBoardInput(e.target);
-    });
     panel.addEventListener('focusout',e=>{
       if(e.target.matches('[data-sticky-text]'))flushContent(e.target.dataset.stickyText);
     });
