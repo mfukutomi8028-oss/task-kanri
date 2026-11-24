@@ -1,0 +1,56 @@
+name: Origin visual audit
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/origin-visual-audit.yml'
+      - 'tests/origin-visual-audit.mjs'
+  workflow_dispatch:
+    inputs:
+      base_sha:
+        description: 'Baseline commit SHA (default: parent of checked-out commit)'
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Ensure Japanese glyphs for screenshots
+        run: |
+          if ! fc-list :lang=ja | grep -q .; then
+            sudo apt-get update -qq
+            sudo apt-get install -y fonts-noto-cjk
+          fi
+      - name: Check out baseline and capture both versions
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.base_sha }}
+        run: |
+          set -euo pipefail
+          base="${BASE_SHA:-$(git rev-parse HEAD^)}"
+          [[ "$base" =~ ^[0-9a-f]{40}$ ]]
+          git worktree add --detach "$RUNNER_TEMP/origin-baseline" "$base"
+          node tests/origin-visual-audit.mjs "$RUNNER_TEMP/origin-baseline" origin-visual-evidence
+      - name: Upload screenshots and measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: origin-visual-comparison-${{ github.run_id }}
+          path: origin-visual-evidence/
+          if-no-files-found: warn
+          retention-days: 7
