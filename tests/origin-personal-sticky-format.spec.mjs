@@ -218,12 +218,34 @@ test('Origin sticky transfers the card selection to the complete live formatting
  await card.locator('[data-sticky-expand]').click();
  const dialog=root.getByRole('dialog',{name:'付箋の拡大編集'});
  const editor=dialog.getByRole('textbox',{name:'付箋本文を大きく編集'});
- await dialog.getByRole('button',{name:'太字',exact:true}).click();
- await dialog.getByRole('button',{name:'斜体',exact:true}).click();
- await dialog.getByRole('button',{name:'下線',exact:true}).click();
- await dialog.getByRole('button',{name:'取り消し線',exact:true}).click();
- await dialog.getByRole('combobox',{name:'文字色'}).selectOption('red');
+ const plainSize=Number.parseFloat(await editor.evaluate(e=>getComputedStyle(e).fontSize));
+ const actions=[['太字','strong'],['斜体','em'],['下線','u'],['取り消し線','s']];
+ let flags=0;
+ for(const [index,[label,tag]] of actions.entries()){
+  await dialog.getByRole('button',{name:label,exact:true}).click();
+  flags|=1<<index;
+  await expect(editor.locator(tag)).toHaveText('重要');
+  await expect(dialog.getByRole('button',{name:label,exact:true})).toHaveAttribute('aria-pressed','true');
+  // Wait through the real autosave between each command, not only after the
+  // entire burst. A completed write must not invalidate subsequent formatting.
+  await expect.poll(()=>readContent(page)).toMatchObject({format:{runs:[{start:0,end:2,flags}]}});
+ }
+ await expect(editor.locator('em')).toHaveCSS('font-style','italic');
+ await expect(editor.locator('em')).toHaveCSS('font-synthesis-style','auto');
+ await expect(editor.locator('u')).toHaveCSS('text-decoration-line','underline');
+ await expect(editor.locator('s')).toHaveCSS('text-decoration-line','line-through');
+ const color=dialog.getByRole('combobox',{name:'文字色'});
+ await color.focus();
+ await editor.evaluate(el=>{
+  const selection=el.getRootNode().getSelection?.()||el.ownerDocument.getSelection();
+  const walker=el.ownerDocument.createTreeWalker(el,NodeFilter.SHOW_TEXT);
+  selection.collapse(walker.nextNode(),0);
+ });
+ await color.selectOption('red');
+ await expect(editor.locator('strong')).toHaveCSS('color','rgb(143, 32, 52)');
+ await expect.poll(()=>readContent(page)).toMatchObject({format:{runs:[{start:0,end:2,flags:15,color:'red'}]}});
  await dialog.getByRole('combobox',{name:'文字サイズ'}).selectOption('large');
+ expect(Number.parseFloat(await editor.locator('[data-note-format-size=large]').evaluate(e=>getComputedStyle(e).fontSize))).toBeCloseTo(plainSize*1.25,3);
  await expect(editor.locator('[data-note-format-color=red][data-note-format-size=large] s u em strong')).toHaveText('重要');
  await expect(dialog.locator('.origin-note-format-preview')).toHaveCount(0);
  await expect.poll(()=>readContent(page)).toMatchObject({format:{runs:[{start:0,end:2,flags:15,color:'red',size:'large'}]}});
@@ -231,4 +253,15 @@ test('Origin sticky transfers the card selection to the complete live formatting
  await expect(body.locator('[data-note-format-color=red][data-note-format-size=large]')).toHaveText('重要');
  await body.focus();
  await expect(body.locator('strong')).toHaveText('重要');
+ await expect(body.locator('strong')).toHaveCSS('color','rgb(143, 32, 52)');
+ await expect(body.locator('em')).toHaveCSS('font-synthesis-style','auto');
+ await expect(body.locator('u')).toHaveCSS('text-decoration-line','underline');
+ await expect(body.locator('s')).toHaveCSS('text-decoration-line','line-through');
+ await page.reload();
+ const reopened=await openStickyBoard(page,390);
+ const restored=reopened.locator('.sticky-origin-card [data-sticky-text]');
+ await expect(restored.locator('strong')).toHaveCSS('color','rgb(143, 32, 52)');
+ await expect(restored.locator('em')).toHaveCSS('font-synthesis-style','auto');
+ await expect(restored.locator('u')).toHaveCSS('text-decoration-line','underline');
+ await expect(restored.locator('s')).toHaveCSS('text-decoration-line','line-through');
 });
