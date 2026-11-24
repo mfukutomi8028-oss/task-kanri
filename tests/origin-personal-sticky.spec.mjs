@@ -363,6 +363,37 @@ test('memo nav opens choices on hover and remembers the last opened memo',async(
  await expect(root.locator('#originStickyMountV659')).toBeVisible();
  await expect(root.locator('[data-sticky-mode]')).toHaveCount(0);
 });
+test('Origin memo nav closes after mouse click and pointer leave without losing keyboard access',async({page})=>{
+ const root=await origin(page);
+ const nav=root.locator('#desktopNav .origin-memo-nav');
+ const tab=nav.locator('[data-route="notes"]');
+ const menu=nav.locator('.origin-memo-nav-menu');
+ const business=nav.locator('[data-memo-nav-mode="business"]');
+ const personal=nav.locator('[data-memo-nav-mode="personal"]');
+ const away=()=>page.mouse.move(10,page.viewportSize().height-10);
+ // Re-click the active tab, which keeps the same focused DOM element.
+ await tab.click();
+ await expect(menu).toBeVisible();
+ await away();
+ await expect(menu).toBeHidden();
+ await expect(tab).toBeFocused();
+ await expect(root.locator('#originStickyMountV659')).toBeVisible();
+ // Tab navigation must still reveal and traverse both choices.
+ await page.keyboard.press('Tab');
+ await expect(business).toBeFocused();
+ await expect(menu).toBeVisible();
+ await page.keyboard.press('Tab');
+ await expect(personal).toBeFocused();
+ await page.keyboard.press('Tab');
+ await expect(menu).toBeHidden();
+ // Hovering into the menu should not collapse it prematurely.
+ await tab.hover();
+ await expect(menu).toBeVisible();
+ await business.hover();
+ await expect(menu).toBeVisible();
+ await away();
+ await expect(menu).toBeHidden();
+});
 test('compact paper palette and send-to-back change only the selected card',async({page})=>{
  const root=await origin(page);
  await root.locator('.sticky-add').click();

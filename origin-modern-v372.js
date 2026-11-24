@@ -494,7 +494,7 @@ function parseDay(s){const [y,m,d]=String(s||'').split('-').map(Number);return n
 const days=['日','月','火','水','木','金','土'];function dateLabel(k){if(!k)return '未設定';const d=parseDay(k);return `${d.getMonth()+1}月${d.getDate()}日（${days[d.getDay()]}）`}function rangeLabel(d){const a=monday(parseDay(d)),b=addDay(a,6);return `${a.getMonth()+1}月${a.getDate()}日 〜 ${b.getMonth()+1}月${b.getDate()}日`}
 function monday(d){const x=dayStart(d);x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
 function newId(){return (crypto?.randomUUID?.()||`${Date.now()}${Math.random()}`)}
-mount.querySelector('style').appendChild(document.createTextNode(".origin-memo-nav{position:relative;display:flex;align-items:center}\n.origin-memo-nav-menu{display:none;position:absolute;left:0;top:100%;z-index:60;min-width:170px;padding:6px;border:1px solid var(--line);border-radius:12px;background:var(--paper);box-shadow:0 14px 34px rgba(20,31,60,.14)}\n.origin-memo-nav:hover .origin-memo-nav-menu,.origin-memo-nav:focus-within .origin-memo-nav-menu{display:grid;gap:3px}\n.origin-memo-nav-menu button{min-height:44px;width:100%;text-align:left;padding:9px 12px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-size:13px;font-weight:730}\n.origin-memo-nav-menu button:hover,.origin-memo-nav-menu button:focus-visible,.origin-memo-nav-menu button[aria-current=\"true\"]{background:var(--accent-bg);color:var(--accent-dark)}\n.origin-memo-header-switch{display:none}\n@media(max-width:770px){.origin-memo-header-switch{display:flex;align-items:center;gap:4px;margin-left:auto;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}\n.origin-memo-header-switch button{min-height:44px;padding:7px 9px;border:0;border-radius:8px;background:transparent;color:var(--ink-soft);font-size:11px;font-weight:760;white-space:nowrap}\n.origin-memo-header-switch button[aria-pressed=\"true\"]{background:var(--accent-bg);color:var(--accent-dark)}}"));
+mount.querySelector('style').appendChild(document.createTextNode(".origin-memo-nav{position:relative;display:flex;align-items:center}\n.origin-memo-nav-menu{display:none;position:absolute;left:0;top:100%;z-index:60;min-width:170px;padding:6px;border:1px solid var(--line);border-radius:12px;background:var(--paper);box-shadow:0 14px 34px rgba(20,31,60,.14)}\n.origin-memo-nav:hover .origin-memo-nav-menu,.origin-memo-nav:focus-within:not([data-pointer-focus]) .origin-memo-nav-menu{display:grid;gap:3px}\n.origin-memo-nav-menu button{min-height:44px;width:100%;text-align:left;padding:9px 12px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-size:13px;font-weight:730}\n.origin-memo-nav-menu button:hover,.origin-memo-nav-menu button:focus-visible,.origin-memo-nav-menu button[aria-current=\"true\"]{background:var(--accent-bg);color:var(--accent-dark)}\n.origin-memo-header-switch{display:none}\n@media(max-width:770px){.origin-memo-header-switch{display:flex;align-items:center;gap:4px;margin-left:auto;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}\n.origin-memo-header-switch button{min-height:44px;padding:7px 9px;border:0;border-radius:8px;background:transparent;color:var(--ink-soft);font-size:11px;font-weight:760;white-space:nowrap}\n.origin-memo-header-switch button[aria-pressed=\"true\"]{background:var(--accent-bg);color:var(--accent-dark)}}"));
  const bridge=window.WorkBoardPaletteBridge;
 const memoBridge=window.WorkBoardPaletteMemoBridgeV369;
 let snapshot=bridge.readSnapshot();
@@ -922,6 +922,13 @@ function nav(){
        choice.setAttribute('aria-current',String(originStickyMemoModeV659===mode));menu.append(choice);
      }
      group.append(menu);
+     // Pointer focus must not pin a hovered submenu after the pointer leaves.
+     // Preserve focus-within for keyboard traversal, without blurring the tab.
+     group.addEventListener('pointerdown',()=>{group.dataset.pointerFocus='true'});
+     group.addEventListener('keydown',()=>{delete group.dataset.pointerFocus});
+     group.addEventListener('focusout',event=>{
+       if(!group.contains(event.relatedTarget))delete group.dataset.pointerFocus;
+     });
    }
  }
  if(mobile){mobile.innerHTML=markup(true);mobile.dataset.activeRoute=view}
