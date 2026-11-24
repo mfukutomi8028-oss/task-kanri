@@ -38,7 +38,7 @@
     .sticky-origin-front,.sticky-origin-back{border:0;background:transparent;border-radius:8px;color:#293244;font-size:12px;padding:0 6px;white-space:nowrap}
     .sticky-origin-order{display:none;gap:3px}
     .sticky-origin-order button{padding:0 6px;font-size:12px;background:transparent;border:0;border-radius:8px;color:#293244}
-    .sticky-origin-order button:disabled{opacity:.32}
+    .sticky-origin-order button:disabled{opacity:.32;cursor:not-allowed;border-style:dashed}
     .sticky-origin-grip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .sticky-origin-card-head button:not(.sticky-origin-grip){background:transparent;border:0;border-radius:8px;color:#293244;font-size:14px}
     .sticky-origin-card-head button:hover{background:rgba(255,255,255,.6)}
@@ -84,7 +84,7 @@
     .sticky-origin-expand svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
     .sticky-origin-editor:not([open]){display:none}
     .sticky-origin-editor[open]{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;gap:0;box-sizing:border-box;
-      width:min(960px,calc(100vw - 36px));height:min(780px,calc(100dvh - 36px));
+      width:min(960px,calc(100% - 36px));height:min(780px,calc(100dvh - 36px));
       min-width:0;max-width:none;max-height:none;margin:auto;padding:0;border:1px solid rgba(34,45,72,.24);
       border-radius:17px;box-shadow:0 24px 76px rgba(20,31,52,.22);color:#273040;background:var(--sticky-paper,#faf3c9)}
     .sticky-origin-editor::backdrop{background:rgba(25,32,52,.5)}
