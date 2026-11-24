@@ -592,6 +592,40 @@ test('sticky screen keeps scroll positions after color changes, resizing and fro
  const afterFront=await stage.evaluate(node=>node.scrollTop);
  expect(Math.abs(afterFront-initial.inside)).toBeLessThan(5);
 });
+test('Shift-resizing aligns the right and bottom edges to the 28px grid and saves dimensions',async({page})=>{
+ const root=await origin(page,1366);
+ await root.locator('.sticky-add').click();
+ const card=root.locator('.sticky-origin-card').first();
+ const before=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0].layout);
+ const handle=await card.locator('[data-sticky-resize]').boundingBox();
+ await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);
+ await page.keyboard.down('Shift');
+ await page.mouse.down();
+ await page.mouse.move(handle.x+handle.width/2+103,handle.y+handle.height/2+81,{steps:8});
+ await page.mouse.up();
+ await page.keyboard.up('Shift');
+ await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0].layout.width)).toBeGreaterThan(before.width);
+ const after=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0].layout);
+ expect((after.x+after.width)%28).toBe(0);
+ expect((after.y+after.height)%28).toBe(0);
+ expect([after.x,after.y]).toEqual([before.x,before.y]);
+ expect(after.width).toBeGreaterThanOrEqual(220);
+ expect(after.height).toBeGreaterThanOrEqual(160);
+});
+
+test('ordinary sticky resizing remains pixel-smooth without Shift',async({page})=>{
+ const root=await origin(page,1366);
+ await root.locator('.sticky-add').click();
+ const card=root.locator('.sticky-origin-card').first();
+ const handle=await card.locator('[data-sticky-resize]').boundingBox();
+ await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);
+ await page.mouse.down();
+ await page.mouse.move(handle.x+handle.width/2+38,handle.y+handle.height/2+42,{steps:6});
+ await page.mouse.up();
+ await expect.poll(async()=>page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0].layout.width)).toBeGreaterThan(280);
+ const after=await page.evaluate(()=>window.WorkBoardPersonalStickyStoreV659.readSnapshot().notes[0].layout);
+ expect((after.x+after.width)%28===0 && (after.y+after.height)%28===0).toBe(false);
+});
 test('Shift while dragging snaps to the 28 pixel grid, ordinary dragging remains smooth',async({page})=>{
  const root=await origin(page,1366);
  await root.locator('.sticky-add').click();
