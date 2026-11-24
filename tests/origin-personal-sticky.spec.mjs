@@ -342,7 +342,7 @@ test('Origin user selector confirms before switching away from an unsaved person
    element.dispatchEvent(new Event('change',{bubbles:true,composed:true}));
  },next);
  await expect(picker).toHaveValue(prior);
- await expect(text).toHaveValue('まだ保存していない利用者ごとの付箋');
+ await expect(text).toHaveText('まだ保存していない利用者ごとの付箋');
  await page.evaluate(()=>{
    window.__stickyHoldTextSave=false;
    for(const release of window.__stickyWaitingSaves||[])release();
