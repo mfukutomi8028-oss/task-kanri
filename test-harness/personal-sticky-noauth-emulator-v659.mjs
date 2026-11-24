@@ -1,6 +1,8 @@
 // Real Realtime Database SDK integration using synthetic data and the DB emulator only.
 // No Firebase Auth user is created or required; no production data or URLs.
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
 import {initializeApp,deleteApp} from 'firebase/app';
 import {getDatabase,connectDatabaseEmulator,ref,onValue,runTransaction,get,set} from 'firebase/database';
 import {createBoardPersonalStickyStore} from '../personal-sticky-store-v659.js';
@@ -43,6 +45,27 @@ try{
   assert.equal((await alice.dispatch({type:'sticky.content',...ctx(),id:created.id,
     expectedRevision:1,values:{text:'架空の業務付箋'}})).ok,true);
   await waitFor('second device sees same note',()=>secondDevice.readSnapshot().notes[0]?.content.text==='架空の業務付箋');
+  const text='架空の業務付箋';
+  const format={text,runs:[{start:0,end:2,flags:1,color:'red'}]};
+  const formatted=await alice.dispatch({type:'sticky.content',...ctx(),id:created.id,
+    expectedRevision:2,values:{text,format}});
+  assert.equal(formatted.ok,true,'formatted content uses the existing transaction');
+  await waitFor('format sync with matching canonical content revision',()=>{
+    const content=secondDevice.readSnapshot().notes[0]?.content;
+    return content?.revision===3 && content?.text===text && content?.format?.runs?.[0]?.flags===1;
+  });
+  const savedFormat=secondDevice.readSnapshot().notes[0].content.format;
+  assert.deepEqual(savedFormat,{revision:3,runs:format.runs});
+  const stale=await secondDevice.dispatch({type:'sticky.content',...ctx(),id:created.id,
+    expectedRevision:2,values:{text:'競合する編集'}});
+  assert.equal(stale.error,'conflict','format-only edit also advances the content revision');
+  const legacyWrite=await secondDevice.dispatch({type:'sticky.content',...ctx(),id:created.id,
+    expectedRevision:3,values:{text:'別の架空の業務付箋'}});
+  assert.equal(legacyWrite.ok,true);
+  await waitFor('an unformatted edit clears stale ranges on the other device',()=>{
+    const content=alice.readSnapshot().notes[0]?.content;
+    return content?.revision===4 && content?.text==='別の架空の業務付箋' && !('format' in content);
+  });
   secondDevice.setContext({...bb,user:'森井'});
   await waitFor('different selected user has different display',()=>
     secondDevice.readSnapshot().status==='ready'&&secondDevice.readSnapshot().notes.length===0);
@@ -74,6 +97,35 @@ try{
   assert.equal(moved.ok,true);
   await waitFor('page move sync',()=>secondDevice.readSnapshot().notes.some(note=>
     note.id===page3.id&&note.layout.page===5));
+  // Exercise the existing memo CAS writer against the same isolated emulator.
+  // Check the independent client observes both fields together and an old
+  // revision cannot replace the data just committed.
+  const memoHost={};
+  runInNewContext(readFileSync(new URL('../workspace-memo-v539.js',import.meta.url),'utf8'),{window:memoHost});
+  const canonicalMemo=memoHost.WorkBoardMemoPersistenceV539.create({
+    getFeatureState:()=>({roomId,db:aDb,online:true,memos:{}}),
+    ensureFirebase:async()=>{},
+    firebaseModules:sdk,
+    finiteRevision:value=>Number.isSafeInteger(value)&&value>=0?value:0,
+    persistLocalMemos:()=>{},
+    renderMemoView:()=>{}
+  });
+  const memoId='memo-format-roundtrip-v671',memoBody='締切と期限';
+  const codec=globalThis.WorkBoardNoteTextFormatV671;
+  const memoFormat=codec.apply(memoBody,null,0,2,{flags:1,color:'red',size:'large'});
+  const memo={id:memoId,title:'架空の業務メモ',body:memoBody,bodyFormat:memoFormat};
+  const memoRef=ref(bDb,path+'/businessMemos/'+memoId);
+  assert.equal(await canonicalMemo.commit(memo,0),true);
+  const reader=(await get(memoRef)).val();
+  assert.equal(reader.body,memoBody);
+  assert.equal(reader.revision,1);
+  assert.deepEqual(codec.read(reader.body,reader.bodyFormat),memoFormat.runs);
+  assert.equal(await canonicalMemo.commit({...memo,body:'古いフォームの本文'},0),false);
+  assert.deepEqual((await get(memoRef)).val().bodyFormat,reader.bodyFormat);
+  await set(ref(bDb,path+'/businessMemos/'+memoId+'/body'),'他の端末が本文を変更');
+  const legacy=(await get(memoRef)).val();
+  assert.deepEqual(codec.read(legacy.body,legacy.bodyFormat),[], 'stale markers cannot style other text');
+  console.log('MEMO_V671_FORMAT_REALTIME_ROUNDTRIP_PASSED: synthetic room only');
   console.log('STICKY_V659_LOGIN_FREE_REALTIME_SYNC_PASSED: synthetic rooms only');
 }finally{
   alice.destroy();secondDevice.destroy();
