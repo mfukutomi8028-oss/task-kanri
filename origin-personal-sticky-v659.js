@@ -754,8 +754,15 @@
       if(Math.abs(dx)+Math.abs(dy)<3&&!d.moved)return;
       d.moved=true;
       if(d.isSize){
-        d.card.style.width=Math.max(220,Math.min(760,1400-d.initial.x,d.initial.width+Math.round(dx)))+'px';
-        d.card.style.height=Math.max(160,Math.min(720,900-d.initial.y,d.initial.height+Math.round(dy)))+'px';
+        // Shift snaps the dragged right/bottom edges to the paper grid.
+        // Without Shift, keep pixel-precise resizing; never exceed note/board limits.
+        const size=(original,delta,start,min,max,boardLimit)=>{
+          const desired=original+delta;
+          const adjusted=e.shiftKey?Math.round((start+desired)/28)*28-start:Math.round(desired);
+          return Math.max(min,Math.min(max,boardLimit-start,adjusted));
+        };
+        d.card.style.width=size(d.initial.width,dx,d.initial.x,220,760,1400)+'px';
+        d.card.style.height=size(d.initial.height,dy,d.initial.y,160,720,900)+'px';
       } else {
         // Free movement is the default; Shift snaps to the 28px paper grid.
         const place=(value,max)=>Math.max(0,Math.min(max,
