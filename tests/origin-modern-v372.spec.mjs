@@ -3964,3 +3964,97 @@ for(const width of [1366,390,320]){
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width+3);
  });
 }
+
+test('Origin new-item popup is reachable by keyboard and hands focus back on Escape',async({page})=>{
+  const root=await launchOriginV415(page,'origin-create-menu-focus');
+  const trigger=root.locator('#createBtn');
+  const popup=root.locator('#createMenu');
+  const first=popup.getByRole('button',{name:'共有タスクを作成'});
+  await trigger.press('Enter');
+  await expect(first).toBeFocused({timeout:2000});
+  await expect(trigger).toHaveAttribute('aria-expanded','true');
+  await page.keyboard.press('Tab');
+  await expect(popup.getByRole('button',{name:'個人ToDoを作成'})).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(popup).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveAttribute('aria-expanded','false');
+
+  await trigger.press('Enter');
+  await expect(first).toBeFocused();
+  await page.keyboard.press('Control+k');
+  await expect(root.locator('#originSearchInput')).toBeFocused();
+  await expect(popup).toBeHidden({timeout:2000});
+  await expect(trigger).toHaveAttribute('aria-expanded','false');
+
+  await trigger.click();
+  await expect(popup).toBeVisible();
+  await root.locator('#desktopNav [data-route="today"]').click();
+  await expect(popup).toBeHidden();
+  await expect(trigger).toHaveAttribute('aria-expanded','false');
+
+  await trigger.press('Space');
+  await expect(first).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(root.locator('#editForm[data-kind="tasks"]')).toBeVisible();
+  await expect(popup).toBeHidden();
+  await expect(trigger).toHaveAttribute('aria-expanded','false');
+});
+
+test('Origin preserves focus on all search results while data refreshes',async({page})=>{
+  const root=await launchOriginV415(page,'origin-search-refresh-focus');
+  const addTask=title=>page.evaluate(async title=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    const result=await bridge.dispatch({
+      type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,
+      title,description:'',assignee:s.currentUser,status:s.statuses[0],
+      category:s.categories[0],requester:'',tags:'',checklist:'',checklistDone:[],
+      priority:'中',dueDate:'',dueTime:'',pinned:false
+    });
+    if(!result?.ok)throw new Error('Search fixture failed: '+JSON.stringify(result));
+  },title);
+  await addTask('検索更新の確認 01');
+  const search=root.locator('#originSearchInput');
+  // Seed the search field, then use the real focus and keyboard handlers.
+  await search.evaluate(input=>{input.value='検索更新の確認'});
+  await search.focus();
+  const openAll=root.locator('#searchResults [data-action="search-all"]');
+  await expect(openAll).toContainText('1件');
+  await openAll.focus();
+
+  await addTask('検索更新の確認 02');
+  await expect(openAll).toContainText('2件');
+  await expect(openAll).toBeFocused({timeout:2000});
+  await page.keyboard.press('Enter');
+  await expect(root.locator('#originFullSearchInput')).toHaveValue('検索更新の確認');
+});
+
+test('Origin schedule marks the displayed week accurately when navigating forward and back',async({page})=>{
+  await page.clock.setFixedTime(new Date('2026-11-22T12:00:00Z'));
+  const root=await launchOriginV415(page,'origin-schedule-displayed-week');
+  await page.evaluate(async()=>{
+    const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+    const start=new Date();
+    start.setDate(start.getDate()+7);
+    start.setHours(10,0,0,0);
+    const result=await bridge.dispatch({
+      type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+      values:{title:'翌週の予定',startAt:start.toISOString(),endAt:new Date(start.getTime()+3600000).toISOString(),
+        assignee:s.currentUser,category:s.categories[0],relatedTaskId:'',location:'',memo:''}
+    });
+    if(!result?.ok)throw new Error('Schedule fixture failed: '+JSON.stringify(result));
+  });
+  await root.locator('#desktopNav [data-route="calendar"]').click();
+  const count=root.locator('#workspace .page-heading .heading-meta > span');
+  await expect(count).toHaveText('今週 0件');
+  await root.getByRole('button',{name:'次の週'}).click();
+  await expect(count).toHaveText('表示中の週 1件',{timeout:2000});
+  await expect(root.locator('.week-board .schedule-event')).toContainText('翌週の予定');
+  await root.getByRole('button',{name:'前の週'}).click();
+  await expect(count).toHaveText('今週 0件');
+
+  // A tab can stay open when Sunday becomes Monday.
+  await page.clock.setFixedTime(new Date('2026-11-23T12:00:00Z'));
+  await root.getByRole('button',{name:'次の週'}).click();
+  await expect(count).toHaveText('今週 1件',{timeout:2000});
+});
