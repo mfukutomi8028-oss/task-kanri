@@ -4,7 +4,7 @@
   'use strict';
   if(root.WorkBoardNoteTextFormatV671)return;
   const COLORS=Object.freeze(['red','blue','green','purple','amber']);
-  const SIZES=Object.freeze(['small','large']);
+  const SIZES=Object.freeze(['small','large','xlarge','xxlarge','huge','display']);
   const MAX_RUNS=512, MAX_TEXT=6000, ALL_FLAGS=15;
   const plain=(v)=>typeof v==='string'&&v.length<=MAX_TEXT;
   const codeUnitBoundary=(text,n)=>!(n>0&&n<text.length

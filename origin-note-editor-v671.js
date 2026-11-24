@@ -24,22 +24,47 @@
   [data-note-format-color=amber]{color:var(--origin-note-amber,#714411)}
   [data-note-format-size=small]{font-size:.875em}
   [data-note-format-size=large]{font-size:1.25em}
+  [data-note-format-size=xlarge]{font-size:1.5em}
+  [data-note-format-size=xxlarge]{font-size:1.75em}
+  [data-note-format-size=huge]{font-size:2em}
+  [data-note-format-size=display]{font-size:2.5em}
   /* Origin disables synthetic font faces globally. Explicit note marks need
      a local exception for Japanese fonts without native italic faces. */
   :is(.origin-note-editable,.memo-document,.memo-card>p,.origin-note-format-tools) em{font-style:italic;font-synthesis:weight style}
   :is(.origin-note-editable,.memo-document,.memo-card>p,.origin-note-format-tools) u{text-decoration-line:underline}
   :is(.origin-note-editable,.memo-document,.memo-card>p,.origin-note-format-tools) s{text-decoration-line:line-through}
-  .origin-note-format-tools{display:flex;flex:0 0 auto;align-items:center;flex-wrap:wrap;gap:4px;min-width:0;
-    padding:4px 0;color:var(--ink,#252b37);font-size:12px}
-  .origin-note-format-tools button,.origin-note-format-tools select{
-    display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;width:auto;max-width:100%;
-    padding:4px 7px;border:1px solid var(--line,#c8ced8);border-radius:7px;
-    background:var(--paper,#fff);color:var(--ink,#252b37);font:inherit;line-height:1
+  .origin-note-format-tools{display:flex;flex:0 0 auto;align-items:center;flex-wrap:wrap;gap:6px 12px;min-width:0;
+    padding:8px 0;border-bottom:1px solid var(--note-tools-line,var(--line,#c8ced8));
+    color:var(--note-tools-ink,var(--ink,#252b37));font-size:13px}
+  .origin-note-format-group,.origin-note-format-choices{display:flex;align-items:center;flex-wrap:wrap;min-width:0;max-width:100%}
+  .origin-note-format-group{gap:0}
+  .origin-note-format-choices{gap:4px 10px}
+  .origin-note-format-field{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%;margin:0;white-space:nowrap;font:inherit}
+  .origin-note-format-label{font-weight:650;color:var(--note-tools-muted,var(--ink-soft,#526071))}
+  .origin-note-format-mixed{font-size:11px;color:var(--note-tools-muted,var(--ink-soft,#526071))}
+  .origin-note-format-mixed[hidden]{display:none!important}
+  .origin-note-format-tools :is(button,select){
+    box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;width:auto;max-width:100%;
+    padding:4px 8px;border-radius:7px;color:var(--note-tools-ink,var(--ink,#252b37));font:inherit;line-height:1;cursor:pointer
   }
-  .origin-note-format-tools button:focus-visible,.origin-note-format-tools select:focus-visible{
-    outline:2px solid var(--origin-focus-ring,#4659cc);outline-offset:1px}
-  .origin-note-format-tools button[aria-pressed=true]{background:var(--accent-bg,#eef0fc);color:var(--accent-dark,#3948b8);border-color:var(--accent,#4659cc)}
-  .origin-note-format-tools .origin-note-format-hint{flex:1 0 100%;margin:0 0 2px;color:var(--ink-soft,#526071);line-height:1.5}
+  .origin-note-format-tools button{border:1px solid transparent;background:transparent}
+  .origin-note-format-tools button>:is(strong,em,u,s){font-size:15px}
+  .origin-note-format-tools button:hover{background:var(--note-tools-hover,var(--hover,#eef0f6))}
+  .origin-note-format-tools select{min-width:76px;border:1px solid var(--note-tools-line,var(--line,#c8ced8));
+    background:var(--note-tools-control,var(--paper,#fff));color-scheme:var(--note-tools-color-scheme,normal)}
+  .origin-note-format-tools :is(button,select):focus-visible{outline:2px solid var(--note-tools-focus,var(--origin-focus-ring,#4659cc));outline-offset:1px}
+  .origin-note-format-tools button[aria-pressed=true]{background:var(--note-tools-active,var(--accent-bg,#eef0fc));
+    color:var(--note-tools-active-ink,var(--accent-dark,#3948b8));border-color:var(--note-tools-active-border,var(--accent,#4659cc))}
+  .origin-note-format-tools .origin-note-format-clear{white-space:nowrap;color:var(--note-tools-muted,var(--ink-soft,#526071))}
+  .origin-note-format-tools .origin-note-format-hint{flex:1 0 100%;margin:0;color:var(--note-tools-muted,var(--ink-soft,#526071));line-height:1.5}
+  @media(max-width:480px){
+    .origin-note-format-choices{flex:1 1 100%;align-items:start;gap:8px}
+    .origin-note-format-field{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label mixed" "select select";
+      flex:1 1 92px;gap:3px 4px;white-space:normal}
+    .origin-note-format-label{grid-area:label}
+    .origin-note-format-mixed{grid-area:mixed}
+    .origin-note-format-field select{grid-area:select;width:100%;min-width:0}
+  }
   [data-origin-note-backing]{display:none!important}
   .origin-note-editable{box-sizing:border-box;display:block;min-width:0;width:100%;min-height:100px;max-width:100%;
     background:var(--bg,#fff);color:var(--ink,#252b37);border:1px solid var(--line,#c8ced8);
@@ -54,6 +79,7 @@
     [4,'下線','U','u','u'],[8,'取り消し線','S','s','']
   ];
   const COLOR_LABELS={red:'赤',blue:'青',green:'緑',purple:'紫',amber:'茶'};
+  const SIZE_LABELS={small:'87.5%',large:'125%',xlarge:'150%',xxlarge:'175%',huge:'200%',display:'250%'};
   const documentFor=node=>node.ownerDocument||node;
   const styled=new WeakSet();
   function installStyles(node){
@@ -124,7 +150,7 @@
     textarea.dataset.originNoteBacking='';textarea.hidden=true;
     let text=textarea.value,value=model.envelope(text,model.read(text,format));
     let composing=false,edit=null,syncing=false,selected={start:0,end:0,backward:false},toolbarRange=null;
-    const undo=[],redo=[],buttons=[],limit=textarea.maxLength<0?6000:textarea.maxLength;
+    const undo=[],redo=[],buttons=[],choiceControls=[],limit=textarea.maxLength<0?6000:textarea.maxLength;
     const controller=new AbortController();
     const listen=(target,name,f)=>target.addEventListener(name,f,{signal:controller.signal});
     const selection=()=>surface.getRootNode().getSelection?.()||doc.getSelection();
@@ -160,15 +186,41 @@
         if(rect.bottom>frame.bottom-6)surface.scrollTop+=(rect.bottom-frame.bottom+6)/scale;
         else if(rect.top<frame.top+6)surface.scrollTop-=(frame.top+6-rect.top)/scale;
       }
-      updatePressed();
+      updateToolbar();
     }
-    function updatePressed(){for(const [button,flag] of buttons)button.setAttribute('aria-pressed',String(model.hasFlag(text,value,selected.start,selected.end,flag)));}
+    function selectedStyle(key,runs){
+      const {start,end}=selected;
+      if(start===end)return 'default';
+      let cursor=start,style;
+      const accept=next=>{if(style===undefined)style=next;return style===next;};
+      for(const run of runs){
+        if(run.end<=start)continue;
+        if(run.start>=end)break;
+        if(run.start>cursor&&!accept('default'))return '';
+        if(!accept(run[key]??'default'))return '';
+        cursor=Math.min(end,run.end);
+      }
+      if(cursor<end&&!accept('default'))return '';
+      return style??'default';
+    }
+    function updateToolbar(){
+      for(const [button,flag] of buttons)button.setAttribute('aria-pressed',String(model.hasFlag(text,value,selected.start,selected.end,flag)));
+      if(!choiceControls.length)return;
+      const runs=model.read(text,value);
+      for(const {key,control,mixed} of choiceControls){
+        const choice=selectedStyle(key,runs);
+        if(control.value!==choice)control.value=choice;
+        mixed.hidden=choice!=='';
+        if(choice==='')control.setAttribute('aria-description','選択範囲に異なる書式が混在しています');
+        else control.removeAttribute('aria-description');
+      }
+    }
     function render(r=null){
       const scroll=surface.scrollTop;
       renderInto(surface,text,value);
       if(text.endsWith('\n'))surface.append(element('br'));
       surface.scrollTop=scroll;
-      if(r)focusSelection(r);else updatePressed();
+      if(r)focusSelection(r);else updateToolbar();
     }
     const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
     const state=()=>({text,format:value,range:{...selected}});
@@ -221,21 +273,28 @@
       formatSelection(change,range);
     }
     if(toolbar){
+      const commands=element('div');commands.className='origin-note-format-group';
       for(const [flag,label,glyph,tag] of FORMAT_BUTTONS){
         const button=element('button'),icon=element(tag,glyph);
         button.type='button';button.setAttribute('aria-label',label);button.title=label;
         icon.setAttribute('aria-hidden','true');button.append(icon);
-        listen(button,'click',()=>applyToolbar(toggler(flag)));buttons.push([button,flag]);holder.append(button);
+        listen(button,'click',()=>applyToolbar(toggler(flag)));buttons.push([button,flag]);commands.append(button);
       }
       function choices(label,key,entries){
+        const field=element('label');field.className='origin-note-format-field';
+        const title=element('span',label);title.className='origin-note-format-label';
+        const mixed=element('span','混在');mixed.className='origin-note-format-mixed';mixed.hidden=true;mixed.setAttribute('aria-hidden','true');
         const control=element('select');control.setAttribute('aria-label',label);
-        const placeholder=element('option',label);placeholder.value='';placeholder.disabled=true;control.append(placeholder);
         for(const [id,name] of entries){const option=element('option',name);option.value=id;control.append(option);}
-        control.value='';listen(control,'change',()=>{const pick=control.value;if(pick)applyToolbar({[key]:pick==='default'?null:pick});control.value='';});return control;
+        control.value='default';choiceControls.push({key,control,mixed});
+        listen(control,'change',()=>{const pick=control.value;if(pick)applyToolbar({[key]:pick==='default'?null:pick});updateToolbar();});
+        field.append(title,control,mixed);return field;
       }
-      holder.append(choices('文字色','color',[['default','標準色'],...model.COLORS.map(c=>[c,COLOR_LABELS[c]])]));
-      holder.append(choices('文字サイズ','size',[['small','小'],['default','標準'],['large','大']]));
-      const clear=element('button','書式解除');clear.type='button';clear.setAttribute('aria-label','書式を解除する');listen(clear,'click',()=>applyToolbar({clear:true}));holder.append(clear);
+      const pickers=element('div');pickers.className='origin-note-format-choices';
+      pickers.append(choices('文字色','color',[['default','標準色'],...model.COLORS.map(c=>[c,COLOR_LABELS[c]])]));
+      pickers.append(choices('文字サイズ','size',[['small',SIZE_LABELS.small],['default','100%（標準）'],...model.SIZES.filter(id=>id!=='small').map(id=>[id,SIZE_LABELS[id]])]));
+      const clear=element('button','書式解除');clear.className='origin-note-format-clear';clear.type='button';clear.setAttribute('aria-label','書式を解除する');listen(clear,'click',()=>applyToolbar({clear:true}));
+      commands.append(clear);holder.append(commands,pickers);
       // Capture before the browser changes focus, including native color and
       // size pickers. Preserve mouse selection when pressing a toolbar button;
       // keyboard/touch controls and native selects retain their default focus.
@@ -271,11 +330,20 @@
     listen(surface,'drop',ev=>ev.preventDefault());
     listen(surface,'input',ev=>{if(!composing&&!ev.isComposing)commitNative();});
     listen(textarea,'input',()=>{if(syncing||composing||textarea.value===text)return;const next=clipped(textarea.value,limit);setState(next,model.retarget(text,next,value),{start:next.length,end:next.length,backward:false},{focus:false});});
-    for(const name of ['keyup','pointerup','focus'])listen(surface,name,()=>{remember();updatePressed();});
+    for(const name of ['keyup','pointerup','focus'])listen(surface,name,()=>{remember();updateToolbar();});
+    // Track real selection changes, including touch handles and a new range
+    // while the editor is already focused. Do not overwrite a toolbar snapshot.
+    if(toolbar)listen(doc,'selectionchange',()=>{
+      if(surface.getRootNode().activeElement!==surface||toolbarRange)return;
+      const next=readSelection();
+      if(next&&(next.start!==selected.start||next.end!==selected.end||next.backward!==selected.backward)){
+        selected=next;updateToolbar();
+      }
+    });
     listen(surface,'focusout',()=>{
       const range=readSelection();
       if(range&&(range.start!==range.end||selected.start===selected.end))selected=range;
-      updatePressed();
+      updateToolbar();
     });
     listen(surface,'pointerdown',()=>{toolbarRange=null;});
     listen(surface,'keydown',ev=>{
