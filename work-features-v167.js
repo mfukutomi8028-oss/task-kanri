@@ -571,7 +571,28 @@
     };
   }
 
-  // Normalize memo input once for Classic and the independent Palette NEXT editor.
+  function validatedMemoBodyFormat(body, value) {
+    const format = window.WorkBoardNoteTextFormatV671;
+    return format ? format.envelope(body, format.read(body, value)) : null;
+  }
+
+  function trimMemoBodyFormat(rawBody, body, value) {
+    let result = validatedMemoBodyFormat(rawBody, value);
+    if (!result || rawBody === body) return result;
+    const format = window.WorkBoardNoteTextFormatV671;
+    // Both trim edges are known deletions, not ambiguous text replacements.
+    const leftTrimmed = rawBody.trimStart();
+    if (leftTrimmed !== rawBody) {
+      result = format.retarget(rawBody, leftTrimmed, result, {
+        start: 0, end: rawBody.length - leftTrimmed.length
+      });
+    }
+    return leftTrimmed === body ? result : format.retarget(leftTrimmed, body, result, {
+      start: body.length, end: leftTrimmed.length
+    });
+  }
+
+  // Normalize memo input once for Classic and the independent Origin editor.
   // Revision/identity checks and the canonical repository remain the only writers.
   async function saveMemoValuesV370(values) {
     const expectedRoom = String(values.ownerRoom || '');
@@ -581,7 +602,8 @@
     }
     const id = String(values.id || generateId('memo'));
     const title = String(values.title || '').trim();
-    const body = String(values.body || '').trim();
+    const rawBody = String(values.body || '');
+    const body = rawBody.trim();
     if (!title || !body || title.length > 80 || body.length > 6000) {
       return { ok: false, error: 'invalid-input' };
     }
@@ -603,9 +625,16 @@
     // Keep content-modified ordering stable on color-only changes while the
     // canonical repository still increments revision for conflict detection.
     const originalTags = Array.isArray(existing?.tags) ? existing.tags : [];
+    const originalFormat = validatedMemoBodyFormat(existing?.body || '', existing?.bodyFormat);
+    // Plain legacy editors do not send formatting. Safe metadata-only edits
+    // preserve it, but changed text cannot inherit ranges from the old body.
+    const bodyFormat = values.bodyFormat === undefined
+      ? (existing?.body === body ? originalFormat : null)
+      : trimMemoBodyFormat(rawBody, body, values.bodyFormat);
     const contentUnchanged = Boolean(existing)
       && title === String(existing.title || '')
       && body === String(existing.body || '')
+      && JSON.stringify(bodyFormat) === JSON.stringify(originalFormat)
       && category === String(existing.category || '')
       && Boolean(values.pinned) === Boolean(existing.pinned)
       && tags.length === originalTags.length
@@ -613,7 +642,7 @@
     const colorOnly = contentUnchanged
       && paperColor !== (MEMO_PAPER_COLORS.includes(existing.paperColor) ? existing.paperColor : 'ivory');
     const draft = {
-      id, title, body, category, tags, pinned: Boolean(values.pinned), paperColor,
+      id, title, body, ...(bodyFormat ? { bodyFormat } : {}), category, tags, pinned: Boolean(values.pinned), paperColor,
       revision: expectedRevision,
       createdBy: existing?.createdBy || currentUser(),
       createdAt: Number(existing?.createdAt || now),
@@ -1190,14 +1219,18 @@
   let paletteMemoNotifyQueuedV369 = false;
 
   function paletteMemoSnapshotV369() {
-    return memoList({ ignoreFilters: true }).map(memo => ({
-      id: memo.id, title: memo.title || '', body: memo.body || '',
-      category: memo.category || '', tags: Array.isArray(memo.tags) ? [...memo.tags] : [],
-      pinned: Boolean(memo.pinned), paperColor: MEMO_PAPER_COLORS.includes(memo.paperColor) ? memo.paperColor : 'ivory',
-      revision: finiteRevision(memo.revision),
-      updatedAt: Number(memo.updatedAt || memo.createdAt || 0),
-      updatedBy: String(memo.updatedBy || memo.createdBy || '')
-    }));
+    return memoList({ ignoreFilters: true }).map(memo => {
+      const body = memo.body || '';
+      const bodyFormat = validatedMemoBodyFormat(body, memo.bodyFormat);
+      return {
+        id: memo.id, title: memo.title || '', body, ...(bodyFormat ? { bodyFormat } : {}),
+        category: memo.category || '', tags: Array.isArray(memo.tags) ? [...memo.tags] : [],
+        pinned: Boolean(memo.pinned), paperColor: MEMO_PAPER_COLORS.includes(memo.paperColor) ? memo.paperColor : 'ivory',
+        revision: finiteRevision(memo.revision),
+        updatedAt: Number(memo.updatedAt || memo.createdAt || 0),
+        updatedBy: String(memo.updatedBy || memo.createdBy || '')
+      };
+    });
   }
 
   function notifyPaletteMemoPreview() {

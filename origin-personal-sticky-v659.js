@@ -44,7 +44,12 @@
     .sticky-origin-card-head button:hover{background:rgba(255,255,255,.6)}
     .sticky-origin-card-head button:focus-visible,.sticky-origin-page-move:focus-visible{outline:2px solid #4659cc;outline-offset:2px}
     @media(min-width:768px){.sticky-origin-card-head button:not(.sticky-origin-grip){min-width:36px;width:36px;min-height:44px;padding:0 2px;font-size:11px}}
-    .sticky-origin-card textarea{display:block;flex:1;resize:none;min-height:68px;width:100%;padding:12px 14px;border:0;outline:0;background:transparent;color:#273040;font-size:14px;line-height:1.65;overflow:auto}
+    .sticky-origin-note-body{display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);flex:1;min-height:68px}
+    .sticky-origin-note-body>:is(textarea,.sticky-origin-format-preview){grid-area:1/1;padding:12px 14px;font:inherit;font-size:14px;line-height:1.65}
+    .sticky-origin-card textarea{display:block;resize:none;min-height:0;width:100%;border:0;outline:0;background:transparent;color:inherit;overflow:auto}
+    .sticky-origin-format-preview{min-width:0;overflow:auto;scrollbar-width:thin;cursor:text;white-space:pre-wrap;overflow-wrap:anywhere}
+    .sticky-origin-note-body textarea:focus+.sticky-origin-format-preview{display:none}
+    .sticky-origin-note-body textarea:not(:focus):has(+.sticky-origin-format-preview:not([hidden])){color:transparent;scrollbar-width:none}
     .sticky-origin-card textarea:focus-visible{outline:2px solid #4659cc;outline-offset:-2px}
     .sticky-origin-foot{padding:4px 6px 6px;font-size:11px;min-height:38px;display:grid;grid-template-columns:32px 32px minmax(0,1fr) 42px auto 32px;gap:3px;align-items:center;color:#4f596c}
     .sticky-origin-foot-spacer{min-width:0;pointer-events:none}
@@ -75,7 +80,7 @@
     /* Collapsing changes only the presentation height; saved dimensions stay intact. */
     .sticky-origin-card.sticky-origin-card-collapsed{height:48px!important;min-height:48px!important}
     .sticky-origin-card-collapsed .sticky-origin-card-head{flex:1;border-bottom:0}
-    .sticky-origin-card-collapsed textarea,.sticky-origin-card-collapsed .sticky-origin-palette,
+    .sticky-origin-card-collapsed .sticky-origin-note-body,.sticky-origin-card-collapsed .sticky-origin-palette,
     .sticky-origin-card-collapsed .sticky-origin-foot,.sticky-origin-card-collapsed .sticky-origin-save-feedback,
     .sticky-origin-card-collapsed .sticky-origin-order,.sticky-origin-card-collapsed .sticky-origin-front,
     .sticky-origin-card-collapsed .sticky-origin-back,.sticky-origin-card-collapsed .sticky-origin-expand{display:none!important}
@@ -93,8 +98,11 @@
     .sticky-origin-editor-header strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
     .sticky-origin-editor-header button{min-width:44px;min-height:44px;border:1px solid rgba(27,37,61,.2);
       border-radius:10px;background:rgba(255,255,255,.55);color:#273040;cursor:pointer}
-    .sticky-origin-editor textarea{flex:1;min-height:0;resize:none;border:0;outline:0;padding:22px 25px;
-      background:transparent;color:#273040;font-size:16px;line-height:1.85;overflow:auto}
+    .sticky-origin-editor-body{display:flex;flex:1;min-height:0;flex-direction:column;overflow:auto;overscroll-behavior:contain}
+    .sticky-origin-editor textarea{flex:1 0 128px;min-height:128px;width:100%;resize:none;border:0;outline:0;padding:16px 20px;
+      background:transparent;color:inherit;font-size:16px;line-height:1.85;overflow:auto}
+    .sticky-origin-editor-body>.origin-note-format-tools,.sticky-origin-editor-body>.origin-note-format-preview{flex:none;margin:8px 12px}
+    .sticky-origin-editor-body>.origin-note-format-tools{padding:8px;border-radius:8px;background:var(--paper)}
     .sticky-origin-editor textarea:focus-visible{outline:2px solid #4659cc;outline-offset:-3px}
     .sticky-origin-editor-footer{border-top:1px solid rgba(25,40,60,.12);font-size:12px}
     .sticky-origin-editor-footer [data-sticky-status][hidden]{display:none}
@@ -126,14 +134,22 @@
     }
     let disposed = false;
     let data = [];
-    let ownerUid = '', ownerRoom = '', state = 'locked';
+    let ownerUid = '', ownerRoom = '', state = 'locked', ownerGeneration = 0;
     let query = '', colorFilter = 'all', indexOpen = false, allView = false, boardScale = 1, activePage = 1, composing = false, collapsedIds = new Set(), saving = new Map(), timers = new Map(), drafts = new Map(), activeMovement = null;
     const pendingWrites=new Set();
     const contentSaves=new Map();
+    const boardTextState=new WeakMap(),boardSelection=new WeakMap(),richTextareas=new WeakSet();
+    let expandedEditor=null;
+    const draftState=note=>{
+      const {text,revision,format}=note.content;
+      return drafts.get(note.id)??{text,session:{revision},
+        format:format?.revision===revision?{text,runs:format.runs}:null};
+    };
     const panel = document.createElement('section');
     panel.className = 'sticky-origin-panel';
     panel.setAttribute('aria-label', '個人付箋ボード');
     container.replaceChildren(panel);
+    root.WorkBoardOriginNoteEditorV671?.installStyles(panel);
     const notePage = note => Number.isInteger(note?.layout?.page) && note.layout.page>=1 && note.layout.page<=5 ? note.layout.page : 1;
     const pageNotes = () => data.filter(note=>notePage(note)===activePage);
     const pageKey = () => 'originStickyPageV660:'+encodeURIComponent(ownerRoom)+':'+encodeURIComponent(ownerUid);
@@ -166,10 +182,10 @@
       if (message.includes('できません') || message.includes('競合'))
         badge(message.includes('競合') ? '保存できませんでした。最新の状態を確認してください' : message);
     }
-    async function commit(id, field, values) {
+    async function commit(id, field, values, expectedRevision) {
       const note = noteFromId(id);
       if (!note || !isReady()) return {ok:false,error:'unavailable'};
-      const committingUid=ownerUid;
+      const committingGeneration=ownerGeneration;
       statusMessage(id, '保存中…');
       const token=Symbol('sticky-write');
       pendingWrites.add(token);
@@ -177,7 +193,7 @@
       try {
         result=await service.dispatch({
           type:'sticky.'+field, id, values,
-          expectedRevision:note[field].revision,
+          expectedRevision:expectedRevision??note[field].revision,
           ownerUid, ownerRoom
         });
       } catch {
@@ -185,7 +201,7 @@
       } finally {
         pendingWrites.delete(token);
       }
-      if (disposed || !isReady() || ownerUid!==committingUid) return result;
+      if (disposed || !isReady() || ownerGeneration!==committingGeneration) return result;
       if(result.ok&&result.note&&result.note.ownerUid===ownerUid&&result.note.roomId===ownerRoom){
         const current=noteFromId(id);
         if(current&&result.note[field]?.revision>current[field]?.revision)
@@ -198,18 +214,36 @@
       }
       return result;
     }
-    function saveContent(id,text) {
-      // One in-flight text transaction per note: later edits wait for a fresh
-      // content revision, so a slow first write cannot erase a newer draft.
+    function saveContent(id,draft) {
+      // Serialize text and formatting together, including explicit mark removal.
       const earlier=contentSaves.get(id) || Promise.resolve({ok:true});
-      const next=earlier.then(()=>commit(id,'content',{text}),()=>commit(id,'content',{text}))
-        .then(result=>{
-          if(result.ok && drafts.get(id)===text)drafts.delete(id);
-          return result;
-        });
+      const generation=ownerGeneration;
+      const write=async()=>{
+        if(ownerGeneration!==generation)return {ok:false,error:'unavailable'};
+        const {text,format,session}=draft;
+        const keepFormatField=format||noteFromId(id)?.content.format!==undefined;
+        // Never take the base revision from a subscription: the editor may be
+        // showing an older copy while a peer's newer text is already saved.
+        const expectedRevision=session.revision;
+        const result=await commit(id,'content',{text,...(keepFormatField?{format}:{})},expectedRevision);
+        if(result.ok)session.revision=result.note?.content?.revision??expectedRevision+1;
+        return result;
+      };
+      const next=earlier.then(write,write).then(result=>{
+        if(result.ok && drafts.get(id)===draft)drafts.delete(id);
+        return result;
+      });
       contentSaves.set(id,next);
       void next.finally(()=>{if(contentSaves.get(id)===next)contentSaves.delete(id);});
       return next;
+    }
+    function showBoardFormatting(textarea,draft) {
+      const preview=textarea.nextElementSibling;
+      const editor=root.WorkBoardOriginNoteEditorV671;
+      if(!preview?.hasAttribute('data-sticky-format-preview'))return;
+      preview.hidden=!editor||!root.WorkBoardNoteTextFormatV671?.read(draft.text,draft.format).length;
+      if(preview.hidden)preview.replaceChildren();
+      else editor.renderInto(preview,draft.text,draft.format);
     }
     function buildCard(note) {
       const card=createElement('article','sticky-origin-card');
@@ -287,8 +321,26 @@
       textarea.dataset.stickyText=note.id;
       textarea.setAttribute('aria-label','付箋本文');
       textarea.maxLength=2000;
-      textarea.value=drafts.get(note.id)??note.content.text;
+      const draft=draftState(note);
+      textarea.value=draft.text;
       textarea.spellcheck=false;
+      boardTextState.set(textarea,draft);
+      const body=createElement('div','sticky-origin-note-body');
+      const preview=createElement('div','sticky-origin-format-preview');
+      preview.dataset.stickyFormatPreview='';
+      preview.dataset.originNoteSurface='light';
+      // The overlaid native textarea is the accessible editable representation.
+      preview.setAttribute('aria-hidden','true');
+      preview.tabIndex=-1;
+      preview.title='クリックして付箋を編集';
+      preview.addEventListener('click',()=>{
+        const range=preview.scrollHeight-preview.clientHeight;
+        const ratio=range>0?preview.scrollTop/range:0;
+        textarea.focus({preventScroll:true});
+        textarea.scrollTop=ratio*(textarea.scrollHeight-textarea.clientHeight);
+      });
+      body.append(textarea,preview);
+      showBoardFormatting(textarea,draft);
       const colors=createElement('div','sticky-origin-palette');
       colors.hidden=true;colors.id='stickyPalette-'+note.id;
       colors.setAttribute('role','group');colors.setAttribute('aria-label','付箋の色');
@@ -323,13 +375,16 @@
       resize.setAttribute('aria-label','ドラッグで付箋の大きさを変更');
       // Resize handle occupies its own footer grid cell; never overlays the counter.
       foot.append(colorToggle,remove,spacer,pageMove,createElement('span','sticky-origin-char-count',textarea.value.length+'/2000'),resize);
-      card.append(top,colors,textarea,feedback,foot);
+      card.append(top,colors,body,feedback,foot);
       return card;
     }
+    function releaseExpandedEditor() {
+      const editor=expandedEditor;
+      expandedEditor=null;
+      editor?.instance?.destroy();
+    }
     function openExpandedEditor(note) {
-      if(!note||!isReady())return;
-      const previous=panel.querySelector('dialog.sticky-origin-editor[open]');
-      if(previous)previous.close();
+      if(!note||!isReady()||expandedEditor)return;
       const dialog=createElement('dialog','sticky-origin-editor');
       dialog.style.setProperty('--sticky-paper',colorHex[note.appearance.color]||colorHex.lemon);
       dialog.setAttribute('aria-label','付箋の拡大編集');
@@ -344,8 +399,10 @@
       text.dataset.stickyText=note.id;
       text.setAttribute('aria-label','付箋本文を大きく編集');
       text.maxLength=2000;
-      text.value=drafts.get(note.id)??note.content.text;
+      const draft=draftState(note);
+      text.value=draft.text;
       text.spellcheck=false;
+      boardTextState.set(text,draft);
       const footer=createElement('div','sticky-origin-editor-footer');
       const message=saving.get(note.id)||'';
       const status=createElement('span','',message);
@@ -355,18 +412,34 @@
       status.hidden=!message;
       const count=createElement('span','sticky-origin-char-count',text.value.length+'/2000');
       footer.append(status,count);
-      dialog.append(header,text,footer);
+      const body=createElement('div','sticky-origin-editor-body');
+      body.append(text);
+      dialog.append(header,body,footer);
+      panel.append(dialog);
+      const instance=root.WorkBoardOriginNoteEditorV671?.attach(text,{
+        format:draft.format,
+        onChange(next){
+          if(expandedEditor?.dialog!==dialog||disposed)return;
+          count.textContent=next.text.length+'/2000';
+          schedule(note.id,{...next,session:draft.session});
+        }
+      });
+      expandedEditor={dialog,instance};
+      if(instance)richTextareas.add(text);
       dialog.addEventListener('cancel',event=>{
         if(composing)event.preventDefault();
       });
       dialog.addEventListener('close',()=>{
         dialog.remove();
+        if(expandedEditor?.dialog!==dialog)return;
+        releaseExpandedEditor();
         if(disposed)return;
+        composing=false;
+        flushContent(note.id);
         // Preserve an unfinished autosave draft while returning to the board.
         refreshStickyCards(panel.querySelector('.sticky-origin-canvas'));
         panel.querySelector('[data-sticky-expand="'+note.id+'"]')?.focus({preventScroll:true});
       },{once:true});
-      panel.append(dialog);
       dialog.showModal();
       text.focus();
     }
@@ -429,7 +502,7 @@
     }
     function draw() {
       if (disposed) return;
-      if (panel.querySelector('textarea:focus') || composing || activeMovement) return;
+      if (panel.querySelector('textarea:focus,dialog.sticky-origin-editor[open]') || composing || activeMovement) return;
       // Synchronization while searching must not replace the focused input:
       // doing so interrupts Japanese IME and loses the keyboard cursor.
       const focusedToolbar=panel.querySelector('.sticky-origin-toolbar input[type="search"]:focus, .sticky-origin-toolbar select:focus');
@@ -553,47 +626,70 @@
         ownerUid=next.ownerUid;ownerRoom=next.ownerRoom;state=next.status;data=next.notes||[];
         if(changedIdentity){activePage=readPage();collapsedIds=new Set(service.readCollapsedNotes?.()||[]);}
         if(changedIdentity||state!=='ready'){
+          ownerGeneration++;
           for(const timer of timers.values())clearTimeout(timer);
-          timers.clear();drafts.clear();saving.clear();activeMovement=null;
+          timers.clear();drafts.clear();saving.clear();activeMovement=null;composing=false;
+          releaseExpandedEditor();
           // Clear immediately, even if an input was focused during signout.
           panel.replaceChildren();
         }
         draw();
       });
     }
-    panel.addEventListener('compositionstart',e=>{if(e.target.matches('textarea'))composing=true});
-    panel.addEventListener('compositionend',e=>{
-      if(!e.target.matches('textarea'))return;
-      composing=false;
-      schedule(e.target.dataset.stickyText,e.target.value);
+    function readBoardInput(textarea) {
+      const prior=boardTextState.get(textarea);
+      const known=boardSelection.get(textarea);
+      boardSelection.delete(textarea);
+      if(!prior||prior.text===textarea.value)return;
+      const text=textarea.value;
+      if(known&&known.start===known.end){
+        const removed=prior.text.length-text.length;
+        if(removed>0&&/Backward$/.test(known.type))known.start-=removed;
+        else if(removed>0&&/Forward$/.test(known.type))known.end+=removed;
+      }
+      const format=root.WorkBoardNoteTextFormatV671?.retarget(prior.text,text,prior.format,known)??null;
+      const draft={text,format,session:prior.session};
+      boardTextState.set(textarea,draft);
+      showBoardFormatting(textarea,draft);
+      schedule(textarea.dataset.stickyText,draft);
+    }
+    function rememberBoardSelection(textarea,type='') {
+      if(boardTextState.has(textarea)&&!richTextareas.has(textarea))
+        boardSelection.set(textarea,{start:textarea.selectionStart,end:textarea.selectionEnd,type});
+    }
+    panel.addEventListener('compositionstart',e=>{
+      if(!e.target.matches('[data-sticky-text]'))return;
+      composing=true;
+      rememberBoardSelection(e.target);
     });
-    function schedule(id, value) {
-      drafts.set(id,value);
+    panel.addEventListener('compositionend',e=>{
+      if(!e.target.matches('[data-sticky-text]'))return;
+      composing=false;
+      if(!richTextareas.has(e.target))readBoardInput(e.target);
+    });
+    panel.addEventListener('beforeinput',e=>{
+      if(!composing&&!e.isComposing)rememberBoardSelection(e.target,e.inputType);
+    });
+    function schedule(id,draft) {
+      drafts.set(id,draft);
       clearTimeout(timers.get(id));
-      timers.set(id,setTimeout(async()=>{
-        timers.delete(id);
-        const draft=drafts.get(id);
-        if(draft===undefined||!isReady())return;
-        await saveContent(id,draft);
-      },700));
+      timers.set(id,setTimeout(()=>flushContent(id),700));
       statusMessage(id,'未保存');
     }
+    function flushContent(id) {
+      if(!timers.has(id))return;
+      clearTimeout(timers.get(id));timers.delete(id);
+      const draft=drafts.get(id);
+      if(draft!==undefined&&isReady())void saveContent(id,draft);
+    }
     panel.addEventListener('input',e=>{
-      if(e.target.matches('[data-sticky-text]')){
-        const id=e.target.dataset.stickyText;
-        const len=e.target.closest('.sticky-origin-card,.sticky-origin-editor')?.querySelector('.sticky-origin-char-count');
-        if(len)len.textContent=e.target.value.length+'/2000';
-        if(!composing&&!e.isComposing)schedule(id,e.target.value);
-      }
+      if(!e.target.matches('[data-sticky-text]'))return;
+      const len=e.target.closest('.sticky-origin-card,.sticky-origin-editor')?.querySelector('.sticky-origin-char-count');
+      if(len)len.textContent=e.target.value.length+'/2000';
+      if(!composing&&!e.isComposing&&!richTextareas.has(e.target))readBoardInput(e.target);
     });
     panel.addEventListener('focusout',e=>{
-      if(!e.target.matches('[data-sticky-text]'))return;
-      const id=e.target.dataset.stickyText;
-      if(timers.has(id)){clearTimeout(timers.get(id));timers.delete(id);
-        const text=drafts.get(id);
-        if(text!==undefined)void saveContent(id,text);
-      }
-      // Once writing has stopped, subsequent snapshots may safely repaint.
+      if(e.target.matches('[data-sticky-text]'))flushContent(e.target.dataset.stickyText);
     });
     panel.addEventListener('click',async e=>{
       if(!e.target.closest('[data-sticky-color-toggle],.sticky-origin-palette')){
@@ -817,6 +913,7 @@
         window.removeEventListener('resize',applyBoardScale);
         unsubscribe();
         if(stageObserver)stageObserver.disconnect();
+        releaseExpandedEditor();
         panel.querySelector('dialog.sticky-origin-editor[open]')?.close();
         for(const timer of timers.values())clearTimeout(timer);
         timers.clear();drafts.clear();saving.clear();data=[];panel.replaceChildren();

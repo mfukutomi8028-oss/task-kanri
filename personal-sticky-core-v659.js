@@ -2,6 +2,9 @@
  * The ownerUid field identifies the selected board user partition in the
  * login-free version; it is not a verified Firebase Auth identity.
  */
+import './note-text-format-v671.js';
+
+const formatCodec = globalThis.WorkBoardNoteTextFormatV671;
 export const STICKY_COLORS = Object.freeze(['ivory', 'lemon', 'peach', 'mint', 'sky', 'lavender']);
 export const STICKY_TEXT_LIMIT = 2000;
 export const STICKY_PAGE_COUNT = 5;
@@ -136,12 +139,22 @@ export function updateSticky(note, { field, expectedRevision, values, ownerUid, 
     return { ok: false, error: 'invalid-update' };
   }
   if (note[field].revision !== expectedRevision) return { ok: false, error: 'conflict' };
-  const fields = { content: ['text'], appearance: ['color'],
+  const fields = { content: ['text','format'], appearance: ['color'],
     layout: ['x','y','width','height','zIndex','page'], mobile: ['order'] };
   const allowed = fields[field];
   if (Object.keys(values).some(key => !allowed.includes(key))) return { ok: false, error: 'invalid-update' };
   const next = { ...note[field], ...values, revision: expectedRevision + 1, updatedAt: now };
   if (!isStickyGroup(field, next)) return { ok: false, error: 'invalid-update' };
+  if (field === 'content') {
+    // Old clients spread unknown fields forward. Bind stored ranges to their
+    // exact content revision and never persist a second copy of the body.
+    const {text,revision,format}=note.content;
+    const previous=format?.revision===revision?{text,runs:format.runs}:null;
+    const incoming=Object.hasOwn(values,'format')?values.format:previous;
+    const runs=formatCodec.read(next.text,incoming);
+    delete next.format;
+    if(runs.length)next.format={revision:next.revision,runs};
+  }
   return { ok: true, note: { ...note, [field]: next, updatedAt: Math.max(note.updatedAt, now) } };
 }
 export function canDeleteSticky(note, { ownerUid, roomId, expectedRevisions }) {
