@@ -493,8 +493,11 @@ const dayMillis=86400000;function dayStart(d){const a=new Date(d);a.setHours(0,0
 function parseDay(s){const [y,m,d]=String(s||'').split('-').map(Number);return new Date(y||2026,(m||1)-1,d||1)}function shift(s,n){return key(addDay(parseDay(s),n))}const base=key(new Date());
 const days=['日','月','火','水','木','金','土'];function dateLabel(k){if(!k)return '未設定';const d=parseDay(k);return `${d.getMonth()+1}月${d.getDate()}日（${days[d.getDay()]}）`}function rangeLabel(d){const a=monday(parseDay(d)),b=addDay(a,6);return `${a.getMonth()+1}月${a.getDate()}日 〜 ${b.getMonth()+1}月${b.getDate()}日`}
 function monday(d){const x=dayStart(d);x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
+function originDisplayedWeekLabel(start){
+ return key(start)===key(monday(new Date()))?'今週':'表示中の週';
+}
 function newId(){return (crypto?.randomUUID?.()||`${Date.now()}${Math.random()}`)}
-mount.querySelector('style').appendChild(document.createTextNode(".origin-memo-nav{position:relative;display:flex;align-items:center}\n.origin-memo-nav-menu{display:none;position:absolute;left:0;top:100%;z-index:60;min-width:170px;padding:6px;border:1px solid var(--line);border-radius:12px;background:var(--paper);box-shadow:0 14px 34px rgba(20,31,60,.14)}\n.origin-memo-nav:hover .origin-memo-nav-menu,.origin-memo-nav:focus-within:not([data-pointer-focus]) .origin-memo-nav-menu{display:grid;gap:3px}\n.origin-memo-nav-menu button{min-height:44px;width:100%;text-align:left;padding:9px 12px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-size:13px;font-weight:730}\n.origin-memo-nav-menu button:hover,.origin-memo-nav-menu button:focus-visible,.origin-memo-nav-menu button[aria-current=\"true\"]{background:var(--accent-bg);color:var(--accent-dark)}\n.origin-memo-header-switch{display:none}\n@media(max-width:770px){.origin-memo-header-switch{display:flex;align-items:center;gap:4px;margin-left:auto;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}\n.origin-memo-header-switch button{min-height:44px;padding:7px 9px;border:0;border-radius:8px;background:transparent;color:var(--ink-soft);font-size:11px;font-weight:760;white-space:nowrap}\n.origin-memo-header-switch button[aria-pressed=\"true\"]{background:var(--accent-bg);color:var(--accent-dark)}}"));
+mount.querySelector('style').appendChild(document.createTextNode(".origin-memo-nav{position:relative;display:flex;align-items:center}\n.origin-memo-nav-menu{display:none;position:absolute;left:0;top:100%;z-index:60;min-width:170px;padding:6px;border:1px solid var(--line);border-radius:12px;background:var(--paper);box-shadow:0 14px 34px rgba(20,31,60,.14)}\n.origin-memo-nav:not([data-memo-dismissed]):hover .origin-memo-nav-menu,.origin-memo-nav:not([data-memo-dismissed]):focus-within:not([data-pointer-focus]) .origin-memo-nav-menu{display:grid;gap:3px}\n.origin-memo-nav-menu button{min-height:44px;width:100%;text-align:left;padding:9px 12px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-size:13px;font-weight:730}\n.origin-memo-nav-menu button:hover,.origin-memo-nav-menu button:focus-visible,.origin-memo-nav-menu button[aria-current=\"true\"]{background:var(--accent-bg);color:var(--accent-dark)}\n.origin-memo-header-switch{display:none}\n@media(max-width:770px){.origin-memo-header-switch{display:flex;align-items:center;gap:4px;margin-left:auto;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}\n.origin-memo-header-switch button{min-height:44px;padding:7px 9px;border:0;border-radius:8px;background:transparent;color:var(--ink-soft);font-size:11px;font-weight:760;white-space:nowrap}\n.origin-memo-header-switch button[aria-pressed=\"true\"]{background:var(--accent-bg);color:var(--accent-dark)}}"));
  const bridge=window.WorkBoardPaletteBridge;
 const memoBridge=window.WorkBoardPaletteMemoBridgeV369;
 let snapshot=bridge.readSnapshot();
@@ -924,13 +927,29 @@ function nav(){
      // Pointer focus must not pin a hovered submenu after the pointer leaves.
      // Preserve focus-within for keyboard traversal, without blurring the tab.
      group.addEventListener('pointerdown',()=>{group.dataset.pointerFocus='true'});
-     group.addEventListener('keydown',()=>{delete group.dataset.pointerFocus});
+     group.addEventListener('pointerenter',()=>{delete group.dataset.memoDismissed});
+     group.addEventListener('keydown',event=>{
+       if(event.key==='Escape'||event.isComposing)return;
+       delete group.dataset.pointerFocus;
+       delete group.dataset.memoDismissed;
+     });
+     group.addEventListener('focusin',event=>{
+       if(event.relatedTarget&&!group.contains(event.relatedTarget))delete group.dataset.memoDismissed;
+     });
      group.addEventListener('focusout',event=>{
        if(!group.contains(event.relatedTarget))delete group.dataset.pointerFocus;
      });
    }
  }
  if(mobile){mobile.innerHTML=markup(true);mobile.dataset.activeRoute=view}
+}
+function dismissOriginMemoNav(){
+ const group=$('#desktopNav .origin-memo-nav'),menu=group?.querySelector('.origin-memo-nav-menu');
+ if(!menu?.getClientRects().length)return false;
+ const moveFocus=group.contains(mount.activeElement);
+ group.dataset.memoDismissed='true';
+ if(moveFocus)group.querySelector('[data-route="notes"]')?.focus({preventScroll:true});
+ return true;
 }
 // Origin uses Classic's saved per-room and per-user colors without replacing Origin UI.
 function syncOriginColorTheme(){
@@ -994,7 +1013,7 @@ function captureOriginFocus(){
  const metadata={scope,id:active.id||'',name:active.getAttribute('name')||'',
    action:active.dataset.action||'',itemId:active.dataset.id||'',
    kind:active.dataset.kind||'',value:active.dataset.value||'',
-   status:active.dataset.status||'',route:active.dataset.route||''};
+   status:active.dataset.status||'',route:active.dataset.route||'',date:active.dataset.date||''};
  if(typeof active.selectionStart==='number')metadata.selection=[active.selectionStart,active.selectionEnd];
  return metadata;
 }
@@ -1002,7 +1021,7 @@ function restoreOriginFocus(metadata){
  if(!metadata)return;
  const container=$('#'+metadata.scope);
  if(!container)return;
- const all=Array.from(container.querySelectorAll('button,input,select,textarea'));
+ const all=Array.from(container.querySelectorAll('button,input,select,textarea,#originTasksHeading'));
  let target=null;
  if(metadata.id)target=all.find(el=>el.id===metadata.id);
  if(!target&&metadata.route)target=all.find(el=>el.dataset.route===metadata.route);
@@ -1011,7 +1030,8 @@ function restoreOriginFocus(metadata){
    &&(el.dataset.id||'')===metadata.itemId
    &&(el.dataset.kind||'')===metadata.kind
    &&(el.dataset.value||'')===metadata.value
-   &&(el.dataset.status||'')===metadata.status);
+   &&(el.dataset.status||'')===metadata.status
+   &&(el.dataset.date||'')===metadata.date);
  if(!target&&metadata.scope==='workspace'&&metadata.action==='todo-check'){
    target=container.querySelector('.origin-todo-list [data-action="todo-check"]')
      ||container.querySelector('.origin-todo-archive-toggle');
@@ -1188,7 +1208,11 @@ function render(){
      }else if(target)target.textContent='付箋画面を読み込めませんでした。';
    }
  }
- if(view==='tasks')syncOriginTaskListWriteFeedback();
+ if(view==='tasks'){
+   const heading=$('#workspace .page-heading h1');
+   if(heading){heading.id='originTasksHeading';heading.tabIndex=-1;}
+   syncOriginTaskListWriteFeedback();
+ }
  for(const el of $('#workspace').querySelectorAll('[data-origin-scroll-key]')){
    if(horizontalScroll.has(el.dataset.originScrollKey))
      el.scrollLeft=horizontalScroll.get(el.dataset.originScrollKey);
@@ -1226,10 +1250,10 @@ function renderToday(){
  const todos=pendingTodos.slice(0,4);
  const chosenToday=selectedDay===base;
  return `${head(`${dateLabel(selectedDay)}の仕事`,'予定と次の行動を、ひとつの視線で確認できます。',chosenToday?'':`<button class="secondary-button" data-action="pick-today">${icon('clock')} 今日に戻る</button>`)}
- <div class="strip"><span class="strip-title">今週</span>${weekdays}</div>
+ <div class="strip"><span class="strip-title">${originDisplayedWeekLabel(start)}</span>${weekdays}</div>
  <div class="origin-today-shortcuts" role="group" aria-label="新しい業務を追加"><span>すぐ追加</span><button type="button" data-action="new" data-kind="tasks">${icon('plus',15)} タスク</button><button type="button" data-action="new" data-kind="todos">${icon('plus',15)} ToDo</button><button type="button" data-action="new" data-kind="events" data-date="${selectedDay}">${icon('plus',15)} この日の予定</button></div>
  <div class="day-grid">
- <section class="surface"><div class="surface-section"><div class="section-head"><h2>${icon('spark',18)} 先に進めたいこと <span class="count">${priorityPool.length}</span></h2><button class="text-button" data-route="tasks">タスクをすべて見る ${icon('right',13)}</button></div>
+ <section class="surface"><div class="surface-section"><div class="section-head"><h2>${icon('spark',18)} 先に進めたいこと <span class="count">${priorityPool.length}</span></h2><button type="button" class="text-button" data-action="today-task-filter" data-value="all">タスクをすべて見る ${icon('right',13)}</button></div>
  <div class="status-summary" role="group" aria-label="タスクの状態別一覧へ移動">
 <button type="button" class="origin-summary-filter" data-action="today-task-filter" data-value="active" aria-label="未完了のタスク ${active.length}件を表示"><i class="bullet" aria-hidden="true"></i>未完了 <strong>${active.length}</strong>件</button>
 <button type="button" class="origin-summary-filter" data-action="today-task-filter" data-value="late" aria-label="期限超過のタスク ${active.filter(t=>t.due&&t.due<base).length}件を表示"><i class="bullet" style="background:var(--red)" aria-hidden="true"></i>期限超過 <strong>${active.filter(t=>t.due&&t.due<base).length}</strong>件</button>
@@ -1711,7 +1735,7 @@ function renderCalendar(){
  const filterCount=Number(Boolean(query))+Number(scheduleAssignee!=='all')+
    (scheduleSearchScope==='all'?Number(scheduleCategory!=='all')+Number(Boolean(scheduleDateFrom))+Number(Boolean(scheduleDateTo)):0);
  const weekAll=data.events.filter(e=>e.date>=key(start)&&e.date<=key(end));
- const weekCountLabel=key(start)===key(monday(new Date()))?'今週':'表示中の週';
+ const weekCountLabel=originDisplayedWeekLabel(start);
  // A cross-week query does not erase the visible calendar week.
  const matchesConditions=e=>(scheduleAssignee==='all'||e.assignee===scheduleAssignee)
    &&(!query||[e.title,e.location,e.assignee,e.category,e.desc].join(' ').toLocaleLowerCase().includes(query));
@@ -2208,6 +2232,7 @@ function renderOriginInbox(){
  const list=$('#originInboxList'),genre=$('#originInboxGenres'),active=mount.activeElement,scroll=list.scrollTop;
  const fromList=Boolean(active&&list.contains(active)),fromGenre=Boolean(active&&genre.contains(active));
  const focusId=active?.dataset?.id,focusAction=active?.dataset?.action,focusValue=active?.dataset?.value;
+ const focusNotification=fromList?active.closest('[data-inbox-id]')?.dataset.inboxId:undefined;
  $('#originInboxImportantCount').textContent=all.important.filter(row=>!row.readAt).length+'件未読';
  $('#originInboxActivityCount').textContent=all.activity.length+'件';
  dialog.querySelectorAll('[data-action="origin-inbox-section"]').forEach(button=>{
@@ -2254,7 +2279,9 @@ function renderOriginInbox(){
  :`<div class="origin-inbox-empty">${icon(important?'mail':'layers',28)}<strong>${important?'該当する重要通知はありません':'アクティビティがありません'}</strong><p>${query?'検索・分類を変更してください。':important?'メンションや返信、担当依頼をここで確認できます。':'保存済みの作成・更新がここに並びます。'}</p></div>`;
  list.scrollTop=scroll;originInboxUpdateBadge();
  if(fromList){
-  const same=Array.from(list.querySelectorAll('button')).find(el=>el.dataset.action===focusAction&&el.dataset.id===focusId);
+  // Different notices may send the reader to the same task or schedule.
+  const same=Array.from(list.querySelectorAll('button')).find(el=>el.dataset.action===focusAction&&el.dataset.id===focusId
+    &&el.closest('[data-inbox-id]')?.dataset.inboxId===focusNotification);
   (same||(important?$('#originInboxReadFilter'):null)||genre.querySelector('button'))?.focus({preventScroll:true});
  }else if(fromGenre){
   const same=Array.from(genre.querySelectorAll('button')).find(el=>el.dataset.action===focusAction&&el.dataset.value===focusValue);
@@ -3733,7 +3760,8 @@ function focusOriginFirstResult(kind){
  }
  const selectors={
   tasks:'.origin-task-collection [data-action="open"][data-kind="tasks"]',
-  todos:'.origin-todo-list [data-action="open"][data-kind="todos"],#originCompletedTodos [data-action="open"][data-kind="todos"]',
+  todos:'.origin-todo-list [data-action="open"][data-kind="todos"]'
+    +(todoSearchHistory?',#originCompletedTodos [data-action="open"][data-kind="todos"]':''),
   events:view==='calendar'&&scheduleSearchScope==='all'
     ?'.origin-schedule-global-results .origin-schedule-global-item [data-action="open"][data-kind="events"]'
     :'[data-action="open"][data-kind="events"]',
@@ -4238,12 +4266,14 @@ function handleAction(el,event){const a=el.dataset.action,id=el.dataset.id,kind=
   return;
  }
  if(a==='today-task-filter'){
-   if(!['active','late','waiting'].includes(value))return;
+   if(!['all','active','late','waiting'].includes(value))return;
    taskFilter=value==='waiting'?'active':value;
    taskStatusChoice=value==='waiting'?'確認待ち':'';
    taskQuery='';taskCollapsedGroups.clear();taskVisibleLimits.clear();selectedBulk.clear();
    viewScrollPositions.tasks=0;
-   return handleRoute('tasks');
+   handleRoute('tasks');
+   if(value==='all'&&view==='tasks')$('#originTasksHeading')?.focus({preventScroll:true});
+   return;
   }
   if(a==='today-calendar-day'){
    scheduleView='day';
@@ -4925,6 +4955,9 @@ mount.addEventListener('keydown',e=>{
    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();return}
    if(handleOriginModalKeys(e))return;
  }
+ if(e.key==='Escape'&&!e.isComposing&&!panelOpen&&e.target.closest?.('.origin-memo-nav')&&dismissOriginMemoNav()){
+   e.preventDefault();return;
+ }
  if(e.key==='Enter'&&!e.isComposing&&!e.altKey&&!e.ctrlKey&&!e.metaKey&&!e.repeat){
    const matchKind={originTaskQuery:'tasks',originMemoQuery:'memos',
     originScheduleSearch:'events',originTodoQuery:'todos'}[e.target.id];
@@ -4934,6 +4967,7 @@ mount.addEventListener('keydown',e=>{
  const hit=e.target.closest?.('.search-hit'),inResults=results.contains(e.target);
  if(!panelOpen&&(e.target===input||inResults)){
    if(e.key==='Escape'){
+     if(!e.isComposing)dismissOriginMemoNav();
      e.preventDefault();closeSearch(true);input.focus({preventScroll:true});return;
    }
    if(!results.hidden){
@@ -4956,7 +4990,17 @@ mount.addEventListener('keydown',e=>{
    if(input.value.trim())renderSearch(input.value);
    return;
  }
- if(e.key==='Escape')closeSearch()
+ if(e.key==='Escape'){
+   if(!e.isComposing&&!panelOpen)dismissOriginMemoNav();
+   closeSearch();
+ }
+});
+// Hover can open the desktop chooser when focus is on the page rather than
+// in Origin. Dismiss it without intercepting keys used by other displays.
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&!e.isComposing&&!e.defaultPrevented&&!panelOpen
+   &&document.documentElement.dataset.wbDisplay==='modern'&&!e.composedPath().includes(host))
+   dismissOriginMemoNav();
 });
 })();
 

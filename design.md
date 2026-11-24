@@ -35,8 +35,15 @@ No whole-screen restyle is justified by the first source pass. Further redesign 
 
 ## Verification and limitations
 
-The app is generated in a Shadow DOM. The Hallmark static comparison extracts embedded stylesheet strings via the TypeScript AST, with app scope; this is not a full page audit. Before: 216 FAIL / 838 REFLEX / 17 WARN. After: 176 / 825 / 17. Gate 48 includes host-scoped tokens the scanner does not recognize, and app-specific spacing findings require review. Do not interpret the counts as an accessibility score or waive every remaining issue. Native rendered Hallmark checks and real-screen visual review are not complete. Use synthetic offline rooms for Playwright and never capture production information. See docs/ORIGIN_HALLMARK_AUDIT_V668.md for evidence, test status and next gate.
+The app is generated in a Shadow DOM. The Hallmark static comparison extracts embedded stylesheet strings via the TypeScript AST, with app scope; this is not a full page audit. Before: 216 FAIL / 838 REFLEX / 17 WARN. After: 176 / 825 / 17. Gate 48 includes host-scoped tokens the scanner does not recognize, and app-specific spacing findings require review. Do not interpret the counts as an accessibility score or waive every remaining issue. Native rendered Hallmark checks are incomplete; synthetic Playwright comparisons and a representative manual visual review are now available (see audit report). Use synthetic offline rooms for Playwright and never capture production information. See docs/ORIGIN_HALLMARK_AUDIT_V668.md for evidence, test status and next gate.
 
 ## Integration follow-up
 
 PR #1005 was merged first as Ver.668. The Hallmark candidate is therefore Ver.669, reconciled against that main commit. Preserve create-menu keyboard disclosure, search-all focus restoration, accurate current/selected-week counts, and their original regression tests. Progress fill uses `transition:none!important` in reduced-motion mode because the pre-existing universal rule sets a 0.01ms duration with `!important`. Keep the original browser assertion; no weakening of the accessibility gate.
+
+## Interaction continuity (PR #1007)
+
+- Escape dismisses the desktop memo chooser even when opened by hover; keyboard entry and pointer re-entry remain available.
+- Re-rendering restores the exact date control and notification identity, not merely a common action or task ID. Search Enter respects the explicit completed-history opt-in.
+- Today and Schedule use the same current-week helper. The explicit all-tasks shortcut clears search/status restrictions while ordinary navigation restores them; focus the task heading and keep the layout preference.
+- Integrate these behaviors into the existing owner functions. Do not change persistence or duplicate navigation handlers. Retain the original six tests and Hallmark assertions.

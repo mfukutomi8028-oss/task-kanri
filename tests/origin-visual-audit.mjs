@@ -42,6 +42,9 @@ async function capture(side,url,width,height,theme){
  try{
   await ctx.route('**/*',r=>new URL(r.request().url()).origin===url?r.continue():r.abort('blockedbyclient'));
   const page=await ctx.newPage();const errors=[];
+  // A common, safe morning makes both versions use identical fixtures and avoids a
+  // real-time schedule reminder obscuring the resting-state comparison.
+  await page.clock.setFixedTime(new Date('2026-11-24T08:00:00+09:00'));
   page.on('pageerror',e=>errors.push(String(e)));
   await page.addInitScript(id=>{
    Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
@@ -100,5 +103,7 @@ try{
  const pairs=records.filter(r=>r.side==='before').map(a=>({a,b:records.find(b=>b.side==='after'&&b.width===a.width&&b.theme===a.theme&&b.route===a.route)}));
  await writeFile(join(out,'compare.html'),'<!doctype html><html lang="ja"><meta charset="utf-8"><title>Origin visual comparison</title><style>body{font:16px system-ui;margin:24px;color:#222}section{margin:24px 0;border-top:1px solid #ddd}div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}img{max-width:100%;height:auto;display:block}</style><h1>Origin visual comparison (synthetic records)</h1>'+pairs.map(({a,b})=>'<section><h2>'+a.route+' / '+a.width+'px / '+a.theme+'</h2><div><figure><figcaption>Before Ver.'+a.release+'</figcaption><a href="'+a.name+'"><img loading="lazy" src="'+a.name+'"></a></figure><figure><figcaption>After Ver.'+b.release+'</figcaption><a href="'+b.name+'"><img loading="lazy" src="'+b.name+'"></a></figure></div></section>').join('')+'</html>');
  console.log('Total captures: '+records.length);
+ if(records.length!==sizes.length*2*10||pairs.some(({b})=>!b))throw Error('Incomplete before/after capture set');
  if(records.some(r=>r.errors.length))throw Error('Page errors found; inspect metrics.json');
+ if(records.some(r=>r.overflow>3))throw Error('Unexpected horizontal document overflow; inspect metrics.json');
 }finally{await browser?.close();for(const s of servers)s.kill();}
