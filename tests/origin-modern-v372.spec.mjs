@@ -4058,3 +4058,189 @@ test('Origin schedule marks the displayed week accurately when navigating forwar
   await root.getByRole('button',{name:'次の週'}).click();
   await expect(count).toHaveText('今週 1件',{timeout:2000});
 });
+
+test('Origin memo choices dismiss on Escape with keyboard focus or pointer hover',async({page})=>{
+ const root=await launchOriginV415(page,'origin-memo-choice-dismissal');
+ const tab=root.locator('#desktopNav [data-route="notes"]');
+ const menu=root.locator('#desktopNav .origin-memo-nav-menu');
+ const business=root.locator('#desktopNav [data-memo-nav-mode="business"]');
+ await page.mouse.move(10,895);
+ await tab.focus();
+ await page.keyboard.press('Tab');
+ await expect(business).toBeFocused();
+ await expect(menu).toBeVisible();
+ await page.keyboard.press('Escape');
+ await expect(menu).toBeHidden({timeout:2000});
+ await expect(tab).toBeFocused();
+
+ // The next intentional keyboard action can enter the chooser again.
+ await page.keyboard.press('Tab');
+ await expect(business).toBeFocused();
+ await business.evaluate(button=>button.blur());
+
+ // Hovered content must be dismissible without moving the pointer, even
+ // when the keyboard is not focused on a part of Origin.
+ await tab.hover();
+ await expect(menu).toBeVisible();
+ await page.keyboard.press('Escape');
+ await expect(menu).toBeHidden({timeout:2000});
+ await page.mouse.move(10,895);
+ await tab.hover();
+ await expect(menu).toBeVisible();
+
+ // An already-focused search field must not trap dismissal of the
+ // independently hovered chooser.
+ const search=root.locator('#originSearchInput');
+ await search.focus();
+ await page.keyboard.press('Escape');
+ await expect(menu).toBeHidden({timeout:2000});
+ await expect(search).toBeFocused();
+});
+
+test('Origin keeps exact date focus in Today and Schedule after repaint',async({page})=>{
+ const root=await launchOriginV415(page,'origin-exact-date-focus');
+ const firstDayButton=root.locator('#workspace [data-action="pick-day"]').first();
+ const wantedDate=await root.locator('#workspace [data-action="pick-day"]').nth(3).getAttribute('data-date');
+ const todayChip=root.locator('#workspace [data-action="pick-day"][data-date="'+wantedDate+'"]');
+ await todayChip.focus();
+ await page.keyboard.press('Space');
+ await expect(todayChip).toHaveAttribute('aria-pressed','true');
+ await expect(todayChip).toBeFocused({timeout:2000});
+ await expect(firstDayButton).not.toBeFocused();
+
+ await root.locator('#desktopNav [data-route="calendar"]').click();
+ const calendarChip=root.locator('#workspace .origin-weekday-focus[data-date="'+wantedDate+'"]');
+ await calendarChip.focus();
+ await page.evaluate(async date=>{
+   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const start=new Date(date+'T10:00');
+   const res=await bridge.dispatch({type:'schedule.create',revision:0,ownerRoom:s.roomId,ownerUser:s.currentUser,
+     values:{title:'フォーカス更新の確認',startAt:start.toISOString(),endAt:new Date(start.getTime()+3600000).toISOString(),
+       assignee:s.currentUser,category:s.categories[0],relatedTaskId:'',location:'',memo:''}});
+   if(!res?.ok)throw Error('Schedule fixture failed: '+JSON.stringify(res));
+ },wantedDate);
+ await expect(calendarChip).toContainText('1件');
+ await expect(calendarChip).toBeFocused({timeout:2000});
+});
+
+test('Origin ToDo keyboard search honors the completed history opt-in',async({page})=>{
+ const root=await launchOriginV415(page,'origin-todo-search-history-focus',390);
+ await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge;
+   for(const text of ['完了メール確認','別件の完了履歴']){
+     const created=await bridge.dispatch({type:'todo.create',text});
+     if(!created?.ok)throw Error('ToDo search fixture create failed: '+JSON.stringify(created));
+     const item=bridge.readSnapshot().todos.find(todo=>todo.text===text);
+     if(!item)throw Error('ToDo search fixture missing: '+text);
+     const changed=await bridge.dispatch({type:'todo.toggle',id:item.id});
+     if(!changed?.ok)throw Error('ToDo search fixture toggle failed: '+JSON.stringify(changed));
+   }
+ });
+ await root.locator('#mobileNav [data-route="todos"]').click();
+ await root.locator('[data-action="todo-completed-toggle"]').click();
+ await root.locator('[data-action="todo-search-toggle"]').click();
+ const input=root.locator('#originTodoQuery');
+ await input.evaluate(el=>{
+   el.value='メール';
+   el.dispatchEvent(new Event('input',{bubbles:true,composed:true}));
+ });
+ const archive=root.locator('#originCompletedTodos'),jump=root.locator('#originTodoSearchPanel [data-action="jump-result"]');
+ await expect(archive.locator('.todo-text')).toHaveCount(2);
+ await expect(jump).toBeDisabled();
+ await input.focus();
+ await page.keyboard.press('Enter');
+ await expect(input).toBeFocused({timeout:2000});
+
+ await root.locator('[data-action="todo-search-history"]').click();
+ await expect(jump).toBeEnabled();
+ await expect(archive.locator('.todo-text')).toHaveCount(1);
+ await input.focus();
+ await page.keyboard.press('Enter');
+ await expect(archive.locator('.todo-text')).toHaveText('完了メール確認');
+ await expect(archive.locator('.todo-text')).toBeFocused();
+});
+
+test('Origin Today labels the displayed week after a Calendar jump',async({page})=>{
+ const root=await launchOriginV415(page,'origin-today-week-indicator',390);
+ const label=root.locator('#workspace .strip-title');
+ await expect(label).toHaveText('今週');
+ await root.locator('#mobileNav [data-route="calendar"]').click();
+ await root.locator('.calendar-tools [data-action="week-next"]').click();
+ const selected=await root.locator('#originDateJump').inputValue();
+ await root.locator('#mobileNav [data-route="today"]').click();
+ await expect(root.locator('#workspace [data-action="pick-day"][aria-pressed="true"]')).toHaveAttribute('data-date',selected);
+ await expect(label).toHaveText('表示中の週',{timeout:2000});
+ await root.locator('#workspace [data-action="pick-today"]').click();
+ await expect(label).toHaveText('今週');
+});
+
+test('Origin inbox keeps focus on the same notification for a shared task',async({page})=>{
+ const root=await launchOriginV415(page,'origin-inbox-duplicate-target-focus');
+ await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,flow=window.WorkBoardWorkflowV152,s=bridge.readSnapshot();
+   const title='同じタスク宛ての別通知';
+   const created=await bridge.dispatch({
+     type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,title,
+     description:'',assignee:s.currentUser,status:s.statuses[0],category:s.categories[0],
+     requester:'',tags:'',checklist:'',checklistDone:[],priority:'中',dueDate:'',dueTime:'',pinned:false
+   });
+   if(!created?.ok)throw Error('Inbox fixture create failed: '+JSON.stringify(created));
+   const task=bridge.readSnapshot().tasks.find(item=>item.title===title);
+   if(!task)throw Error('Inbox fixture task missing');
+   const stamp=Date.now();
+   for(const [id,type,createdAt] of [['focus-older','mention',stamp],['focus-newer','reply',stamp+1000]])
+     await flow.writeInboxEvent(s.currentUser,id,{taskId:task.id,type,title:'確認 '+id,body:id,actor:'通知テスト',createdAt});
+ });
+ await root.locator('#originInboxButton').click();
+ const older=root.locator('#originInboxList [data-inbox-id="focus-older"] [data-action="origin-inbox-open"]');
+ const newer=root.locator('#originInboxList [data-inbox-id="focus-newer"] [data-action="origin-inbox-open"]');
+ await expect(older).toBeVisible();
+ await expect(newer).toBeVisible();
+ expect(await newer.getAttribute('data-id')).toBe(await older.getAttribute('data-id'));
+ await older.focus();
+
+ const result=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text:'一覧を再描画する'}));
+ expect(result?.ok).toBe(true);
+ await expect(older).toBeFocused({timeout:2000});
+ await expect(newer).not.toBeFocused();
+});
+
+test('Origin Today all-tasks shortcut opens all tasks without the last query',async({page})=>{
+ const root=await launchOriginV415(page,'origin-today-view-all-tasks',390);
+ await page.evaluate(async()=>{
+   const bridge=window.WorkBoardPaletteBridge,s=bridge.readSnapshot();
+   const result=await bridge.dispatch({
+     type:'task.create',ownerRoom:s.roomId,ownerUser:s.currentUser,revision:0,
+     title:'一覧にある作業',description:'',assignee:s.currentUser,status:s.statuses[0],
+     category:s.categories[0],requester:'',tags:'',checklist:'',checklistDone:[],
+     priority:'中',dueDate:'',dueTime:'',pinned:false
+   });
+   if(!result?.ok)throw Error('Task fixture failed: '+JSON.stringify(result));
+ });
+ const taskTab=root.locator('#mobileNav [data-route="tasks"]'),todayTab=root.locator('#mobileNav [data-route="today"]');
+ await taskTab.click();
+ const board=root.locator('[data-action="task-layout"][data-value="board"]');
+ await board.click();
+ await expect(board).toHaveAttribute('aria-pressed','true');
+ const input=root.locator('#originTaskQuery');
+ await input.evaluate(el=>{
+   el.value='存在しない検索条件';
+   el.dispatchEvent(new Event('input',{bubbles:true,composed:true}));
+ });
+ await expect(root.locator('.origin-task-collection .item-row')).toHaveCount(0);
+ await todayTab.click();
+ await taskTab.click();
+ await expect(input).toHaveValue('存在しない検索条件');
+ await todayTab.click();
+
+ await root.getByRole('button',{name:'タスクをすべて見る'}).press('Enter');
+ await expect(input).toHaveValue('',{timeout:2000});
+ await expect(root.locator('[data-action="task-filter"][data-value="all"]')).toHaveAttribute('aria-pressed','true');
+ await expect(board).toHaveAttribute('aria-pressed','true');
+ await expect(root.locator('.origin-task-collection')).toContainText('一覧にある作業');
+ const title=root.locator('#workspace .page-heading h1');
+ await expect(title).toBeFocused();
+ const updated=await page.evaluate(()=>window.WorkBoardPaletteBridge.dispatch({type:'todo.create',text:'一覧再描画の確認'}));
+ expect(updated?.ok).toBe(true);
+ await expect(title).toBeFocused({timeout:2000});
+});
