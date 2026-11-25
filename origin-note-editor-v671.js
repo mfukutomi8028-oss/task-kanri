@@ -57,6 +57,8 @@
     color:var(--note-tools-active-ink,var(--accent-dark,#3948b8));border-color:var(--note-tools-active-border,var(--accent,#4659cc))}
   .origin-note-format-tools .origin-note-format-clear{white-space:nowrap;color:var(--note-tools-muted,var(--ink-soft,#526071))}
   .origin-note-format-tools .origin-note-format-hint{flex:1 0 100%;margin:0;color:var(--note-tools-muted,var(--ink-soft,#526071));line-height:1.5}
+  /* Keep the empty live region out of layout until feedback is needed. */
+  .origin-note-format-tools .origin-note-format-hint:empty{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
   @media(max-width:480px){
     .origin-note-format-choices{flex:1 1 100%;align-items:start;gap:8px}
     .origin-note-format-field{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label mixed" "select select";
@@ -131,10 +133,11 @@
   }
   // The editable DOM is a projection of canonical plain text and validated runs.
   // The original textarea remains the form value/constraint owner, not a second UI.
-  function attach(textarea,{format=null,onChange=()=>{},toolbar=true}={}){
+  function attach(textarea,{format=null,onChange=()=>{},toolbar=true,showInstruction=true}={}){
     installStyles(textarea);
     const doc=documentFor(textarea),element=(name,value)=>{const e=doc.createElement(name);if(value)e.textContent=value;return e;};
-    const holder=element('div'),hint=element('p','本文の文字を選択してから書式を変更できます。');
+    const instructionText=showInstruction?'本文の文字を選択してから書式を変更できます。':'';
+    const holder=element('div'),hint=element('p',instructionText);
     holder.className='origin-note-format-tools';holder.setAttribute('role','group');holder.setAttribute('aria-label','文字の書式');
     hint.className='origin-note-format-hint';hint.setAttribute('aria-live','polite');holder.append(hint);
     const surface=element('div');surface.className='origin-note-editable '+textarea.className;
@@ -264,7 +267,7 @@
       if(a===b){hint.textContent='先に本文で書式を変更したい文字を選択してください。';focusSelection(r);return;}
       const patch=typeof change==='function'?change(a,b):change;
       setState(text,model.apply(text,value,a,b,patch),r);
-      hint.textContent='本文の文字を選択してから書式を変更できます。';
+      hint.textContent=instructionText;
     }
     const toggler=flag=>(a,b)=>model.hasFlag(text,value,a,b,flag)?{removeFlag:flag}:{flags:flag};
     function applyToolbar(change){
