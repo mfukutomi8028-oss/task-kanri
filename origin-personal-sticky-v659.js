@@ -407,6 +407,7 @@
       dialog.append(header,body,footer);
       panel.append(dialog);
       const instance=noteEditor.attach(text,{
+        showInstruction:false,
         format:draft.format,
         onChange(next){
           if(expandedEditor?.dialog!==dialog||disposed)return;
