@@ -895,7 +895,7 @@ test('JOURNAL Memo V592 all selection origins focus the same reading folio',()=>
 test('JOURNAL Memo V592 uses a single canonical reading desk and quick references',()=>{
   const js=read('journal-display-v367.js'),css=read('journal-display-v367.css');
   assert.match(js,/function composeMemoShortcutsV592\(spread,memo\)/);
-  assert.match(js,/spread\.append\(mast,shortcuts,index,reader,gallery\)/);
+  assert.match(js,/spread\.append\(mast,index,reader,shortcuts,gallery\)/);
   assert.match(js,/reader\.classList\.add\('j592-memo-reading-desk'\)/);
   assert.match(js,/dataset\.j592MemoShortcut/);
   assert.match(js,/selectMemoForReadingV451\(spread,card\)/);
@@ -1036,7 +1036,8 @@ test('JOURNAL V491 inline task/ToDo readers and compact memo remain presentation
   assert.match(move,/reader\.classList\.toggle\('j491-inline-detail',inline\)/);
   assert.match(move,/reader\.contains\(document\.activeElement\)/);
   assert.doesNotMatch(move,/(?:persist|transaction|setDatabase|updateDatabase|firebase)\s*\(/i);
-  assert.match(app,/journalTodoInlineSelectedV491=journalTodoSelectedV425/);
+  assert.match(move,/selectedId=todo\?journalTodoSelectedV425:journalTaskInlineSelectedV491/);
+  assert.match(app,/journalTodoSelectedV425=b\.dataset\.j425TodoSelect/);
   assert.match(app,/journalTaskInlineSelectedV491=filters\.selected/);
   assert.match(app,/journalPositionSelectedReaderV491\('todo'\)/);
   assert.match(app,/journalPositionSelectedReaderV491\('task'\)/);

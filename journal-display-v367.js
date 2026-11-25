@@ -556,7 +556,6 @@
       index.querySelector('.j-memo-index-sort-v383 select')?.focus({preventScroll:true});
     });
     label.append(selector);
-    panel.append(label);
     const colorFilters = document.createElement('div');
     colorFilters.className = 'j-memo-color-filters-v396';
     colorFilters.setAttribute('role','group');
@@ -590,7 +589,6 @@
       });
       colorFilters.append(choice);
     }
-    panel.append(colorFilters);
     // Manual up/down and drag only make sense in manual view.
     index.closest('#workMemoViewV167')?.setAttribute('data-journal-memo-order', journalMemoSort);
     const groups = new Map();
@@ -653,6 +651,7 @@
       group.append(list);
       panel.append(group);
     }
+    panel.append(label,colorFilters);
     const applyIndexQuery = () => {
       journalMemoIndexQueryV450 = finder.value;
       const query = journalMemoIndexQueryV450.normalize('NFKC').trim().toLocaleLowerCase('ja');
@@ -922,9 +921,12 @@
     galleryHeading.className='j592-gallery-heading';
     const galleryTitle=document.createElement('h3');
     galleryTitle.textContent='メモの書庫';
-    const galleryHelp=document.createElement('p');
-    galleryHelp.textContent='カードを選ぶと、閲覧ページで全文を確認できます。';
-    galleryHeading.append(galleryTitle,galleryHelp);
+    gallery.tabIndex=-1;
+    const organize=document.createElement('button');
+    organize.type='button';organize.className='j-memo-organize';
+    organize.textContent='書庫を整理';
+    organize.addEventListener('click',()=>{gallery.focus();gallery.scrollIntoView({block:'start'});});
+    galleryHeading.append(galleryTitle);
     mast.append(head);gallery.append(galleryHeading,tools,memo);
     if(memo.classList.contains('work-memo-grid-v167')){
       let previousFastener='';
@@ -948,7 +950,11 @@
       });
     }
     gallery.append(memoLinen);
-    spread.append(mast,shortcuts,index,reader,gallery);view.append(spread);
+    const folioTitle=document.createElement('h2');
+    folioTitle.textContent='業務メモ';
+    mast.prepend(folioTitle);
+    mast.append(organize);
+    spread.append(mast,index,reader,shortcuts,gallery);view.append(spread);
     composeMemoIndex(index,memo);
     updateMemoReaderV425(spread);
   }
@@ -1140,6 +1146,7 @@
     const view = document.getElementById('todayView');
     if (!view) return;
     const query = journalSearchQueryV393.normalize('NFKC').trim().toLocaleLowerCase('ja');
+    const headline = view.querySelector('[data-journal-day-plan]');
     let matches = 0;
     for (const card of view.querySelectorAll(
       '.j420-work-note,.j420-agenda-item,.j420-todo-item,.j420-update-item,.j420-waiting-item')) {
@@ -1147,6 +1154,8 @@
       const matched = text.includes(query);
       if (matched) matches++;
       card.classList.toggle('j-search-excluded-v393', Boolean(query) && !matched);
+      if (headline && card.dataset.scheduleId === headline.dataset.journalDayPlan)
+        headline.classList.toggle('j-search-excluded-v393', Boolean(query) && !matched);
     }
     const status = view.querySelector('.j-day-search-result');
     const message = query ? (matches ? 'この紙面で一致した項目：' + matches + '件' : 'この紙面に一致する項目はありません。') : '';
@@ -1330,7 +1339,10 @@
       const fromUpdates=kind==='task'
         ?origin.todaySourceV644==='updates'
         :origin.todaySourceV646==='updates';
-      const source=fromUpdates?update||original:original||update;
+      const headline=kind==='schedule'&&origin.todaySourceV646==='headline'
+        ?view?.querySelector('[data-journal-day-plan]'):null;
+      const source=headline?.dataset.journalDayPlan===origin.id?headline:
+        fromUpdates?update||original:original||update;
       const fallback=kind==='schedule'
         ?view?.querySelector('[data-j420-create-schedule]')
         :view?.querySelector('.j420-focus [data-j420-to-tasks]');
@@ -1682,13 +1694,14 @@
       if(journalReturnV594?.kind==='today')journalReturnV594.todaySourceV644='updates';
       return;
     }
-    if(update?.dataset.j420UpdateKind==='schedule'&&shelfSnapshot()){
+    const headline=event.type==='click'?event.target.closest?.('#todayView [data-journal-day-plan]'):null;
+    if((update?.dataset.j420UpdateKind==='schedule'||headline)&&shelfSnapshot()){
       journalTodayMovedV639=null;
       journalTodaySavedMoveV639=null;
       syncJournalTodayMovedV639();
       journalTodayScheduleOriginV638={
-        id:update.dataset.j420UpdateId,owner:journalReturnOwnerV594(),
-        top:window.scrollY,width:window.innerWidth,todaySourceV646:'updates'
+        id:headline?.dataset.journalDayPlan||update.dataset.j420UpdateId,owner:journalReturnOwnerV594(),
+        top:window.scrollY,width:window.innerWidth,todaySourceV646:headline?'headline':'updates'
       };
       return;
     }
