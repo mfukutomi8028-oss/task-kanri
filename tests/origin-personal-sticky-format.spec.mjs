@@ -290,6 +290,8 @@ for(const width of [320,1366]){
   await formatting.click();
   const dialog=root.getByRole('dialog',{name:'付箋の拡大編集'});
   const toolbar=dialog.getByRole('group',{name:'文字の書式'});
+  const instruction=toolbar.getByText('本文の文字を選択してから書式を変更できます。',{exact:true});
+  await expect(instruction).toHaveCount(0);
   const geometry=await toolbar.evaluate(el=>{
    const box=el.getBoundingClientRect(),parent=el.parentElement.getBoundingClientRect();
    return {left:Math.abs(box.left-parent.left),right:Math.abs(box.right-parent.right),background:getComputedStyle(el).backgroundColor};
@@ -301,6 +303,15 @@ for(const width of [320,1366]){
   await dialog.getByRole('combobox',{name:'文字サイズ'}).selectOption('huge');
   const editor=dialog.getByRole('textbox',{name:'付箋本文を大きく編集'});
   await expect(editor.locator('[data-note-format-color=red][data-note-format-size=huge]')).toHaveText('重要');
+  await expect(instruction).toHaveCount(0);
+  await selectNoteText(editor,0);
+  await toolbar.getByRole('button',{name:'太字',exact:true}).click();
+  await expect(toolbar.getByText('先に本文で書式を変更したい文字を選択してください。',{exact:true})).toBeVisible();
+  await selectNoteText(editor,0,2);
+  await toolbar.getByRole('combobox',{name:'文字色'}).selectOption('blue');
+  await expect(instruction).toHaveCount(0);
+  await expect(toolbar.getByText('先に本文で書式を変更したい文字を選択してください。',{exact:true})).toHaveCount(0);
+  await toolbar.getByRole('combobox',{name:'文字色'}).selectOption('red');
   await expect.poll(()=>readContent(page)).toMatchObject({format:{runs:[{start:0,end:2,color:'red',size:'huge'}]}});
   await dialog.getByRole('button',{name:'拡大編集を閉じる'}).click();
   const marked=board.locator('[data-note-format-color=red][data-note-format-size=huge]');
