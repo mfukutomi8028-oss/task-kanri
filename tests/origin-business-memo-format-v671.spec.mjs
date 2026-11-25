@@ -172,3 +172,26 @@ test('Origin Japanese italic is visually enabled in the live memo, card and save
  await expect(root.locator('.memo-document em')).toHaveCSS('font-style','italic');
  await expect(root.locator('.memo-document em')).toHaveCSS('font-synthesis-style','auto');
 });
+
+test('Origin memo persists expanded heading sizes and renders them after reopening',async({page,baseURL})=>{
+ const root=await launch(page,baseURL,'origin-memo-large-v674',390);
+ const created=await writeMemo(page,{type:'memo.create',body:'重要な連絡'});
+ expect(created.ok).toBe(true);
+ await root.locator('[data-action="list-quick-edit"][data-kind="memos"]').click();
+ const body=root.locator('#editForm [data-origin-note-editor]');
+ await selectNoteText(body,0,2);
+ const size=root.getByRole('combobox',{name:'文字サイズ'});
+ await expect(size.locator('option[value=""]')).toHaveCount(0);
+ await size.selectOption('display');
+ const mark=body.locator('[data-note-format-size=display]');
+ await expect(mark).toHaveText('重要');
+ const base=Number.parseFloat(await body.evaluate(el=>getComputedStyle(el).fontSize));
+ expect(Number.parseFloat(await mark.evaluate(el=>getComputedStyle(el).fontSize))).toBeCloseTo(base*2.5,2);
+ await root.getByRole('button',{name:'変更を保存',exact:true}).click();
+ expect((await readMemo(page,created.id)).bodyFormat).toEqual({text:'重要な連絡',runs:[{start:0,end:2,size:'display'}]});
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true);
+ await root.locator('#mobileNav [data-route="notes"]').click();
+ await root.locator('.memo-card').filter({hasText:'書式付き手順'}).click();
+ await expect(root.locator('.memo-document [data-note-format-size=display]')).toHaveText('重要');
+});

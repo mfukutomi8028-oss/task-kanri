@@ -49,3 +49,15 @@ test('adjacent equivalent runs merge and never replace the plain-text body',()=>
   assert.deepEqual(last.runs,[{start:0,end:1,flags:1},{start:4,end:5,flags:1}]);
   assert.equal(f.apply(text,more,0,5,{clear:true}),null);
 });
+
+test('larger heading sizes round-trip as bounded metadata without changing legacy marks',()=>{
+  const f=model(),text='重要 通常';
+  for(const size of ['xlarge','xxlarge','huge','display']){
+    const v=f.apply(text,null,0,2,{flags:1,color:'red',size});
+    assert.deepEqual(f.read(text,v),[{start:0,end:2,flags:1,color:'red',size}]);
+    assert.deepEqual(f.read(text,f.apply(text,v,0,2,{size:null})),[{start:0,end:2,flags:1,color:'red'}]);
+  }
+  const prior={text,runs:[{start:0,end:2,size:'large'},{start:3,end:5,size:'small'}]};
+  assert.deepEqual(f.read(text,prior),prior.runs);
+  assert.deepEqual(f.read(text,{text,runs:[{start:0,end:2,size:'999px'}]}),[]);
+});

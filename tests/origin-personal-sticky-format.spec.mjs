@@ -265,3 +265,49 @@ test('Origin sticky transfers the card selection to the complete live formatting
  await expect(restored.locator('u')).toHaveCSS('text-decoration-line','underline');
  await expect(restored.locator('s')).toHaveCSS('text-decoration-line','line-through');
 });
+
+for(const width of [320,1366]){
+ test('sticky card exposes the formatting action and persists selected color and heading size at '+width+'px',async({page,baseURL})=>{
+  const room='sticky-format-discovery-v674-'+width;
+  await page.route('**/*',route=>new URL(route.request().url()).origin===baseURL?route.continue():route.abort());
+  await page.addInitScript(room=>{
+   Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null},set(){}});
+   localStorage.setItem('systemTaskUser','福冨');
+   localStorage.setItem('systemTaskRoomId',room);
+  },room);
+  await page.goto('/?room='+room);
+  const root=await openStickyBoard(page,width);
+  await root.locator('.sticky-add').click();
+  const card=root.locator('.sticky-origin-card');
+  const board=card.getByRole('textbox',{name:'付箋本文',exact:true});
+  await board.fill('重要事項');
+  await expect.poll(()=>readContent(page)).toMatchObject({text:'重要事項'});
+  await selectNoteText(board,0,2);
+  const formatting=card.locator('[data-sticky-expand]');
+  await expect(formatting).toBeVisible();
+  await expect(formatting).toContainText('書式');
+  await expect(formatting).toHaveAccessibleName(/書式/);
+  await formatting.click();
+  const dialog=root.getByRole('dialog',{name:'付箋の拡大編集'});
+  const toolbar=dialog.getByRole('group',{name:'文字の書式'});
+  const geometry=await toolbar.evaluate(el=>{
+   const box=el.getBoundingClientRect(),parent=el.parentElement.getBoundingClientRect();
+   return {left:Math.abs(box.left-parent.left),right:Math.abs(box.right-parent.right),background:getComputedStyle(el).backgroundColor};
+  });
+  expect(geometry.left).toBeLessThanOrEqual(1);
+  expect(geometry.right).toBeLessThanOrEqual(1);
+  expect(geometry.background).toBe('rgba(0, 0, 0, 0)');
+  await dialog.getByRole('combobox',{name:'文字色'}).selectOption('red');
+  await dialog.getByRole('combobox',{name:'文字サイズ'}).selectOption('huge');
+  const editor=dialog.getByRole('textbox',{name:'付箋本文を大きく編集'});
+  await expect(editor.locator('[data-note-format-color=red][data-note-format-size=huge]')).toHaveText('重要');
+  await expect.poll(()=>readContent(page)).toMatchObject({format:{runs:[{start:0,end:2,color:'red',size:'huge'}]}});
+  await dialog.getByRole('button',{name:'拡大編集を閉じる'}).click();
+  const marked=board.locator('[data-note-format-color=red][data-note-format-size=huge]');
+  await expect(marked).toHaveText('重要');
+  expect(Number.parseFloat(await marked.evaluate(el=>getComputedStyle(el).fontSize))).toBeCloseTo(28,2);
+  await page.reload();
+  const restored=await openStickyBoard(page,width);
+  await expect(restored.locator('.sticky-origin-card [data-note-format-color=red][data-note-format-size=huge]')).toHaveText('重要');
+ });
+}

@@ -58,3 +58,10 @@ PR #1005 was merged first as Ver.668. The Hallmark candidate is therefore Ver.66
 
 - Origin may disable synthetic faces for its interface typography, but Japanese italic must remain visible in note text. Scope synthetic style/weight to explicit italic marks in the editable note, memo preview card and reader; specify underline and strike decorations on their semantic marks. Check the rendered CSS and the persisted metadata, not just element presence.
 - Keep the text range when opening a toolbar control, even if the native selection collapses during focus transfer. Mouse button activation should not blur the editor; native select and keyboard activation remain available. Restore the saved range after focus events have settled. Genuine new text selection must supersede the toolbar snapshot. Keep the single shared editor and all existing storage contracts.
+
+## Origin note formatting discoverability and heading sizes (planned Ver.674)
+
+- Keep one shared direct editor. Label the centered expanded-edit action "書式" without losing its original icon, keyboard operation, or selection transfer; avoid inserting a permanent full toolbar in every small sticky card.
+- Preserve existing size keys and multipliers and add xlarge (150%), xxlarge (175%), huge (200%), display (250%); the metadata stays bounded. Users see explicit percentages. Older cached builds may not understand new keys, so synchronize the release identifier and retain the established plain-text fallback.
+- Do not include non-selectable field-title options. Put "文字色" and "文字サイズ" outside the native selects; reflect uniform selected styles, with no selected option and an external mixed-state indication for mixed ranges.
+- Group common commands and choices on the same toolbar. Integrate the toolbar into the sticky paper surface with a subtle divider rather than a detached floating white panel; use Origin tokens in memo context and readable light-paper colors in sticky context even in dark mode. Keep 44px controls, focus, selection, and autosave. Verify real selected ranges, mixed/default styles, persisted heading size and colors, 320/1366px geometry and existing regressions.

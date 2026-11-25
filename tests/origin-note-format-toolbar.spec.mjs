@@ -119,3 +119,37 @@ test('toolbar uses the selected text even if native selection collapses while ch
  await page.getByRole('button',{name:'太字',exact:true}).click();
  await expect(note.locator('strong')).toHaveText('共通');
 });
+
+test('shared note toolbar exposes only real dropdown choices and reflects selection formatting',async({page})=>{
+ await boot(page,320);
+ const note=await select(page,3,5);
+ const color=page.getByRole('combobox',{name:'文字色'});
+ const size=page.getByRole('combobox',{name:'文字サイズ'});
+ for(const picker of [color,size]){
+  expect(await picker.locator('option').evaluateAll(items=>items.map(o=>({value:o.value,disabled:o.disabled})))).not.toContainEqual({value:'',disabled:true});
+  await expect(picker.locator('option[value=""]')).toHaveCount(0);
+  await expect(picker).toHaveValue('default');
+ }
+ await color.selectOption('red');
+ await expect(color).toHaveValue('red');
+ await expect(note.locator('[data-note-format-color=red]')).toHaveText('太字');
+ await select(page,0,5);
+ await expect(color).toHaveValue('');
+ await expect(page.locator('.origin-note-format-field').filter({has:color})).toContainText('混在');
+ await color.selectOption('default');
+ await expect(note.locator('[data-note-format-color]')).toHaveCount(0);
+ await expect(color).toHaveValue('default');
+ await select(page,3,5);
+ const base=Number.parseFloat(await note.evaluate(el=>getComputedStyle(el).fontSize));
+ for(const [value,multiplier] of [['large',1.25],['xlarge',1.5],['xxlarge',1.75],['huge',2],['display',2.5]]){
+  await size.selectOption(value);
+  const mark=note.locator('[data-note-format-size="'+value+'"]');
+  await expect(mark).toHaveText('太字');
+  expect(Number.parseFloat(await mark.evaluate(el=>getComputedStyle(el).fontSize))).toBeCloseTo(base*multiplier,2);
+  await expect(size).toHaveValue(value);
+ }
+ await size.selectOption('default');
+ await expect(note.locator('[data-note-format-size]')).toHaveCount(0);
+ await expect(note).toHaveText('共通 太字 文字');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});

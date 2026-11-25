@@ -699,18 +699,22 @@ test('header search result tabs fit without creating a horizontal scrollbar',asy
 });
 
 
-test('sticky expanded-edit icon is centered inside its header button at desktop and mobile widths',async({page})=>{
+test('sticky expanded-edit icon and formatting label are centered together at desktop and mobile widths',async({page})=>{
  for(const width of [1366,390]){
   const root=await origin(page,width);
   await root.locator('.sticky-add').click();
   const button=root.locator('.sticky-origin-card [data-sticky-expand]').first();
   const center=await button.evaluate(node=>{
    const outer=node.getBoundingClientRect();
+   const group=node.querySelector('.sticky-origin-expand-content').getBoundingClientRect();
    const icon=node.querySelector('svg').getBoundingClientRect();
-   return {dx:Math.abs(outer.left+outer.width/2-(icon.left+icon.width/2)),
-    dy:Math.abs(outer.top+outer.height/2-(icon.top+icon.height/2))};
+   return {dx:Math.abs(outer.left+outer.width/2-(group.left+group.width/2)),
+    dy:Math.abs(outer.top+outer.height/2-(group.top+group.height/2)),
+    iconDy:Math.abs(group.top+group.height/2-(icon.top+icon.height/2))};
   });
   expect(center.dx).toBeLessThanOrEqual(1);
   expect(center.dy).toBeLessThanOrEqual(1);
+  expect(center.iconDy).toBeLessThanOrEqual(1);
+  await expect(button).toContainText('書式');
  }
 });

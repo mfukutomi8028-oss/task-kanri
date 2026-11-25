@@ -82,6 +82,9 @@
     .sticky-origin-card-collapsed .sticky-origin-back,.sticky-origin-card-collapsed .sticky-origin-expand{display:none!important}
     .sticky-origin-expand,.sticky-origin-collapse{padding:0 4px;white-space:nowrap}
     .sticky-origin-expand{display:grid;place-items:center}
+    .sticky-origin-card-head button.sticky-origin-expand{flex:none;width:auto;min-width:62px;padding:0 4px}
+    .sticky-origin-expand-content{display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;line-height:1}
+    .sticky-origin-expand-content span{font-size:11px;font-weight:700}
     .sticky-origin-expand svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
     .sticky-origin-editor:not([open]){display:none}
     .sticky-origin-editor[open]{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;gap:0;box-sizing:border-box;
@@ -97,8 +100,11 @@
     .sticky-origin-editor-body{display:flex;flex:1;min-height:0;flex-direction:column;overflow:auto;overscroll-behavior:contain}
     .sticky-origin-editor .origin-note-editable{flex:1 0 128px;min-height:128px;width:100%;resize:none;border:0;outline:0;padding:16px 20px;
       background:transparent;color:inherit;font-size:16px;line-height:1.85;overflow:auto;border-radius:0}
-    .sticky-origin-editor-body>.origin-note-format-tools{flex:none;margin:8px 12px}
-    .sticky-origin-editor-body>.origin-note-format-tools{padding:8px;border-radius:8px;background:var(--paper)}
+    .sticky-origin-editor-body>.origin-note-format-tools{flex:none;margin:0;padding:10px 12px;border-radius:0;background:transparent;
+      --note-tools-line:rgba(39,48,64,.18);--note-tools-ink:#273040;--note-tools-muted:#4b5260;
+      --note-tools-control:color-mix(in srgb,var(--sticky-paper,#faf3c9) 72%,#fff);--note-tools-hover:rgba(255,255,255,.55);
+      --note-tools-active:#e5e8f5;--note-tools-active-ink:#34448b;--note-tools-active-border:#8290bd;
+      --note-tools-focus:#4659cc;--note-tools-color-scheme:light}
     .sticky-origin-editor .origin-note-editable:focus-visible{outline:2px solid #4659cc;outline-offset:-3px}
     .sticky-origin-editor-footer{border-top:1px solid rgba(25,40,60,.12);font-size:12px}
     .sticky-origin-editor-footer [data-sticky-status][hidden]{display:none}
@@ -284,14 +290,16 @@
       back.setAttribute('aria-label','この付箋を最背面へ');
       const focus=button('','sticky-origin-expand');
       focus.dataset.stickyExpand=note.id;
-      focus.setAttribute('aria-label','付箋を大きく編集');
+      focus.setAttribute('aria-label','付箋を大きく編集・書式変更');
       focus.title='書式を変更・大きく編集（元のサイズは保持します）';
       const maximize=document.createElementNS('http://www.w3.org/2000/svg','svg');
       maximize.setAttribute('viewBox','0 0 24 24');
       maximize.setAttribute('aria-hidden','true');
       const maxPath=document.createElementNS('http://www.w3.org/2000/svg','path');
       maxPath.setAttribute('d','M4 10V4h6 M14 4h6v6 M20 14v6h-6 M10 20H4v-6');
-      maximize.append(maxPath);focus.append(maximize);
+      maximize.append(maxPath);
+      const focusContent=createElement('span','sticky-origin-expand-content');
+      focusContent.append(maximize,createElement('span','','書式'));focus.append(focusContent);
       const folded=collapsedIds.has(note.id);
       const fold=button(folded?'＋':'－','sticky-origin-collapse');
       fold.dataset.stickyCollapse=note.id;
