@@ -210,6 +210,8 @@ jobs:
           key: npm-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
       - name: Install test dependencies
         run: npm ci --no-audit --no-fund
+      - name: Messaging isolated access-boundary rules
+        run: npm run test:messaging:rules
       - name: Isolated Ver.568 candidate authorization rules
         run: npm run test:rules:v568
       - name: Ver.577 isolated lossless-schema read-only Rules

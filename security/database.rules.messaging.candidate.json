@@ -1,0 +1,14 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "messagingAccessV1": {
+      ".read": false,
+      ".write": false
+    },
+    "messagingV1": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
