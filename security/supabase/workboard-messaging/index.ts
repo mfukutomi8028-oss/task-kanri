@@ -17,7 +17,7 @@ Deno.serve(createMessagingRuntime({
   getEnv: (name: string) => Deno.env.get(name),
   cert, initializeApp, deleteApp, getAuth, getDatabase,
   createHistory: createFirebaseMessagingHistoryService,
-  createMutation: createFirebaseMessagingMutationService,
+  createMutation: options => createFirebaseMessagingMutationService({...options,diagnostic: event => console.warn('WB_MESSAGE_FAILURE', JSON.stringify(event))}),
   createDirectory: createFirebaseMessagingDirectoryServices,
   createConversations: createFirebaseMessagingConversationService,
   createApiHandler: createMessagingApiHandler,
