@@ -26,7 +26,8 @@ export function createMessagingApiTransport({endpoint,session,getToken,fetchImpl
       if(!value||typeof value!=='object'||!Object.hasOwn(codes,value.status))return fail('unavailable');
       if(value.status==='forbidden'&&response.status===401)return fail('forbidden');
       if(codes[value.status]!==response.status)return fail('unavailable');
-      if(value.status==='ok'&&['directory','people'].includes(action)&&(value.roomId!==actor.roomId||value.personId!==actor.personId))return fail('locked');
+      if(value.status==='ok'&&['directory','people','unread'].includes(action)&&(value.roomId!==actor.roomId||value.personId!==actor.personId))return fail('locked');
+      if(value.status==='ok'&&action==='unread'&&value.conversationId!==payload.conversationId)return fail('unavailable');
       return value;
     }catch(_){return fail(current()?'unavailable':'locked');}finally{clearTimeout(timeout);active.delete(controller);}
   }
@@ -36,6 +37,7 @@ export function createMessagingApiTransport({endpoint,session,getToken,fetchImpl
     edit:({roomId,conversationId,messageId,expectedRevision,input}={})=>invoke('message',{roomId,conversationId,command:{type:'edit',messageId,expectedRevision,input}}),
     remove:({roomId,conversationId,messageId,expectedRevision}={})=>invoke('message',{roomId,conversationId,command:{type:'remove',messageId,expectedRevision}}),
     readDirectory:({roomId,after=null,limit=100}={})=>invoke('directory',{roomId,after,limit}),
+    readUnread:({roomId,conversationId}={})=>invoke('unread',{roomId,conversationId}),
     readPeople:({roomId}={})=>invoke('people',{roomId}),
     executeConversation:({roomId,conversationId,command}={})=>invoke('conversation',{roomId,conversationId,command}),
     dispose(){if(disposed)return;disposed=true;invalidate();identity=null;stop();}

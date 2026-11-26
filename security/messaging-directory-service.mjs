@@ -2,12 +2,14 @@
 // No message bodies, entire room collections, or credentials enter this API.
 import {isConversationId,isMessagingRoomId,isPersonId} from '../test-harness/messaging-preview/workspace-messaging-core.js';
 import {isValidConversationControl} from './messaging-conversation-commands.mjs';
+import {readUnreadForMember} from './messaging-unread-summary.mjs';
 const fail=status=>({status});
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);
 const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
 const maxPage=100,maxParticipants=1000;
 const validIndexRow=row=>record(row)&&isConversationId(row.id)&&Number.isSafeInteger(row.revision)&&row.revision>=1&&['member','pending','inactive'].includes(row.state);
 const requestFields=new Set(['token','roomId','after','limit','expectedPersonId']);
+const unreadFields=new Set(['token','roomId','conversationId','expectedPersonId']);
 async function batches(items,fn){const result=[];for(let i=0;i<items.length;i+=8)result.push(...await Promise.all(items.slice(i,i+8).map(fn)));return result;}
 function project(control,personId){
   const member=control.members[personId],invite=control.invites?.[personId];
@@ -53,7 +55,7 @@ export function createMessagingIndexReconciler({readControl,writeIndexRow,readCo
   return Object.freeze({reconcile,reconcilePage});
 }
 
-export function createMessagingDirectoryService({verifyToken,readBinding,readControl,readIndexPage}={}){
+export function createMessagingDirectoryService({verifyToken,readBinding,readControl,readIndexPage,readPersonal,readUnreadPage}={}){
   if([verifyToken,readBinding,readControl,readIndexPage].some(fn=>typeof fn!=='function'))throw new TypeError('Trusted directory adapters required');
   async function authorize(token,roomId){
     let identity;try{identity=await verifyToken(token);}catch(_){return null;}
@@ -89,7 +91,31 @@ export function createMessagingDirectoryService({verifyToken,readBinding,readCon
       return {status:'ok',roomId,personId:access.personId,conversations:projections.filter(p=>p.state==='member').map(p=>p.row),invites:projections.filter(p=>p.state==='pending').map(p=>p.row),hasMore:rows.length>limit,nextCursor:rows.length>limit?page.at(-1).id:null};
     }catch(_){return fail('unavailable');}
   }
-  return Object.freeze({readDirectory});
+  // On-demand canonical check, separate from the low-bandwidth directory list.
+  async function readUnread(request){
+    if(!record(request)||Object.keys(request).some(key=>!unreadFields.has(key)))return fail('invalid');
+    const {token,roomId,conversationId,expectedPersonId}=request;
+    if(typeof token!=='string'||token.length<1||token.length>16384||!isMessagingRoomId(roomId)||!isConversationId(conversationId)||expectedPersonId!==undefined&&!isPersonId(expectedPersonId))return fail('invalid');
+    try{
+      const actor=await authorize(token,roomId);if(!actor||expectedPersonId!==undefined&&actor.personId!==expectedPersonId)return fail('forbidden');
+      const control=await readControl({roomId,conversationId});
+      if(control===null)return fail('forbidden');
+      if(!isValidConversationControl(control,conversationId,roomId))return fail('unavailable');
+      const member=control.members[actor.personId];if(member?.active!==true)return fail('forbidden');
+      const scope={roomId,conversationId,personId:actor.personId,joinedAt:member.joinedAt};
+      const summary=await readUnreadForMember({scope,readPersonal,readUnreadPage});
+      if(summary.status!=='ok')return summary;
+      const latest=await readControl({roomId,conversationId});
+      const final=await authorize(token,roomId);
+      if(!final||final.uid!==actor.uid||final.personId!==actor.personId||latest===null)return fail('forbidden');
+      if(!isValidConversationControl(latest,conversationId,roomId))return fail('unavailable');
+      const current=latest.members[actor.personId];
+      if(current?.active!==true||current.joinedAt!==scope.joinedAt)return fail('forbidden');
+      if(latest.revision!==control.revision)return fail('stale');
+      return summary;
+    }catch(_){return fail('unavailable');}
+  }
+  return Object.freeze({readDirectory,readUnread});
 }
 
 // Keep reconciliation on the server. Index rows are private derived metadata;
@@ -101,6 +127,22 @@ export function createFirebaseMessagingDirectoryServices({auth,database}={}){
   const indexPath=({roomId,personId})=>root(roomId)+'/directoryIndex/'+personId;
   const readControl=({roomId,conversationId})=>read(root(roomId)+'/control/'+conversationId);
   const directory=createMessagingDirectoryService({readControl,verifyToken:token=>auth.verifyIdToken(token,true),readBinding:({roomId,uid})=>read('messagingAccessV1/'+roomId+'/'+uid),
+    async readPersonal({roomId,personId,conversationId,joinedAt}){
+      const path=root(roomId)+'/personal/'+personId+'/'+conversationId+'/'+joinedAt;
+      const [cursor,muted]=await Promise.all([read(path+'/readCursor'),read(path+'/preferences/muted')]);
+      return {cursor,muted};
+    },
+    async readUnreadPage({roomId,conversationId,joinedAt,after,limit}){
+      let query=database.ref(root(roomId)+'/messages/'+conversationId).orderByChild('createdAt');
+      query=after===null?query.startAt(joinedAt+1):query.startAfter(after.createdAt,after.id);
+      const snapshot=await query.limitToLast(limit).get(),rows=[];
+      snapshot.forEach(child=>{
+        const value=child.val();
+        if(!record(value)||child.key!==value.id)throw new TypeError('Invalid canonical message');
+        rows.push({id:value.id,senderId:value.senderId,createdAt:value.createdAt,deletedAt:value.deletedAt??null});
+        return false;
+      });return rows;
+    },
     async readIndexPage({roomId,personId,after,limit}){
       let q=database.ref(indexPath({roomId,personId})).orderByKey();if(after!==null)q=q.startAfter(after);
       const snapshot=await q.limitToFirst(limit).get(),rows=[];

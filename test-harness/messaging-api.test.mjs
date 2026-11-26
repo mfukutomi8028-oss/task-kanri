@@ -5,7 +5,7 @@ import {createMessagingApiTransport} from './messaging-preview/workspace-messagi
 const origin='https://board.example.test',endpoint='https://api.example.test/messaging',roomId='roomA',p='p_'+'a'.repeat(32),conversationId='self_'+p,token='synthetic-id-token';
 function fixture(){
   const calls=[];
-  const handler=createMessagingApiHandler({allowedOrigins:[origin],history:{async readHistory(input){calls.push(['history',input]);return input.token===token?{status:'ok',joinedAt:1000,messages:[],nextCursor:null,hasMore:false}:{status:'forbidden'};}},mutation:{async mutate(input){calls.push(['message',input]);return {status:'conflict'};}},directory:{async readDirectory(input){calls.push(['directory',input]);return {status:'ok',roomId,personId:p,conversations:[],invites:[],hasMore:false,nextCursor:null};}},conversations:{async readPeople(input){calls.push(['people',input]);return {status:'ok',roomId,personId:p,people:[]};},async execute(input){calls.push(['conversation',input]);return {status:'ok',conversationId,revision:1,indexPending:false};}}});
+  const handler=createMessagingApiHandler({allowedOrigins:[origin],history:{async readHistory(input){calls.push(['history',input]);return input.token===token?{status:'ok',joinedAt:1000,messages:[],nextCursor:null,hasMore:false}:{status:'forbidden'};}},mutation:{async mutate(input){calls.push(['message',input]);return {status:'conflict'};}},directory:{async readDirectory(input){calls.push(['directory',input]);return {status:'ok',roomId,personId:p,conversations:[],invites:[],hasMore:false,nextCursor:null};},async readUnread(input){calls.push(['unread',input]);return {status:'ok',roomId,personId:p,conversationId,joinedAt:1000,unread:0,latestIncoming:null,muted:false,complete:true};}},conversations:{async readPeople(input){calls.push(['people',input]);return {status:'ok',roomId,personId:p,people:[]};},async execute(input){calls.push(['conversation',input]);return {status:'ok',conversationId,revision:1,indexPending:false};}}});
   let identity={status:'bound',roomId,personId:p},listener;const session={getSnapshot:()=>identity,subscribe(fn){listener=fn;fn(identity);return ()=>{listener=null;};}};
   const fetchImpl=(url,init)=>{const headers=new Headers(init.headers);headers.set('Origin',origin);return handler(new Request(url,{...init,headers}));};
   return {handler,calls,session,fetchImpl,setIdentity(next){identity=next;listener?.(next);}};
@@ -38,4 +38,16 @@ test('identity change cancels pending requests and discards late authorized resu
 test('browser transport rejects an unbound room and mismatched returned identity',async()=>{
   const f=fixture(),api=createMessagingApiTransport({endpoint,session:f.session,getToken:async()=>token,fetchImpl:async()=>new Response(JSON.stringify({status:'ok',roomId,personId:'p_'+'b'.repeat(32),conversations:[]}),{status:200,headers:{'Content-Type':'application/json'}})});
   assert.deepEqual(await api.readHistory({roomId:'other',conversationId}),{status:'locked'});assert.deepEqual(await api.readDirectory({roomId}),{status:'locked'});api.dispose();
+});
+
+test('browser and HTTP unread route carry only the selected conversation and authenticated actor',async()=>{
+  const f=fixture(),api=createMessagingApiTransport({endpoint,session:f.session,getToken:async()=>token,fetchImpl:f.fetchImpl});
+  assert.deepEqual(await api.readUnread({roomId,conversationId}),{status:'ok',roomId,personId:p,conversationId,joinedAt:1000,unread:0,latestIncoming:null,muted:false,complete:true});
+  assert.deepEqual(f.calls,[['unread',{roomId,conversationId,token,expectedPersonId:p}]]);api.dispose();
+});
+test('unread transport rejects a summary for another conversation or person',async()=>{
+  for(const patch of [{conversationId:'self_p_'+'b'.repeat(32)},{personId:'p_'+'b'.repeat(32)}]){
+    const f=fixture(),api=createMessagingApiTransport({endpoint,session:f.session,getToken:async()=>token,fetchImpl:async()=>new Response(JSON.stringify({status:'ok',roomId,personId:p,conversationId,joinedAt:1000,unread:0,latestIncoming:null,muted:false,complete:true,...patch}),{status:200})});
+    assert.ok(['locked','unavailable'].includes((await api.readUnread({roomId,conversationId})).status));api.dispose();
+  }
 });

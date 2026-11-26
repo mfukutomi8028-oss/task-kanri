@@ -242,6 +242,29 @@ try{
   const apiHistory=await apiCall(alice,p,'history',{conversationId:personalConversation});
   assert.equal(apiHistory.status,200);assert.deepEqual((await apiHistory.json()).messages.map(m=>m.id),[apiId]);
   assert.equal((await apiCall(alice,other,'history',{conversationId:personalConversation})).status,403);
+  // Unread summaries use the canonical joinedAt boundary and personal cursor.
+  const unreadPath=directoryRoot+'/messages/'+direct;
+  const msgA='msg_'+p+'_q_'+'4'.repeat(32),msgB='msg_'+other+'_q_'+'5'.repeat(32),msgC='msg_'+other+'_q_'+'6'.repeat(32),msgD='msg_'+other+'_q_'+'7'.repeat(32),msgE='msg_'+other+'_q_'+'8'.repeat(32);
+  await db.ref(unreadPath).set({
+    [msgA]:{id:msgA,senderId:p,createdAt:15000,body:'Own',revision:1},
+    [msgB]:{id:msgB,senderId:other,createdAt:14000,body:'Join boundary',revision:1},
+    [msgC]:{id:msgC,senderId:other,createdAt:16000,body:'Incoming A',revision:1},
+    [msgD]:{id:msgD,senderId:other,createdAt:16000,body:'Incoming B',revision:1},
+    [msgE]:{id:msgE,senderId:other,createdAt:17000,deletedAt:18000,revision:2}
+  });
+  const unreadCall=()=>apiCall(alice,p,'unread',{conversationId:direct});
+  const unread=await unreadCall();assert.equal(unread.status,200);
+  assert.deepEqual(await unread.json(),{status:'ok',roomId:directoryRoom,conversationId:direct,personId:p,joinedAt:14000,unread:2,latestIncoming:{id:msgD,createdAt:16000},muted:false,complete:true});
+  const statePath=directoryRoot+'/personal/'+p+'/'+direct+'/14000';
+  await db.ref(statePath+'/readCursor').set({id:msgC,createdAt:16000});
+  await db.ref(statePath+'/preferences/muted').set(true);
+  const afterRead=await (await unreadCall()).json();
+  assert.equal(afterRead.unread,1);assert.equal(afterRead.muted,true);assert.deepEqual(afterRead.latestIncoming,{id:msgD,createdAt:16000});
+  assert.equal((await apiCall(bob,p,'unread',{conversationId:direct})).status,403);
+  assert.equal((await apiCall(unknown,'p_'+'d'.repeat(32),'unread',{conversationId:direct})).status,403);
+  assert.equal((await apiCall(bob,other,'unread',{conversationId:directoryGroup})).status,403);
+  assert.equal((await apiCall(alice,p,'unread',{conversationId:direct,personId:other})).status,400);
+  console.log('MESSAGING_UNREAD_HTTP_EMULATOR_OK');
   console.log('MESSAGING_HTTP_BOUNDARY_EMULATOR_OK');
   const deniedGroup='group_g_'+'2'.repeat(32);
   preCommit=()=>db.ref(rosterPath+'/revision').set(2);
