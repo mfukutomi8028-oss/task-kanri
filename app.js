@@ -12895,7 +12895,7 @@ function paletteNextSnapshot() {
       tags: [...(task.tags || [])], checklist: (task.checklist || []).map(item => ({ text: item.text, done: Boolean(item.done) })),
       history: (task.history || []).slice(-5).map(h => ({ text: String(h.text || ''), author: String(h.author || ''), createdAt: Number(h.createdAt) || 0 })),
       recurrence: task.recurrence || 'none', recurrenceRule: {...task.recurrenceRule}, hasSeries:isRecurringDeleteCandidate('task',task),knowledgeId:task.knowledgeId||'', pinned: Boolean(task.pinned),
-      favorite: isTaskStarred(task.id), completed: isCompletedStatus(task.status),
+      favorite: isTaskStarred(task.id), completed: isCompletedStatus(task.status), completedAt: task.completedAt || 0,
       revision: task.revision, updatedAt: task.updatedAt || 0, createdAt: task.createdAt || 0
     })),
     todos: todos.map(todo => ({
@@ -13289,6 +13289,16 @@ window.WorkBoardJournalNavigation = Object.freeze({
 
 window.WorkBoardPaletteBridge = Object.freeze({
   readSnapshot: paletteNextSnapshot,
+  // Messaging uses the already initialized Firebase app; the legacy board does
+  // not import Auth or create an anonymous user during its ordinary startup.
+  async getMessagingConnection() {
+    if (window.WORK_BOARD_MESSAGING?.enabled !== true || window.WORK_BOARD_TEST?.emulator === true) throw new Error('Messaging connection is disabled');
+    const db = state.db, api = state.dbApi;
+    if (!db || !api || state.connectionMode !== 'remote-online') throw new Error('Board connection unavailable');
+    const authSdk = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
+    if (state.db !== db || state.dbApi !== api || state.connectionMode !== 'remote-online' || window.WORK_BOARD_MESSAGING?.enabled !== true) throw new Error('Board connection changed');
+    return { app: db.app, sdk: { db, ...api }, authSdk };
+  },
   // Comment UI reads the canonical subscribed task, not an optional browser
   // cache. Return only the needed fields as a copy; Classic owns all writes.
   readCommentTask(taskId) {

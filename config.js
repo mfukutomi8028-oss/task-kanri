@@ -10,6 +10,10 @@ window.firebaseConfig = {
   measurementId: "G-R0GQ65214Z"
 };
 
+// Public configuration only. Do not include service-role keys or Firebase credentials.
+// First release stays disabled until live authorization and deployment verification.
+window.WORK_BOARD_MESSAGING = Object.freeze({ enabled: false, endpoint: '', attachmentsEnabled: false });
+
 // Ver.241: CSSは宣言順を保ったまま並列読込し、JSは依存順を守って逐次読込する。
 // version表示はrelease manifestを唯一の値ソースとして、通常起動・復帰時ともこのloaderが同期する。
 // desktop起動後に860px以下へ遷移した場合も、conditional mobile scriptを既存loaderから一度だけ補完する。

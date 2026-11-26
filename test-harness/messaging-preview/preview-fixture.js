@@ -1,11 +1,11 @@
 // Isolated fixture only. No real user data, cloud access or release asset.
-import {createMessagingStore} from './workspace-messaging-store.js';
-import {createMessagingSession} from './workspace-messaging-session.js';
-import {createMessagingReferenceResolver} from './workspace-messaging-refs.js';
-import {conversationIdFor,messageIdFor,compareCursor} from './workspace-messaging-core.js';
-import {mountOriginMessaging} from './origin-messaging.js';
-import {createMessagingPersonalStateTransport} from './workspace-messaging-personal.js';
-import {createMessagingSharedTransport} from './workspace-messaging-shared.js';
+import {createMessagingStore} from '../../workspace-messaging-store.js';
+import {createMessagingSession} from '../../workspace-messaging-session.js';
+import {createMessagingReferenceResolver} from '../../workspace-messaging-refs.js';
+import {conversationIdFor,messageIdFor,compareCursor} from '../../workspace-messaging-core.js';
+import {mountOriginMessaging} from '../../origin-messaging.js';
+import {createMessagingPersonalStateTransport} from '../../workspace-messaging-personal.js';
+import {createMessagingSharedTransport} from '../../workspace-messaging-shared.js';
 if(new URLSearchParams(location.search).get('theme')==='dark'||document.documentElement.dataset.theme==='dark')document.documentElement.dataset.theme='dark';
 const p='p_'+'a'.repeat(32),b='p_'+'b'.repeat(32),c='p_'+'c'.repeat(32),roomId='preview-room',self='self_'+p,direct='dm_'+p+'_'+b,group='group_g_'+'d'.repeat(32),project='group_g_'+'e'.repeat(32),now=Date.now(),joinedAt=now-86400000*3;
 const users=[{personId:b,displayName:'担当者B'},{personId:c,displayName:'担当者C'}];const label=id=>id===p?'自分':users.find(u=>u.personId===id)?.displayName||'利用者';

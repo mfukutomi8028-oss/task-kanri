@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as live from './messaging-preview/workspace-messaging-live-commands.js';
+import * as live from '../workspace-messaging-live-commands.js';
 const roomId='roomA',p='p_'+'a'.repeat(32),peer='p_'+'b'.repeat(32),self='self_'+p,direct='dm_'+p+'_'+peer,group='group_g_'+'c'.repeat(32),incoming='msg_'+peer+'_q_'+'d'.repeat(32);
 const member=(id,extra)=>({id,kind:'self',status:'active',role:'member',memberCount:1,joinedAt:1000,revision:1,controlUpdatedAt:1000,...extra});
 function fixture(){

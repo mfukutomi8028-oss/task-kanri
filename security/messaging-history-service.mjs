@@ -1,5 +1,5 @@
 // Trusted server-side history boundary. Never import this into the browser.
-import {isMessagingRoomId,isPersonId,compareCursor,isConversationId,isMessageId,isMessagingTimestamp,projectMessagingMessage} from '../test-harness/messaging-preview/workspace-messaging-core.js';
+import {isMessagingRoomId,isPersonId,compareCursor,isConversationId,isMessageId,isMessagingTimestamp,projectMessagingMessage} from '../workspace-messaging-core.js';
 
 const requestFields=new Set(['token','roomId','conversationId','before','limit','expectedPersonId']);
 const isRecord=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);

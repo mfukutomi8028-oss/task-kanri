@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createMessagingNotificationAdapter} from './messaging-preview/workspace-messaging-notifications.js';
+import {createMessagingNotificationAdapter} from '../workspace-messaging-notifications.js';
 const p='p_'+'a'.repeat(32),b='p_'+'b'.repeat(32),c='p_'+'c'.repeat(32),roomId='roomA';
 const group='group_g_'+'d'.repeat(32),other='group_g_'+'e'.repeat(32),inviteGroup='group_g_'+'f'.repeat(32);
 const identity={roomId,personId:p};

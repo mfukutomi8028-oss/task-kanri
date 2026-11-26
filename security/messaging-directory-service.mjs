@@ -1,6 +1,6 @@
 // Trusted server-side discovery. An index is a candidate list, never a grant.
 // No message bodies, entire room collections, or credentials enter this API.
-import {isConversationId,isMessagingRoomId,isPersonId} from '../test-harness/messaging-preview/workspace-messaging-core.js';
+import {isConversationId,isMessagingRoomId,isPersonId} from '../workspace-messaging-core.js';
 import {isValidConversationControl} from './messaging-conversation-commands.mjs';
 import {readUnreadForMember} from './messaging-unread-summary.mjs';
 const fail=status=>({status});

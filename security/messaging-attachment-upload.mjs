@@ -1,7 +1,7 @@
 // Trusted upload orchestration. The private bucket and durable quota ledger
 // remain inaccessible to clients. A ready upload is not yet a message reference.
 import {createHash} from 'node:crypto';
-import {isMessagingRoomId,isConversationId,isPersonId,isMessagingTimestamp} from '../test-harness/messaging-preview/workspace-messaging-core.js';
+import {isMessagingRoomId,isConversationId,isPersonId,isMessagingTimestamp} from '../workspace-messaging-core.js';
 import {inspectMessagingAttachment,readMessagingAttachmentBody,MESSAGING_ATTACHMENT_MAX_BYTES} from './messaging-attachment-content.mjs';
 const fail=status=>({status});
 const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);

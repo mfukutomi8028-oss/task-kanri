@@ -1,6 +1,6 @@
 // Runtime-neutral authenticated HTTP boundary. The injected services enforce
 // authorization. CORS is a browser restriction, not a substitute for auth.
-import {isPersonId} from '../test-harness/messaging-preview/workspace-messaging-core.js';
+import {isPersonId} from '../workspace-messaging-core.js';
 import {createMessagingAttachmentHttp} from './messaging-attachment-http.mjs';
 const MAX_BODY_BYTES=65536,MAX_TOKEN=16384;
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);

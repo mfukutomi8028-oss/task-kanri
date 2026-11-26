@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
 import {get,ref,set,update,runTransaction,serverTimestamp,query,orderByChild,orderByKey,startAt,endBefore,limitToLast} from 'firebase/database';
-import {createMessagingPersonalStateTransport} from './messaging-preview/workspace-messaging-personal.js';
-import {createMessagingConfirmationTransport} from './messaging-preview/workspace-messaging-confirmations.js';
-import {createMessagingSharedTransport} from './messaging-preview/workspace-messaging-shared.js';
+import {createMessagingPersonalStateTransport} from '../workspace-messaging-personal.js';
+import {createMessagingConfirmationTransport} from '../workspace-messaging-confirmations.js';
+import {createMessagingSharedTransport} from '../workspace-messaging-shared.js';
 
 const host='127.0.0.1:9002';
 if(process.env.FIREBASE_DATABASE_EMULATOR_HOST!==host) throw new Error('Messaging rules require the isolated loopback emulator: '+host);

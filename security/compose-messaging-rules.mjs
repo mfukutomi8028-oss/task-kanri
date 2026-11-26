@@ -1,0 +1,32 @@
+// Prepare a reviewed deployment candidate, never deploy or read a live database.
+// Use a fresh export of the actual production Rules, not the repository sample.
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {isDeepStrictEqual} from 'node:util';
+const keys=['messagingAccessV1','messagingV1','messagingRosterV1'];
+const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype;
+const deny=v=>v===undefined||v===false||v==='false';
+function rootOf(value){if(!record(value)||!record(value.rules))throw new TypeError('Invalid Rules export');return value.rules;}
+export function composeMessagingRules(legacy,isolated){
+  const old=rootOf(legacy),candidate=rootOf(isolated);
+  if(!record(old.rooms))throw new Error('Existing rooms rules must be preserved');
+  if(!deny(old['.read'])||!deny(old['.write'])||Object.hasOwn(old,'.validate')||Object.keys(old).some(key=>key.startsWith('$')))throw new Error('Root grants, validation or wildcard require independent security review');
+  if(candidate['.read']!==false&&candidate['.read']!=='false'||candidate['.write']!==false&&candidate['.write']!=='false'||keys.some(key=>!record(candidate[key]))||Object.keys(candidate).some(key=>!['.read','.write',...keys].includes(key)))throw new Error('Unexpected isolated messaging Rules');
+  for(const key of keys)if(Object.hasOwn(old,key)&&!isDeepStrictEqual(old[key],candidate[key]))throw new Error('Existing messaging rules differ: '+key);
+  const result=structuredClone(legacy);
+  result.rules['.read']=old['.read']??false;result.rules['.write']=old['.write']??false;
+  for(const key of keys)result.rules[key]=structuredClone(candidate[key]);
+  return result;
+}
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+  try{
+    const [source,output,...extra]=process.argv.slice(2);
+    if(!source||!output||extra.length)throw new Error('Usage: node security/compose-messaging-rules.mjs <live-rules-export.json> <new-candidate.json>');
+    const candidatePath=new URL('./database.rules.messaging.candidate.json',import.meta.url);
+    const read=file=>JSON.parse(fs.readFileSync(file,'utf8'));
+    const result=composeMessagingRules(read(source),read(candidatePath));
+    fs.writeFileSync(output,JSON.stringify(result,null,2)+'\n',{encoding:'utf8',flag:'wx'});
+    console.log('Prepared candidate only; no cloud settings changed.');
+  }catch(error){console.error(error.message);process.exitCode=1;}
+}

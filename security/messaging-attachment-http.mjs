@@ -1,6 +1,6 @@
 // Called only after the existing HTTP boundary validates origin and bearer.
 // The attachment service remains responsible for Firebase authorization.
-import {isMessagingRoomId,isConversationId,isPersonId,isMessagingAttachmentId} from '../test-harness/messaging-preview/workspace-messaging-core.js';
+import {isMessagingRoomId,isConversationId,isPersonId,isMessagingAttachmentId} from '../workspace-messaging-core.js';
 const MAX=5000000;
 const mimeTypes=new Set(['image/jpeg','image/png','image/webp','application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.openxmlformats-officedocument.presentationml.presentation','text/plain','text/csv']);
 const safeName=v=>typeof v==='string'&&v===v.trim()&&Array.from(v).length>=1&&Array.from(v).length<=200&&!/[\\/:\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/.test(v);

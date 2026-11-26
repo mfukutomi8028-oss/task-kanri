@@ -64,7 +64,7 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
       async canRead(target,scope){if(!currentConversation(scope))return false;if(target.kind==='message')return isMessageId(target.messageId);return await board.canReadRecord(target.ref,scope)===true&&currentConversation(scope);},
       async readMessage({roomId,conversationId,messageId}){const actor=session.getSnapshot(),scope={...actor,roomId,conversationId};if(!currentConversation(scope)||!isMessageId(messageId))return null;const value=await read('messagingV1/'+roomId+'/messages/'+conversationId+'/'+messageId);return scopeActor(scope)===actor&&currentConversation(scope)?value:null;},
       openRecord:(ref,scope)=>currentConversation(scope)?board.openRecord(ref,scope):false,
-      restoreConversation:(location,scope)=>currentConversation(scope)?board.restoreConversation(location,scope):false
+      async restoreConversation(location,scope){if(!currentConversation(scope)||await board.restoreConversation(location,scope)!==true||!currentConversation(scope))return false;return view.restoreLocation(location);}
     });
     function readBusinessData(){const actor=session.getSnapshot(),snapshot=board.readSnapshot();return !disposed&&actor.status==='bound'&&snapshot?.roomId===actor.roomId&&snapshot.connectionMode==='remote-online'?{...snapshot,memos:board.readMemos()}:{roomId:null,tasks:[],schedules:[],memos:[]};}
     view=own(mountOriginMessaging({root,store,session,commands,resolver,readBusinessData,resolvePerson:id=>commands.resolvePerson(id),confirmations,personal,decorations,attachments:attachmentsEnabled?api:null,onClose(){dispose();onClose();}}));
@@ -82,6 +82,6 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
     }
     const stopBoard=board.subscribe(syncContext);if(typeof stopBoard!=='function')throw new TypeError('Disposable canonical board required');stops.push(stopBoard);
     syncContext(board.readSnapshot());
-    return Object.freeze({getSnapshot:()=>session.getSnapshot(),open:id=>view.open(id),dispose});
+    return Object.freeze({getSnapshot:()=>session.getSnapshot(),subscribe:fn=>session.subscribe(fn),open:id=>view.open(id),restore(){const actor=session.getSnapshot(),state=store.getSnapshot();return actor.status==='bound'&&state.status==='ready'?resolver.restore({...actor,conversationId:state.conversationId,joinedAt:state.joinedAt}):Promise.resolve(false);},dispose});
   }catch(error){dispose();throw error;}
 }

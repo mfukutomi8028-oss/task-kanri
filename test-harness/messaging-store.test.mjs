@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createMessagingStore} from './messaging-preview/workspace-messaging-store.js';
+import {createMessagingStore} from '../workspace-messaging-store.js';
 const a='p_'+'a'.repeat(32),b='p_'+'b'.repeat(32),room='roomA';
 const c='dm_'+a+'_'+b,d='self_'+a;
 const request=i=>'q_'+i.toString(16).padStart(32,'0');

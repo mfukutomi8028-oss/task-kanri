@@ -6,7 +6,7 @@ test('cloud composition clears the authorized directory on disconnect and dispos
   await page.goto('/test-harness/messaging-preview/index.html');
   await expect(page.getByRole('heading',{name:'メッセージ',exact:true})).toBeVisible();
   await page.evaluate(async()=>{
-    const {mountCloudOriginMessaging}=await import('/test-harness/messaging-preview/origin-messaging-live.js');
+    const {mountCloudOriginMessaging}=await import('/origin-messaging-live.js');
     const root=document.createElement('div');root.id='liveCloud';document.body.append(root);
     const roomId='live-room',personId='p_'+'1'.repeat(32),uid='synthetic-uid';
     const binding={uid,roomId,personId,displayName:'Synthetic',approved:true,active:true};

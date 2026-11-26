@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isPersonId, conversationIdFor, validateMessageInput, compareCursor, advanceReadCursor, messageIdFor } from './messaging-preview/workspace-messaging-core.js';
+import { isPersonId, conversationIdFor, validateMessageInput, compareCursor, advanceReadCursor, messageIdFor } from '../workspace-messaging-core.js';
 
 const a = 'p_' + 'a'.repeat(32), b = 'p_' + 'b'.repeat(32);
 const g = 'g_' + 'c'.repeat(32);

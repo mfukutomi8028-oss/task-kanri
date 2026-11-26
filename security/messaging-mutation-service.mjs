@@ -2,7 +2,7 @@
 // membership epoch and record at commit time, not just before a transaction.
 import {createMessagingMessageCommands} from './messaging-message-commands.mjs';
 import {createFirebaseMessagingActivityPublisher} from './messaging-activity-publisher.mjs';
-import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,messageIdFor,validateRoomMessageInput} from '../test-harness/messaging-preview/workspace-messaging-core.js';
+import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,messageIdFor,validateRoomMessageInput} from '../workspace-messaging-core.js';
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);
 const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
 const requestFields=new Set(['token','roomId','conversationId','command','expectedPersonId']);

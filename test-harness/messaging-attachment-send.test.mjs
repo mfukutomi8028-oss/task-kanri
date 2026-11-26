@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateMessageInput} from './messaging-preview/workspace-messaging-core.js';
+import {validateMessageInput} from '../workspace-messaging-core.js';
 import {createMessagingMutationService} from '../security/messaging-mutation-service.mjs';
 const roomId='roomA',personId='p_'+'a'.repeat(32),other='p_'+'b'.repeat(32),conversationId='dm_'+personId+'_'+other,requestId='q_'+'c'.repeat(32),messageId='msg_'+personId+'_'+requestId;
 const id='00000000-0000-4000-8000-000000000001',otherId='00000000-0000-4000-8000-000000000002';

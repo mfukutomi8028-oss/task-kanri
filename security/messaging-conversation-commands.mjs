@@ -1,7 +1,7 @@
 // Server-side domain transitions for the small conversation-control node.
 // The caller must authenticate the actor, obtain the approved room directory,
 // and apply the transition atomically at the trusted persistence boundary.
-import {conversationIdFor,isConversationId,isMessagingRoomId,isMessagingTimestamp,isPersonId} from '../test-harness/messaging-preview/workspace-messaging-core.js';
+import {conversationIdFor,isConversationId,isMessagingRoomId,isMessagingTimestamp,isPersonId} from '../workspace-messaging-core.js';
 
 const fields={openDirect:['personId'],openSelf:[],createGroup:['title','invitees'],invite:['personIds'],respondInvite:['accept'],rename:['title'],transferOwner:['personId'],removeMember:['personId'],leave:[],setArchived:['archived']};
 const creates=new Set(['openDirect','openSelf','createGroup']);

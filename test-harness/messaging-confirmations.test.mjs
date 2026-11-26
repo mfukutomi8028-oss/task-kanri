@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as core from './messaging-preview/workspace-messaging-core.js';
+import * as core from '../workspace-messaging-core.js';
 const a='p_'+'a'.repeat(32),b='p_'+'b'.repeat(32),c='p_'+'c'.repeat(32),roomId='roomA';
 const group='group_g_'+'d'.repeat(32),id='msg_'+a+'_q_'+'e'.repeat(32);
 const message={id,senderId:a,createdAt:2000,revision:2,editedAt:3000,body:'Check again',confirmationRequested:true,confirmation:{round:2,targets:{[b]:1000,[c]:1200}}};
@@ -20,7 +20,7 @@ test('confirmation status distinguishes recipients who left or rejoined from pen
   assert.deepEqual(core.summarizeMessageConfirmation(message,{...members,[c]:{active:true,joinedAt:1200}},{[b]:2900}),[{personId:b,status:'pending',confirmedAt:null},{personId:c,status:'pending',confirmedAt:null}]);
 });
 
-import * as transportModule from './messaging-preview/workspace-messaging-confirmations.js';
+import * as transportModule from '../workspace-messaging-confirmations.js';
 const scope={roomId,conversationId:group,messageId:id,round:2,personId:b};
 const receiptPath='messagingV1/'+roomId+'/confirmationReceipts/'+group+'/'+id+'/2/'+b;
 function fixture(){

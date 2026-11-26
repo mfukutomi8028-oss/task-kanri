@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as shared from './messaging-preview/workspace-messaging-shared.js';
+import * as shared from '../workspace-messaging-shared.js';
 const p='p_'+'a'.repeat(32),other='p_'+'b'.repeat(32),group='group_g_'+'c'.repeat(32),messageId='msg_'+other+'_q_'+'d'.repeat(32);
 const scope={roomId:'roomA',conversationId:group,messageId,personId:p};
 const root='messagingV1/roomA/';

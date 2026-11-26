@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as draft from './messaging-preview/workspace-messaging-file-draft.js';
+import * as draft from '../workspace-messaging-file-draft.js';
 const firstId='00000000-0000-4000-8000-000000000001',secondId='00000000-0000-4000-8000-000000000002';
 const scope={roomId:'roomA',conversationId:'self_p_'+'a'.repeat(32),requestId:'q_'+'b'.repeat(32)};
 const file=(name,text='report')=>new File([text],name);

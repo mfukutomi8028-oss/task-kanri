@@ -1,6 +1,6 @@
 // Server runtime wiring. Configuration stays in secret storage; a disabled or
 // incomplete deployment cannot initialize an Admin client or read any records.
-import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId} from '../test-harness/messaging-preview/workspace-messaging-core.js';
+import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId} from '../workspace-messaging-core.js';
 const unavailable=()=>new Response(JSON.stringify({status:'unavailable'}),{status:503,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 function configuration(getEnv){
   if(getEnv('WORKBOARD_MESSAGING_ENABLED')!=='true')return null;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createMessagingDirectorySync} from './messaging-preview/workspace-messaging-directory-sync.js';
+import {createMessagingDirectorySync} from '../workspace-messaging-directory-sync.js';
 const roomId='roomA',a='p_'+'a'.repeat(32),b='p_'+'b'.repeat(32);
 const group=n=>'group_g_'+n.toString(16).padStart(32,'0');
 const member=(id,patch={})=>({id,kind:'group',status:'active',title:'Project',role:'owner',memberCount:1,joinedAt:1000,revision:1,controlUpdatedAt:1000,...patch});

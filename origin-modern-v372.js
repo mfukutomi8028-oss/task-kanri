@@ -452,7 +452,7 @@
       }
     }
     const controller=window.WorkBoardDisplayController;
-    new MutationObserver(()=>{if(document.documentElement.dataset.wbDisplay!=='modern')document.body.style.overflow='';}).observe(document.documentElement,{attributes:true,attributeFilter:['data-wb-display']});
+    new MutationObserver(()=>{if(document.documentElement.dataset.wbDisplay!=='modern')document.body.style.overflow='';originMessagingEntry?.sync();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-wb-display']});
     
 'use strict';
 (function(){
@@ -506,6 +506,7 @@ mount.querySelector('style').appendChild(document.createTextNode(".origin-memo-n
 const memoBridge=window.WorkBoardPaletteMemoBridgeV369;
 let snapshot=bridge.readSnapshot();
 let memoItems=memoBridge?.readSnapshot?.()||[];
+let originMessagingEntry=null;
 let data={tasks:[],todos:[],events:[],memos:[],templates:[],knowledge:[]};
 const clock=(v)=>{const d=new Date(v||0);return Number.isNaN(d.getTime())?'':String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
 function scheduleLocalInput(v){const d=new Date(v);return Number.isFinite(d.getTime())?key(d)+'T'+clock(d):''}
@@ -3477,6 +3478,7 @@ function closePanel(force=false,restoreFocus=true){
   restorePanelReturnPosition(origin?.kind||kind,origin?.id||id);
   detailTrail=[];
   if(returnToInbox)openOriginInbox(true);
+  else void originMessagingEntry?.resume();
   originInboxReturn=null;
  }else if(force){detailTrail=[];originInboxReturn=null;}
  return true;
@@ -3666,6 +3668,7 @@ function handleRoute(route){
  closeOriginInbox(false);
  closeOriginSettings();
  if(panelOpen&&!closePanel(false,false))return;
+ originMessagingEntry?.close(false);
  panelReturnAnchor=null;detailTrail=[];scheduleGlobalReturn=null;
  if(route===view){viewScrollPositions[view]=0;window.scrollTo({top:0,behavior:'instant'});return}
  viewScrollPositions[view]=window.scrollY;
@@ -4611,6 +4614,26 @@ if(a==='task-done'){toggleTaskDone(id,el);return}
  if(a==='undo')return;
 }
 setIconPlaceholders(mount);initTheme();selectOriginColorMode();syncSnapshot();render();
+// Installed only in an explicitly enabled release. Existing inbox, navigation
+// and canonical board storage remain independent of the messaging workspace.
+if(window.WORK_BOARD_MESSAGING?.enabled===true&&typeof bridge.getMessagingConnection==='function'){
+ Promise.all([import('./origin-messaging-entry.js'),import('./origin-messaging-live.js')]).then(([entry,cloud])=>{
+  const recordKind={task:'tasks',schedule:'events',memo:'memos'};
+  const canReadRecord=(ref,scope)=>{
+   const current=bridge.readSnapshot(),kind=recordKind[ref?.type];
+   return Boolean(kind&&current.connectionMode==='remote-online'&&current.roomId===scope?.roomId&&ref.roomId===current.roomId&&findItem(kind,ref.recordId));
+  };
+  originMessagingEntry=entry.installOriginMessagingEntry({
+   root:mount,anchor:$('#originInboxButton'),readConfig:()=>window.WORK_BOARD_MESSAGING,
+   isActive:()=>document.documentElement.dataset.wbDisplay==='modern',
+   cssUrl:new URL('origin-messaging.css?v='+window.WORK_BOARD_RELEASE_VERSION,document.baseURI).href,
+   connect:()=>bridge.getMessagingConnection(),mountCloud:cloud.mountCloudOriginMessaging,
+   board:{readSnapshot:()=>bridge.readSnapshot(),readMemos:()=>memoBridge.readSnapshot(),subscribe:fn=>bridge.subscribe(fn),
+    canReadRecord,openRecord(ref,scope){if(!canReadRecord(ref,scope))return false;closeOriginSettings();closeCreateMenu();closeSearch();panelShow(recordKind[ref.type],ref.recordId,false);return panelOpen&&panelKind===recordKind[ref.type]&&panelId===ref.recordId;}
+   }
+  });
+ }).catch(()=>{if(document.documentElement.dataset.wbDisplay==='modern')notify('\u30e1\u30c3\u30bb\u30fc\u30b8\u6a5f\u80fd\u3092\u8d77\u52d5\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f\u3002');});
+}
 // Subscriptions can arrive during Japanese IME composition. Defer only the
 // presentation refresh until compositionend (which already renders the final
 // committed query); always ingest the canonical snapshot immediately.
@@ -4978,6 +5001,7 @@ mount.addEventListener('touchend',e=>{
 },{passive:true});
 mount.addEventListener('touchcancel',()=>{detailSwipeStart=null},{passive:true});
 mount.addEventListener('keydown',e=>{
+ if(e.target.closest?.('.origin-message-host'))return;
  // Let the browser close an IME candidate menu without closing the editor.
  if(e.isComposing)return;
  const inboxDialog=$('#originInboxDialog');

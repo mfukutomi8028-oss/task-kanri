@@ -35,7 +35,7 @@ test('denial and unexpected file result return JSON, not bytes or credentials',a
 });
 
 import {createMessagingApiHandler} from '../security/messaging-api-handler.mjs';
-import {createMessagingApiTransport} from './messaging-preview/workspace-messaging-api.js';
+import {createMessagingApiTransport} from '../workspace-messaging-api.js';
 function integration({enabled=true,fetchOverride}={}){
   const f=fixture(),fallback=async()=>({status:'ok'});
   const handler=createMessagingApiHandler({allowedOrigins:[origin],history:{readHistory:fallback},mutation:{mutate:fallback},directory:{readDirectory:fallback,readUnread:fallback},conversations:{readPeople:fallback,execute:fallback},...(enabled?{attachments:f.attachments}:{})});

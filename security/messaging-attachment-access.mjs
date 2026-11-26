@@ -1,7 +1,7 @@
 // Trusted attachment link and download boundary. An attachment claim is not a
 // grant to download: the live canonical message must contain the same ID.
 import {createHash} from 'node:crypto';
-import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,messageIdFor} from '../test-harness/messaging-preview/workspace-messaging-core.js';
+import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,messageIdFor} from '../workspace-messaging-core.js';
 const fail=status=>({status});
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);
 const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);

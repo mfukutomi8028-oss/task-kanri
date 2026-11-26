@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildDailyReport,prepareBusinessDraftFromMessage} from './messaging-preview/workspace-messaging-report.js';
+import {buildDailyReport,prepareBusinessDraftFromMessage} from '../workspace-messaging-report.js';
 const roomId='roomA',personId='p_'+'a'.repeat(32),dayISO='2026-11-26';
 const ts=s=>Date.parse(s);const user='Staff A';
 const tasks=[{id:'t1',title:'PC setup',assignee:user,completed:true,completedAt:ts('2026-11-25T15:00:00Z')},{id:'t2',title:'Old',assignee:user,completed:true,completedAt:ts('2026-11-25T14:59:59Z')},{id:'t3',title:'Unknown',assignee:user,completed:true,updatedAt:ts('2026-11-26T02:00:00Z')},{id:'t4',title:'Active',assignee:user,completed:false,status:'進行中'},{id:'t5',title:'Other staff',assignee:'Staff B',completed:true,completedAt:ts('2026-11-26T03:00:00Z')},{id:'t6',title:'Tomorrow',assignee:user,completed:true,completedAt:ts('2026-11-26T15:00:00Z')}];

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createMessagingReferenceResolver,searchLoadedMessages,selectSharedData} from './messaging-preview/workspace-messaging-refs.js';
+import {createMessagingReferenceResolver,searchLoadedMessages,selectSharedData} from '../workspace-messaging-refs.js';
 const personId='p_'+'a'.repeat(32),roomId='roomA',conversationId='self_'+personId;
 const id=i=>'msg_'+personId+'_q_'+i.toString(16).padStart(32,'0');
 const context={roomId,conversationId,personId,joinedAt:1000};

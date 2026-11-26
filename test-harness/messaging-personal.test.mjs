@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createMessagingPersonalStateTransport} from './messaging-preview/workspace-messaging-personal.js';
+import {createMessagingPersonalStateTransport} from '../workspace-messaging-personal.js';
 const p='p_'+'a'.repeat(32),q='p_'+'b'.repeat(32),conversationId='dm_'+p+'_'+q;
 const scope={roomId:'roomA',personId:p,conversationId,joinedAt:1000};
 const path='messagingV1/roomA/personal/'+p+'/'+conversationId+'/1000';

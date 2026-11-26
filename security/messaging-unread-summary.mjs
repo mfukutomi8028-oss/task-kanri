@@ -1,7 +1,7 @@
 // On-demand canonical unread check for one authorized membership. This is not
 // the realtime directory index: never call it for every conversation on refresh.
 // The trusted caller must recheck current membership and identity before return.
-import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,compareCursor} from '../test-harness/messaging-preview/workspace-messaging-core.js';
+import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,compareCursor} from '../workspace-messaging-core.js';
 const LIMIT=101,BADGE_CAP=100;
 const fail=status=>({status});
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);

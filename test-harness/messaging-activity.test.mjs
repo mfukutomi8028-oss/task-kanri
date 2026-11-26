@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as activity from './messaging-preview/workspace-messaging-activity.js';
+import * as activity from '../workspace-messaging-activity.js';
 import * as publisher from '../security/messaging-activity-publisher.mjs';
 const roomId='roomA',personId='p_'+'a'.repeat(32),other='p_'+'b'.repeat(32),conversationId='group_g_'+'c'.repeat(32);
 const identity={status:'bound',roomId,personId},scope={roomId,conversationId};

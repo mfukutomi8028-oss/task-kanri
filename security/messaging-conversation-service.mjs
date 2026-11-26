@@ -1,7 +1,7 @@
 // Trusted conversation commands. No user-supplied identity, credentials or
 // direct client control writes. The persistence adapter must enforce the
 // binding and roster revision at the commit boundary.
-import {isConversationId,isMessagingRoomId,isMessagingTimestamp,isPersonId} from '../test-harness/messaging-preview/workspace-messaging-core.js';
+import {isConversationId,isMessagingRoomId,isMessagingTimestamp,isPersonId} from '../workspace-messaging-core.js';
 import {applyConversationCommand} from './messaging-conversation-commands.mjs';
 import {createFirebaseMessagingDirectoryServices} from './messaging-directory-service.mjs';
 const fail=status=>({status});

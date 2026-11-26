@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createMessagingApiHandler} from '../security/messaging-api-handler.mjs';
-import {createMessagingApiTransport} from './messaging-preview/workspace-messaging-api.js';
+import {createMessagingApiTransport} from '../workspace-messaging-api.js';
 const origin='https://board.example.test',endpoint='https://api.example.test/messaging',roomId='roomA',p='p_'+'a'.repeat(32),conversationId='self_'+p,token='synthetic-id-token';
 function fixture(){
   const calls=[];
