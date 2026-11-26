@@ -121,3 +121,33 @@ for(const [width,height,theme] of [[1366,900,'light'],[390,844,'light'],[320,740
     expect(errors).toEqual([]);
   });
 }
+
+test('messaging invitation and file controls keep unknown unread totals and attachment retries explicit',async({page})=>{
+  await page.setViewportSize({width:1366,height:900});
+  await page.route('**/*',r=>new URL(r.request().url()).origin==='http://127.0.0.1:4173'?r.continue():r.abort('blockedbyclient'));
+  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+  await page.goto('/test-harness/messaging-preview/index.html?liveControls=1');
+  await expect(page.getByLabel('メッセージの未読件数')).toContainText('取得済みの未読');
+  const invite=page.getByRole('region',{name:'グループ招待'});
+  await expect(invite.getByText('新規プロジェクト',{exact:true})).toBeVisible();
+  await invite.getByRole('button',{name:'承諾',exact:true}).click();
+  await expect(invite).toBeHidden();
+  await expect(page.getByRole('button',{name:'新規プロジェクト',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'システム課',exact:true}).click();
+  const composer=page.getByLabel('会話',{exact:true});
+  await expect(composer.getByRole('button',{name:'ファイルを添付',exact:true})).toBeEnabled();
+  await page.locator('.om-file-input').setInputFiles({name:'報告.txt',mimeType:'text/plain',buffer:Buffer.from('synthetic report')});
+  await expect(composer.getByText('報告.txt',{exact:true})).toBeVisible();
+  await composer.getByRole('button',{name:'送信',exact:true}).click();
+  const message=page.getByLabel('メッセージ履歴').locator('.om-message').filter({hasText:'添付ファイル 1 をダウンロード'});
+  await expect(message).toHaveCount(1);
+  await message.getByRole('button',{name:'編集',exact:true}).click();
+  await expect(composer.getByText('添付ファイル 1件を維持',{exact:true})).toBeVisible();
+  await composer.getByRole('textbox',{name:'メッセージ本文'}).fill('添付の説明');
+  await composer.getByRole('button',{name:'更新',exact:true}).click();
+  await expect(message.getByText('添付の説明',{exact:true})).toBeVisible();
+  const download=page.waitForEvent('download');
+  await message.getByRole('button',{name:'添付ファイル 1 をダウンロード'}).click();
+  expect((await download).suggestedFilename()).toBe('報告.txt');
+  expect(errors).toEqual([]);
+});
