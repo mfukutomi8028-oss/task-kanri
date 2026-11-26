@@ -1,6 +1,7 @@
 // Server-side orchestration. Persistence must enforce the exact supplied actor,
 // membership epoch and record at commit time, not just before a transaction.
 import {createMessagingMessageCommands} from './messaging-message-commands.mjs';
+import {createFirebaseMessagingActivityPublisher} from './messaging-activity-publisher.mjs';
 import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,messageIdFor,validateRoomMessageInput} from '../test-harness/messaging-preview/workspace-messaging-core.js';
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);
 const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
@@ -8,8 +9,8 @@ const requestFields=new Set(['token','roomId','conversationId','command','expect
 const commandFields={send:['type','requestId','input'],edit:['type','messageId','expectedRevision','input'],remove:['type','messageId','expectedRevision']};
 const fail=status=>({status});
 
-export function createMessagingMutationService({verifyToken,readBinding,readControl,transactMessage,digestKey,clock=Date.now}={}){
-  if([verifyToken,readBinding,readControl,transactMessage,clock].some(fn=>typeof fn!=='function'))throw new TypeError('Trusted mutation adapters required');
+export function createMessagingMutationService({verifyToken,readBinding,readControl,transactMessage,digestKey,clock=Date.now,publishActivity=null}={}){
+  if([verifyToken,readBinding,readControl,transactMessage,clock].some(fn=>typeof fn!=='function')||publishActivity!==null&&typeof publishActivity!=='function')throw new TypeError('Trusted mutation adapters required');
   const commands=createMessagingMessageCommands({digestKey});
   async function authorize(token,roomId,conversationId){
     let identity;try{identity=await verifyToken(token);}catch(_){return null;}
@@ -49,11 +50,18 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
       const scope=Object.freeze({...actor,messageId,...(requested?{controlRevision}:{})});
       const result=await transactMessage(scope,current=>commands.apply(current,clean,{...access,now,active:true,conversationStatus:'active'}));
       if(result?.status!=='ok')return fail(result?.status==='forbidden'?'forbidden':'unavailable');
+      const decision=result.decision;
+      const success=type==='send'&&decision?.status==='sent'&&decision.id===messageId?{status:'sent',id:messageId}:type!=='send'&&decision?.status==='ok'&&decision.message?.id===messageId?{status:'ok',message:decision.message}:null;
+      // The message is already committed. A failed invalidation must not
+      // change its outcome or invite a duplicate send. An idempotent send
+      // retry also republishes the signal after a lost response or write.
+      let activityPending=false;
+      if(success&&publishActivity){
+        try{activityPending=(await publishActivity({roomId,conversationId}))?.status!=='ok';}catch(_){activityPending=true;}
+      }
       const latest=await authorize(token,roomId,conversationId);
       if(!latest||latest.uid!==access.uid||latest.personId!==access.personId||latest.joinedAt!==access.joinedAt)return fail('forbidden');
-      const decision=result.decision;
-      if(type==='send'&&decision?.status==='sent'&&decision.id===messageId)return {status:'sent',id:messageId};
-      if(type!=='send'&&decision?.status==='ok'&&decision.message?.id===messageId)return {status:'ok',message:decision.message};
+      if(success)return activityPending?{...success,activityPending:true}:success;
       return fail(['invalid','conflict','forbidden'].includes(decision?.status)?decision.status:'unavailable');
     }catch(_){return fail('unavailable');}
   }
@@ -66,7 +74,7 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
 export function createFirebaseMessagingMutationService({auth,database,withActorDatabase,digestKey,clock}={}){
   if(typeof auth?.verifyIdToken!=='function'||typeof database?.ref!=='function'||typeof withActorDatabase!=='function')throw new TypeError('Scoped Firebase adapters required');
   const read=async path=>(await database.ref(path).get()).val();
-  return createMessagingMutationService({digestKey,clock,
+  return createMessagingMutationService({digestKey,clock,publishActivity:createFirebaseMessagingActivityPublisher({database}),
     verifyToken:token=>auth.verifyIdToken(token,true),
     readBinding:({roomId,uid})=>read('messagingAccessV1/'+roomId+'/'+uid),
     readControl:({roomId,conversationId})=>read('messagingV1/'+roomId+'/control/'+conversationId),

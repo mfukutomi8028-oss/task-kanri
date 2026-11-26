@@ -119,10 +119,31 @@ try{
   const sent={...writeCall,command:{type:'send',requestId,input:{body:'Synthetic report'}}};
   assert.deepEqual(await writer.mutate(sent),{status:'sent',id:writeId});
   assert.equal((await mutationHistory.child(writeId).get()).val().body,'Synthetic report');
+  const activityPath=root+'/activity/'+mutationGroup;
+  const firstSignal=(await db.ref(activityPath).get()).val();
+  assert.match(firstSignal,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  await withActorDatabase({uid:bob.localId,token:{}},async scoped=>{
+    assert.equal((await scoped.ref(activityPath).get()).val(),firstSignal);
+    await assert.rejects(scoped.ref(root+'/activity').get(),/permission.denied/i);
+    await assert.rejects(scoped.ref(activityPath).set(firstSignal),/permission.denied/i);
+    await assert.rejects(scoped.ref('messagingV1/otherRoom/activity/'+mutationGroup).get(),/permission.denied/i);
+  });
+  await withActorDatabase({uid:unknown.localId,token:{}},async scoped=>{
+    await assert.rejects(scoped.ref(activityPath).get(),/permission.denied/i);
+  });
+  await mutationControl.child('members/'+other+'/active').set(false);
+  try{
+    await withActorDatabase({uid:bob.localId,token:{}},async scoped=>{
+      await assert.rejects(scoped.ref(activityPath).get(),/permission.denied/i);
+    });
+  }finally{await mutationControl.child('members/'+other+'/active').set(true);}
   mutationNow=3100;
   assert.deepEqual(await writer.mutate(sent),{status:'sent',id:writeId});
+  const retrySignal=(await db.ref(activityPath).get()).val();
+  assert.notEqual(retrySignal,firstSignal);
   assert.deepEqual(await writer.mutate({...sent,command:{...sent.command,input:{body:'Different'}}}),{status:'conflict'});
   assert.equal((await mutationHistory.get()).numChildren(),1);
+  assert.equal((await db.ref(activityPath).get()).val(),retrySignal);
   await withActorDatabase(firstScope,async scoped=>{
     await assert.rejects(scoped.ref(root+'/messages/'+mutationGroup+'/'+msgId(999)).set({id:msgId(999),body:'Wrong scoped record'}),/permission.denied/i);
     await assert.rejects(scoped.ref(access+'/'+alice.localId+'/approved').set(false),/permission.denied/i);
@@ -130,10 +151,14 @@ try{
   const edit={...writeCall,command:{type:'edit',messageId:writeId,expectedRevision:1,input:{body:'Updated report'}}};
   assert.deepEqual(await writer.mutate({...edit,token:bob.idToken}),{status:'forbidden'});
   const edited=await writer.mutate(edit);assert.equal(edited.status,'ok');assert.equal(edited.message.revision,2);
+  const editedSignal=(await db.ref(activityPath).get()).val();assert.notEqual(editedSignal,retrySignal);
   assert.deepEqual(await writer.mutate(edit),{status:'conflict'});
+  assert.equal((await db.ref(activityPath).get()).val(),editedSignal);
   mutationNow=3200;
   const removed=await writer.mutate({...writeCall,command:{type:'remove',messageId:writeId,expectedRevision:2}});
   assert.equal(removed.status,'ok');assert.equal(removed.message.deletedAt,3200);
+  assert.notEqual((await db.ref(activityPath).get()).val(),editedSignal);
+  console.log('MESSAGING_ACTIVITY_RULES_EMULATOR_OK');
   assert.equal((await mutationHistory.child(writeId+'/body').get()).exists(),false);
   assert.deepEqual(await writer.mutate(sent),{status:'sent',id:writeId});
   const nextRequest='q_'+'f'.repeat(32),nextId='msg_'+p+'_'+nextRequest;

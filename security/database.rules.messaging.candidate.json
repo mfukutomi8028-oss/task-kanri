@@ -127,6 +127,14 @@
             }
           }
         },
+        "activity": {
+          ".read": false,
+          ".write": false,
+          "$conversationId": {
+            ".read": "(auth != null && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('approved').val() === true && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('active').val() === true && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('uid').val() === auth.uid && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('roomId').val() === $roomId && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').isString() && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val().matches(/^p_[0-9a-f]{32}$/) && root.child('messagingV1').child($roomId).child('control').child($conversationId).child('members').child(root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val()).child('active').val() === true && root.child('messagingV1').child($roomId).child('control').child($conversationId).child('members').child(root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val()).child('joinedAt').isNumber() && root.child('messagingV1').child($roomId).child('control').child($conversationId).child('members').child(root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val()).child('joinedAt').val() >= 0)",
+            ".write": false
+          }
+        },
         "directoryIndex": {
           ".read": false,
           ".write": false
