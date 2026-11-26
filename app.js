@@ -13295,9 +13295,7 @@ window.WorkBoardPaletteBridge = Object.freeze({
     if (window.WORK_BOARD_MESSAGING?.enabled !== true || window.WORK_BOARD_TEST?.emulator === true) throw new Error('Messaging connection is disabled');
     const db = state.db, api = state.dbApi;
     if (!db || !api || state.connectionMode !== 'remote-online') throw new Error('Board connection unavailable');
-    const authSdk = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
-    if (state.db !== db || state.dbApi !== api || state.connectionMode !== 'remote-online' || window.WORK_BOARD_MESSAGING?.enabled !== true) throw new Error('Board connection changed');
-    return { app: db.app, sdk: { db, ...api }, authSdk };
+    return { app: db.app, sdk: { db, ...api } };
   },
   // Comment UI reads the canonical subscribed task, not an optional browser
   // cache. Return only the needed fields as a copy; Classic owns all writes.

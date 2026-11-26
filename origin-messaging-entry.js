@@ -18,7 +18,7 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
   const safeStop=()=>{try{sessionStop?.();}catch(_){}sessionStop=null;};
   const show=()=>{if(!dialog.open)dialog.showModal();};
   function close(restoreFocus=true){epoch++;openingKey=null;suspended=false;safeStop();launcher.close();if(dialog.open)dialog.close();target.replaceChildren();if(restoreFocus&&trigger.isConnected&&!trigger.hidden&&isActive())trigger.focus({preventScroll:true});}
-  const launcher=createOriginMessagingLauncher({readConfig,readBoard:board.readSnapshot,async connect(){const connection=await connect();const auth=await connectFirebaseMessagingAuth(connection);return {sdk:connection.sdk,auth};},mount(options){
+  const launcher=createOriginMessagingLauncher({readConfig,readBoard:board.readSnapshot,async connect(){const connection=await connect();const authSdk=connection.authSdk??await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");const auth=await connectFirebaseMessagingAuth({...connection,authSdk});return {sdk:connection.sdk,auth};},mount(options){
     return mountCloud({...options,root:target,board:{...board,
       async openRecord(ref,scope){if(!current()||!dialog.open)return false;const token=epoch;suspended=true;dialog.close();try{if(await board.openRecord(ref,scope)===true&&token===epoch&&current())return true;}catch(_){}if(token===epoch&&current()){suspended=false;show();}return false;},
       restoreConversation(){if(!suspended||!current())return false;suspended=false;show();return true;}
