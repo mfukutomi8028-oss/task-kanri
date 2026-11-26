@@ -65,3 +65,58 @@ for(const [width,height,theme] of [[1366,900,'light'],[390,844,'light'],[320,740
     expect(errors).toEqual([]);
   });
 }
+
+for(const [width,height,theme] of [[1366,900,'light'],[390,844,'light'],[320,740,'dark']]){
+  test('messaging preferences and shared message actions '+width+' '+theme,async({page})=>{
+    await page.setViewportSize({width,height});
+    await page.route('**/*',r=>new URL(r.request().url()).origin==='http://127.0.0.1:4173'?r.continue():r.abort('blockedbyclient'));
+    const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+    await page.goto('/test-harness/messaging-preview/index.html?theme='+theme);
+    const group=page.getByRole('button',{name:'システム課',exact:true});await group.click();
+    const incoming=page.locator('.om-message').filter({hasText:'外来PCの設定が完了しました。'});
+    const menu=page.getByRole('dialog',{name:'メッセージの操作'});
+    await incoming.getByRole('button',{name:'その他',exact:true}).click();
+    const like=menu.getByRole('button',{name:'いいね',exact:true});
+    await expect(like).toBeEnabled();await like.click();await expect(like).toHaveAttribute('aria-pressed','true');
+    await menu.getByRole('button',{name:'ブックマークに追加',exact:true}).click();
+    await expect(menu.getByRole('button',{name:'ブックマークを解除',exact:true})).toBeEnabled();
+    await menu.getByRole('button',{name:'会話に固定',exact:true}).click();
+    await expect(menu.getByRole('button',{name:'固定を解除',exact:true})).toBeEnabled();
+    await menu.getByRole('button',{name:'閉じる',exact:true}).click();
+    await incoming.getByRole('button',{name:'その他',exact:true}).click();
+    await expect(like).toHaveAttribute('aria-pressed','true');
+    await expect(menu.getByRole('button',{name:'固定を解除',exact:true})).toBeEnabled();
+    await like.click();await expect(like).toHaveAttribute('aria-pressed','false');
+    await menu.getByRole('button',{name:'ブックマークを解除',exact:true}).click();
+    await expect(menu.getByRole('button',{name:'ブックマークに追加',exact:true})).toBeEnabled();
+    await menu.getByRole('button',{name:'固定を解除',exact:true}).click();
+    await expect(menu.getByRole('button',{name:'会話に固定',exact:true})).toBeEnabled();
+    await menu.getByRole('button',{name:'閉じる',exact:true}).click();
+    const settings=page.getByRole('dialog',{name:'会話設定'});
+    const openSettings=()=>page.getByRole('button',{name:'会話設定',exact:true}).click();
+    const closeSettings=()=>settings.getByRole('button',{name:'閉じる',exact:true}).click();
+    const back=async()=>{if(width<=760)await page.getByRole('button',{name:'一覧',exact:true}).click();};
+    await openSettings();
+    for(const label of ['お気に入り','通知をミュート','会話を固定']){
+      const control=settings.getByRole('checkbox',{name:label,exact:true});
+      await expect(control).toBeEnabled();await control.check();await expect(control).toBeEnabled();await expect(control).toBeChecked();
+    }
+    await closeSettings();await back();
+    await page.getByRole('button',{name:'お気に入り',exact:true}).click();await expect(group).toBeVisible();
+    await group.click();await openSettings();
+    await expect(settings.getByRole('checkbox',{name:'通知をミュート',exact:true})).toBeChecked();
+    const archive=settings.getByRole('checkbox',{name:'アーカイブ',exact:true});
+    await archive.check();await expect(archive).toBeEnabled();await closeSettings();await back();
+    await expect(group).toHaveCount(0);await page.getByRole('button',{name:'アーカイブ',exact:true}).click();await expect(group).toBeVisible();
+    await group.click();await openSettings();await expect(archive).toBeChecked();
+    await archive.uncheck();await expect(archive).toBeEnabled();await closeSettings();await back();
+    await page.getByRole('button',{name:'すべて',exact:true}).click();await expect(group).toBeVisible();
+    await page.getByRole('button',{name:'院内PC更新プロジェクト',exact:true}).click();
+    await page.locator('.om-message').filter({hasText:'更新計画を確認してください。'}).getByRole('button',{name:'その他',exact:true}).click();
+    await expect(menu.getByRole('button',{name:'会話に固定',exact:true})).toHaveCount(0);
+    await expect(menu.getByText('共有固定は管理者が変更できます。',{exact:true})).toBeVisible();
+    await menu.getByRole('button',{name:'閉じる',exact:true}).click();
+    expect(await page.locator('html').evaluate(e=>e.scrollWidth<=innerWidth)).toBe(true);
+    expect(errors).toEqual([]);
+  });
+}
