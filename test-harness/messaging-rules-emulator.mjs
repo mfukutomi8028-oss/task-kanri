@@ -250,6 +250,19 @@ try {
   assert.deepEqual(await ownerDecor.readReactions(ownerScope),{status:'forbidden'});
   assert.deepEqual(await ownerDecor.setSharedPin({...ownerScope,pinned:true}),{status:'forbidden'});
   console.log('MESSAGING_SHARED_STATE_EMULATOR_OK');
+  // Index and invitation roster are trusted server metadata, never client grants.
+  await env.withSecurityRulesDisabled(async admin=>{
+    await set(path(admin,'messagingRosterV1/'+room),{revision:1,people:{[p]:{displayName:'Synthetic A'},[other]:{displayName:'Synthetic B'}}});
+    await set(path(admin,root+'/directoryIndex/'+p+'/'+group),{revision:1,state:'member'});
+  });
+  for(const ctx of [member,nonmember,anon,unknown,unapproved]){
+    await deny(get(path(ctx,'messagingRosterV1/'+room)));
+    await deny(get(path(ctx,root+'/directoryIndex/'+p)));
+    await deny(set(path(ctx,root+'/directoryIndex/'+p+'/'+group),{revision:99,state:'member'}));
+    await deny(set(path(ctx,'messagingRosterV1/'+room+'/revision'),2));
+    await deny(set(path(ctx,control+'/title'),'Client rename'));
+  }
+  console.log('MESSAGING_DIRECTORY_CLIENT_DENIALS_OK');
   // A fresh context after a server-side membership change cannot use old grants.
   await env.withSecurityRulesDisabled(admin=>set(path(admin,control+'/members/'+p+'/active'),false));
   const left=env.authenticatedContext('uidA');

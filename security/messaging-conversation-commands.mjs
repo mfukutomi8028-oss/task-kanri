@@ -18,7 +18,7 @@ const validInvite=v=>record(v)&&inviteStates.has(v.state)&&isPersonId(v.invitedB
 const countParticipants=control=>new Set([...Object.keys(control.members).filter(id=>control.members[id].active),...Object.keys(control.invites??{}).filter(id=>control.invites[id].state==='pending')]).size;
 const member=(now,role='member')=>({active:true,joinedAt:now,role});
 const invite=(now,invitedBy)=>({state:'pending',invitedBy,invitedAt:now});
-function validControl(control,conversationId,roomId){
+export function isValidConversationControl(control,conversationId,roomId){
   if(!record(control)||control.id!==conversationId||control.roomId!==roomId||!['direct','self','group'].includes(control.kind)
       ||!['active','archived'].includes(control.status)||!Number.isSafeInteger(control.revision)||control.revision<1||control.revision>=Number.MAX_SAFE_INTEGER
       ||!isMessagingTimestamp(control.updatedAt)||!record(control.members)||!record(control.invites??{})
@@ -41,7 +41,7 @@ export function applyConversationCommand(current,command,context){
   const approved=new Set(approvedPersonIds);if(!approved.has(actor))return fail('forbidden');
   const type=command.type,isCreate=creates.has(type),allowed=new Set(['type',...fields[type],...(!isCreate?['expectedRevision']:[])]);
   if(Object.keys(command).some(k=>!allowed.has(k)))return fail('invalid');
-  if(current!=null&&!validControl(current,conversationId,roomId))return fail('unavailable');
+  if(current!=null&&!isValidConversationControl(current,conversationId,roomId))return fail('unavailable');
   if(current!=null&&now<current.updatedAt)return fail('conflict');
   if(isCreate){
     let kind,people,groupId,title;
@@ -109,6 +109,6 @@ export function applyConversationCommand(current,command,context){
     default:return fail('invalid');
   }
   next.revision=current.revision+1;next.updatedAt=now;
-  if(!validControl(next,conversationId,roomId))return fail('unavailable');
+  if(!isValidConversationControl(next,conversationId,roomId))return fail('unavailable');
   return ok(next);
 }
