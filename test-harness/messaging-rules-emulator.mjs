@@ -23,7 +23,7 @@ const group='group_g_'+'c'.repeat(32);
 const room='roomA', root='messagingV1/'+room, control=root+'/control/'+group, history=root+'/messages/'+group;
 const access='messagingAccessV1/'+room;
 const binding=(uid,personId,approved=true)=>({uid,roomId:room,personId,displayName:'Synthetic '+uid,approved,active:true});
-const messages={before:{createdAt:999,body:'before'},atJoin:{createdAt:1000,body:'at join'}};
+const messages={before:{createdAt:999,body:'before',nested:{createdAt:1002,secret:'prejoin nested value'}},atJoin:{createdAt:1000,body:'at join'}};
 for(let i=1;i<=55;i++) messages['m'+String(i).padStart(3,'0')]={createdAt:1000+i,body:'message '+i};
 messages.m055.createdAt=1054;
 const path=(context,key)=>ref(context.database(),key);
@@ -69,6 +69,12 @@ try {
   await deny(get(query(path(member,history),orderByKey(),startAt('m001'),limitToLast(50))));
   await deny(get(path(member,history+'/before')));
   await deny(get(path(member,history+'/atJoin')));
+  // A constrained query at a descendant must not inherit a list-read grant.
+  for(const target of [history+'/before',history+'/before/body',history+'/before/nested']){
+    await deny(get(query(path(member,target),orderByChild('createdAt'),startAt(1001),limitToLast(50))));
+  }
+  await deny(get(latest(member,'1001')));
+  await deny(get(latest(member,true)));
   await deny(get(path(member,'messagingV1/roomB/messages/'+group+'/m055')));
   await deny(set(path(member,history+'/unsafe'),{createdAt:1055,body:'write not implemented'}));
   console.log('MESSAGING_READ_DENIALS_OK');
