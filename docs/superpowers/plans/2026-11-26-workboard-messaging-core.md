@@ -242,3 +242,5 @@ assert.equal(report.unknownCompletion.some(t=>t.id==='no-completion-date'),true)
 - `security/messaging-history-service.mjs` に限定されたサーバー側履歴取得を追加。Firebase Adminのトークン検証、承認binding・所属・加入時刻の検査、上限50件、同時刻IDカーソル、取得後の権限再照合、削除済み本文やキャッシュ件名の除去。ローカルNodeテスト26/26（新規8）。`test-harness/messaging-history-emulator.mjs` を既存の隔離Auth/RTDB検査へ追加。実際のサーバー配備・最小権限の実現、同時失効の厳密境界、書込み、Origin接続は未完了。本番Rulesは変更しない。
 
 - Task 3: 共通クライアントストアを実装。active会話だけ購読、50件取得、履歴の重複・欠落防止、会話別メモリ下書き、同時送信要求集約、編集/削除結果のrevision照合、既読カーソル、再加入時の状態/下書き破棄。サーバーとクライアントの共通メッセージ射影・正規化処理をcoreへ集約した。41件のローカルNodeテスト成功（新規store 15件、10,000件の合成履歴を含む）。履歴サービスの実Firebase Admin/Auth/RTDB Emulator検査は直前のCI 45734719874で成功。書込み・既読の実Firebase transport、実購読・永続下書き、会話管理、全UI、添付API、本番接続は引き続き未実装。Mock/fixtureでの成功を実際の送信成功と扱わない。初回公開に進むまでは配信資産へ含めない。
+
+- 中断後再開: `security/messaging-conversation-commands.mjs` に小さいcontrolノードの状態遷移を追加。direct/selfの一意ID、グループ新規作成、招待/承諾/辞退、名称変更、所有者移譲、除外/退出/再加入、archive/reopen、revision競合、100人（未承諾招待含む）上限。新規9件、ローカル全50件成功。直前CI 45735401958のProtocol 1,168件および認可・実Auth/RTDB履歴取得成功を確認。本処理は認証済みの信頼主体から渡されたcontextを前提とする純粋な状態遷移であり、実DBの原子的更新・本人資格のコミット時再検証・一覧索引・APIは未実装。実際の会話の作成・招待が可能になったとは扱わない。第2工程続行中、初回公開は未実施。
