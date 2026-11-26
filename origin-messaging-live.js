@@ -90,6 +90,6 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
     }
     const stopBoard=board.subscribe(syncContext);if(typeof stopBoard!=='function')throw new TypeError('Disposable canonical board required');stops.push(stopBoard);
     syncContext(board.readSnapshot());
-    return Object.freeze({getSnapshot:()=>session.getSnapshot(),subscribe:fn=>session.subscribe(fn),open:id=>view.open(id),restore(){const actor=session.getSnapshot(),state=store.getSnapshot();return actor.status==='bound'&&state.status==='ready'?resolver.restore({...actor,conversationId:state.conversationId,joinedAt:state.joinedAt}):Promise.resolve(false);},dispose});
+    return Object.freeze({getSnapshot:()=>session.getSnapshot(),getApprovalRequest(){const uid=auth.getUid();return !disposed&&session.getSnapshot().status==='locked'&&lastContext&&validUid(uid)?{roomId:lastContext.roomId,displayName:lastContext.selectedDisplayName,uid}:null;},subscribe:fn=>session.subscribe(fn),open:id=>view.open(id),restore(){const actor=session.getSnapshot(),state=store.getSnapshot();return actor.status==='bound'&&state.status==='ready'?resolver.restore({...actor,conversationId:state.conversationId,joinedAt:state.joinedAt}):Promise.resolve(false);},dispose});
   }catch(error){dispose();throw error;}
 }
