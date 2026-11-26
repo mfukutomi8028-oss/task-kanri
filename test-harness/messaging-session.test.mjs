@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveMessagingIdentity, createMessagingSession } from '../workspace-messaging-session.js';
+import { resolveMessagingIdentity, createMessagingSession } from './messaging-preview/workspace-messaging-session.js';
 
 const a = 'p_'+'a'.repeat(32), b = 'p_'+'b'.repeat(32);
 const context = {uid:'uidA',roomId:'r',selectedDisplayName:'staff A'};

@@ -51,7 +51,7 @@
 | `tests/origin-messaging*.spec.mjs` | Playwrightの操作・外観・回帰 |
 | `package.json`, `.github/workflows/regression-checks.yml` | 必要なEmulator/ブラウザ検査追加とscope判定。既存テスト削減禁止 |
 
-新規製品資産は第2工程中は本番manifestへ未登録とし、実ブラウザ試験用の隔離entryを使用する。既存Originへの入口を接続する際は、機能フラグ既定offと実験用環境からのみ有効にする。ローカルフラグはサーバー認可の代替ではない。公開前にmanifest・責務台帳・Pages stagingとの整合を検証する。
+新規製品資産は第2・第3工程中、`test-harness/messaging-preview/` に単一正本として配置する。以下の新規 `workspace-messaging-*.js`・`origin-messaging.js/css` はこのディレクトリを基準とする（既存ファイルへの変更は明示パスのまま）。Protocolテストからは `./messaging-preview/` で参照する。現行Pagesは未宣言のルートJS/CSSを拒否するため、ルートに未登録資産を置かない。第4工程（初回公開）で同一ファイルをルートへ移動し、import・manifest・責務台帳を同時更新する。旧試作用コピーを残さない。実ブラウザ試験用の隔離entryを使用する。既存Originへの入口を接続する際は、機能フラグ既定offと実験用環境からのみ有効にする。ローカルフラグはサーバー認可の代替ではない。公開前にmanifest・責務台帳・Pages stagingとの整合を検証する。
 
 ---
 
