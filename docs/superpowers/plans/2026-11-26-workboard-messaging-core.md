@@ -234,3 +234,9 @@ assert.equal(report.unknownCompletion.some(t=>t.id==='no-completion-date'),true)
 - 決定: `messages/{conversationId}` 親readは常時deny。個別messageだけが本人/承認/所属/加入時刻条件でread可。全client write denyを維持。最新/過去ページの50件取得は、Supabase Free等の認証済み限定サーバーAPIが実施する（specの信頼経路への切替条件）。同時刻IDカーソル、本人・現membershipの取得前後の再照合、加入境界、限界50、削除・引用の権限、許可済み範囲のみ取得を実DBに対して証明する。信頼サービスの鍵はserver-sideのみ。SupabaseでのFirebaseトークン検証/権限失効と実装可否・無料枠を隔離環境で検証するまで実運用を禁止。
 - Emulatorで許可されない一覧を成功させるためにRulesを緩めない。信頼経路の生query形状テストと個別readテストの成功は、サーバーAPIの認可成功と区別する。APIの認可・メッセージ作成/編集/削除・会話所属・一覧同期・通知は未実装。
 - Firebase/Supabaseの実プロジェクト管理機能は接続未確認。実環境の設定や初回公開は未実施。第4・5工程（全体の正式ログイン以降）は着手しない。
+
+## 2026-11-26 追加の記録と履歴サービス
+
+- 将来のFirebase全体通信最適化は [Issue #1015](https://github.com/mfukutomi8028-oss/task-kanri/issues/1015) に登録。メッセージ機能と正式ログイン開発・検証完了後に実施。現行の必須ページング等は維持し、既存アプリ全体の最適化は本PRに混ぜない。
+- Supabase Free東京プロジェクト接続済み。先行SQLで非公開bucket、容量予約、RLSを構築。ユーザーによるWindows上のFirebase CLIログインは確認されたが、このWebセッションへFirebase管理権限は移転していない。実環境操作は必要時に管理者に具体的な手順を提示する。
+- `security/messaging-history-service.mjs` に限定されたサーバー側履歴取得を追加。Firebase Adminのトークン検証、承認binding・所属・加入時刻の検査、上限50件、同時刻IDカーソル、取得後の権限再照合、削除済み本文やキャッシュ件名の除去。ローカルNodeテスト26/26（新規8）。`test-harness/messaging-history-emulator.mjs` を既存の隔離Auth/RTDB検査へ追加。実際のサーバー配備・最小権限の実現、同時失効の厳密境界、書込み、Origin接続は未完了。本番Rulesは変更しない。
