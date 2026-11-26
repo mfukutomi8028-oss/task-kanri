@@ -28,7 +28,7 @@ function fixture({records=Array.from({length:56},(_,i)=>row(i)),onPage,modifyPag
 
 test('history returns only newest 50 records after the strict join boundary',async()=>{
   const f=fixture();const r=await f.service.readHistory(call);
-  assert.equal(r.status,'ok');assert.equal(r.messages.length,50);
+  assert.equal(r.status,'ok');assert.equal(r.joinedAt,1000);assert.equal(r.messages.length,50);
   assert.equal(r.messages[0].id,msgId(6));assert.equal(r.messages.at(-1).id,msgId(55));
   assert.deepEqual(r.nextCursor,{createdAt:1006,id:msgId(6)});assert.equal(r.hasMore,true);
   assert.deepEqual(f.queries,[{roomId:room,conversationId:group,joinedAt:1000,before:null,limit:50}]);

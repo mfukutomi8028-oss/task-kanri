@@ -32,7 +32,7 @@ try{
   await db.ref(root).set({control:{[group]:{kind:'group',status:'active',members:{[p]:{active:true,joinedAt:1000,role:'member'}}}},messages:{[group]:messages}});
   const call={token:alice.idToken,roomId:room,conversationId:group};
   const newest=await service.readHistory(call);
-  assert.equal(newest.status,'ok');assert.equal(newest.messages.length,50);
+  assert.equal(newest.status,'ok');assert.equal(newest.joinedAt,1000);assert.equal(newest.messages.length,50);
   assert.equal(newest.messages[0].id,msgId(7));assert.equal(newest.messages.at(-1).id,msgId(56));
   assert.deepEqual(newest.nextCursor,{id:msgId(7),createdAt:1050});
   assert.equal(newest.hasMore,true);
@@ -48,7 +48,7 @@ try{
   await db.ref(control+'/members/'+p+'/active').set(false);
   assert.deepEqual(await service.readHistory(call),{status:'forbidden'});
   await db.ref(control+'/members/'+p).set({active:true,joinedAt:1050,role:'member'});
-  assert.deepEqual(await service.readHistory(call),{status:'ok',messages:[],nextCursor:null,hasMore:false});
+  assert.deepEqual(await service.readHistory(call),{status:'ok',joinedAt:1050,messages:[],nextCursor:null,hasMore:false});
   await db.ref(control+'/members/'+p+'/joinedAt').set(1000);
   await db.ref(access+'/'+alice.localId+'/active').set(false);
   assert.deepEqual(await service.readHistory(call),{status:'forbidden'});

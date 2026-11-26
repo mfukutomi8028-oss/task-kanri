@@ -240,3 +240,5 @@ assert.equal(report.unknownCompletion.some(t=>t.id==='no-completion-date'),true)
 - 将来のFirebase全体通信最適化は [Issue #1015](https://github.com/mfukutomi8028-oss/task-kanri/issues/1015) に登録。メッセージ機能と正式ログイン開発・検証完了後に実施。現行の必須ページング等は維持し、既存アプリ全体の最適化は本PRに混ぜない。
 - Supabase Free東京プロジェクト接続済み。先行SQLで非公開bucket、容量予約、RLSを構築。ユーザーによるWindows上のFirebase CLIログインは確認されたが、このWebセッションへFirebase管理権限は移転していない。実環境操作は必要時に管理者に具体的な手順を提示する。
 - `security/messaging-history-service.mjs` に限定されたサーバー側履歴取得を追加。Firebase Adminのトークン検証、承認binding・所属・加入時刻の検査、上限50件、同時刻IDカーソル、取得後の権限再照合、削除済み本文やキャッシュ件名の除去。ローカルNodeテスト26/26（新規8）。`test-harness/messaging-history-emulator.mjs` を既存の隔離Auth/RTDB検査へ追加。実際のサーバー配備・最小権限の実現、同時失効の厳密境界、書込み、Origin接続は未完了。本番Rulesは変更しない。
+
+- Task 3: 共通クライアントストアを実装。active会話だけ購読、50件取得、履歴の重複・欠落防止、会話別メモリ下書き、同時送信要求集約、編集/削除結果のrevision照合、既読カーソル、再加入時の状態/下書き破棄。サーバーとクライアントの共通メッセージ射影・正規化処理をcoreへ集約した。41件のローカルNodeテスト成功（新規store 15件、10,000件の合成履歴を含む）。履歴サービスの実Firebase Admin/Auth/RTDB Emulator検査は直前のCI 45734719874で成功。書込み・既読の実Firebase transport、実購読・永続下書き、会話管理、全UI、添付API、本番接続は引き続き未実装。Mock/fixtureでの成功を実際の送信成功と扱わない。初回公開に進むまでは配信資産へ含めない。

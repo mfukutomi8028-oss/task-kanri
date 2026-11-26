@@ -82,3 +82,40 @@ export function advanceReadCursor(current,next) {
   const chosen = current == null || compareCursor(current,next) < 0 ? next : current;
   return Object.freeze({createdAt:chosen.createdAt,id:chosen.id});
 }
+
+// Canonical validation is shared by the server projection and client state.
+export const isConversationId=value=>typeof value==='string'&&/^(self_p_[0-9a-f]{32}|dm_p_[0-9a-f]{32}_p_[0-9a-f]{32}|group_g_[0-9a-f]{32})$/.test(value);
+export const isMessageId=value=>typeof value==='string'&&/^msg_p_[0-9a-f]{32}_q_[0-9a-f]{32}$/.test(value);
+export const isMessagingTimestamp=value=>Number.isSafeInteger(value)&&value>=0;
+
+export function validateRoomMessageInput(input,roomId){
+  const data=validateMessageInput(input);
+  if(!isMessagingRoomId(roomId)||data.refs.some(ref=>ref.roomId!==roomId)||data.replyTo!==null&&!isMessageId(data.replyTo))throw new TypeError('Invalid message reference');
+  return data;
+}
+
+// Only project known fields. Never expose arbitrary stored metadata, old
+// deleted text, cached reference titles or another room's business reference.
+export function projectMessagingMessage(raw,{roomId,joinedAt}){
+  if(!isMessagingRoomId(roomId)||!isMessagingTimestamp(joinedAt)||!isRecord(raw)||!isMessageId(raw.id)||!isPersonId(raw.senderId)
+      ||!raw.id.startsWith('msg_'+raw.senderId+'_')||!isMessagingTimestamp(raw.createdAt)||raw.createdAt<=joinedAt
+      ||!Number.isSafeInteger(raw.revision)||raw.revision<1)throw new TypeError('Invalid stored message');
+  const base={id:raw.id,senderId:raw.senderId,createdAt:raw.createdAt,revision:raw.revision};
+  if(raw.deletedAt!=null){
+    if(!isMessagingTimestamp(raw.deletedAt)||raw.deletedAt<raw.createdAt)throw new TypeError('Invalid deletion timestamp');
+    return {...base,deletedAt:raw.deletedAt};
+  }
+  if(raw.editedAt!=null){
+    if(!isMessagingTimestamp(raw.editedAt)||raw.editedAt<raw.createdAt)throw new TypeError('Invalid edit timestamp');
+    base.editedAt=raw.editedAt;
+  }
+  const rawRefs=raw.refs??[];
+  if(!Array.isArray(rawRefs)||rawRefs.length>20)throw new TypeError('Invalid stored references');
+  const refs=Array.from(rawRefs,ref=>{
+    if(!isRecord(ref)||ref.roomId!==roomId)throw new TypeError('Cross-room reference');
+    return {roomId:ref.roomId,type:ref.type,recordId:ref.recordId};
+  });
+  const input=validateRoomMessageInput({body:raw.body,replyTo:raw.replyTo??null,refs,
+    attachmentIds:raw.attachmentIds??[],confirmationRequested:raw.confirmationRequested??false},roomId);
+  return {...base,...input};
+}
