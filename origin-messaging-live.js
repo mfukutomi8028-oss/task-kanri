@@ -6,6 +6,7 @@ import {createMessagingApiTransport} from './workspace-messaging-api.js';
 import {createFirebaseMessagingActivityTransport} from './workspace-messaging-activity.js';
 import {createMessagingDirectorySync} from './workspace-messaging-directory-sync.js';
 import {createMessagingLiveCommands} from './workspace-messaging-live-commands.js';
+import {createMessagingUnreadSync} from './workspace-messaging-unread-sync.js';
 import {createMessagingPersonalStateTransport} from './workspace-messaging-personal.js';
 import {createMessagingSharedTransport} from './workspace-messaging-shared.js';
 import {createMessagingConfirmationTransport} from './workspace-messaging-confirmations.js';
@@ -57,7 +58,8 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
     }});
     const activity=createFirebaseMessagingActivityTransport({...sdk,session});
     const directory=own(createMessagingDirectorySync({session,transport:api}));
-    const commands=own(createMessagingLiveCommands({session,directory,api,personal,activeConversation:()=>store?.getSnapshot().conversationId??null}));
+    const unreadSync=own(createMessagingUnreadSync({session,observeActivity:activity.observeActivity,readUnread:api.readUnread}));
+    const commands=own(createMessagingLiveCommands({session,directory,api,personal,unreadSync,activeConversation:()=>store?.getSnapshot().conversationId??null}));
     store=own(createMessagingStore({session,transport:{...api,...activity,readPersonalState:personal.readPersonalState,markRead:personal.markRead}}));
     const resolver=createMessagingReferenceResolver({
       readSnapshot:()=>board.readSnapshot(),readMemos:()=>board.readMemos(),
@@ -71,11 +73,17 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
     let last=null,queued=false;
     const stopStore=store.subscribe(next=>{
       if(next.status!=='ready'){last=null;return;}
-      const key=JSON.stringify([next.conversationId,next.joinedAt,next.readCursor,next.preferences,next.messages.at(-1)?.id,next.messages.at(-1)?.revision,next.messages.length]);
+      const key=JSON.stringify([next.conversationId,next.joinedAt,next.preferences]);
       if(key===last)return;last=key;if(queued)return;queued=true;
       queueMicrotask(()=>{queued=false;if(!disposed&&session.getSnapshot().status==='bound')commands.invalidate();});
     });stops.push(stopStore);
     directory.setVisible(true);
+    // New memberships and invitations have no existing conversation watcher.
+    // Reconcile only while the workspace is visible, without scanning history.
+    const refreshDirectory=()=>{if(!disposed&&document.visibilityState==='visible'&&root.isConnected&&root.getClientRects().length&&session.getSnapshot().status==='bound')commands.invalidate();};
+    const directoryTimer=setInterval(refreshDirectory,60000);
+    document.addEventListener('visibilitychange',refreshDirectory);
+    stops.push(()=>{clearInterval(directoryTimer);document.removeEventListener('visibilitychange',refreshDirectory);});
     function syncContext(snapshot){
       const next=snapshot?.connectionMode==='remote-online'&&isMessagingRoomId(snapshot.roomId)&&validLabel(snapshot.currentUser)?{roomId:snapshot.roomId,selectedDisplayName:snapshot.currentUser}:null;
       if(JSON.stringify(next)===JSON.stringify(lastContext))return;lastContext=next;void session.setContext(next);

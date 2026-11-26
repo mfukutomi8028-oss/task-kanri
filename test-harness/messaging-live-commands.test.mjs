@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import * as live from '../workspace-messaging-live-commands.js';
 const roomId='roomA',p='p_'+'a'.repeat(32),peer='p_'+'b'.repeat(32),self='self_'+p,direct='dm_'+p+'_'+peer,group='group_g_'+'c'.repeat(32),incoming='msg_'+peer+'_q_'+'d'.repeat(32);
 const member=(id,extra)=>({id,kind:'self',status:'active',role:'member',memberCount:1,joinedAt:1000,revision:1,controlUpdatedAt:1000,...extra});
-function fixture(){
+function fixture({unreadSync}={}){
   let identity={status:'bound',roomId,personId:p},listener,active=direct,disposed=false,unread={status:'ok',roomId,personId:p,conversationId:direct,joinedAt:1000,unread:2,muted:false,complete:true,latestIncoming:{id:incoming,createdAt:2000}},result=null;
   const calls=[],rows=[member(self),member(direct,{kind:'direct',peerId:peer,memberCount:2})],invites=[{conversationId:group,title:'Team',invitedBy:peer,invitedAt:2000,revision:3}];
   const session={getSnapshot:()=>identity,subscribe(fn){listener=fn;fn(identity);return ()=>{listener=null;};}};
   const directory={async refresh(){calls.push(['directory']);return {status:'ok'};},getSnapshot(){return {status:'ready',roomId,personId:p,conversations:rows,invites,complete:true,nextCursor:null};}};
   const api={async readPeople(scope){calls.push(['people',scope]);return {status:'ok',roomId,personId:p,people:[{personId:p,displayName:'Me'},{personId:peer,displayName:'Peer'}]};},async readUnread(scope){calls.push(['unread',scope]);return unread;},async executeConversation(scope){calls.push(['command',scope]);return result??{status:'ok',conversationId:scope.conversationId,revision:4,indexPending:false};}};
   const personal={async readPersonalState(scope){calls.push(['preferences',scope]);return {status:'ok',preferences:{favorite:true,muted:false,pinned:false,archived:false},cursor:null};}};
-  const commands=live.createMessagingLiveCommands({session,directory,api,personal,activeConversation:()=>active,makeGroupId:()=> 'g_'+'e'.repeat(32)});
+  const commands=live.createMessagingLiveCommands({session,directory,api,personal,activeConversation:()=>active,makeGroupId:()=> 'g_'+'e'.repeat(32),...(unreadSync?{unreadSync}:{})});
   return {commands,calls,rows,invites,api,change(value){identity=value;listener?.(value);},setActive(id){active=id;},setUnread(value){unread=value;},setResult(value){result=value;},dispose(){commands.dispose();disposed=true;}};
 }
 test('real directory rows are labelled, and only the selected conversation has its unread and preferences fetched',async()=>{
@@ -33,4 +33,16 @@ test('late response after identity switch cannot expose old roster, rows or issu
 });
 test('a revoked selected membership is removed rather than shown with stale preferences',async()=>{
   const f=fixture();f.setUnread({status:'forbidden'});const result=await f.commands.list();assert.deepEqual(result.conversations.map(r=>r.id),[self]);assert.equal(result.complete,false);assert.equal(result.directoryComplete,false);f.dispose();
+});
+
+function syncFixture(){
+  const summaries=new Map();let listener,scopes=[];
+  return {scopes,read:(id,epoch)=>summaries.get(id+'/'+epoch)??null,setDirectory:(snapshot,selected,options)=>scopes.push({snapshot,selected,options}),subscribe(fn){listener=fn;return ()=>{listener=null;};},set(id,value,epoch=1000){summaries.set(id+'/'+epoch,value);listener?.();}};
+}
+test('all known unread summaries are projected without repeating directory, roster or history requests',async()=>{
+ const sync=syncFixture(),f=fixture({unreadSync:sync});let updates=[];f.commands.subscribe(options=>updates.push(options));
+ const first=await f.commands.list();assert.equal(first.conversations.every(r=>r.unread===null),true);assert.equal(f.calls.filter(c=>c[0]==='unread').length,0);assert.equal(sync.scopes.length,1);assert.equal(sync.scopes[0].selected,direct);
+ sync.set(self,{status:'ok',unread:0,muted:false,latestIncoming:null});sync.set(direct,{status:'ok',unread:2,muted:true,latestIncoming:{id:incoming,createdAt:2000}});await new Promise(r=>setImmediate(r));
+ assert.equal(updates.length,1);assert.deepEqual(updates[0],{cached:true});const second=await f.commands.list(updates[0]);assert.deepEqual(second.conversations.map(r=>r.unread),[0,2]);assert.equal(second.conversations[1].favorite,true);assert.equal(second.conversations[1].muted,true);assert.equal(second.complete,true);assert.equal(f.calls.length,3);
+ sync.set(direct,{status:'forbidden'});const revoked=await f.commands.list({cached:true});assert.deepEqual(revoked.conversations.map(r=>r.id),[self]);assert.equal(revoked.complete,false);f.change({status:'locked'});assert.equal((await f.commands.list({cached:true})).status,'locked');f.dispose();
 });

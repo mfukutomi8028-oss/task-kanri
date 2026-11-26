@@ -1,5 +1,5 @@
 // Adapter from the authorized cloud directory to the Origin messaging view.
-// Unread history queries are deliberately limited to the selected conversation.
+// Live unread projections reuse authorized metadata and do not re-query the directory.
 import {isMessagingRoomId,isPersonId,isConversationId,isMessageId,isMessagingTimestamp,conversationIdFor} from './workspace-messaging-core.js';
 const fail=status=>({status});
 const bound=v=>v?.status==='bound'&&isMessagingRoomId(v.roomId)&&isPersonId(v.personId)?{roomId:v.roomId,personId:v.personId}:null;
@@ -10,14 +10,23 @@ const newGroupId=()=> 'g_'+Array.from(crypto.getRandomValues(new Uint8Array(16))
 function validUnread(v,actor,row){
   return v?.status==='ok'&&v.roomId===actor.roomId&&v.personId===actor.personId&&v.conversationId===row.id&&v.joinedAt===row.joinedAt&&v.complete===true&&Number.isSafeInteger(v.unread)&&v.unread>=0&&v.unread<=100&&typeof v.muted==='boolean'&&(v.latestIncoming===null?v.unread===0:isMessageId(v.latestIncoming?.id)&&!v.latestIncoming.id.startsWith('msg_'+actor.personId+'_')&&isMessagingTimestamp(v.latestIncoming.createdAt)&&v.latestIncoming.createdAt>row.joinedAt);
 }
-export function createMessagingLiveCommands({session,directory,api,personal,activeConversation,makeGroupId=newGroupId}={}){
-  if(typeof session?.subscribe!=='function'||typeof session?.getSnapshot!=='function'||typeof directory?.refresh!=='function'||typeof directory?.getSnapshot!=='function'||['readPeople','readUnread','executeConversation'].some(k=>typeof api?.[k]!=='function')||typeof personal?.readPersonalState!=='function'||typeof activeConversation!=='function'||typeof makeGroupId!=='function')throw new TypeError('Authorized messaging adapters required');
-  let actor=null,generation=0,disposed=false,roster=new Map(),invitations=new Map(),groupAttempt=null,commandPending=false,listSequence=0;
+export function createMessagingLiveCommands({session,directory,api,personal,activeConversation,makeGroupId=newGroupId,unreadSync=null}={}){
+  if(typeof session?.subscribe!=='function'||typeof session?.getSnapshot!=='function'||typeof directory?.refresh!=='function'||typeof directory?.getSnapshot!=='function'||['readPeople','readUnread','executeConversation'].some(k=>typeof api?.[k]!=='function')||typeof personal?.readPersonalState!=='function'||typeof activeConversation!=='function'||typeof makeGroupId!=='function'||unreadSync!==null&&['setDirectory','read','subscribe'].some(k=>typeof unreadSync[k]!=='function'))throw new TypeError('Authorized messaging adapters required');
+  let actor=null,generation=0,disposed=false,roster=new Map(),invitations=new Map(),groupAttempt=null,commandPending=false,listSequence=0,projection=null,pendingSeq=null,projectionQueued=false,projectionScheduled=false;
   const listeners=new Set();
-  function changed(){for(const fn of [...listeners])if(listeners.has(fn))try{fn();}catch(_){/* View errors do not change committed results. */}}
+  function changed(options){for(const fn of [...listeners])if(listeners.has(fn))try{fn(options);}catch(_){/* View errors do not change committed results. */}}
   const current=token=>!disposed&&actor!==null&&token===generation&&same(actor,bound(session.getSnapshot()));
-  const stop=session.subscribe(value=>{const next=bound(value);if(!same(actor,next)){actor=next;generation++;roster.clear();invitations.clear();groupAttempt=null;commandPending=false;}});
+  const stop=session.subscribe(value=>{const next=bound(value);if(!same(actor,next)){actor=next;generation++;roster.clear();invitations.clear();groupAttempt=null;commandPending=false;projection=null;pendingSeq=null;projectionQueued=false;}});
   if(typeof stop!=='function')throw new TypeError('Disposable session required');
+  function notifyProjection(){
+    if(!current(generation)||!projection)return;
+    if(pendingSeq!==null){projectionQueued=true;return;}
+    if(projectionScheduled)return;projectionScheduled=true;
+    const token=generation;
+    queueMicrotask(()=>{projectionScheduled=false;if(current(token)&&projection){if(pendingSeq!==null)projectionQueued=true;else changed({cached:true});}});
+  }
+  const stopUnread=unreadSync?.subscribe(notifyProjection);
+  if(unreadSync&&typeof stopUnread!=='function'){stop();throw new TypeError('Disposable unread observer required');}
   async function loadPeople(token){
     if(!current(token))return null;
     const scope=actor,result=await api.readPeople({roomId:scope.roomId});
@@ -25,31 +34,42 @@ export function createMessagingLiveCommands({session,directory,api,personal,acti
     const next=new Map();for(const row of result.people){if(!isPersonId(row?.personId)||!validName(row.displayName)||next.has(row.personId))return null;next.set(row.personId,row.displayName);}
     if(!next.has(scope.personId))return null;return next;
   }
-  async function list(){
-    const token=generation,seq=++listSequence;if(!current(token))return fail('locked');
+  function project({scope,snapshot,people,selected,preferences,summary}){
+    const rows=[];let directoryComplete=snapshot.complete;
+    for(const source of snapshot.conversations){
+      const row={...source,title:source.kind==='self'?'\u81ea\u5206\u5b9b\u3066\u30e1\u30c3\u30bb\u30fc\u30b8':source.kind==='direct'?people.get(source.peerId)||'\u5229\u7528\u8005':source.title,unread:null,latestIncoming:null,updatedAt:source.controlUpdatedAt,archived:source.status==='archived'};
+      const isSelected=row.id===selected&&activeConversation()===selected;
+      const unread=unreadSync?unreadSync.read(row.id,row.joinedAt):isSelected?summary:null;
+      const personalState=isSelected?preferences:null;
+      if([unread?.status,personalState?.status].some(status=>status==='forbidden'||status==='locked')){directoryComplete=false;continue;}
+      if(personalState?.status==='ok'&&preferenceKeys.every(k=>typeof personalState.preferences?.[k]==='boolean'))Object.assign(row,personalState.preferences,{archived:row.status==='archived'||personalState.preferences.archived});
+      if(unreadSync?unread?.status==='ok':validUnread(unread,scope,row))Object.assign(row,{unread:unread.unread,latestIncoming:unread.latestIncoming,muted:unread.muted,updatedAt:Math.max(row.updatedAt,unread.latestIncoming?.createdAt??0)});
+      rows.push(row);
+    }
+    return {status:'ok',...scope,conversations:rows,invites:[...invitations.values()],directoryComplete,complete:directoryComplete&&rows.every(row=>row.unread!==null)};
+  }
+  async function list({cached=false,retryUnread=false}={}){
+    const token=generation;if(!current(token))return fail('locked');
+    if(cached&&unreadSync)return projection?project(projection):fail('unavailable');
+    const seq=++listSequence;pendingSeq=seq;
     const scope=actor,selected=activeConversation();
     try{
       const [refresh,people]=await Promise.all([directory.refresh(),loadPeople(token)]);
       if(!current(token)||seq!==listSequence)return fail('locked');
       const snapshot=directory.getSnapshot();
       if(refresh?.status!=='ok'||!people||snapshot.status!=='ready'||!same(scope,snapshot))throw Error('Unavailable');
-      const rows=snapshot.conversations.map(row=>({...row,title:row.kind==='self'?'\u81ea\u5206\u5b9b\u3066\u30e1\u30c3\u30bb\u30fc\u30b8':row.kind==='direct'?people.get(row.peerId)||'\u5229\u7528\u8005':row.title,unread:null,latestIncoming:null,updatedAt:row.controlUpdatedAt,archived:row.status==='archived'}));
-      let directoryComplete=snapshot.complete;
-      const row=rows.find(v=>v.id===selected);
+      const row=snapshot.conversations.find(v=>v.id===selected);let summary=null,preferences=null;
       if(row){
         const target={roomId:scope.roomId,conversationId:row.id};
-        const [summary,preferences]=await Promise.all([api.readUnread(target),personal.readPersonalState({...target,personId:scope.personId,joinedAt:row.joinedAt})]);
+        [summary,preferences]=await Promise.all([unreadSync?null:api.readUnread(target),personal.readPersonalState({...target,personId:scope.personId,joinedAt:row.joinedAt})]);
         if(!current(token)||seq!==listSequence)return fail('locked');
-        if([summary?.status,preferences?.status].some(status=>status==='forbidden'||status==='locked')){rows.splice(rows.indexOf(row),1);directoryComplete=false;}
-        else if(activeConversation()===selected){
-          if(preferences?.status==='ok'&&preferenceKeys.every(k=>typeof preferences.preferences?.[k]==='boolean'))Object.assign(row,preferences.preferences,{archived:row.status==='archived'||preferences.preferences.archived});
-          if(validUnread(summary,scope,row))Object.assign(row,{unread:summary.unread,latestIncoming:summary.latestIncoming,muted:summary.muted,updatedAt:Math.max(row.updatedAt,summary.latestIncoming?.createdAt??0)});
-        }
       }
-      if(!current(token)||seq!==listSequence)return fail('locked');
       roster=people;invitations=new Map(snapshot.invites.map(row=>[row.conversationId,row]));
-      return {status:'ok',...scope,conversations:rows,invites:[...invitations.values()],directoryComplete,complete:directoryComplete&&rows.every(row=>row.unread!==null)};
-    }catch(_){if(current(token)&&seq===listSequence){roster.clear();invitations.clear();}return fail(current(token)?'unavailable':'locked');}
+      projection={scope,snapshot,people,selected,preferences,summary};
+      unreadSync?.setDirectory(snapshot,selected,{retryFailed:retryUnread,refresh:retryUnread});
+      return project(projection);
+    }catch(_){if(current(token)&&seq===listSequence){roster.clear();invitations.clear();projection=null;unreadSync?.setDirectory(null);}return fail(current(token)?'unavailable':'locked');}
+    finally{if(pendingSeq===seq){pendingSeq=null;if(projectionQueued){projectionQueued=false;notifyProjection();}}}
   }
   async function users(){const token=generation;try{const people=await loadPeople(token);if(!people||!current(token))return [];roster=people;return [...people].filter(([id])=>id!==actor.personId).map(([personId,displayName])=>({personId,displayName}));}catch(_){return [];}}
   async function execute(conversationId,command){
@@ -65,6 +85,6 @@ export function createMessagingLiveCommands({session,directory,api,personal,acti
       const result=await execute(groupAttempt.id,command);if(current(token)&&['ok','invalid','forbidden','limit'].includes(result.status))groupAttempt=null;return result;
     },
     respondInvite(conversationId,accept){if(!current(generation))return Promise.resolve(fail('locked'));const invite=invitations.get(conversationId);if(!isConversationId(conversationId)||!invite||typeof accept!=='boolean')return Promise.resolve(fail('invalid'));return execute(conversationId,{type:'respondInvite',accept,expectedRevision:invite.revision});},
-    dispose(){if(disposed)return;disposed=true;generation++;stop();actor=null;roster.clear();invitations.clear();groupAttempt=null;listeners.clear();}
+    dispose(){if(disposed)return;disposed=true;generation++;stop();stopUnread?.();actor=null;projection=null;roster.clear();invitations.clear();groupAttempt=null;listeners.clear();}
   });
 }
