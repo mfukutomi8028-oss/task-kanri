@@ -226,3 +226,11 @@ assert.equal(report.unknownCompletion.some(t=>t.id==='no-completion-date'),true)
 - `run-protocol.mjs` は直下の *.test.mjs を自動収集することを確認。Playwrightはtests/、既存静的サーバー、Chromiumを利用。既存認証候補は未公開、本人性の検査資産として活用し本番Rulesをそのまま変更しない。
 - Firebase公式確認: [条件付きREST更新](https://firebase.google.com/docs/database/rest/save-data)、[REST仕様](https://firebase.google.com/docs/reference/rest/database)、[クエリに基づくRules](https://firebase.google.com/docs/database/security/rules-conditions?hl=ja)、[Supabase Edge制限](https://supabase.com/docs/guides/functions/limits)。未検証の方式はTask 2で実際に証明する。
 - この段階は計画のみ。実装・Emulator・Supabase実設定・本番公開・独立レビューは未実施。第2工程の最初の作業はTask 1のREDテスト。Task 2の認可成立前に本番送受信を許可しない。
+
+## 2026-11-26 検証結果と設計補正（未公開）
+
+- Task 1の不変ID・セッションと、Task 3の純粋な入力/カーソル/送信要求ID契約を実装（ローカルNode 18/18）。未公開モジュールはtest-harness/messaging-preview/へ隔離。既存配信保護を維持。業務参照はIDのみ、初期最大20件（提案値）。本番認可・保存は未実装。
+- CI 45728373760・45728573447 の診断: numeric query.startAtの等値は許可されたが `>` と `+0` の比較は拒否された。固定開始境界に変更した CI 45728760849 では過去メッセージの子階層への同条件queryがPERMISSION_DENIEDではなく索引未定義エラーとなった。これは閲覧漏えいの実証ではないが、親readの継承による危険を排除できないため、直接一覧readは採用しない。
+- 決定: `messages/{conversationId}` 親readは常時deny。個別messageだけが本人/承認/所属/加入時刻条件でread可。全client write denyを維持。最新/過去ページの50件取得は、Supabase Free等の認証済み限定サーバーAPIが実施する（specの信頼経路への切替条件）。同時刻IDカーソル、本人・現membershipの取得前後の再照合、加入境界、限界50、削除・引用の権限、許可済み範囲のみ取得を実DBに対して証明する。信頼サービスの鍵はserver-sideのみ。SupabaseでのFirebaseトークン検証/権限失効と実装可否・無料枠を隔離環境で検証するまで実運用を禁止。
+- Emulatorで許可されない一覧を成功させるためにRulesを緩めない。信頼経路の生query形状テストと個別readテストの成功は、サーバーAPIの認可成功と区別する。APIの認可・メッセージ作成/編集/削除・会話所属・一覧同期・通知は未実装。
+- Firebase/Supabaseの実プロジェクト管理機能は接続未確認。実環境の設定や初回公開は未実施。第4・5工程（全体の正式ログイン以降）は着手しない。

@@ -165,3 +165,7 @@ Supabaseプロジェクト/組織・無料契約・地域選択・Storage/Edge/R
 - Firebase第三者認証連携: https://supabase.com/docs/guides/auth/third-party/firebase-auth
 - Edge Functions認証: https://supabase.com/docs/guides/functions/auth
 - Edge Functions制限: https://supabase.com/docs/guides/functions/limits
+
+## 13. 履歴読み取り境界の検証に基づく補正（2026-11-26）
+
+初期のRTDB client queryで加入後50件を取得する案は、Emulatorにおける開始値比較の挙動および子階層への許可継承を厳格に排除できないことから、親階層の一覧readを許可しない方式に補正する。個別のメッセージreadは最新の承認・所属・加入時刻で判定し、履歴ページは認証済みの限定サーバーAPIで取得する。APIは旧roomsの包括許可に依存せず、本人・所属・加入境界・50件上限をサーバーで検証し、失効/脱退後には返さない。既存の利用者増加目標と無料運用、画面仕様、公開順序は維持する。APIの本番可否と無料枠・認可試験は未確定で、完成扱いしない。

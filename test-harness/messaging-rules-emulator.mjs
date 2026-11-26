@@ -80,24 +80,32 @@ try {
   await deny(get(path(member,'messagingV1/roomB/messages/'+group+'/m055')));
   await deny(set(path(member,history+'/unsafe'),{createdAt:1055,body:'write not implemented'}));
   console.log('MESSAGING_READ_DENIALS_OK');
-  // RED on the deny-only rules: the valid self binding and bounded history
-  // must become readable without granting any unrestricted parent read.
+  // The direct list boundary is deliberately denied, including a query with
+  // the correct lower limit. Per-message reads retain the membership check.
+  await deny(get(latest(member)));
   const self=await assertSucceeds(get(path(member,access+'/uidA')));
   assert.equal(self.val().personId,p);
   await assertSucceeds(get(path(member,control)));
-  const page=await assertSucceeds(get(latest(member)));
-  const keys=values(page);
-  assert.equal(keys.length,50);
-  assert.equal(keys[0],'m006');
-  assert.deepEqual(keys.slice(-2),['m054','m055']);
-  assert.equal(keys.includes('before'),false);
-  assert.equal(keys.includes('atJoin'),false);
-  const older=await assertSucceeds(get(query(path(member,history),orderByChild('createdAt'),startAt(1001),endBefore(1006,'m006'),limitToLast(50))));
-  assert.deepEqual(values(older),['m001','m002','m003','m004','m005']);
-  const tie=await assertSucceeds(get(query(path(member,history),orderByChild('createdAt'),startAt(1001),endBefore(1054,'m055'),limitToLast(50))));
-  assert.equal(values(tie).at(-1),'m054');
-  assert.equal(values(tie).includes('m055'),false);
+  await assertSucceeds(get(path(member,history+'/m001')));
   await assertSucceeds(get(path(member,history+'/m055')));
+  // Verify the underlying paginated query with the trusted emulator fixture.
+  // This is NOT a test of a completed server API or its authorization.
+  // No client-side read permission is granted to make the query pass.
+  await env.withSecurityRulesDisabled(async admin=>{
+    const page=await get(latest(admin));
+    const keys=values(page);
+    assert.equal(keys.length,50);
+    assert.equal(keys[0],'m006');
+    assert.deepEqual(keys.slice(-2),['m054','m055']);
+    assert.equal(keys.includes('before'),false);
+    assert.equal(keys.includes('atJoin'),false);
+    const older=await get(query(path(admin,history),orderByChild('createdAt'),startAt(1001),endBefore(1006,'m006'),limitToLast(50)));
+    assert.deepEqual(values(older),['m001','m002','m003','m004','m005']);
+    const tie=await get(query(path(admin,history),orderByChild('createdAt'),startAt(1001),endBefore(1054,'m055'),limitToLast(50)));
+    assert.equal(values(tie).at(-1),'m054');
+    assert.equal(values(tie).includes('m055'),false);
+  });
+  console.log('MESSAGING_TRUSTED_QUERY_SHAPE_OK');
   // A fresh context after a server-side membership change cannot use old grants.
   await env.withSecurityRulesDisabled(admin=>set(path(admin,control+'/members/'+p+'/active'),false));
   const left=env.authenticatedContext('uidA');
@@ -107,13 +115,14 @@ try {
   const rejoined=env.authenticatedContext('uidA');
   await deny(get(latest(rejoined,1001)));
   await deny(get(path(rejoined,history+'/m053')));
-  const after=await assertSucceeds(get(latest(rejoined,1054)));
-  assert.deepEqual(values(after),['m054','m055']);
+  await deny(get(latest(rejoined,1054)));
+  await assertSucceeds(get(path(rejoined,history+'/m054')));
+  await assertSucceeds(get(path(rejoined,history+'/m055')));
   await env.withSecurityRulesDisabled(admin=>set(path(admin,access+'/uidA/active'),false));
   const revoked=env.authenticatedContext('uidA');
   await deny(get(latest(revoked,1054)));
   await deny(get(path(revoked,history+'/m055')));
-  console.log('MESSAGING_READ_BOUNDARY_OK');
+  console.log('MESSAGING_DIRECT_READ_BOUNDARY_OK');
 } finally {
   await env.cleanup();
 }
