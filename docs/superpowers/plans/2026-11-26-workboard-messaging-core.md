@@ -94,7 +94,7 @@ await assertFails(get(ref(memberDb,'messagingV1/r/messages/g/prejoin')));
 ```
 fixtureの加入時刻1000、prejoinは1000以下。51件・欠けた境界・異なるorder、ページカーソル、同時刻の2件、権限の変更と送信/編集が同時の場合も検証。引用・件名・添付の生データを親readで漏らさない。RTDB Rulesはfilterでない。
 - [ ] 初期deny-only候補で正当操作が失敗すること、旧roomsのallowが新領域へ伝播しないことを確認。隔離script追加: `npm run test:messaging:rules` = `firebase emulators:exec --only auth,database --project demo-task-kanri-messaging --config firebase.messaging.candidate.json "node test-harness/messaging-rules-emulator.mjs"`。localhost限定・demo project guardを置く。
-- [ ] GREEN: Rules・小さいcontrol契約・`createdAt` indexを最小実装。query.startAtがjoin時刻より大きく上限50（ページ取得境界の扱いを実機で証明）。単件readも同じ時刻制約、親にallowなし。ServerTimestampはRulesで評価される実際の値をテスト。正当なページ取得がRulesで実現できないなら別経路を設計し、回避のためルールを緩めない。
+- [ ] GREEN: Rules・小さいcontrol契約・`createdAt` indexを最小実装。query.startAtがjoin時刻+1に厳密一致し上限50（過去ページはendBeforeで制限。開始値の動的数値比較をEmulatorが拒否したため固定境界へ変更。実機で証明）。単件readも同じ時刻制約、親にallowなし。ServerTimestampはRulesで評価される実際の値をテスト。正当なページ取得がRulesで実現できないなら別経路を設計し、回避のためルールを緩めない。
 - [ ] 同script、`npm run test:protocol`、既存認可Emulatorを実行。Rules条件/同時書込/atomic fanout/CASを検証。RESTのif-matchはPUT/DELETE用でPATCH非対応のため、複数パスを条件付きPATCHに依存させない。複数正本にまたがる派生更新は冪等な修復を設計。試験結果と確定pathを本書に追記。
 - [ ] 信頼境界の成立が確認できなければ後続で実データの送受信は無効のまま。候補ファイルのみコミットし、auth jobの回帰を成功させる。
 

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
-import {get,ref,set,query,orderByChild,orderByKey,startAt,endBefore,limitToLast,onValue} from 'firebase/database';
+import {get,ref,set,query,orderByChild,orderByKey,startAt,endBefore,limitToLast} from 'firebase/database';
 
 const host='127.0.0.1:9002';
 if(process.env.FIREBASE_DATABASE_EMULATOR_HOST!==host) throw new Error('Messaging rules require the isolated loopback emulator: '+host);
@@ -31,49 +31,6 @@ const latest=(context,min=1001,count=50)=>query(path(context,history),orderByChi
 const values=snapshot=>{const keys=[];snapshot.forEach(child=>{keys.push(child.key)});return keys;};
 const deny=(operation)=>assertFails(operation);
 
-// Failure-only diagnostics against synthetic data. Rules variations are loaded
-// exclusively into the loopback Emulator and never persisted in the repository.
-async function diagnoseListRead() {
-  const rulesNode=candidate.rules.messagingV1.$roomId;
-  const identity=rulesNode.control.$conversationId['.read'];
-  const complete=rulesNode.messages.$conversationId['.read'];
-  const clauses=[
-    ['identity',identity],
-    ['order',"query.orderByChild === 'createdAt'"],
-    ['start-present',"query.startAt != null"],
-    ['start-numeric',"query.startAt === query.startAt + 0"],
-    ['start-value',"query.startAt > 1000"],
-    ['start-eq-number',"query.startAt === 1001"],
-    ['start-eq-string',"query.startAt === '1001'"],
-    ['start-gt-string',"query.startAt > '1000'"],
-    ['start-loose-number',"query.startAt == 1001"],
-    ['key-start-eq',"query.orderByKey && query.startAt === 'm001'",true],
-    ['key-start-gt',"query.orderByKey && query.startAt > 'm000'",true],
-    ['limit-present',"query.limitToLast != null"],
-    ['limit-range',"query.limitToLast >= 1 && query.limitToLast <= 50"],
-    ['first-absent',"query.limitToFirst == null"],
-    ['complete',complete]
-  ];
-  for(const [name,condition,byKey] of clauses){
-    const modified=structuredClone(candidate);
-    modified.rules.messagingV1.$roomId.messages.$conversationId['.read']="auth != null && auth.uid === 'uidA' && ("+condition+")";
-    let probe;
-    try {
-      probe=await initializeTestEnvironment({projectId:'demo-task-kanri-messaging',database:{host:'127.0.0.1',port:9002,rules:JSON.stringify(modified)}});
-      const ctx=probe.authenticatedContext('uidA');
-      const q=byKey?query(path(ctx,history),orderByKey(),startAt('m001'),limitToLast(50)):latest(ctx);
-      let getResult='deny';
-      try {await get(q);getResult='allow'} catch {}
-      const watchResult=await new Promise(resolve=>{
-        let off=()=>{};
-        const timer=setTimeout(()=>{off();resolve('timeout')},3000);
-        off=onValue(q,()=>{clearTimeout(timer);off();resolve('allow')},()=>{clearTimeout(timer);off();resolve('deny')},{onlyOnce:true});
-      });
-      console.log('MESSAGING_QUERY_PROBE',name,'get='+getResult,'listen='+watchResult);
-    }catch(error){console.log('MESSAGING_QUERY_PROBE',name,'probe-error',String(error?.message||error).slice(0,160));}
-    finally{await probe?.cleanup();}
-  }
-}
 try {
   await env.withSecurityRulesDisabled(async admin=>{
     await set(path(admin,'/'),{
@@ -109,6 +66,7 @@ try {
   await deny(get(path(member,history)));
   await deny(get(query(path(member,history),orderByChild('createdAt'),limitToLast(50))));
   await deny(get(latest(member,1000)));
+  await deny(get(latest(member,1002)));
   await deny(get(latest(member,1001,51)));
   await deny(get(query(path(member,history),orderByKey(),startAt('m001'),limitToLast(50))));
   await deny(get(path(member,history+'/before')));
@@ -127,9 +85,7 @@ try {
   const self=await assertSucceeds(get(path(member,access+'/uidA')));
   assert.equal(self.val().personId,p);
   await assertSucceeds(get(path(member,control)));
-  let page;
-  try { page=await assertSucceeds(get(latest(member))); }
-  catch(error){await diagnoseListRead();throw error;}
+  const page=await assertSucceeds(get(latest(member)));
   const keys=values(page);
   assert.equal(keys.length,50);
   assert.equal(keys[0],'m006');
