@@ -63,6 +63,7 @@ export function createMessagingMessageCommands({digestKey}={}){
     }
     if(!previous||previous.deletedAt!=null)return fail('forbidden');
     if(previous.revision!==command.expectedRevision||previous.revision>=Number.MAX_SAFE_INTEGER)return fail('conflict');
+    if(type==='edit'&&(input.attachmentIds.length!==previous.attachmentIds.length||input.attachmentIds.some((value,i)=>value!==previous.attachmentIds[i])))return fail('conflict');
     const base={id,senderId:previous.senderId,createdAt:previous.createdAt,revision:previous.revision+1,sendDigest:current.sendDigest};
     let confirmation={};
     if(type==='edit')try{confirmation=confirmationFor(input,previous,context,base.revision,base.createdAt);}catch(_){return fail('invalid');}

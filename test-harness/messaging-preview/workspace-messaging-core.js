@@ -28,6 +28,8 @@ export function conversationIdFor({roomId, kind, personIds, groupId} = {}) {
   throw new TypeError('Invalid conversation kind or identifier');
 }
 
+export const isMessagingAttachmentId=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value);
+
 const messageFields = new Set(['body','replyTo','refs','attachmentIds','confirmationRequested']);
 const referenceFields = new Set(['roomId','type','recordId']);
 const referenceTypes = new Set(['task','schedule','memo']);
@@ -50,7 +52,7 @@ export function validateMessageInput(input) {
   const {body,replyTo=null,refs=[],attachmentIds=[],confirmationRequested=false} = input;
   if (typeof body !== 'string' || body.length > 6000 || body.includes('\u0000')
       || (replyTo !== null && !key(replyTo)) || !Array.isArray(refs) || refs.length > 20
-      || !Array.isArray(attachmentIds) || attachmentIds.length !== 0 || typeof confirmationRequested !== 'boolean') {
+      || !Array.isArray(attachmentIds) || attachmentIds.length > 5 || Array.from(attachmentIds).some(id=>!isMessagingAttachmentId(id)) || new Set(attachmentIds).size!==attachmentIds.length || typeof confirmationRequested !== 'boolean') {
     throw new TypeError('Invalid message content');
   }
   const normalizedRefs = Array.from(refs, value => {
@@ -60,8 +62,8 @@ export function validateMessageInput(input) {
     }
     return Object.freeze({roomId:value.roomId,type:value.type,recordId:value.recordId});
   });
-  if (!body.trim() && normalizedRefs.length === 0) throw new TypeError('Message content required');
-  return Object.freeze({body,replyTo,refs:Object.freeze(normalizedRefs),attachmentIds:Object.freeze([]),confirmationRequested});
+  if (!body.trim() && normalizedRefs.length === 0 && attachmentIds.length === 0) throw new TypeError('Message content required');
+  return Object.freeze({body,replyTo,refs:Object.freeze(normalizedRefs),attachmentIds:Object.freeze([...attachmentIds]),confirmationRequested});
 }
 
 function assertCursor(cursor) {

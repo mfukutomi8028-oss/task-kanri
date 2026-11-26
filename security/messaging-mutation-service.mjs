@@ -9,8 +9,8 @@ const requestFields=new Set(['token','roomId','conversationId','command','expect
 const commandFields={send:['type','requestId','input'],edit:['type','messageId','expectedRevision','input'],remove:['type','messageId','expectedRevision']};
 const fail=status=>({status});
 
-export function createMessagingMutationService({verifyToken,readBinding,readControl,transactMessage,digestKey,clock=Date.now,publishActivity=null}={}){
-  if([verifyToken,readBinding,readControl,transactMessage,clock].some(fn=>typeof fn!=='function')||publishActivity!==null&&typeof publishActivity!=='function')throw new TypeError('Trusted mutation adapters required');
+export function createMessagingMutationService({verifyToken,readBinding,readControl,transactMessage,digestKey,clock=Date.now,publishActivity=null,claimAttachments=null}={}){
+  if([verifyToken,readBinding,readControl,transactMessage,clock].some(fn=>typeof fn!=='function')||publishActivity!==null&&typeof publishActivity!=='function'||claimAttachments!==null&&typeof claimAttachments!=='function')throw new TypeError('Trusted mutation adapters required');
   const commands=createMessagingMessageCommands({digestKey});
   async function authorize(token,roomId,conversationId){
     let identity;try{identity=await verifyToken(token);}catch(_){return null;}
@@ -47,6 +47,15 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
       const {members,controlRevision,...actor}=access;
       const requested=clean.input?.confirmationRequested===true;
       if(requested&&(!Number.isSafeInteger(controlRevision)||controlRevision<1))return fail('unavailable');
+      if(type==='send'&&clean.input.attachmentIds.length){
+        if(!claimAttachments)return fail('unavailable');
+        const proposed=commands.apply(null,clean,{...access,now,active:true,conversationStatus:'active'});
+        if(proposed.status!=='sent')return fail(proposed.status);
+        const claimed=await claimAttachments({roomId,conversationId,personId:access.personId,joinedAt:access.joinedAt,requestId:clean.requestId,messageId,attachmentIds:clean.input.attachmentIds});
+        if(claimed?.status!=='ok')return fail(['invalid','conflict','forbidden'].includes(claimed?.status)?claimed.status:claimed?.status==='expired'?'conflict':'unavailable');
+        const fresh=await authorize(token,roomId,conversationId);
+        if(!fresh||fresh.uid!==access.uid||fresh.personId!==access.personId||fresh.joinedAt!==access.joinedAt)return fail('forbidden');
+      }
       const scope=Object.freeze({...actor,messageId,...(requested?{controlRevision}:{})});
       const result=await transactMessage(scope,current=>commands.apply(current,clean,{...access,now,active:true,conversationStatus:'active'}));
       if(result?.status!=='ok')return fail(result?.status==='forbidden'?'forbidden':'unavailable');
@@ -71,10 +80,10 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
 // The factory must create a server-only Admin database instance with this exact
 // databaseAuthVariableOverride and dispose it after the callback. Never mint a
 // client authentication token containing this reserved service scope.
-export function createFirebaseMessagingMutationService({auth,database,withActorDatabase,digestKey,clock}={}){
+export function createFirebaseMessagingMutationService({auth,database,withActorDatabase,digestKey,clock,claimAttachments=null}={}){
   if(typeof auth?.verifyIdToken!=='function'||typeof database?.ref!=='function'||typeof withActorDatabase!=='function')throw new TypeError('Scoped Firebase adapters required');
   const read=async path=>(await database.ref(path).get()).val();
-  return createMessagingMutationService({digestKey,clock,publishActivity:createFirebaseMessagingActivityPublisher({database}),
+  return createMessagingMutationService({digestKey,clock,claimAttachments,publishActivity:createFirebaseMessagingActivityPublisher({database}),
     verifyToken:token=>auth.verifyIdToken(token,true),
     readBinding:({roomId,uid})=>read('messagingAccessV1/'+roomId+'/'+uid),
     readControl:({roomId,conversationId})=>read('messagingV1/'+roomId+'/control/'+conversationId),
