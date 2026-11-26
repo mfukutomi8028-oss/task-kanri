@@ -32,3 +32,6 @@
 .om-option-controls,.om-reaction-options{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .om-shell .om-reaction-options button[aria-pressed=true],.om-shell .om-option-controls button[aria-pressed=true]{color:var(--accent-dark);background:var(--accent-bg);border-color:var(--accent-dark)}
 @media(max-width:760px){.om-search-bar{grid-template-columns:minmax(0,1fr) auto;align-items:center}.om-search-bar .om-label{grid-column:1/-1}.om-settings{padding:4px 8px}.om-option-section{gap:6px}}
+
+.om-unread-total,.om-list-notice{font-size:12px;color:var(--ink-soft);font-weight:650}
+.om-list-notice{padding:8px;border-radius:8px;background:var(--accent-bg);color:var(--accent-dark)}

@@ -72,6 +72,7 @@ for(const [width,height,theme] of [[1366,900,'light'],[390,844,'light'],[320,740
     await page.route('**/*',r=>new URL(r.request().url()).origin==='http://127.0.0.1:4173'?r.continue():r.abort('blockedbyclient'));
     const errors=[];page.on('pageerror',e=>errors.push(String(e)));
     await page.goto('/test-harness/messaging-preview/index.html?theme='+theme);
+    await expect(page.getByLabel('メッセージの未読件数')).toHaveText('未読 2件');
     const group=page.getByRole('button',{name:'システム課',exact:true});await group.click();
     const incoming=page.locator('.om-message').filter({hasText:'外来PCの設定が完了しました。'});
     const menu=page.getByRole('dialog',{name:'メッセージの操作'});
