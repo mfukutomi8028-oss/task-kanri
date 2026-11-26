@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isPersonId, conversationIdFor } from './messaging-preview/workspace-messaging-core.js';
+import { isPersonId, conversationIdFor, validateMessageInput, compareCursor, advanceReadCursor, messageIdFor } from './messaging-preview/workspace-messaging-core.js';
 
 const a = 'p_' + 'a'.repeat(32), b = 'p_' + 'b'.repeat(32);
 const g = 'g_' + 'c'.repeat(32);
@@ -26,4 +26,36 @@ test('invalid room, participant sets, kinds and group keys cannot create IDs', (
     assert.throws(() => conversationIdFor({...valid,...patch}), TypeError);
   }
   assert.throws(() => conversationIdFor({roomId:'r',kind:'group',groupId:g,personIds:Array.from({length:101},(_,i)=>'p_'+i.toString(16).padStart(32,'0'))}), TypeError);
+});
+
+test('message payload preserves literal Japanese and markup as plain text', () => {
+  const body='\u5831\u544a\n<b>test</b>';
+  assert.deepEqual(validateMessageInput({body}),{body,replyTo:null,refs:[],attachmentIds:[],confirmationRequested:false});
+});
+test('references contain IDs only, without copying business content', () => {
+  const refs=[{roomId:'r',type:'task',recordId:'task1'},{roomId:'r',type:'schedule',recordId:'schedule1'},{roomId:'r',type:'memo',recordId:'memo1'}];
+  assert.deepEqual(validateMessageInput({body:'',refs,confirmationRequested:true}),{body:'',replyTo:null,refs,attachmentIds:[],confirmationRequested:true});
+  assert.throws(()=>validateMessageInput({body:'',refs:[{...refs[0],title:'not authorized'}]}),TypeError);
+  assert.throws(()=>validateMessageInput({body:'',refs:[{roomId:'r',type:'task',recordId:'x/y'}]}),TypeError);
+  assert.throws(()=>validateMessageInput({body:'',refs:[{roomId:'r',type:'file',recordId:'x'}]}),TypeError);
+  assert.throws(()=>validateMessageInput({body:'',refs:Array.from({length:21},(_,i)=>({roomId:'r',type:'task',recordId:'task'+i}))}),TypeError);
+});
+test('message length, empty content and unfinished upload checks are enforced', () => {
+  assert.equal(validateMessageInput({body:'a'.repeat(6000)}).body.length,6000);
+  for(const input of [null,{body:'a'.repeat(6001)},{body:' \n\t'},{body:123},{body:'ok',confirmationRequested:1},{body:'ok',attachmentIds:['pending']},{body:'ok',replyTo:'a/b'},{body:'ok',senderId:a}]) assert.throws(()=>validateMessageInput(input),TypeError);
+});
+test('read cursors break timestamp ties by message ID and never regress',()=>{
+  assert.equal(compareCursor({createdAt:10,id:'a'},{createdAt:10,id:'b'}),-1);
+  assert.equal(compareCursor({createdAt:9,id:'z'},{createdAt:10,id:'a'}),-1);
+  assert.equal(compareCursor({createdAt:10,id:'a'},{createdAt:10,id:'a'}),0);
+  assert.equal(compareCursor({createdAt:11,id:'a'},{createdAt:10,id:'z'}),1);
+  assert.deepEqual(advanceReadCursor({createdAt:10,id:'b'},{createdAt:10,id:'a'}),{createdAt:10,id:'b'});
+  assert.deepEqual(advanceReadCursor(null,{createdAt:10,id:'a'}),{createdAt:10,id:'a'});
+  assert.throws(()=>advanceReadCursor(null,{createdAt:NaN,id:'a'}),TypeError);
+});
+test('message ID is deterministic for the sender and the retry request',()=>{
+  const requestId='q_'+'c'.repeat(32);
+  assert.equal(messageIdFor(a,requestId),'msg_'+a+'_'+requestId);
+  assert.notEqual(messageIdFor(a,requestId),messageIdFor(b,requestId));
+  assert.throws(()=>messageIdFor(a,'arbitrary'),TypeError);
 });
