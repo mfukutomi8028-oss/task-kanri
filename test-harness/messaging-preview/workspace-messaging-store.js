@@ -8,6 +8,12 @@ const result=status=>({status});
 const emptyMessages=Object.freeze([]);
 const cursorOf=item=>({createdAt:item.createdAt,id:item.id});
 const sameCursor=(a,b)=>a!=null&&b!=null&&a.createdAt===b.createdAt&&a.id===b.id;
+const validMemberCursor=(value,joinedAt)=>isMessageId(value?.id)&&isMessagingTimestamp(value.createdAt)&&value.createdAt>joinedAt;
+const preferenceKeys=['favorite','muted','archived','pinned'];
+function decodePersonalState(value,joinedAt){
+  if(value?.status!=='ok'||!value.preferences||Object.keys(value.preferences).length!==preferenceKeys.length||preferenceKeys.some(key=>typeof value.preferences[key]!=='boolean')||value.cursor!==null&&!validMemberCursor(value.cursor,joinedAt))throw new TypeError('Invalid personal state');
+  return {preferences:Object.fromEntries(preferenceKeys.map(key=>[key,value.preferences[key]])),cursor:value.cursor===null?null:cursorOf(value.cursor)};
+}
 const immutable=value=>{
   if(value!==null&&typeof value==='object'&&!Object.isFrozen(value)){
     Object.values(value).forEach(immutable);Object.freeze(value);
@@ -40,7 +46,7 @@ export function createMessagingStore({session,transport}={}){
   if(typeof session?.subscribe!=='function'||['readHistory','observeActivity','send','edit','remove','markRead'].some(k=>typeof transport?.[k]!=='function'))throw new TypeError('Messaging transport and session required');
   const subscribers=new Set(),drafts=new Map(),cursors=new Map(),memberships=new Map(),pendingSends=new Map();
   let identity=null,disposed=false,generation=0,stopActivity=null,stopSession=null,pageRequest=null,refreshQueued=false,draftVersion=0;
-  let state=immutable({status:'locked',conversationId:null,messages:emptyMessages,joinedAt:null,hasMore:false,nextCursor:null,draft:'',readCursor:null,historyReset:false,busy:false,error:null});
+  let state=immutable({status:'locked',conversationId:null,messages:emptyMessages,joinedAt:null,hasMore:false,nextCursor:null,draft:'',readCursor:null,preferences:null,historyReset:false,busy:false,error:null});
   const current=()=>state.conversationId&&identity?{roomId:identity.roomId,conversationId:state.conversationId}:null;
   const stillCurrent=token=>!disposed&&generation===token;
   const stillMember=(token,joinedAt)=>stillCurrent(token)&&state.joinedAt===joinedAt;
@@ -54,7 +60,7 @@ export function createMessagingStore({session,transport}={}){
   }
   function reset(status,conversationId=null){
     publish({status,conversationId,messages:emptyMessages,joinedAt:null,hasMore:false,nextCursor:null,
-      draft:'',readCursor:null,
+      draft:'',readCursor:null,preferences:null,
       historyReset:false,busy:false,error:null});
   }
   function lockConversation(){
@@ -86,11 +92,21 @@ export function createMessagingStore({session,transport}={}){
         memberships.set(target.conversationId,page.joinedAt);
         if(changedBoundary){
           drafts.delete(target.conversationId);cursors.delete(target.conversationId);
+          // Purge the prior membership before any asynchronous personal-state read.
+          publish({status:'loading',messages:emptyMessages,joinedAt:page.joinedAt,hasMore:false,nextCursor:null,draft:'',readCursor:null,preferences:null,historyReset:true});
+          if(!stillCurrent(token))return result('locked');
           // An older-page response cannot establish a new membership's latest page.
-          if(kind==='older'){
-            refreshQueued=true;
-            publish({messages:emptyMessages,joinedAt:page.joinedAt,hasMore:false,nextCursor:null,draft:'',readCursor:null,historyReset:true});return result('ok');
-          }
+          if(kind==='older'){refreshQueued=true;return result('ok');}
+        }
+        let preferences=state.preferences;
+        // Only the active conversation needs its two small personal-state reads.
+        // Older history pages never trigger another personal-state download.
+        if(kind==='latest'&&typeof transport.readPersonalState==='function'){
+          const remote=await transport.readPersonalState({...target,personId:identity.personId,joinedAt:page.joinedAt});
+          if(!stillCurrent(token))return result('locked');
+          if(remote?.status==='forbidden'||remote?.status==='locked'){lockConversation();return result('forbidden');}
+          const personal=decodePersonalState(remote,page.joinedAt);preferences=personal.preferences;
+          if(personal.cursor!==null)cursors.set(target.conversationId,advanceReadCursor(cursors.get(target.conversationId)??null,personal.cursor));
         }
         const existingIds=new Set(state.messages.map(m=>m.id));
         const overlap=page.messages.some(m=>existingIds.has(m.id));
@@ -100,11 +116,11 @@ export function createMessagingStore({session,transport}={}){
         const usePageCursor=replace||kind==='older';
         publish({status:'ready',messages,joinedAt:page.joinedAt,historyReset:state.historyReset||historyReset,
           hasMore:usePageCursor?page.hasMore:state.hasMore,nextCursor:usePageCursor?page.nextCursor:state.nextCursor,
-          draft:drafts.get(target.conversationId)?.body??'',readCursor:cursors.get(target.conversationId)??null,busy:false,error:null});
+          draft:drafts.get(target.conversationId)?.body??'',readCursor:cursors.get(target.conversationId)??null,preferences,busy:false,error:null});
         return result('ok');
       }catch(_){
         if(!stillCurrent(token))return result('locked');
-        publish({status:state.joinedAt===null?'unavailable':state.status,error:'unavailable',busy:false});return result('unavailable');
+        publish({status:state.status==='loading'||state.joinedAt===null?'unavailable':state.status,error:'unavailable',busy:false});return result('unavailable');
       }
     }).finally(()=>{
       if(pageRequest===ticket){pageRequest=null;if(stillCurrent(token)){if(state.busy)publish({busy:false});if(refreshQueued){refreshQueued=false;void requestPage('latest');}}}
@@ -180,7 +196,7 @@ export function createMessagingStore({session,transport}={}){
       if(response?.status==='locked'||response?.status==='forbidden'){lockConversation();return result('locked');}
       if(response?.status!=='ok')return result('failed');
       const committed=response.cursor??requested;
-      if(!isMessageId(committed?.id)||!isMessagingTimestamp(committed.createdAt)||committed.createdAt<=joinedAt||compareCursor(committed,requested)<0)return result('failed');
+      if(!validMemberCursor(committed,joinedAt)||compareCursor(committed,requested)<0)return result('failed');
       const next=advanceReadCursor(state.readCursor,committed);cursors.set(conversationId,next);publish({readCursor:next});return result('ok');
     }catch(_){return result(stillMember(token,joinedAt)?'failed':'locked');}
   }

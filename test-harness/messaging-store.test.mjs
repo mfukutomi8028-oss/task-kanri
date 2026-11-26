@@ -10,7 +10,7 @@ const bound={status:'bound',roomId:room,personId:a},locked={status:'locked'};
 const cursor=m=>({id:m.id,createdAt:m.createdAt});
 function deferred(){let resolve;const promise=new Promise(r=>{resolve=r});return {promise,resolve};}
 const flush=async()=>{for(let i=0;i<8;i++)await Promise.resolve();};
-function fixture({records=Array.from({length:105},(_,i)=>message(i+1)),readHook,sendHook,editHook,removeHook,markReadHook}={}){
+function fixture({records=Array.from({length:105},(_,i)=>message(i+1)),readHook,sendHook,editHook,removeHook,markReadHook,readPersonalStateHook}={}){
   let identity=bound,listener;const watches=[],calls=[],sent=new Map(),reads=[],updates=[];
   const byConversation=new Map([[c,records],[d,[]]]);
   const session={getSnapshot:()=>identity,subscribe(fn){listener=fn;fn(identity);return ()=>{listener=null;};}};
@@ -43,6 +43,7 @@ function fixture({records=Array.from({length:105},(_,i)=>message(i+1)),readHook,
     },
     async markRead(q){reads.push(q);return markReadHook?markReadHook(q):{status:'ok'};}
   };
+  if(readPersonalStateHook)transport.readPersonalState=readPersonalStateHook;
   const store=createMessagingStore({session,transport});
   return {store,calls,watches,byConversation,sent,reads,updates,identity(next){identity=next;listener?.(next);}};
 }
@@ -174,4 +175,29 @@ test('a remote cursor response cannot regress the requested position or belong t
     assert.deepEqual(await f.store.markRead({conversationId:c,cursor:cursor(message(100)),visible:true}),{status:'failed'});
     assert.equal(f.store.getSnapshot().readCursor,null);f.store.dispose();
   }
+});
+
+const remotePrefs={favorite:false,muted:true,archived:false,pinned:false};
+const personalPage=(cursor,preferences=remotePrefs)=>({status:'ok',preferences,cursor});
+test('opening a conversation loads the current server cursor and preferences before exposing ready state',async()=>{
+  const scopes=[];const f=fixture({readPersonalStateHook:async scope=>{scopes.push(scope);return personalPage(cursor(message(105)));}});
+  await f.store.setActiveConversation(c);assert.deepEqual(scopes,[{roomId:room,conversationId:c,personId:a,joinedAt:1000}]);
+  assert.deepEqual(f.store.getSnapshot().readCursor,cursor(message(105)));assert.deepEqual(f.store.getSnapshot().preferences,remotePrefs);
+  assert.deepEqual(await f.store.markRead({conversationId:c,cursor:cursor(message(100)),visible:true}),{status:'ignored'});
+  assert.equal(f.reads.length,0);f.store.dispose();
+});
+test('a stale remote preference response after switching conversations cannot reintroduce the old cursor',async()=>{
+  const pending=deferred();const f=fixture({readPersonalStateHook:scope=>scope.conversationId===c?pending.promise:personalPage(null)});
+  const opening=f.store.setActiveConversation(c);await flush();await f.store.setActiveConversation(d);pending.resolve(personalPage(cursor(message(105)),{...remotePrefs,favorite:true}));await opening;
+  assert.equal(f.store.getSnapshot().conversationId,d);assert.equal(f.store.getSnapshot().readCursor,null);assert.deepEqual(f.store.getSnapshot().preferences,remotePrefs);f.store.dispose();
+});
+test('the previous membership state is cleared while fetching the new personal state',async()=>{
+  let epoch=1000;const pending=deferred();const f=fixture({readHook:()=>({status:'ok',joinedAt:epoch,messages:epoch===1000?[message(1),message(3)]:[message(3)],hasMore:false,nextCursor:null}),readPersonalStateHook:scope=>scope.joinedAt===1000?personalPage(cursor(message(1)),{...remotePrefs,favorite:true}):pending.promise});
+  await f.store.setActiveConversation(c);f.store.setDraft('old draft');epoch=1002;const refreshing=f.store.refreshLatest();await flush();
+  const interim=f.store.getSnapshot();assert.equal(interim.status,'loading');assert.deepEqual(interim.messages,[]);assert.equal(interim.readCursor,null);assert.equal(interim.preferences,null);assert.equal(interim.draft,'');
+  pending.resolve(personalPage(null));await refreshing;assert.equal(f.store.getSnapshot().status,'ready');assert.equal(f.store.getSnapshot().preferences.favorite,false);assert.deepEqual(f.store.getSnapshot().messages.map(m=>m.id),[id(3)]);f.store.dispose();
+});
+test('a denied personal state read locks the conversation instead of exposing the loaded history',async()=>{
+  const f=fixture({readPersonalStateHook:async()=>({status:'forbidden'})});
+  assert.deepEqual(await f.store.setActiveConversation(c),{status:'forbidden'});assert.equal(f.store.getSnapshot().status,'forbidden');assert.deepEqual(f.store.getSnapshot().messages,[]);assert.equal(f.store.getSnapshot().preferences,null);f.store.dispose();
 });
