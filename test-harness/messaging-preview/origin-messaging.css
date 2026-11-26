@@ -10,3 +10,10 @@
 @media(max-width:960px) and (min-width:761px){.om-shell[data-shared=true]{grid-template-columns:minmax(215px,250px) minmax(0,1fr)}.om-shared{position:absolute;inset:0 0 0 auto;width:270px;z-index:5;border:1px solid var(--line);border-radius:12px}.om-shell{position:relative}}
 @media(max-width:760px){.om-shell{height:calc(100dvh - 78px);min-height:0;border-radius:12px;position:relative;grid-template-columns:minmax(0,1fr)}.om-shell[data-shared=true]{grid-template-columns:minmax(0,1fr)}.om-list{border:0;padding:16px}.om-chat{display:none}.om-shell[data-mobile-view=chat] .om-list{display:none}.om-shell[data-mobile-view=chat] .om-chat{display:flex}.om-shell .om-back{display:block;color:var(--accent-dark);padding:8px 8px}.om-chat-head{padding:8px 8px;gap:4px;min-height:64px}.om-chat-title h2{font-size:16px}.om-chat-title p{font-size:11px}.om-shell .om-close{display:none}.om-chat-head .om-outline{font-size:11px;padding:4px 8px}.om-search-bar{padding:8px 12px;display:grid;gap:4px}.om-timeline{padding:16px 12px;gap:8px}.om-message{max-width:93%}.om-message-body{padding:8px 12px}.om-composer{padding:8px 8px;gap:4px}.om-compose-context{max-height:96px;overflow:auto;overscroll-behavior:contain}.om-compose-actions{gap:4px}.om-compose-actions button{font-size:12px;padding:8px 8px}.om-confirm{padding:0 2px;font-size:11px}.om-shared{position:absolute;inset:0;z-index:5;border:0;padding:16px}.om-newer{bottom:230px}.om-dialog-content{padding:16px}.om-message-actions button{padding:4px 8px}}
 @media(prefers-reduced-motion:reduce){.om-shell *{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+.om-confirm-action{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0}
+.om-confirmed{font-size:12px;color:var(--ink-soft);overflow-wrap:anywhere}
+.om-confirm-progress{display:grid;gap:8px}
+.om-confirm-person{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:44px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.om-confirm-person strong{flex:1;min-width:0;overflow-wrap:anywhere}
+.om-confirm-person time{color:var(--muted);font-size:12px}

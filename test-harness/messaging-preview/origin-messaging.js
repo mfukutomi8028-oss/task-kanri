@@ -1,5 +1,5 @@
 // Origin messaging view. Storage and authorization belong to injected services.
-import {isConversationId} from './workspace-messaging-core.js';
+import {isConversationId,summarizeMessageConfirmation} from './workspace-messaging-core.js';
 import {searchLoadedMessages,selectSharedData} from './workspace-messaging-refs.js';
 import {buildDailyReport} from './workspace-messaging-report.js';
 const labels={task:'タスク',schedule:'予定',memo:'業務メモ',url:'リンク'};
@@ -9,7 +9,7 @@ const dateText=ms=>new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:
 const timeText=ms=>new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(ms);
 const key=ref=>JSON.stringify([ref.type,ref.recordId]);
 const newRequest=()=> 'q_'+Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
-export function mountOriginMessaging({root,store,session,commands,resolver,readBusinessData,resolvePerson,onClose=()=>{}}){
+export function mountOriginMessaging({root,store,session,commands,resolver,readBusinessData,resolvePerson,confirmations=null,onClose=()=>{}}){
   if(!root||!store||!session||!commands||!resolver||typeof readBusinessData!=='function'||typeof resolvePerson!=='function')throw new TypeError('Messaging view adapters required');
   const shell=el('section','om-shell');shell.setAttribute('aria-label','メッセージワークスペース');
   shell.innerHTML=`<aside class="om-list" aria-label="会話一覧"><div class="om-list-head"><h1>メッセージ</h1><button type="button" class="om-primary" data-om="new">新規</button></div><label class="om-label" for="om-list-search">会話を検索</label><input id="om-list-search" type="search" autocomplete="off" placeholder="名前・グループ名"><div class="om-filters" aria-label="会話の絞り込み"></div><div class="om-conversations" aria-live="polite"></div></aside><main class="om-chat" aria-label="会話"><header class="om-chat-head"><button type="button" data-om="back" class="om-back">一覧</button><div class="om-chat-title"><h2>会話を選択</h2><p></p></div><button type="button" data-om="shared" class="om-outline">共有データ</button><button type="button" data-om="close" class="om-close" aria-label="メッセージを閉じる">閉じる</button></header><div class="om-search-bar" hidden><label for="om-message-search" class="om-label">読み込んだ履歴を検索</label><input id="om-message-search" type="search" autocomplete="off" placeholder="本文・件名"></div><div class="om-timeline" role="log" aria-label="メッセージ履歴" tabindex="0"></div><div class="om-newer" hidden><button type="button">新着メッセージへ</button></div><footer class="om-composer" hidden><div class="om-compose-context"></div><label for="om-body" class="om-label">メッセージ本文</label><textarea id="om-body" rows="3" maxlength="6000" placeholder="メッセージを入力"></textarea><div class="om-compose-actions"><button type="button" data-om="refs" class="om-outline">業務を添付</button><button type="button" data-om="report" class="om-outline">日次報告</button><label class="om-confirm"><input type="checkbox" data-om="confirm">確認依頼</label><span class="om-spacer"></span><button type="button" class="om-primary" data-om="send">送信</button></div><p class="om-feedback" role="status"></p></footer></main><aside class="om-shared" aria-label="共有データ" hidden><div class="om-shared-head"><h2>共有データ</h2><button type="button" class="om-outline" data-om="hide-shared" aria-label="共有データを閉じる">閉じる</button></div><label for="om-shared-filter" class="om-label">種類</label><select id="om-shared-filter"><option value="">すべて</option><option value="task">タスク</option><option value="schedule">予定</option><option value="memo">業務メモ</option><option value="url">リンク</option></select><div class="om-shared-list"></div></aside><dialog class="om-dialog" aria-labelledby="om-dialog-title"><div class="om-dialog-content"></div></dialog>`;
@@ -40,13 +40,42 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   function renderHeader(){const c=selected();$('.om-chat-title h2').textContent=c?.title||'会話を選択';$('.om-chat-title p').textContent=c?.kind==='group'?(c.memberCount||0)+'人のグループ':c?.kind==='self'?'自分だけのメッセージ':c?'個人メッセージ':'';$('[data-om=shared]').disabled=!c;$('.om-search-bar').hidden=!c;}
   function refButton(ref,c,location){const b=button(labels[ref.type]||'業務データ',()=>void resolver.open(ref,c,{...location,scrollTop:timeline.scrollTop,query}),'om-reference');b.disabled=true;const stamp=renderGeneration;void resolver.resolve(ref,c).then(result=>{if(!b.isConnected||stamp!==renderGeneration||!messageContextValid(c))return;if(result.status==='available'){b.replaceChildren(el('span','om-reference-type',labels[ref.type]),el('strong','',result.title),el('small','',result.currentState||''));b.disabled=false;}else b.textContent='参照できない業務データ';});return b;}
   function renderComposeContext(){const c=context(),node=$('.om-compose-context');node.replaceChildren();if(!c)return;const draft=compose();if(draft.replyTo){const tag=el('div','om-draft-ref');tag.append(el('span','','返信を作成中'),button('解除',()=>{draft.replyTo=null;request=null;renderComposeContext();}));node.append(tag);}if(draft.editing){const tag=el('div','om-draft-ref');tag.append(el('span','','メッセージを編集中'),button('取消',()=>{draft.editing=null;store.setDraft('');request=null;renderComposeContext();}));node.append(tag);}
-    for(const ref of draft.refs){const tag=el('div','om-draft-ref');const name=el('span','',labels[ref.type]);tag.append(name,button('解除',()=>{draft.refs=draft.refs.filter(r=>key(r)!==key(ref));request=null;renderComposeContext();}));node.append(tag);void resolver.resolve(ref,c).then(value=>{if(tag.isConnected&&messageContextValid(c)&&value.status==='available')name.textContent=value.title;});}$('[data-om=confirm]').checked=draft.confirmationRequested;sendButton.textContent=draft.editing?'更新':'送信';}
+    for(const ref of draft.refs){const tag=el('div','om-draft-ref');const name=el('span','',labels[ref.type]);tag.append(name,button('解除',()=>{draft.refs=draft.refs.filter(r=>key(r)!==key(ref));request=null;renderComposeContext();}));node.append(tag);void resolver.resolve(ref,c).then(value=>{if(tag.isConnected&&messageContextValid(c)&&value.status==='available')name.textContent=value.title;});}const confirm=$('[data-om=confirm]');confirm.disabled=!confirmations||selected()?.kind==='self';if(confirm.disabled)draft.confirmationRequested=false;confirm.checked=draft.confirmationRequested;sendButton.textContent=draft.editing?'更新':'送信';}
+  function renderConfirmation(m,c,content){
+    const row=el('div','om-confirm-action');row.append(el('span','om-confirm-request','確認依頼'));content.append(row);
+    if(!confirmations||!m.confirmation)return;
+    const scope={roomId:c.roomId,conversationId:c.conversationId,messageId:m.id,round:m.confirmation.round,personId:c.personId};
+    const current=()=>messageContextValid(c)&&state.messages.some(x=>x.id===m.id&&x.revision===m.revision&&x.deletedAt==null);
+    if(m.senderId===c.personId){row.append(button('確認状況',async()=>{
+      const panel=openDialog('確認状況'),progress=el('div','om-confirm-progress');panel.append(progress);progress.append(el('p','om-empty-small','読み込み中…'));
+      try{
+        const [response,members]=await Promise.all([confirmations.readReceipts(scope),confirmations.readMembers(scope)]);
+        if(!dialog.open||!progress.isConnected||!current())return;
+        if(response?.status!=='ok'||members?.status!=='ok')throw Error('Unavailable');
+        const rows=summarizeMessageConfirmation(m,members.members,response.receipts);
+        progress.replaceChildren(...rows.map(r=>{const item=el('div','om-confirm-person');item.append(el('strong','',resolvePerson(r.personId)||'利用者'),el('span','',r.status==='left'?'退会':r.status==='confirmed'?'確認済み':'未確認'));if(r.confirmedAt!==null)item.append(el('time','',dateText(r.confirmedAt)+' '+timeText(r.confirmedAt)));return item;}));
+      }catch(_){if(dialog.open&&progress.isConnected&&current())progress.replaceChildren(el('p','om-empty-small','確認状況を取得できません。閉じて再度お試しください。'));}
+    },'om-outline'));return;}
+    if(m.confirmation.targets[c.personId]!==c.joinedAt)return;
+    const status=el('span','om-confirmed');status.setAttribute('role','status');
+    const action=button('確認しました',async()=>{
+      if(!current()||!row.isConnected)return;action.disabled=true;
+      try{const response=await confirmations.confirm(scope);if(!current()||!row.isConnected)return;if(response?.status!=='ok'||!Number.isSafeInteger(response.confirmedAt))throw Error('Unavailable');showReceipt(response.confirmedAt);}
+      catch(_){if(current()&&row.isConnected){status.textContent='確認を保存できません。再試行してください。';action.disabled=false;}}
+    },'om-outline');action.disabled=true;row.append(action,status);
+    function showReceipt(stamp){action.hidden=true;status.textContent='確認済み '+dateText(stamp)+' '+timeText(stamp);}
+    async function load(){
+      try{const result=await confirmations.readOwnConfirmation(scope);if(!current()||!row.isConnected)return;if(result?.status!=='ok')throw Error('Unavailable');if(result.confirmedAt!==null){if(!Number.isSafeInteger(result.confirmedAt))throw Error('Invalid');showReceipt(result.confirmedAt);}else action.disabled=false;}
+      catch(_){if(current()&&row.isConnected){status.textContent='確認状態を取得できません。';action.disabled=true;const retry=button('再試行',()=>{retry.remove();status.textContent='';void load();},'om-outline');row.append(retry);}}
+    }
+    void load();
+  }
   function renderMessage(m,c){const own=m.senderId===c.personId,article=el('article','om-message'+(own?' om-own':''));article.dataset.messageId=m.id;
     const header=el('div','om-message-meta');header.append(el('strong','',resolvePerson(m.senderId)||'利用者'),el('time','',timeText(m.createdAt)));if(m.editedAt)header.append(el('span','','編集済み'));article.append(header);
     const content=el('div','om-message-body');if(m.deletedAt!=null){content.append(el('p','om-deleted','メッセージは削除されました'));article.append(content);return article;}
     if(m.replyTo){const quote=el('div','om-quote','返信');content.append(quote);void resolver.resolveQuote(m.replyTo,c).then(r=>{if(quote.isConnected&&messageContextValid(c))quote.textContent=r.status==='available'?r.excerpt:'元のメッセージを参照できません';});}
     if(m.body)content.append(el('p','om-message-text',m.body));for(const ref of m.refs??[])content.append(refButton(ref,c,{conversationId:c.conversationId,messageId:m.id,scrollTop:timeline.scrollTop,query}));
-    if(m.confirmationRequested)content.append(el('span','om-confirm-request','確認依頼'));article.append(content);
+    if(m.confirmationRequested)renderConfirmation(m,c,content);article.append(content);
     const actions=el('div','om-message-actions');actions.append(button('返信',()=>{const draft=compose();draft.replyTo=m.id;draft.editing=null;request=null;renderComposeContext();body.focus();}));
     if(own){actions.append(button('編集',()=>{const d=compose();d.editing={messageId:m.id,expectedRevision:m.revision};d.refs=[...(m.refs??[])];d.replyTo=m.replyTo;d.confirmationRequested=Boolean(m.confirmationRequested);store.setDraft(m.body);request=null;renderComposeContext();body.focus();}),button('削除',()=>{const panel=openDialog('メッセージを削除');panel.append(el('p','','削除すると本文と参照は表示されなくなります。'),button('削除する',async()=>{const result=await store.remove({conversationId:c.conversationId,messageId:m.id,expectedRevision:m.revision});if(result.status==='ok')closeDialog();else notice('削除できませんでした。再読み込みしてください。');},'om-danger'));}));}article.append(actions);return article;
   }
