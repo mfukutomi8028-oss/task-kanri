@@ -247,3 +247,5 @@ assert.equal(report.unknownCompletion.some(t=>t.id==='no-completion-date'),true)
 
 - グループ状態遷移を実Firebase Emulatorの小さいcontrolノードのtransactionと履歴サービスへ接続する検査を追加。承諾前・加入同時刻・除外・再加入の履歴、同じrevisionからの並行更新1件のみ成功を確認（CI 45736034593のMessaging認可ステップ成功）。本番APIではない。
 - `security/messaging-message-commands.mjs` に送信・編集・削除の信頼サーバー側状態遷移を実装。決定的ID、サーバーだけが持つ鍵による再送指紋、同一要求の再送で既存recordを維持、異内容再送拒否、revision一致、本人の編集/削除、削除時に本文/参照を除去。新規8件、ローカル全58件成功。これは実際の書き込みAPIではない。本人確認・現在の所属・承認状態のコミット時検証を備えた保存transport、原子的書き込み、確認依頼の対象/round、添付、リアルタイム・通知、Origin画面の接続が残る。署名用鍵は本番設定時に安全なサーバー側秘密として管理し、リポジトリへ保存しない。
+
+- 続行: `security/messaging-mutation-service.mjs` に本人トークン検証、承認binding、最新会話所属、メッセージ単位の再送/編集/削除処理を接続。保存時はサーバー限定の `databaseAuthVariableOverride` を使う候補方式とし、正規UID、room、会話、personId、加入時刻、messageId を一致させるルールを追加。一般クライアントは引き続き書込不可。候補ルールのみ、本番未適用。新規単体7件のRED→GREEN、ローカル全65件成功。実Admin SDK/隔離Emulatorで保存・再送・競合・退会直前・対象外書込の検査を追加（CI未確認）。本番用の限定サーバー設定、資格の失効境界、会話管理の認証済みAPI、一覧同期・状態管理・画面、添付APIは未完了。実運用の安全性をこの段階で保証しない。
