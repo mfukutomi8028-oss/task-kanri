@@ -7,7 +7,7 @@ const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Objec
 const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
 const maxPage=100,maxParticipants=1000;
 const validIndexRow=row=>record(row)&&isConversationId(row.id)&&Number.isSafeInteger(row.revision)&&row.revision>=1&&['member','pending','inactive'].includes(row.state);
-const requestFields=new Set(['token','roomId','after','limit']);
+const requestFields=new Set(['token','roomId','after','limit','expectedPersonId']);
 async function batches(items,fn){const result=[];for(let i=0;i<items.length;i+=8)result.push(...await Promise.all(items.slice(i,i+8).map(fn)));return result;}
 function project(control,personId){
   const member=control.members[personId],invite=control.invites?.[personId];
@@ -64,10 +64,10 @@ export function createMessagingDirectoryService({verifyToken,readBinding,readCon
   }
   async function readDirectory(request){
     if(!record(request)||Object.keys(request).some(key=>!requestFields.has(key)))return fail('invalid');
-    const {token,roomId,after=null,limit=maxPage}=request;
-    if(typeof token!=='string'||token.length<1||token.length>16384||!isMessagingRoomId(roomId)||after!==null&&!isConversationId(after)||!Number.isInteger(limit)||limit<1||limit>maxPage)return fail('invalid');
+    const {token,roomId,after=null,limit=maxPage,expectedPersonId}=request;
+    if(typeof token!=='string'||token.length<1||token.length>16384||!isMessagingRoomId(roomId)||expectedPersonId!==undefined&&!isPersonId(expectedPersonId)||after!==null&&!isConversationId(after)||!Number.isInteger(limit)||limit<1||limit>maxPage)return fail('invalid');
     try{
-      const access=await authorize(token,roomId);if(!access)return fail('forbidden');
+      const access=await authorize(token,roomId);if(!access||expectedPersonId!==undefined&&access.personId!==expectedPersonId)return fail('forbidden');
       const rows=await readIndexPage({roomId,personId:access.personId,after,limit:limit+1});
       if(!Array.isArray(rows)||rows.length>limit+1||rows.some((row,i)=>!validIndexRow(row)||(i>0?rows[i-1].id:after)!==null&&row.id<=(i>0?rows[i-1].id:after)))return fail('unavailable');
       const page=rows.slice(0,limit);

@@ -9,8 +9,8 @@ const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Objec
 const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
 const validLabel=v=>typeof v==='string'&&v.length>0&&v.length<=64&&v.trim()===v&&!/[\u0000-\u001f\u007f]/.test(v);
 const validToken=v=>typeof v==='string'&&v.length>0&&v.length<=16384;
-const fields=new Set(['token','roomId','conversationId','command']);
-const peopleFields=new Set(['token','roomId']);
+const fields=new Set(['token','roomId','conversationId','command','expectedPersonId']);
+const peopleFields=new Set(['token','roomId','expectedPersonId']);
 function decodeRoster(roster){
   if(!record(roster)||!Number.isSafeInteger(roster.revision)||roster.revision<1||!record(roster.people)||Object.keys(roster.people).length>1000)throw new TypeError('Invalid approved roster');
   const people=Object.entries(roster.people).map(([personId,value])=>{
@@ -33,10 +33,10 @@ export function createMessagingConversationService({verifyToken,readBinding,read
   const sameActor=(first,second)=>second!==null&&second.uid===first.uid&&second.personId===first.personId;
   async function execute(request){
     if(!record(request)||Object.keys(request).some(k=>!fields.has(k)))return fail('invalid');
-    const {token,roomId,conversationId,command}=request;
-    if(!validToken(token)||!isMessagingRoomId(roomId)||!isConversationId(conversationId)||!record(command))return fail('invalid');
+    const {token,roomId,conversationId,command,expectedPersonId}=request;
+    if(!validToken(token)||!isMessagingRoomId(roomId)||!isConversationId(conversationId)||expectedPersonId!==undefined&&!isPersonId(expectedPersonId)||!record(command))return fail('invalid');
     try{
-      const actor=await authorize(token,roomId);if(!actor)return fail('forbidden');
+      const actor=await authorize(token,roomId);if(!actor||expectedPersonId!==undefined&&actor.personId!==expectedPersonId)return fail('forbidden');
       const {uid,personId,roster}=actor,now=clock();if(!isMessagingTimestamp(now))return fail('unavailable');
       const scope=Object.freeze({uid,personId,roomId,conversationId,rosterRevision:roster.revision});
       const result=await transactControl(scope,current=>applyConversationCommand(current,command,{roomId,conversationId,personId,now,approvedPersonIds:roster.people.map(p=>p.personId)}));
@@ -51,9 +51,9 @@ export function createMessagingConversationService({verifyToken,readBinding,read
     }catch(_){return fail('unavailable');}
   }
   async function readPeople(request){
-    if(!record(request)||Object.keys(request).some(k=>!peopleFields.has(k))||!validToken(request.token)||!isMessagingRoomId(request.roomId))return fail('invalid');
+    if(!record(request)||Object.keys(request).some(k=>!peopleFields.has(k))||!validToken(request.token)||!isMessagingRoomId(request.roomId)||request.expectedPersonId!==undefined&&!isPersonId(request.expectedPersonId))return fail('invalid');
     try{
-      const actor=await authorize(request.token,request.roomId);if(!actor)return fail('forbidden');
+      const actor=await authorize(request.token,request.roomId);if(!actor||request.expectedPersonId!==undefined&&actor.personId!==request.expectedPersonId)return fail('forbidden');
       const final=await authorize(request.token,request.roomId);if(!sameActor(actor,final))return fail('forbidden');
       if(final.roster.revision!==actor.roster.revision)return fail('stale');
       return {status:'ok',roomId:request.roomId,personId:actor.personId,people:[...actor.roster.people].sort((a,b)=>a.personId.localeCompare(b.personId))};

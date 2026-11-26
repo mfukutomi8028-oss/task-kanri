@@ -1,7 +1,7 @@
 // Trusted server-side history boundary. Never import this into the browser.
 import {isMessagingRoomId,isPersonId,compareCursor,isConversationId,isMessageId,isMessagingTimestamp,projectMessagingMessage} from '../test-harness/messaging-preview/workspace-messaging-core.js';
 
-const requestFields=new Set(['token','roomId','conversationId','before','limit']);
+const requestFields=new Set(['token','roomId','conversationId','before','limit','expectedPersonId']);
 const isRecord=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const uidKey=value=>typeof value==='string'&&value.length>0&&value.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(value);
 const cursor=value=>isRecord(value)&&Object.keys(value).length===2&&isMessageId(value.id)&&isMessagingTimestamp(value.createdAt);
@@ -24,12 +24,12 @@ export function createMessagingHistoryService({verifyToken,readBinding,readMembe
   }
   async function readHistory(request) {
     if(!isRecord(request)||Object.keys(request).some(field=>!requestFields.has(field)))return status('invalid');
-    const {token,roomId,conversationId,before=null,limit=50}=request;
+    const {token,roomId,conversationId,before=null,limit=50,expectedPersonId}=request;
     if(typeof token!=='string'||token.length<1||token.length>16384||!isMessagingRoomId(roomId)||!isConversationId(conversationId)
-        ||!Number.isInteger(limit)||limit<1||limit>50||(before!==null&&!cursor(before)))return status('invalid');
+        ||expectedPersonId!==undefined&&!isPersonId(expectedPersonId)||!Number.isInteger(limit)||limit<1||limit>50||(before!==null&&!cursor(before)))return status('invalid');
     try {
       const access=await authorize({token,roomId,conversationId});
-      if(!access)return status('forbidden');
+      if(!access||expectedPersonId!==undefined&&access.personId!==expectedPersonId)return status('forbidden');
       // The server, not the caller, supplies the join boundary and the query cap.
       const records=await readPage({roomId,conversationId,joinedAt:access.joinedAt,before,limit});
       if(!Array.isArray(records)||records.length>limit)return status('unavailable');

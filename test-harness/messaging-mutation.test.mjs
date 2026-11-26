@@ -68,3 +68,8 @@ test('confirmation targets derive from the trusted conversation snapshot and cap
   assert.deepEqual(await service.mutate({...request,command:{...request.command,input:{body:'Check',confirmationRequested:true}}}),{status:'sent',id:messageId});
   assert.equal(scopeSeen.controlRevision,7);assert.deepEqual(stored.confirmation,{round:1,targets:{[b]:2000}});
 });
+
+test('the bound UI person assertion rejects a token for another person before writing',async()=>{
+  const f=fixture();assert.deepEqual(await f.service.mutate({...request,expectedPersonId:b}),{status:'forbidden'});assert.equal(f.calls.length,0);assert.equal(f.stored,null);
+  assert.equal((await f.service.mutate({...request,expectedPersonId:p})).status,'sent');
+});

@@ -9,6 +9,7 @@ import {applyConversationCommand} from '../security/messaging-conversation-comma
 import {createFirebaseMessagingMutationService} from '../security/messaging-mutation-service.mjs';
 import {createFirebaseMessagingConversationService} from '../security/messaging-conversation-service.mjs';
 import {createFirebaseMessagingDirectoryServices} from '../security/messaging-directory-service.mjs';
+import {createMessagingApiHandler} from '../security/messaging-api-handler.mjs';
 
 const projectId='demo-task-kanri-messaging',authHost='127.0.0.1:9098',dbHost='127.0.0.1:9002';
 if(process.env.FIREBASE_AUTH_EMULATOR_HOST!==authHost||process.env.FIREBASE_DATABASE_EMULATOR_HOST!==dbHost){
@@ -224,6 +225,24 @@ try{
   const repairPage=await index.reconcilePage({roomId:directoryRoom,after:directoryGroup,limit:1});
   assert.deepEqual(repairPage,{status:'ok',processed:1,failed:[],hasMore:false,nextCursor:null});
   assert.equal((await list(alice)).conversations.length,3);
+  // The real HTTP boundary routes verified Firebase ID tokens to these actual
+  // Emulator-backed services; the request and origin are synthetic.
+  const apiOrigin='https://board.example.test';
+  const apiHandler=createMessagingApiHandler({allowedOrigins:[apiOrigin],history:service,mutation:writer,directory,conversations:controlService});
+  const apiCall=(account,personId,action,payload)=>apiHandler(new Request('https://api.example.test/messaging',{method:'POST',headers:{Origin:apiOrigin,'Content-Type':'application/json',Authorization:'Bearer '+account.idToken},body:JSON.stringify({action,payload:{roomId:directoryRoom,...payload},expectedPersonId:personId})}));
+  const directoryResponse=await apiCall(alice,p,'directory',{});
+  assert.equal(directoryResponse.status,200);assert.equal((await directoryResponse.json()).conversations.length,3);
+  const wrongPerson=await apiCall(bob,p,'directory',{});
+  assert.equal(wrongPerson.status,403);assert.deepEqual(await wrongPerson.json(),{status:'forbidden'});
+  mutationNow=15000;
+  const apiRequest='q_'+'3'.repeat(32),apiId='msg_'+p+'_'+apiRequest;
+  const apiPayload={conversationId:personalConversation,command:{type:'send',requestId:apiRequest,input:{body:'HTTP fixture'}}};
+  assert.equal((await apiCall(bob,p,'message',apiPayload)).status,403);
+  const apiSent=await apiCall(alice,p,'message',apiPayload);assert.equal(apiSent.status,200);assert.deepEqual(await apiSent.json(),{status:'sent',id:apiId});
+  const apiHistory=await apiCall(alice,p,'history',{conversationId:personalConversation});
+  assert.equal(apiHistory.status,200);assert.deepEqual((await apiHistory.json()).messages.map(m=>m.id),[apiId]);
+  assert.equal((await apiCall(alice,other,'history',{conversationId:personalConversation})).status,403);
+  console.log('MESSAGING_HTTP_BOUNDARY_EMULATOR_OK');
   const deniedGroup='group_g_'+'2'.repeat(32);
   preCommit=()=>db.ref(rosterPath+'/revision').set(2);
   assert.deepEqual(await command(alice,deniedGroup,createGroup),{status:'forbidden'});

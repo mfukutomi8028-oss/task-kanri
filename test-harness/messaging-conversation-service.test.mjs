@@ -46,3 +46,9 @@ test('directory for starting conversations returns approved display names but no
 test('changed identity after a committed operation does not disclose its result',async()=>{
   const f=fixture();f.afterRepair(()=>{f.bindings.get('uidA').active=false;});assert.deepEqual(await f.create(),{status:'forbidden'});assert.equal(f.controls.get(group).revision,1);
 });
+
+test('the bound person assertion rejects a different token before conversation creation or roster retrieval',async()=>{
+  const f=fixture();assert.deepEqual(await f.call({type:'createGroup',title:'Project',invitees:[b]},'uidA',group,{expectedPersonId:b}),{status:'forbidden'});assert.equal(f.scopes.length,0);
+  assert.deepEqual(await f.service.readPeople({token:'uidA',roomId,expectedPersonId:b}),{status:'forbidden'});
+  assert.equal((await f.call({type:'createGroup',title:'Project',invitees:[b]},'uidA',group,{expectedPersonId:a})).status,'ok');
+});

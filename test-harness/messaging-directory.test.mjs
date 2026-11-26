@@ -85,3 +85,9 @@ test('maintenance repairs missing index rows in bounded control pages and report
   assert.deepEqual(await worker.reconcilePage({roomId,limit:1,after:g}),{status:'partial',processed:1,failed:[g2],hasMore:false,nextCursor:null});
   await f.reconcile(g2);assert.deepEqual((await f.list()).conversations.map(x=>x.id),[g,g2]);
 });
+
+test('the person bound in the UI must match the verified token for directory discovery',async()=>{
+  const f=fixture();f.controls.set(g,create(g));await f.reconcile(g);f.reads.length=0;
+  assert.deepEqual(await f.list('uidA',{expectedPersonId:b}),{status:'forbidden'});assert.deepEqual(f.reads,[]);
+  assert.equal((await f.list('uidA',{expectedPersonId:a})).status,'ok');
+});

@@ -4,7 +4,7 @@ import {createMessagingMessageCommands} from './messaging-message-commands.mjs';
 import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,messageIdFor,validateRoomMessageInput} from '../test-harness/messaging-preview/workspace-messaging-core.js';
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);
 const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
-const requestFields=new Set(['token','roomId','conversationId','command']);
+const requestFields=new Set(['token','roomId','conversationId','command','expectedPersonId']);
 const commandFields={send:['type','requestId','input'],edit:['type','messageId','expectedRevision','input'],remove:['type','messageId','expectedRevision']};
 const fail=status=>({status});
 
@@ -23,8 +23,8 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
   }
   async function mutate(request){
     if(!record(request)||Object.keys(request).some(k=>!requestFields.has(k)))return fail('invalid');
-    const {token,roomId,conversationId,command}=request;
-    if(typeof token!=='string'||token.length<1||token.length>16384||!isMessagingRoomId(roomId)||!isConversationId(conversationId)||!record(command)||!Object.hasOwn(commandFields,command.type)||Object.keys(command).some(k=>!commandFields[command.type].includes(k)))return fail('invalid');
+    const {token,roomId,conversationId,command,expectedPersonId}=request;
+    if(typeof token!=='string'||token.length<1||token.length>16384||!isMessagingRoomId(roomId)||!isConversationId(conversationId)||expectedPersonId!==undefined&&!isPersonId(expectedPersonId)||!record(command)||typeof command.type!=='string'||!Object.hasOwn(commandFields,command.type)||Object.keys(command).some(k=>!commandFields[command.type].includes(k)))return fail('invalid');
     const type=command.type;
     let clean;
     try{
@@ -39,7 +39,7 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
     }catch(_){return fail('invalid');}
     try{
       const access=await authorize(token,roomId,conversationId);
-      if(!access)return fail('forbidden');
+      if(!access||expectedPersonId!==undefined&&access.personId!==expectedPersonId)return fail('forbidden');
       const messageId=type==='send'?messageIdFor(access.personId,clean.requestId):clean.messageId;
       if(!messageId.startsWith('msg_'+access.personId+'_'))return fail('forbidden');
       const now=clock();if(!isMessagingTimestamp(now)||now<=access.joinedAt)return fail('conflict');

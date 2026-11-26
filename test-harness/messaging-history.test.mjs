@@ -82,3 +82,8 @@ test('adapter construction requires a trusted auth verifier and database',()=>{
   assert.throws(()=>createFirebaseMessagingHistoryService({}),TypeError);
   assert.throws(()=>createMessagingHistoryService({verifyToken:async()=>null}),TypeError);
 });
+
+test('the bound UI person assertion must match the token before history is queried',async()=>{
+  const f=fixture();assert.deepEqual(await f.service.readHistory({...call,expectedPersonId:bob}),{status:'forbidden'});assert.equal(f.queries.length,0);
+  assert.equal((await f.service.readHistory({...call,expectedPersonId:alice})).status,'ok');
+});
