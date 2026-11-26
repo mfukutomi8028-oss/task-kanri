@@ -2,8 +2,9 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
-import {get,ref,set,update,runTransaction,query,orderByChild,orderByKey,startAt,endBefore,limitToLast} from 'firebase/database';
+import {get,ref,set,update,runTransaction,serverTimestamp,query,orderByChild,orderByKey,startAt,endBefore,limitToLast} from 'firebase/database';
 import {createMessagingPersonalStateTransport} from './messaging-preview/workspace-messaging-personal.js';
+import {createMessagingConfirmationTransport} from './messaging-preview/workspace-messaging-confirmations.js';
 
 const host='127.0.0.1:9002';
 if(process.env.FIREBASE_DATABASE_EMULATOR_HOST!==host) throw new Error('Messaging rules require the isolated loopback emulator: '+host);
@@ -160,6 +161,46 @@ try {
   assert.deepEqual(await first.readPersonalState({...scope,joinedAt:2050}),{status:'ok',preferences:{favorite:false,muted:false,archived:false,pinned:false},cursor:null});
   assert.deepEqual(await first.markRead({...scope,joinedAt:2050,cursor:cursor(3,2100)}),{status:'ok',cursor:cursor(3,2100)});
   console.log('MESSAGING_PERSONAL_STATE_EMULATOR_OK');
+  // A separate fixture keeps receipt authorization independent of cursor tests.
+  const cg='group_g_'+'f'.repeat(32),confirmControl=root+'/control/'+cg,confirmId='msg_'+p+'_q_'+'e'.repeat(32);
+  const confirmMessage=root+'/messages/'+cg+'/'+confirmId,receiptRoot=root+'/confirmationReceipts/'+cg+'/'+confirmId;
+  const confirmationScope={roomId:room,conversationId:cg,messageId:confirmId,round:1,personId:other};
+  const senderScope={...confirmationScope,personId:p};
+  const receipts=ctx=>createMessagingConfirmationTransport({db:ctx.database(),ref,get,runTransaction,serverTimestamp});
+  await env.withSecurityRulesDisabled(async admin=>{
+    await set(path(admin,confirmControl),{status:'active',revision:1,members:{[p]:{active:true,joinedAt:1000,role:'owner'},[other]:{active:true,joinedAt:1200,role:'member'},[denied]:{active:true,joinedAt:1300,role:'member'}}});
+    await set(path(admin,confirmMessage),{id:confirmId,senderId:p,createdAt:2000,revision:1,body:'Confirm this',confirmationRequested:true,confirmation:{round:1,targets:{[other]:1200}}});
+  });
+  const receiver=receipts(nonmember),sender=receipts(member);
+  assert.deepEqual(await receiver.readOwnConfirmation(confirmationScope),{status:'ok',confirmedAt:null});
+  assert.deepEqual(await sender.readReceipts(senderScope),{status:'ok',receipts:{}});
+  for(const ctx of [anon,unknown,unapproved,member])assert.deepEqual(await receipts(ctx).confirm(confirmationScope),{status:'forbidden'});
+  assert.deepEqual(await receiver.confirm({...confirmationScope,personId:p}),{status:'forbidden'});
+  assert.deepEqual(await receiver.readReceipts(confirmationScope),{status:'forbidden'});
+  await deny(get(path(member,root+'/confirmationReceipts')));
+  await deny(get(path(member,receiptRoot)));
+  await deny(set(path(nonmember,receiptRoot+'/1/'+other),1000));
+  const acknowledged=await receiver.confirm(confirmationScope);
+  assert.equal(acknowledged.status,'ok');assert.ok(acknowledged.confirmedAt>=2000);
+  assert.deepEqual(await receiver.confirm(confirmationScope),acknowledged);
+  assert.deepEqual(await sender.readReceipts(senderScope),{status:'ok',receipts:{[other]:acknowledged.confirmedAt}});
+  await deny(set(path(nonmember,receiptRoot+'/1/'+other),null));
+  await deny(set(path(nonmember,receiptRoot+'/1/'+other),serverTimestamp()));
+  // The sender's read cursors and receipt round are independent.
+  await env.withSecurityRulesDisabled(async admin=>{
+    await update(path(admin,confirmMessage),{revision:2,editedAt:3000,confirmation:{round:2,targets:{[other]:1200}}});
+  });
+  assert.deepEqual(await receiver.confirm(confirmationScope),{status:'forbidden'});
+  assert.deepEqual(await sender.readReceipts(senderScope),{status:'forbidden'});
+  assert.deepEqual(await sender.readReceipts({...senderScope,round:2}),{status:'ok',receipts:{}});
+  assert.equal((await receiver.confirm({...confirmationScope,round:2})).status,'ok');
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,confirmControl+'/members/'+other+'/active'),false));
+  assert.deepEqual(await receiver.readOwnConfirmation({...confirmationScope,round:2}),{status:'forbidden'});
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,confirmControl+'/members/'+other),{active:true,joinedAt:4000,role:'member'}));
+  assert.deepEqual(await receiver.confirm({...confirmationScope,round:2}),{status:'forbidden'});
+  await env.withSecurityRulesDisabled(admin=>update(path(admin,confirmMessage),{deletedAt:5000,confirmation:null,confirmationRequested:null,body:null,revision:3}));
+  assert.deepEqual(await sender.readReceipts({...senderScope,round:2}),{status:'forbidden'});
+  console.log('MESSAGING_CONFIRMATION_RECEIPTS_EMULATOR_OK');
   // A fresh context after a server-side membership change cannot use old grants.
   await env.withSecurityRulesDisabled(admin=>set(path(admin,control+'/members/'+p+'/active'),false));
   const left=env.authenticatedContext('uidA');

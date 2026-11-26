@@ -117,5 +117,30 @@ export function projectMessagingMessage(raw,{roomId,joinedAt}){
   });
   const input=validateRoomMessageInput({body:raw.body,replyTo:raw.replyTo??null,refs,
     attachmentIds:raw.attachmentIds??[],confirmationRequested:raw.confirmationRequested??false},roomId);
-  return {...base,...input};
+  const confirmation=raw.confirmation==null?null:projectConfirmation(raw);
+  return {...base,...input,...(confirmation?{confirmation}:{})};
+}
+
+// Confirmation targets are immutable for one request. The membership epoch
+// prevents a person who rejoined later from acknowledging an old message.
+function projectConfirmation(raw){
+  const value=raw.confirmation;
+  if(raw.confirmationRequested!==true||!isRecord(value)||Object.keys(value).some(k=>!['round','targets'].includes(k))
+      ||value.round!==raw.revision||!isRecord(value.targets))throw new TypeError('Invalid confirmation round');
+  const entries=Object.entries(value.targets);
+  if(entries.length<1||entries.length>99||entries.some(([id,epoch])=>!isPersonId(id)||id===raw.senderId||!isMessagingTimestamp(epoch)||epoch>=raw.createdAt))throw new TypeError('Invalid confirmation targets');
+  return {round:value.round,targets:Object.fromEntries(entries.sort(([a],[b])=>a.localeCompare(b)))};
+}
+
+// A sender views explicit responses; read cursors are never confirmation input.
+export function summarizeMessageConfirmation(message,members,receipts){
+  if(message?.deletedAt!=null||message?.confirmation==null)return [];
+  const {targets}=projectConfirmation(message);
+  const openedAt=message.editedAt??message.createdAt;
+  return Object.entries(targets).map(([personId,epoch])=>{
+    const stamp=receipts?.[personId];
+    const confirmedAt=isMessagingTimestamp(stamp)&&stamp>=openedAt?stamp:null;
+    const member=members?.[personId];
+    return {personId,status:member?.active!==true||member.joinedAt!==epoch?'left':confirmedAt===null?'pending':'confirmed',confirmedAt};
+  });
 }

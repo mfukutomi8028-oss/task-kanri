@@ -146,6 +146,26 @@ try{
   assert.deepEqual(concurrent,[{status:'sent',id:nextId},{status:'sent',id:nextId}]);
   assert.equal((await mutationHistory.child(nextId+'/revision').get()).val(),1);
   console.log('MESSAGING_SCOPED_MUTATION_EMULATOR_OK');
+  // A request snapshots the current membership revision before writing.
+  await mutationControl.child('revision').set(1);
+  mutationNow=4000;
+  const confirmRequest='q_'+'1'.repeat(32),confirmId='msg_'+p+'_'+confirmRequest;
+  const confirmSend={...writeCall,command:{type:'send',requestId:confirmRequest,input:{body:'Please confirm',confirmationRequested:true}}};
+  assert.deepEqual(await writer.mutate(confirmSend),{status:'sent',id:confirmId});
+  assert.deepEqual((await mutationHistory.child(confirmId+'/confirmation').get()).val(),{round:1,targets:{[other]:1000}});
+  const projected=(await service.readHistory(writeCall)).messages.find(m=>m.id===confirmId);
+  assert.deepEqual(projected.confirmation,{round:1,targets:{[other]:1000}});
+  mutationNow=4500;
+  const confirmEdit={...writeCall,command:{type:'edit',messageId:confirmId,expectedRevision:1,input:{body:'Confirm revised report',confirmationRequested:true}}};
+  assert.equal((await writer.mutate(confirmEdit)).status,'ok');
+  assert.deepEqual((await mutationHistory.child(confirmId+'/confirmation').get()).val(),{round:2,targets:{[other]:1000}});
+  // Another membership change must invalidate the captured target snapshot.
+  const staleRequest='q_'+'2'.repeat(32),staleId='msg_'+p+'_'+staleRequest;
+  preCommit=()=>mutationControl.child('revision').set(2);
+  assert.deepEqual(await writer.mutate({...confirmSend,command:{...confirmSend.command,requestId:staleRequest}}),{status:'forbidden'});
+  assert.equal((await mutationHistory.child(staleId).get()).exists(),false);
+  preCommit=()=>{};
+  console.log('MESSAGING_CONFIRMATION_SNAPSHOT_EMULATOR_OK');
   await auth.updateUser(alice.localId,{disabled:true});
   assert.deepEqual(await service.readHistory(call),{status:'forbidden'});
   console.log('MESSAGING_ADMIN_HISTORY_EMULATOR_OK');

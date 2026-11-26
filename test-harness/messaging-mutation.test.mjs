@@ -57,3 +57,14 @@ test('edit and delete return only the authorized projection',async()=>{
 test('a write result is not returned if identity becomes invalid before response',async()=>{
   const f=fixture();f.before(()=>f.revoke());assert.deepEqual(await f.service.mutate(request),{status:'forbidden'});
 });
+
+test('confirmation targets derive from the trusted conversation snapshot and capture its revision for commit',async()=>{
+  let scopeSeen, stored;
+  const service=createMessagingMutationService({digestKey:new Uint8Array(32).fill(7),clock:()=>3000,
+    verifyToken:async()=>({uid:'uidA'}),readBinding:async()=>({uid:'uidA',roomId,personId:p,approved:true,active:true}),
+    readControl:async()=>({status:'active',revision:7,members:{[p]:{active:true,joinedAt:1000},[b]:{active:true,joinedAt:2000}}}),
+    transactMessage:async(scope,decide)=>{scopeSeen=scope;const decision=decide(null);stored=decision.record;return {status:'ok',decision};}
+  });
+  assert.deepEqual(await service.mutate({...request,command:{...request.command,input:{body:'Check',confirmationRequested:true}}}),{status:'sent',id:messageId});
+  assert.equal(scopeSeen.controlRevision,7);assert.deepEqual(stored.confirmation,{round:1,targets:{[b]:2000}});
+});

@@ -9,6 +9,19 @@ const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Objec
 const fail=status=>({status});
 const validDigest=v=>typeof v==='string'&&v.length===64&&/^[0-9a-f]{64}$/.test(v);
 
+// A newly requested confirmation may only target people who can read the
+// original message. Subsequent edits open a fresh round for the same targets.
+function confirmationFor(input,previous,context,revision,createdAt){
+  if(!input.confirmationRequested)return {};
+  let targets=previous?.confirmation?.targets;
+  if(!targets){
+    if(!record(context.members))throw new TypeError('Missing trusted members');
+    targets=Object.fromEntries(Object.entries(context.members).filter(([id,m])=>id!==context.personId&&m?.active===true&&isPersonId(id)&&isMessagingTimestamp(m.joinedAt)&&m.joinedAt<createdAt).map(([id,m])=>[id,m.joinedAt]));
+  }
+  if(!Object.keys(targets).length||Object.keys(targets).length>99)throw new TypeError('No eligible confirmation recipients');
+  return {confirmation:{round:revision,targets:{...targets}}};
+}
+
 export function createMessagingMessageCommands({digestKey}={}){
   if(!(digestKey instanceof Uint8Array)||digestKey.byteLength<32)throw new TypeError('A server-only retry digest key is required');
   const secret=createSecretKey(digestKey);
@@ -44,13 +57,16 @@ export function createMessagingMessageCommands({digestKey}={}){
         if(!timingSafeEqual(Buffer.from(digest,'hex'),Buffer.from(current.sendDigest,'hex')))return fail('conflict');
         return {status:'sent',id,changed:false,record:structuredClone(current),message:previous};
       }
-      const next={id,senderId:personId,createdAt:now,revision:1,...input,sendDigest:digest};
+      let confirmation;try{confirmation=confirmationFor(input,null,context,1,now);}catch(_){return fail('invalid');}
+      const next={id,senderId:personId,createdAt:now,revision:1,...input,...confirmation,sendDigest:digest};
       return {status:'sent',id,changed:true,record:next,message:projectMessagingMessage(next,{roomId,joinedAt})};
     }
     if(!previous||previous.deletedAt!=null)return fail('forbidden');
     if(previous.revision!==command.expectedRevision||previous.revision>=Number.MAX_SAFE_INTEGER)return fail('conflict');
     const base={id,senderId:previous.senderId,createdAt:previous.createdAt,revision:previous.revision+1,sendDigest:current.sendDigest};
-    const next=type==='remove'?{...base,deletedAt:now}:{...base,...input,editedAt:now};
+    let confirmation={};
+    if(type==='edit')try{confirmation=confirmationFor(input,previous,context,base.revision,base.createdAt);}catch(_){return fail('invalid');}
+    const next=type==='remove'?{...base,deletedAt:now}:{...base,...input,...confirmation,editedAt:now};
     return {status:'ok',changed:true,record:next,message:projectMessagingMessage(next,{roomId,joinedAt})};
   }
   return Object.freeze({apply});

@@ -19,7 +19,7 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
     const personId=binding.personId,control=await readControl({roomId,conversationId});
     const member=control?.members?.[personId];
     if(control?.status!=='active'||member?.active!==true||!isMessagingTimestamp(member.joinedAt))return null;
-    return {uid,roomId,conversationId,personId,joinedAt:member.joinedAt};
+    return {uid,roomId,conversationId,personId,joinedAt:member.joinedAt,members:control.members,controlRevision:control.revision};
   }
   async function mutate(request){
     if(!record(request)||Object.keys(request).some(k=>!requestFields.has(k)))return fail('invalid');
@@ -43,7 +43,10 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
       const messageId=type==='send'?messageIdFor(access.personId,clean.requestId):clean.messageId;
       if(!messageId.startsWith('msg_'+access.personId+'_'))return fail('forbidden');
       const now=clock();if(!isMessagingTimestamp(now)||now<=access.joinedAt)return fail('conflict');
-      const scope=Object.freeze({...access,messageId});
+      const {members,controlRevision,...actor}=access;
+      const requested=clean.input?.confirmationRequested===true;
+      if(requested&&(!Number.isSafeInteger(controlRevision)||controlRevision<1))return fail('unavailable');
+      const scope=Object.freeze({...actor,messageId,...(requested?{controlRevision}:{})});
       const result=await transactMessage(scope,current=>commands.apply(current,clean,{...access,now,active:true,conversationStatus:'active'}));
       if(result?.status!=='ok')return fail(result?.status==='forbidden'?'forbidden':'unavailable');
       const latest=await authorize(token,roomId,conversationId);
@@ -68,7 +71,7 @@ export function createFirebaseMessagingMutationService({auth,database,withActorD
     readBinding:({roomId,uid})=>read('messagingAccessV1/'+roomId+'/'+uid),
     readControl:({roomId,conversationId})=>read('messagingV1/'+roomId+'/control/'+conversationId),
     async transactMessage(scope,decide){
-      const override={uid:scope.uid,token:{workboardMessageMutationV1:true,roomId:scope.roomId,conversationId:scope.conversationId,personId:scope.personId,joinedAt:scope.joinedAt,messageId:scope.messageId}};
+      const override={uid:scope.uid,token:{workboardMessageMutationV1:true,roomId:scope.roomId,conversationId:scope.conversationId,personId:scope.personId,joinedAt:scope.joinedAt,messageId:scope.messageId,...(scope.controlRevision===undefined?{}:{controlRevision:scope.controlRevision})}};
       try{
         return await withActorDatabase(override,async db=>{
           const ref=db.ref('messagingV1/'+scope.roomId+'/messages/'+scope.conversationId+'/'+scope.messageId);

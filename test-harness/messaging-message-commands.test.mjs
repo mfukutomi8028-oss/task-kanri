@@ -54,3 +54,31 @@ test('server clock and malformed stored identity are checked before mutation',()
   assert.deepEqual(commands.apply(record,edit,context({now:1999})),{status:'conflict'});
   assert.deepEqual(commands.apply({...record,senderId:b},edit,context({now:3000})),{status:'unavailable'});
 });
+
+const c='p_'+'d'.repeat(32), late='p_'+'e'.repeat(32), group='group_g_'+'f'.repeat(32);
+const members={[a]:{active:true,joinedAt:1000},[b]:{active:true,joinedAt:1200},[c]:{active:false,joinedAt:1100},[late]:{active:true,joinedAt:2000}};
+const confirmSend={...send,input:{body:'Please check',confirmationRequested:true}};
+const confirmationContext=patch=>context({conversationId:group,members,...patch});
+test('confirmation request freezes eligible recipients and their membership epochs at send',()=>{
+  const r=commands.apply(null,confirmSend,confirmationContext());
+  assert.equal(r.status,'sent');assert.deepEqual(r.record.confirmation,{round:1,targets:{[b]:1200}});
+  assert.deepEqual(r.message.confirmation,r.record.confirmation);
+});
+test('editing a confirmation opens a new round without adding later participants',()=>{
+  const r=commands.apply(null,confirmSend,confirmationContext());
+  const edit={type:'edit',messageId,expectedRevision:1,input:{body:'Please check again',confirmationRequested:true}};
+  const updated=commands.apply(r.record,edit,confirmationContext({now:3000,members:{...members,[b]:{active:false,joinedAt:1200},[late]:{active:true,joinedAt:2500}}}));
+  assert.deepEqual(updated.record.confirmation,{round:2,targets:{[b]:1200}});
+  const removed=commands.apply(updated.record,{type:'remove',messageId,expectedRevision:2},confirmationContext({now:4000}));
+  assert.equal(removed.record.confirmation,undefined);assert.equal(removed.message.confirmation,undefined);
+});
+test('a request first enabled by editing cannot target people who joined after the original message',()=>{
+  const initial=commands.apply(null,send,confirmationContext());
+  const edit={type:'edit',messageId,expectedRevision:1,input:confirmSend.input};
+  const result=commands.apply(initial.record,edit,confirmationContext({now:4000}));
+  assert.deepEqual(result.record.confirmation,{round:2,targets:{[b]:1200}});
+});
+test('self-only or missing membership information cannot create a confirmation request',()=>{
+  assert.deepEqual(commands.apply(null,confirmSend,context({conversationId:'self_'+a,members:{[a]:members[a]}})),{status:'invalid'});
+  assert.deepEqual(commands.apply(null,confirmSend,confirmationContext({members:undefined})),{status:'invalid'});
+});
