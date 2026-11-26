@@ -2,7 +2,8 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
-import {get,ref,set,query,orderByChild,orderByKey,startAt,endBefore,limitToLast} from 'firebase/database';
+import {get,ref,set,update,runTransaction,query,orderByChild,orderByKey,startAt,endBefore,limitToLast} from 'firebase/database';
+import {createMessagingPersonalStateTransport} from './messaging-preview/workspace-messaging-personal.js';
 
 const host='127.0.0.1:9002';
 if(process.env.FIREBASE_DATABASE_EMULATOR_HOST!==host) throw new Error('Messaging rules require the isolated loopback emulator: '+host);
@@ -106,6 +107,59 @@ try {
     assert.equal(values(tie).includes('m055'),false);
   });
   console.log('MESSAGING_TRUSTED_QUERY_SHAPE_OK');
+  // Two real authenticated SDK clients, including a second approved UID for
+  // the same person, exercise the personal state transport and Rules together.
+  const personalGroup='group_g_'+'e'.repeat(32),pc=root+'/control/'+personalGroup;
+  const msg=n=>'msg_'+other+'_q_'+n.toString(16).padStart(32,'0');
+  const cursor=(n,createdAt=2000)=>({id:msg(n),createdAt});
+  const message=(n,createdAt=2000)=>({id:msg(n),senderId:other,createdAt,revision:1,body:'Synthetic message'});
+  const scope={roomId:room,personId:p,conversationId:personalGroup,joinedAt:1000};
+  const otherScope={...scope,personId:other};
+  const personalPath=root+'/personal/'+p+'/'+personalGroup+'/1000';
+  const adapter=ctx=>createMessagingPersonalStateTransport({db:ctx.database(),ref,get,update,set,runTransaction});
+  await env.withSecurityRulesDisabled(async admin=>{
+    await set(path(admin,access+'/uidA2'),binding('uidA2',p));
+    await set(path(admin,pc),{kind:'group',status:'active',members:{[p]:{active:true,joinedAt:1000,role:'member'},[other]:{active:true,joinedAt:1000,role:'member'}}});
+    await set(path(admin,root+'/messages/'+personalGroup),{[msg(0)]:message(0,999),[msg(1)]:message(1),[msg(2)]:message(2),[msg(3)]:message(3,2100),[msg(4)]:{...message(4,2200),deletedAt:2300}});
+  });
+  const first=adapter(member),second=adapter(env.authenticatedContext('uidA2')),bob=adapter(nonmember);
+  assert.deepEqual(await first.setPersonalState({...scope,patch:{favorite:true,muted:true}}),{status:'ok'});
+  assert.deepEqual(await second.setPersonalState({...scope,patch:{archived:true}}),{status:'ok'});
+  assert.deepEqual((await first.readPersonalState(scope)).preferences,{favorite:true,muted:true,archived:true,pinned:false});
+  assert.deepEqual((await bob.readPersonalState(otherScope)).preferences,{favorite:false,muted:false,archived:false,pinned:false});
+  for(const ctx of [anon,unknown,unapproved,nonmember]){
+    assert.deepEqual(await adapter(ctx).readPersonalState(scope),{status:'forbidden'});
+    assert.deepEqual(await adapter(ctx).setPersonalState({...scope,patch:{favorite:false}}),{status:'forbidden'});
+  }
+  await deny(get(path(member,root+'/personal')));
+  await deny(get(path(member,personalPath)));
+  await deny(update(path(member,personalPath+'/preferences'),{favorite:false,unknown:true}));
+  await deny(set(path(member,personalPath+'/preferences/muted'),'true'));
+  assert.equal((await first.readPersonalState(scope)).preferences.favorite,true);
+  assert.deepEqual(await first.markRead({...scope,cursor:cursor(2)}),{status:'ok',cursor:cursor(2)});
+  assert.deepEqual(await second.markRead({...scope,cursor:cursor(1)}),{status:'ok',cursor:cursor(2)});
+  await deny(set(path(member,personalPath+'/readCursor'),cursor(1)));
+  await deny(set(path(member,personalPath+'/readCursor'),cursor(2,2001)));
+  await deny(set(path(member,personalPath+'/readCursor'),null));
+  await deny(set(path(member,personalPath+'/readCursor'),{...cursor(2),extra:true}));
+  assert.deepEqual(await second.markRead({...scope,cursor:cursor(3,2100)}),{status:'ok',cursor:cursor(3,2100)});
+  const mark={...scope,messageId:msg(1),bookmarked:true};
+  assert.deepEqual(await first.setBookmark(mark),{status:'ok'});
+  assert.deepEqual(await second.setBookmark(mark),{status:'ok'});
+  assert.deepEqual(await second.readBookmark(mark),{status:'ok',bookmarked:true});
+  assert.deepEqual(await bob.readBookmark({...mark,personId:other}),{status:'ok',bookmarked:false});
+  for(const n of [0,4,5])assert.deepEqual(await first.setBookmark({...mark,messageId:msg(n)}),{status:'forbidden'});
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,root+'/messages/'+personalGroup+'/'+msg(1)+'/deletedAt'),2400));
+  assert.deepEqual(await first.readBookmark(mark),{status:'forbidden'});
+  assert.deepEqual(await first.setBookmark({...mark,bookmarked:false}),{status:'ok'});
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,pc+'/members/'+p+'/active'),false));
+  assert.deepEqual(await first.readPersonalState(scope),{status:'forbidden'});
+  assert.deepEqual(await first.setPersonalState({...scope,patch:{pinned:true}}),{status:'forbidden'});
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,pc+'/members/'+p),{active:true,joinedAt:2050,role:'member'}));
+  assert.deepEqual(await second.readPersonalState(scope),{status:'forbidden'});
+  assert.deepEqual(await first.readPersonalState({...scope,joinedAt:2050}),{status:'ok',preferences:{favorite:false,muted:false,archived:false,pinned:false},cursor:null});
+  assert.deepEqual(await first.markRead({...scope,joinedAt:2050,cursor:cursor(3,2100)}),{status:'ok',cursor:cursor(3,2100)});
+  console.log('MESSAGING_PERSONAL_STATE_EMULATOR_OK');
   // A fresh context after a server-side membership change cannot use old grants.
   await env.withSecurityRulesDisabled(admin=>set(path(admin,control+'/members/'+p+'/active'),false));
   const left=env.authenticatedContext('uidA');

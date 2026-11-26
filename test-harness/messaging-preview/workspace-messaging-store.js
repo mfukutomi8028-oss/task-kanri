@@ -175,11 +175,13 @@ export function createMessagingStore({session,transport}={}){
     if(conversationId!==target.conversationId||state.status!=='ready'||!state.messages.some(m=>sameCursor(m,cursor)))return result('invalid');
     if(state.readCursor&&compareCursor(state.readCursor,cursor)>=0)return result('ignored');
     const token=generation,joinedAt=state.joinedAt,requested=cursorOf(cursor);try{
-      const response=await transport.markRead({...target,cursor:requested});
+      const response=await transport.markRead({...target,personId:identity.personId,joinedAt,cursor:requested});
       if(!stillMember(token,joinedAt))return result('locked');
       if(response?.status==='locked'||response?.status==='forbidden'){lockConversation();return result('locked');}
       if(response?.status!=='ok')return result('failed');
-      const next=advanceReadCursor(state.readCursor,requested);cursors.set(conversationId,next);publish({readCursor:next});return result('ok');
+      const committed=response.cursor??requested;
+      if(!isMessageId(committed?.id)||!isMessagingTimestamp(committed.createdAt)||committed.createdAt<=joinedAt||compareCursor(committed,requested)<0)return result('failed');
+      const next=advanceReadCursor(state.readCursor,committed);cursors.set(conversationId,next);publish({readCursor:next});return result('ok');
     }catch(_){return result(stillMember(token,joinedAt)?'failed':'locked');}
   }
   stopSession=session.subscribe(onIdentity);

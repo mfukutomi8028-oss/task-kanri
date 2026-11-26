@@ -161,3 +161,17 @@ test('10,000 stored messages still require only the bounded initial page and one
   assert.equal(f.watches.filter(w=>!w.closed).length,1);await f.store.loadOlder();assert.equal(f.store.getSnapshot().messages.length,100);
   assert.equal(f.store.getSnapshot().messages[0].id,id(9901));assert.equal(f.calls.length,2);f.store.dispose();
 });
+test('read cursor sends the bound person and current membership epoch and adopts the committed remote cursor',async()=>{
+  const remote=cursor(message(105));const f=fixture({markReadHook:()=>({status:'ok',cursor:remote})});
+  await f.store.setActiveConversation(c);
+  assert.deepEqual(await f.store.markRead({conversationId:c,cursor:cursor(message(100)),visible:true}),{status:'ok'});
+  assert.deepEqual(f.reads,[{roomId:room,conversationId:c,personId:a,joinedAt:1000,cursor:cursor(message(100))}]);
+  assert.deepEqual(f.store.getSnapshot().readCursor,remote);f.store.dispose();
+});
+test('a remote cursor response cannot regress the requested position or belong to a prior membership',async()=>{
+  for(const response of [cursor(message(99)),{id:id(99),createdAt:999}]){
+    const f=fixture({markReadHook:()=>({status:'ok',cursor:response})});await f.store.setActiveConversation(c);
+    assert.deepEqual(await f.store.markRead({conversationId:c,cursor:cursor(message(100)),visible:true}),{status:'failed'});
+    assert.equal(f.store.getSnapshot().readCursor,null);f.store.dispose();
+  }
+});
