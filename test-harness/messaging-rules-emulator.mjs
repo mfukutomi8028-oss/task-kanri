@@ -43,18 +43,25 @@ async function diagnoseListRead() {
     ['start-present',"query.startAt != null"],
     ['start-numeric',"query.startAt === query.startAt + 0"],
     ['start-value',"query.startAt > 1000"],
+    ['start-eq-number',"query.startAt === 1001"],
+    ['start-eq-string',"query.startAt === '1001'"],
+    ['start-gt-string',"query.startAt > '1000'"],
+    ['start-loose-number',"query.startAt == 1001"],
+    ['key-start-eq',"query.orderByKey && query.startAt === 'm001'",true],
+    ['key-start-gt',"query.orderByKey && query.startAt > 'm000'",true],
     ['limit-present',"query.limitToLast != null"],
     ['limit-range',"query.limitToLast >= 1 && query.limitToLast <= 50"],
     ['first-absent',"query.limitToFirst == null"],
     ['complete',complete]
   ];
-  for(const [name,condition] of clauses){
+  for(const [name,condition,byKey] of clauses){
     const modified=structuredClone(candidate);
     modified.rules.messagingV1.$roomId.messages.$conversationId['.read']="auth != null && auth.uid === 'uidA' && ("+condition+")";
     let probe;
     try {
       probe=await initializeTestEnvironment({projectId:'demo-task-kanri-messaging',database:{host:'127.0.0.1',port:9002,rules:JSON.stringify(modified)}});
-      const q=latest(probe.authenticatedContext('uidA'));
+      const ctx=probe.authenticatedContext('uidA');
+      const q=byKey?query(path(ctx,history),orderByKey(),startAt('m001'),limitToLast(50)):latest(ctx);
       let getResult='deny';
       try {await get(q);getResult='allow'} catch {}
       const watchResult=await new Promise(resolve=>{
