@@ -252,3 +252,5 @@ assert.equal(report.unknownCompletion.some(t=>t.id==='no-completion-date'),true)
 
 - CI 45737052584で候補ルールと実Firebase Adminの限定スコープを用いた保存・再送・編集/削除・同時書込・退会時の拒否・対象外書込拒否の結合試験が成功（MESSAGING_SCOPED_MUTATION_EMULATOR_OK）。Protocol 1,192/1,192、配信整合性成功。現時点では本番への適用・HTTP配備は未実施。
 - Task 6/8: `workspace-messaging-refs.js` / `workspace-messaging-report.js` に業務参照の現在値取得・引用・共有一覧（業務ID/URL）・読み込んだ履歴検索・会話復帰の契約、日次業務報告とメッセージ起点の業務作成下書きを追加。新規11件、ローカル全76件成功。実装判断: 日本時間、担当者の一致、予定は実施未確認として区別、完了日時不明を集計しない、進行中は同名ステータス、本文/参照数超過は明示し自動送信しない。既存 `app.js` の `paletteNextSnapshot()` は `completedAt` を公開していないため、UI接続前に共通snapshotに正本の完了日時を追加する必要がある（更新日時を代用しない）。Originの実画面/bridge接続、検索権限の世代管理、ファイル共有、正式な業務作成保存は未完了。取得済みかつ現在の会話所属で許可されたメッセージを前提とする。
+
+- Task 7/8: Origin専用の隔離プレビューを追加。共通store・session・refs・reportを使用。会話一覧（個人/自分/グループ、検索・絞り込み）、会話履歴、送信/返信/編集/削除、IME保護、業務データの選択・参照・共有一覧、日次報告の下書き。既存Originのトークンを継承し、モバイルで一覧/会話/共有を切替。架空fixtureのみで本番接続しない。Chromiumで3画面幅（1366ライト・390ライト・320ダーク）の操作試験成功。ローカルHTTPアクセスは環境制限のため不可、同一ソースをメモリ上に組み立てたDOMで検証。Hallmark静的チェック0 FAIL/REFLEX/WARN、render tierは利用できず。実ESMのPlaywright検査3件をCIに追加。既存Originへの正式組込、状態管理・確認応答・通知・招待管理画面、ファイル添付、実運用接続は未完了。このプレビューはPagesの配信対象外。初回公開は未実施。
