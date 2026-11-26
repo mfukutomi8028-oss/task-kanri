@@ -4628,6 +4628,7 @@ if(window.WORK_BOARD_MESSAGING?.enabled===true&&typeof bridge.getMessagingConnec
    isActive:()=>document.documentElement.dataset.wbDisplay==='modern',
    cssUrl:new URL('origin-messaging.css?v='+window.WORK_BOARD_RELEASE_VERSION,document.baseURI).href,
    connect:()=>bridge.getMessagingConnection(),mountCloud:cloud.mountCloudOriginMessaging,
+   onNotification:kind=>notify(kind==='invite'?'新しいグループ招待があります。':'新着メッセージがあります。'),
    board:{readSnapshot:()=>bridge.readSnapshot(),readMemos:()=>memoBridge.readSnapshot(),subscribe:fn=>bridge.subscribe(fn),
     canReadRecord,openRecord(ref,scope){if(!canReadRecord(ref,scope))return false;closeOriginSettings();closeCreateMenu();closeSearch();panelShow(recordKind[ref.type],ref.recordId,false);return panelOpen&&panelKind===recordKind[ref.type]&&panelId===ref.recordId;}
    }
