@@ -82,3 +82,18 @@ test('self-only or missing membership information cannot create a confirmation r
   assert.deepEqual(commands.apply(null,confirmSend,context({conversationId:'self_'+a,members:{[a]:members[a]}})),{status:'invalid'});
   assert.deepEqual(commands.apply(null,confirmSend,confirmationContext({members:undefined})),{status:'invalid'});
 });
+
+test('send retry works without a Node global Buffer, as in the Edge runtime',()=>{
+  const descriptor=Object.getOwnPropertyDescriptor(globalThis,'Buffer');
+  try{
+    assert.equal(Reflect.deleteProperty(globalThis,'Buffer'),true);
+    const initial=create();
+    assert.equal(initial.status,'sent');
+    const retry=commands.apply(initial.record,send,context({now:2100}));
+    assert.equal(retry.status,'sent');assert.equal(retry.changed,false);assert.equal(retry.id,messageId);
+    assert.deepEqual(retry.record,initial.record);
+    assert.deepEqual(commands.apply(initial.record,{...send,input:{body:'Changed'}},context({now:2100})),{status:'conflict'});
+  }finally{
+    if(descriptor)Object.defineProperty(globalThis,'Buffer',descriptor);
+  }
+});

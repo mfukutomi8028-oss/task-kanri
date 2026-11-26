@@ -2,6 +2,7 @@
 // actor, check current membership at commit and perform a per-record atomic write.
 // No database, HTTP endpoint, or production credentials are configured here.
 import {createHmac,createSecretKey,timingSafeEqual} from 'node:crypto';
+import {Buffer} from 'node:buffer';
 import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,messageIdFor,projectMessagingMessage,validateRoomMessageInput} from '../workspace-messaging-core.js';
 
 const allowed={send:['type','requestId','input'],edit:['type','messageId','expectedRevision','input'],remove:['type','messageId','expectedRevision']};
