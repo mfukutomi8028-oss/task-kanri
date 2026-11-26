@@ -47,3 +47,7 @@ test('sender reads only the current round and validates receipt timestamps',asyn
   f.data.set(parent,{[b]:3500,[c]:3600});assert.deepEqual(await f.t.readReceipts(scope),{status:'ok',receipts:{[b]:3500,[c]:3600}});
   f.data.set(parent,{[b]:'3500'});assert.deepEqual(await f.t.readReceipts(scope),{status:'unavailable'});
 });
+test('confirmation returns the stored server timestamp instead of the SDK local estimate',async()=>{
+  const f=transportModule.createMessagingConfirmationTransport({db:{},ref:(_,p)=>p,get:async()=>({val:()=>3501}),serverTimestamp:()=>({'.sv':'timestamp'}),runTransaction:async()=>({committed:true,snapshot:{val:()=>3500}})});
+  assert.deepEqual(await f.confirm(scope),{status:'ok',confirmedAt:3501});
+});

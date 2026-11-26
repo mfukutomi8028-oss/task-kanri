@@ -22,7 +22,8 @@ export function createMessagingConfirmationTransport({db,ref,get,runTransaction,
       // Keep the first server timestamp even for concurrent retries from another device.
       const tx=await runTransaction(target,current=>current===null?serverTimestamp():timestamp(current),{applyLocally:false});
       if(!tx.committed)return fail('unavailable');
-      return {status:'ok',confirmedAt:timestamp(tx.snapshot.val())};
+      // A serverTimestamp in the transaction snapshot may still be a local estimate.
+      return {status:'ok',confirmedAt:timestamp((await get(target)).val())};
     });},
     readReceipts(scope){return invoke(scope,false,async target=>{
       const raw=(await get(target)).val();if(raw===null)return {status:'ok',receipts:{}};

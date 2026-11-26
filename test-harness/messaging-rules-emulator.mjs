@@ -185,7 +185,7 @@ try {
   assert.deepEqual(await receiver.confirm(confirmationScope),acknowledged);
   assert.deepEqual(await sender.readReceipts(senderScope),{status:'ok',receipts:{[other]:acknowledged.confirmedAt}});
   await deny(set(path(nonmember,receiptRoot+'/1/'+other),null));
-  await deny(set(path(nonmember,receiptRoot+'/1/'+other),serverTimestamp()));
+  await deny(set(path(nonmember,receiptRoot+'/1/'+other),acknowledged.confirmedAt+1));
   // The sender's read cursors and receipt round are independent.
   await env.withSecurityRulesDisabled(async admin=>{
     await update(path(admin,confirmMessage),{revision:2,editedAt:3000,confirmation:{round:2,targets:{[other]:1200}}});
