@@ -5,6 +5,7 @@ import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getDatabase} from 'firebase-admin/database';
 import {createFirebaseMessagingHistoryService} from '../security/messaging-history-service.mjs';
+import {applyConversationCommand} from '../security/messaging-conversation-commands.mjs';
 
 const projectId='demo-task-kanri-messaging',authHost='127.0.0.1:9098',dbHost='127.0.0.1:9002';
 if(process.env.FIREBASE_AUTH_EMULATOR_HOST!==authHost||process.env.FIREBASE_DATABASE_EMULATOR_HOST!==dbHost){
@@ -53,6 +54,48 @@ try{
   await db.ref(access+'/'+alice.localId+'/active').set(false);
   assert.deepEqual(await service.readHistory(call),{status:'forbidden'});
   await db.ref(access+'/'+alice.localId+'/active').set(true);
+  // Exercise the real stored control schema and transaction retries with
+  // synthetic members. This test helper is not an authorization endpoint.
+  const lifecycle='group_g_'+'e'.repeat(32),lifecycleRef=db.ref(root+'/control/'+lifecycle);
+  const lifecycleHistory=db.ref(root+'/messages/'+lifecycle);
+  const lifecycleCall={...call,conversationId:lifecycle};
+  const bobCall={...lifecycleCall,token:bob.idToken};
+  async function changeControl(command,personId,now){
+    let decision;
+    const observer=()=>{};
+    lifecycleRef.on('value',observer);
+    try{
+      await lifecycleRef.once('value');
+      const transaction=await lifecycleRef.transaction(current=>{
+        decision=applyConversationCommand(current,command,{personId,roomId:room,conversationId:lifecycle,now,approvedPersonIds:[p,other]});
+        return decision.status==='ok'&&decision.changed?decision.control:undefined;
+      },undefined,false);
+      return {status:decision?.status,committed:transaction.committed};
+    }finally{lifecycleRef.off('value',observer);}
+  }
+  assert.deepEqual(await changeControl({type:'createGroup',title:'Synthetic project',invitees:[other]},p,2000),{status:'ok',committed:true});
+  assert.deepEqual(await service.readHistory(bobCall),{status:'forbidden'});
+  await lifecycleHistory.child(msgId(101)).set({senderId:p,createdAt:2100,revision:1,body:'Before joining'});
+  assert.deepEqual(await changeControl({type:'respondInvite',accept:true,expectedRevision:1},other,2200),{status:'ok',committed:true});
+  await lifecycleHistory.child(msgId(102)).set({senderId:p,createdAt:2200,revision:1,body:'At join'});
+  await lifecycleHistory.child(msgId(103)).set({senderId:p,createdAt:2300,revision:1,body:'After joining'});
+  assert.deepEqual((await service.readHistory(bobCall)).messages.map(m=>m.id),[msgId(103)]);
+  const parallel=await Promise.all([
+    changeControl({type:'rename',title:'First change',expectedRevision:2},p,2400),
+    changeControl({type:'rename',title:'Second change',expectedRevision:2},p,2400)
+  ]);
+  assert.equal(parallel.filter(x=>x.committed).length,1);
+  assert.equal(parallel.filter(x=>x.status==='conflict').length,1);
+  assert.equal((await lifecycleRef.child('revision').get()).val(),3);
+  assert.deepEqual(await changeControl({type:'removeMember',personId:other,expectedRevision:3},p,2500),{status:'ok',committed:true});
+  assert.deepEqual(await service.readHistory(bobCall),{status:'forbidden'});
+  assert.deepEqual(await changeControl({type:'invite',personIds:[other],expectedRevision:4},p,2600),{status:'ok',committed:true});
+  assert.deepEqual(await service.readHistory(bobCall),{status:'forbidden'});
+  assert.deepEqual(await changeControl({type:'respondInvite',accept:true,expectedRevision:5},other,2700),{status:'ok',committed:true});
+  await lifecycleHistory.child(msgId(104)).set({senderId:p,createdAt:2800,revision:1,body:'After rejoining'});
+  assert.deepEqual((await service.readHistory(bobCall)).messages.map(m=>m.id),[msgId(104)]);
+  assert.deepEqual((await service.readHistory(lifecycleCall)).messages.map(m=>m.id),[101,102,103,104].map(msgId));
+  console.log('MESSAGING_GROUP_LIFECYCLE_EMULATOR_OK');
   await auth.updateUser(alice.localId,{disabled:true});
   assert.deepEqual(await service.readHistory(call),{status:'forbidden'});
   console.log('MESSAGING_ADMIN_HISTORY_EMULATOR_OK');
