@@ -244,3 +244,6 @@ assert.equal(report.unknownCompletion.some(t=>t.id==='no-completion-date'),true)
 - Task 3: 共通クライアントストアを実装。active会話だけ購読、50件取得、履歴の重複・欠落防止、会話別メモリ下書き、同時送信要求集約、編集/削除結果のrevision照合、既読カーソル、再加入時の状態/下書き破棄。サーバーとクライアントの共通メッセージ射影・正規化処理をcoreへ集約した。41件のローカルNodeテスト成功（新規store 15件、10,000件の合成履歴を含む）。履歴サービスの実Firebase Admin/Auth/RTDB Emulator検査は直前のCI 45734719874で成功。書込み・既読の実Firebase transport、実購読・永続下書き、会話管理、全UI、添付API、本番接続は引き続き未実装。Mock/fixtureでの成功を実際の送信成功と扱わない。初回公開に進むまでは配信資産へ含めない。
 
 - 中断後再開: `security/messaging-conversation-commands.mjs` に小さいcontrolノードの状態遷移を追加。direct/selfの一意ID、グループ新規作成、招待/承諾/辞退、名称変更、所有者移譲、除外/退出/再加入、archive/reopen、revision競合、100人（未承諾招待含む）上限。新規9件、ローカル全50件成功。直前CI 45735401958のProtocol 1,168件および認可・実Auth/RTDB履歴取得成功を確認。本処理は認証済みの信頼主体から渡されたcontextを前提とする純粋な状態遷移であり、実DBの原子的更新・本人資格のコミット時再検証・一覧索引・APIは未実装。実際の会話の作成・招待が可能になったとは扱わない。第2工程続行中、初回公開は未実施。
+
+- グループ状態遷移を実Firebase Emulatorの小さいcontrolノードのtransactionと履歴サービスへ接続する検査を追加。承諾前・加入同時刻・除外・再加入の履歴、同じrevisionからの並行更新1件のみ成功を確認（CI 45736034593のMessaging認可ステップ成功）。本番APIではない。
+- `security/messaging-message-commands.mjs` に送信・編集・削除の信頼サーバー側状態遷移を実装。決定的ID、サーバーだけが持つ鍵による再送指紋、同一要求の再送で既存recordを維持、異内容再送拒否、revision一致、本人の編集/削除、削除時に本文/参照を除去。新規8件、ローカル全58件成功。これは実際の書き込みAPIではない。本人確認・現在の所属・承認状態のコミット時検証を備えた保存transport、原子的書き込み、確認依頼の対象/round、添付、リアルタイム・通知、Origin画面の接続が残る。署名用鍵は本番設定時に安全なサーバー側秘密として管理し、リポジトリへ保存しない。
