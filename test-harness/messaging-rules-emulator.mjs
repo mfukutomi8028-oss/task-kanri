@@ -5,6 +5,7 @@ import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/ru
 import {get,ref,set,update,runTransaction,serverTimestamp,query,orderByChild,orderByKey,startAt,endBefore,limitToLast} from 'firebase/database';
 import {createMessagingPersonalStateTransport} from './messaging-preview/workspace-messaging-personal.js';
 import {createMessagingConfirmationTransport} from './messaging-preview/workspace-messaging-confirmations.js';
+import {createMessagingSharedTransport} from './messaging-preview/workspace-messaging-shared.js';
 
 const host='127.0.0.1:9002';
 if(process.env.FIREBASE_DATABASE_EMULATOR_HOST!==host) throw new Error('Messaging rules require the isolated loopback emulator: '+host);
@@ -201,6 +202,54 @@ try {
   await env.withSecurityRulesDisabled(admin=>update(path(admin,confirmMessage),{deletedAt:5000,confirmation:null,confirmationRequested:null,body:null,revision:3}));
   assert.deepEqual(await sender.readReceipts({...senderScope,round:2}),{status:'forbidden'});
   console.log('MESSAGING_CONFIRMATION_RECEIPTS_EMULATOR_OK');
+  // Per-message shared state inherits the same current membership and history boundary.
+  const sg='group_g_'+'1'.repeat(32),sc=root+'/control/'+sg,sharedId='msg_'+p+'_q_'+'1'.repeat(32);
+  const sharedMessage=root+'/messages/'+sg+'/'+sharedId;
+  const sharedScope={roomId:room,conversationId:sg,messageId:sharedId,personId:other};
+  const ownerScope={...sharedScope,personId:p};
+  const decoration=ctx=>createMessagingSharedTransport({db:ctx.database(),ref,get,set});
+  await env.withSecurityRulesDisabled(async admin=>{
+    await set(path(admin,sc),{kind:'group',status:'active',members:{[p]:{active:true,joinedAt:1000,role:'owner'},[other]:{active:true,joinedAt:1200,role:'member'},[denied]:{active:true,joinedAt:1300,role:'member'}}});
+    await set(path(admin,sharedMessage),{id:sharedId,senderId:p,createdAt:2000,revision:1,body:'Shared message'});
+  });
+  const ownerDecor=decoration(member),memberDecor=decoration(nonmember);
+  assert.deepEqual(await memberDecor.readReactions(sharedScope),{status:'ok',reactions:{}});
+  assert.deepEqual(await memberDecor.setReaction({...sharedScope,reaction:'like'}),{status:'ok'});
+  assert.deepEqual(await memberDecor.setReaction({...sharedScope,reaction:'like'}),{status:'ok'});
+  assert.deepEqual(await ownerDecor.readReactions(ownerScope),{status:'ok',reactions:{[other]:'like'}});
+  assert.deepEqual(await memberDecor.setReaction({...ownerScope,reaction:'thanks'}),{status:'forbidden'});
+  for(const ctx of [anon,unknown,unapproved]){
+    assert.deepEqual(await decoration(ctx).readReactions(sharedScope),{status:'forbidden'});
+    assert.deepEqual(await decoration(ctx).setReaction({...sharedScope,reaction:'like'}),{status:'forbidden'});
+  }
+  const reactionRoot=root+'/reactions/'+sg+'/'+sharedId;
+  await deny(get(path(member,root+'/reactions/'+sg)));
+  await deny(set(path(nonmember,reactionRoot+'/'+other),'unknown'));
+  await deny(set(path(nonmember,reactionRoot),{[p]:'like'}));
+  assert.deepEqual(await memberDecor.setReaction({...sharedScope,reaction:'thanks'}),{status:'ok'});
+  assert.deepEqual(await ownerDecor.readReactions(ownerScope),{status:'ok',reactions:{[other]:'thanks'}});
+  assert.deepEqual(await memberDecor.setReaction({...sharedScope,reaction:null}),{status:'ok'});
+  assert.deepEqual(await ownerDecor.readReactions(ownerScope),{status:'ok',reactions:{}});
+  assert.deepEqual(await memberDecor.setSharedPin({...sharedScope,pinned:true}),{status:'forbidden'});
+  assert.deepEqual(await ownerDecor.setSharedPin({...ownerScope,pinned:true}),{status:'ok'});
+  assert.deepEqual(await memberDecor.readSharedPin(sharedScope),{status:'ok',pinned:true});
+  assert.deepEqual(await memberDecor.setSharedPin({...sharedScope,pinned:false}),{status:'forbidden'});
+  await deny(get(path(member,root+'/sharedPins/'+sg)));
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,sc+'/status'),'archived'));
+  assert.deepEqual(await memberDecor.setReaction({...sharedScope,reaction:'like'}),{status:'forbidden'});
+  assert.deepEqual(await ownerDecor.setSharedPin({...ownerScope,pinned:false}),{status:'forbidden'});
+  assert.deepEqual(await ownerDecor.readSharedPin(ownerScope),{status:'ok',pinned:true});
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,sc+'/status'),'active'));
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,sc+'/members/'+other+'/active'),false));
+  assert.deepEqual(await memberDecor.readReactions(sharedScope),{status:'forbidden'});
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,sc+'/members/'+other),{active:true,joinedAt:2100,role:'member'}));
+  assert.deepEqual(await memberDecor.readSharedPin(sharedScope),{status:'forbidden'});
+  assert.deepEqual(await memberDecor.setReaction({...sharedScope,reaction:'like'}),{status:'forbidden'});
+  assert.deepEqual(await ownerDecor.setSharedPin({...ownerScope,pinned:false}),{status:'ok'});
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,sharedMessage+'/deletedAt'),2200));
+  assert.deepEqual(await ownerDecor.readReactions(ownerScope),{status:'forbidden'});
+  assert.deepEqual(await ownerDecor.setSharedPin({...ownerScope,pinned:true}),{status:'forbidden'});
+  console.log('MESSAGING_SHARED_STATE_EMULATOR_OK');
   // A fresh context after a server-side membership change cannot use old grants.
   await env.withSecurityRulesDisabled(admin=>set(path(admin,control+'/members/'+p+'/active'),false));
   const left=env.authenticatedContext('uidA');
