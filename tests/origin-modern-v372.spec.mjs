@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 test('Modern origin renders real app data and can switch back to Classic', async ({page}) => {
   test.setTimeout(90000);
+  const messagingErrors=[];
+  page.on('pageerror',error=>{if(error.message.includes('originMessagingEntry'))messagingErrors.push(error.message);});
   await page.setViewportSize({width:1366,height:900});
   await page.route('**/*', route => new URL(route.request().url()).origin === 'http://127.0.0.1:4173'
     ? route.continue() : route.abort('blockedbyclient'));
@@ -31,7 +33,41 @@ test('Modern origin renders real app data and can switch back to Classic', async
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
   await expect(root).toBeHidden();
   await expect(page.locator('.app-shell')).toBeVisible();
+  expect(messagingErrors).toEqual([]);
 });
+
+test('Origin messaging entry closes when switching displays and reopens only on request', async ({page}) => {
+  test.setTimeout(90000);
+  await page.setViewportSize({width:1366,height:900});
+  await page.route('**/*', route => new URL(route.request().url()).origin === 'http://127.0.0.1:4173'
+    ? route.continue() : route.abort('blockedbyclient'));
+  const errors=[];
+  page.on('pageerror',error=>{if(error.message.includes('originMessagingEntry'))errors.push(error.message);});
+  await page.addInitScript(()=>{
+    Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null;},set(){}});
+    Object.defineProperty(window,'WORK_BOARD_MESSAGING',{configurable:true,get(){return Object.freeze({enabled:true,endpoint:'https://abcdefghijklmnopqrst.supabase.co/functions/v1/workboard-messaging',attachmentsEnabled:true});},set(){}});
+    localStorage.setItem('systemTaskUser','OriginMessagingDisplayTester');
+    localStorage.setItem('systemTaskRoomId','origin-messaging-display-test');
+  });
+  await page.goto('/?room=origin-messaging-display-test',{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.WORK_BOARD_ASSETS_READY===true,undefined,{timeout:30000});
+  await page.locator('[data-wb-display-choice="modern"]').evaluate(el=>el.click());
+  const root=page.locator('#modernOriginRoot'),trigger=root.locator('.origin-message-trigger'),dialog=root.locator('dialog.origin-message-host');
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  await expect(dialog).toHaveAttribute('open','');
+  await page.evaluate(()=>window.WorkBoardDisplayController.selectMode('classic'));
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
+  await expect(dialog).not.toHaveAttribute('open','');
+  await expect(trigger).toHaveAttribute('hidden','');
+  await page.evaluate(()=>window.WorkBoardDisplayController.selectMode('modern'));
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','modern');
+  await expect(trigger).not.toHaveAttribute('hidden','');
+  await expect(dialog).not.toHaveAttribute('open','');
+  await expect(trigger).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 
 test('Origin ToDo changes appear in Classic with the same data source', async ({page}) => {
   test.setTimeout(90000);
