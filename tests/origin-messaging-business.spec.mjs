@@ -27,7 +27,7 @@ test('Origin creates a canonical task and shares its reference from the detail',
     window.WorkBoardPaletteBridge={...base,readSnapshot:()=>map(base.readSnapshot()),subscribe:fn=>base.subscribe(s=>fn(map(s))),
       async getMessagingConnection(){
         window.__startupConnections++;
-        const getSnapshot=path=>({val:()=>path==='.info/connected'?true:path==='messagingAccessV1/'+roomId+'/'+uid?{uid,roomId,personId,displayName:name,approved:true,active:true}:path.endsWith('/members/'+personId)?{active:true,joinedAt:1000,role:'member'}:path.endsWith('/'+message.id)?message:null});
+        const getSnapshot=path=>({val:()=>(path==='.info/connected'||path==='messagingControlV1/enabled')?true:path==='messagingAccessV1/'+roomId+'/'+uid?{uid,roomId,personId,displayName:name,approved:true,active:true}:path.endsWith('/members/'+personId)?{active:true,joinedAt:1000,role:'member'}:path.endsWith('/'+message.id)?message:null});
         const sdk={db:{},ref:(_,path)=>path,get:async path=>getSnapshot(path),onValue(path,fn){let disposed=false;queueMicrotask(()=>{if(!disposed)fn(getSnapshot(path));});return ()=>{disposed=true;};},set(){throw Error('Unexpected write');},update(){throw Error('Unexpected write');},runTransaction(_path,update){return Promise.resolve({committed:true,snapshot:{val:()=>update(null)}});},serverTimestamp:()=>({})};
         const user={uid,getIdToken:async()=> 'synthetic-id-token'};
         return {app:{},sdk,authSdk:{getAuth:()=>({currentUser:user,authStateReady:async()=>{}}),signInAnonymously(){throw Error('Unexpected sign-in');},onAuthStateChanged(_auth,fn){queueMicrotask(fn);return ()=>{};}}};

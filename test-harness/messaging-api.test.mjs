@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {createMessagingApiHandler} from '../security/messaging-api-handler.mjs';
 import {createMessagingApiTransport} from '../workspace-messaging-api.js';
 const origin='https://board.example.test',endpoint='https://api.example.test/messaging',roomId='roomA',p='p_'+'a'.repeat(32),conversationId='self_'+p,token='synthetic-id-token';
-function fixture(budget){
+function fixture(budget,checkAvailable){
   const calls=[];
-  const handler=createMessagingApiHandler({allowedOrigins:[origin],reserveRequest:budget,history:{async readHistory(input){calls.push(['history',input]);return input.token===token?{status:'ok',joinedAt:1000,messages:[],nextCursor:null,hasMore:false}:{status:'forbidden'};}},mutation:{async mutate(input){calls.push(['message',input]);return {status:'conflict'};}},directory:{async readDirectory(input){calls.push(['directory',input]);return {status:'ok',roomId,personId:p,conversations:[],invites:[],hasMore:false,nextCursor:null};},async readUnread(input){calls.push(['unread',input]);return {status:'ok',roomId,personId:p,conversationId,joinedAt:1000,unread:0,latestIncoming:null,muted:false,complete:true};}},conversations:{async readPeople(input){calls.push(['people',input]);return {status:'ok',roomId,personId:p,people:[]};},async execute(input){calls.push(['conversation',input]);return {status:'ok',conversationId,revision:1,indexPending:false};}}});
+  const handler=createMessagingApiHandler({allowedOrigins:[origin],reserveRequest:budget,checkAvailable,history:{async readHistory(input){calls.push(['history',input]);return input.token===token?{status:'ok',joinedAt:1000,messages:[],nextCursor:null,hasMore:false}:{status:'forbidden'};}},mutation:{async mutate(input){calls.push(['message',input]);return {status:'conflict'};}},directory:{async readDirectory(input){calls.push(['directory',input]);return {status:'ok',roomId,personId:p,conversations:[],invites:[],hasMore:false,nextCursor:null};},async readUnread(input){calls.push(['unread',input]);return {status:'ok',roomId,personId:p,conversationId,joinedAt:1000,unread:0,latestIncoming:null,muted:false,complete:true};}},conversations:{async readPeople(input){calls.push(['people',input]);return {status:'ok',roomId,personId:p,people:[]};},async execute(input){calls.push(['conversation',input]);return {status:'ok',conversationId,revision:1,indexPending:false};}}});
   let identity={status:'bound',roomId,personId:p},listener;const session={getSnapshot:()=>identity,subscribe(fn){listener=fn;fn(identity);return ()=>{listener=null;};}};
   const fetchImpl=(url,init)=>{const headers=new Headers(init.headers);headers.set('Origin',origin);return handler(new Request(url,{...init,headers}));};
   return {handler,calls,session,fetchImpl,setIdentity(next){identity=next;listener?.(next);}};
@@ -62,4 +62,23 @@ test('global work budget rejects before a costly service and returns bounded Ret
   assert.equal(reservations[0].action,'directory');
   assert.ok(reservations[0].units>=120);
   assert.deepEqual(f.calls,[]);
+});
+
+test('a warm API denies new work when the central messaging stop changes',async()=>{
+  let gate=true;
+  const f=fixture(null,async()=>gate);
+  assert.equal((await f.handler(post(envelope('history')))).status,200);
+  gate=false;
+  assert.equal((await f.handler(post(envelope('history')))).status,503);
+  assert.equal(f.calls.length,1);
+  gate=true;
+  assert.equal((await f.handler(post(envelope('history')))).status,200);
+  assert.equal(f.calls.length,2);
+});
+test('a stop during an otherwise successful read withholds the result',async()=>{
+  let calls=0;
+  const f=fixture(null,async()=>++calls===1);
+  const response=await f.handler(post(envelope('history')));
+  assert.equal(response.status,503);
+  assert.deepEqual(await response.json(),{status:'unavailable'});
 });

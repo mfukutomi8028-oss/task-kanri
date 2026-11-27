@@ -28,7 +28,7 @@ function validActorOverride(override){
   }
   return false;
 }
-export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDatabase,deleteApp,createHistory,createMutation,createDirectory,createConversations,createApiHandler,createSupabase,createAttachments,makeId=()=>crypto.randomUUID()}={}){
+export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDatabase,deleteApp,createHistory,createMutation,createDirectory,createConversations,createApiHandler,createSupabase,createAttachments,fetchControl=globalThis.fetch,makeId=()=>crypto.randomUUID()}={}){
   if([getEnv,cert,initializeApp,getAuth,getDatabase,deleteApp,createHistory,createMutation,createDirectory,createConversations,createApiHandler,makeId].some(fn=>typeof fn!=='function'))throw new TypeError('Messaging runtime adapters required');
   let startup;
   async function boot(){
@@ -57,6 +57,23 @@ export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDat
       if(typeof url!=='string'||!/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(url)||typeof key!=='string'||!key.trim()||typeof createSupabase!=='function')throw new TypeError('Trusted budget configuration required');
       const supabase=createSupabase(url,key);
       const {reserveRequest,reserveSend}=createMessagingBudget(supabase);
+      const controlURL=new URL('messagingControlV1/enabled.json',config.databaseURL);
+      async function checkAvailable(){
+        if(getEnv('WORKBOARD_MESSAGING_ENABLED')!=='true')return false;
+        const controller=new AbortController();
+        let timer;
+        try{
+          async function read(){
+            const {access_token}=await options.credential.getAccessToken();
+            if(controller.signal.aborted||typeof access_token!=='string'||!access_token)return false;
+            const response=await fetchControl(controlURL.href,{headers:{Authorization:'Bearer '+access_token},signal:controller.signal,cache:'no-store',redirect:'error'});
+            return response.ok&&await response.json()===true;
+          }
+          return await Promise.race([read(),new Promise(resolve=>{
+            timer=setTimeout(()=>{controller.abort();resolve(false);},3000);
+          })]);
+        }catch(_){return false;}finally{clearTimeout(timer);}
+      }
       const shared={auth,database};
       // Attachments are separately gated until the private bucket, RPCs and
       // Firebase authorization have passed deployment verification.
@@ -66,12 +83,12 @@ export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDat
         attachments=createAttachments({...shared,supabase});
         if([attachments?.upload,attachments?.download,attachments?.claim,attachments?.acquireSend].some(fn=>typeof fn!=='function'))throw new TypeError('Attachment services required');
       }
-      const handler=createApiHandler({reserveRequest,allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,reserveSend,...(attachments?{claimAttachments:attachments.claim,acquireAttachmentLease:attachments.acquireSend}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments});
+      const handler=createApiHandler({reserveRequest,checkAvailable,allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,reserveSend,...(attachments?{claimAttachments:attachments.claim,acquireAttachmentLease:attachments.acquireSend}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments});
       if(typeof handler!=='function')throw new TypeError('Invalid API handler');
       return handler;
     }catch(_){if(app)try{await deleteApp(app);}catch(_){/* Do not expose startup errors or secrets. */}return null;}
   }
   return async function handle(request){
-    try{startup??=boot();const handler=await startup;return handler?await handler(request):unavailable();}catch(_){return unavailable();}
+    try{if(getEnv('WORKBOARD_MESSAGING_ENABLED')!=='true')return unavailable();startup??=boot();const handler=await startup;return handler?await handler(request):unavailable();}catch(_){return unavailable();}
   };
 }

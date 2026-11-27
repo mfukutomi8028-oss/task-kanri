@@ -37,6 +37,7 @@ const deny=(operation)=>assertFails(operation);
 try {
   await env.withSecurityRulesDisabled(async admin=>{
     await set(path(admin,'/'),{
+      messagingControlV1:{enabled:true},
       rooms:{[room]:{meta:{users:['Synthetic uidA']}}},
       messagingAccessV1:{[room]:{
         uidA:binding('uidA',p),uidB:binding('uidB',other),uidDenied:binding('uidDenied',denied,false)
@@ -275,6 +276,21 @@ try {
   await deny(get(latest(rejoined,1054)));
   await assertSucceeds(get(path(rejoined,history+'/m054')));
   await assertSucceeds(get(path(rejoined,history+'/m055')));
+  await deny(set(path(rejoined,'messagingControlV1/enabled'),false));
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,'messagingControlV1/enabled'),false));
+  await deny(get(path(rejoined,history+'/m055')));
+  await deny(get(path(rejoined,access+'/uidA')));
+  const stoppedPersonal=root+'/personal/'+p+'/'+group+'/1053/preferences';
+  await deny(set(path(rejoined,stoppedPersonal+'/favorite'),true));
+  await deny(get(path(rejoined,stoppedPersonal)));
+  await assertSucceeds(get(path(rejoined,'messagingControlV1/enabled')));
+  await assertSucceeds(set(path(anon,'rooms/'+room+'/meta/reviewMarker'),'synthetic'));
+  await assertSucceeds(get(path(anon,'rooms/'+room+'/meta/reviewMarker')));
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,'messagingControlV1/enabled'),'invalid'));
+  await deny(get(path(rejoined,history+'/m055')));
+  await env.withSecurityRulesDisabled(admin=>set(path(admin,'messagingControlV1/enabled'),true));
+  await assertSucceeds(get(path(rejoined,history+'/m055')));
+  console.log('MESSAGING_EMERGENCY_STOP_AND_LEGACY_COMPATIBILITY_OK');
   await env.withSecurityRulesDisabled(admin=>set(path(admin,access+'/uidA/active'),false));
   const revoked=env.authenticatedContext('uidA');
   await deny(get(latest(revoked,1054)));

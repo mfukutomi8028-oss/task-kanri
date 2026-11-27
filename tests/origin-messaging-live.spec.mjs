@@ -13,9 +13,9 @@ test('cloud composition clears the authorized directory on disconnect and dispos
     const binding={uid,roomId,personId,displayName:'Synthetic',approved:true,active:true};
     const boardSnapshot={roomId,currentUser:'Synthetic',connectionMode:'remote-online',tasks:[],schedules:[]};
     const subscriptions=new Set(),calls=[],summaries=[],notices=[],sentRequests=[],sentRecords=new Map();
-    let online=true,seedHistory=false,unread=2,marker='00000000-0000-4000-8000-000000000001';const unreadCalls=[];
+    let online=true,serviceEnabled=true,seedHistory=false,unread=2,marker='00000000-0000-4000-8000-000000000001';const unreadCalls=[];
     const bindingKey='messagingAccessV1/'+roomId+'/'+uid;
-    const value=path=>path==='.info/connected'?online:path===bindingKey?binding:
+    const value=path=>path==='.info/connected'?online:path==='messagingControlV1/enabled'?serviceEnabled:path===bindingKey?binding:
       [selfId,directId].some(id=>path==='messagingV1/'+roomId+'/control/'+id+'/members/'+personId)?{active:true,joinedAt:1000,role:'member'}:
       path==='messagingV1/'+roomId+'/activity/'+directId?marker:null;
     const snapshot=path=>({val:()=>value(path)});
@@ -53,7 +53,7 @@ test('cloud composition clears the authorized directory on disconnect and dispos
       throw Error('Unexpected request '+action);
     };
     const handle=mountCloudOriginMessaging({root,endpoint:'https://example.invalid/messaging',sdk,auth,board,fetchImpl,keepNotificationSession:true,onSummary:s=>summaries.push(s),onNotification:kind=>notices.push(kind)});
-    window.__liveCloudTest={handle,calls,sentRequests,sentRecords,seedHistory(){seedHistory=true;},unreadCalls,selfId,directId,summaries,notices,incoming(){unread++;marker='00000000-0000-4000-8000-'+String(unread).padStart(12,'0');for(const row of [...subscriptions])if(row.path==='messagingV1/'+roomId+'/activity/'+directId)row.fn(snapshot(row.path));},disconnect(){online=false;for(const row of [...subscriptions])if(row.path==='.info/connected')row.fn(snapshot(row.path));},subscriptionCount:()=>subscriptions.size};
+    window.__liveCloudTest={handle,calls,sentRequests,sentRecords,seedHistory(){seedHistory=true;},setService(value){serviceEnabled=value;for(const row of [...subscriptions])if(row.path==='messagingControlV1/enabled')row.fn(snapshot(row.path));},unreadCalls,selfId,directId,summaries,notices,incoming(){unread++;marker='00000000-0000-4000-8000-'+String(unread).padStart(12,'0');for(const row of [...subscriptions])if(row.path==='messagingV1/'+roomId+'/activity/'+directId)row.fn(snapshot(row.path));},disconnect(){online=false;for(const row of [...subscriptions])if(row.path==='.info/connected')row.fn(snapshot(row.path));},subscriptionCount:()=>subscriptions.size};
   });
   const root=page.locator('#liveCloud');
   await expect(root.getByText('自分宛てメッセージ',{exact:true})).toBeVisible();
@@ -108,6 +108,12 @@ test('cloud composition clears the authorized directory on disconnect and dispos
   await expect(root.locator('.om-timeline')).toContainText('Older searchable text');
   await expect(root.locator('#om-message-search')).toHaveValue('Older searchable');
   await expect(root.locator('.om-search-bar .om-coverage')).toContainText('取得済み 51件');
+  await page.evaluate(()=>window.__liveCloudTest.setService(false));
+  await expect.poll(()=>page.evaluate(()=>window.__liveCloudTest.handle.getSnapshot().status)).toBe('locked');
+  await expect(root.locator('.om-message')).toHaveCount(0);
+  await expect(root.locator('#om-body')).toBeHidden();
+  await page.evaluate(()=>window.__liveCloudTest.setService(true));
+  await expect.poll(()=>page.evaluate(()=>window.__liveCloudTest.handle.getSnapshot().status)).toBe('bound');
   expect(await page.evaluate(()=>window.__liveCloudTest.handle.hideWorkspace())).toBe(true);
   await page.evaluate(()=>window.__liveCloudTest.disconnect());
   await expect.poll(()=>page.evaluate(()=>window.__liveCloudTest.handle.getSnapshot().status)).toBe('locked');

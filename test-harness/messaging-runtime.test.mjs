@@ -54,3 +54,33 @@ test('a missing or ambiguous actor scope can never create an unrestricted Admin 
   for(const scope of [null,{}, {uid:'u',token:{}},{uid:'u',token:{workboardMessageMutationV1:true,workboardConversationMutationV1:true}}])await assert.rejects(withActorDatabase(scope,async()=>assert.fail('unscoped access')));
   assert.equal(f.apps.length,1);
 });
+
+test('the warm runtime checks the process kill switch on every request',async()=>{
+  const env={...base},f=fixture(env),server=createMessagingRuntime(f.deps);
+  assert.equal((await server(request())).status,200);
+  env.WORKBOARD_MESSAGING_ENABLED='false';
+  await closed(await server(request()));
+  assert.equal(f.requests.length,1);
+  env.WORKBOARD_MESSAGING_ENABLED='true';
+  assert.equal((await server(request())).status,200);
+});
+
+test('the central stop always reads the uncached HTTPS control and fails closed on errors or invalid values',async()=>{
+  const f=fixture(),requests=[];
+  let value=true;
+  f.deps.cert=()=>({getAccessToken:async()=>({access_token:'fixture-token'})});
+  f.deps.fetchControl=async (url,options)=>{
+    requests.push({url,cache:options.cache,redirect:options.redirect});
+    if(value instanceof Error)throw value;
+    return Response.json(value);
+  };
+  await createMessagingRuntime(f.deps)(request());
+  const {checkAvailable}=f.services.find(([kind])=>kind==='handler')[1];
+  assert.equal(await checkAvailable(),true);
+  for(const state of [false,'true',null,new Error('synthetic network error')]){
+    value=state;
+    assert.equal(await checkAvailable(),false);
+  }
+  assert.equal(requests.length,5);
+  assert.ok(requests.every(row=>row.url===base.WORKBOARD_FIREBASE_DATABASE_URL+'/messagingControlV1/enabled.json'&&row.cache==='no-store'&&row.redirect==='error'));
+});

@@ -26,8 +26,9 @@ function workUnits(action,payload){
   if(action==='attachmentUpload'||action==='attachmentDownload')return 64;
   return 24;
 }
-export function createMessagingApiHandler({allowedOrigins,history,mutation,directory,conversations,attachments=null,reserveRequest=null}={}){
+export function createMessagingApiHandler({allowedOrigins,history,mutation,directory,conversations,attachments=null,reserveRequest=null,checkAvailable=null}={}){
   if(!Array.isArray(allowedOrigins)||!allowedOrigins.length||allowedOrigins.some(origin=>{try{const url=new URL(origin);return url.protocol!=='https:'||url.origin!==origin;}catch(_){return true;}}))throw new TypeError('Explicit HTTPS origins required');
+  if(checkAvailable!==null&&typeof checkAvailable!=='function')throw new TypeError('Invalid messaging stop control');
   if(reserveRequest!==null&&typeof reserveRequest!=='function')throw new TypeError('Invalid messaging request budget');
   const origins=new Set(allowedOrigins);
   const attachmentHttp=attachments===null?null:createMessagingAttachmentHttp({attachments});
@@ -43,6 +44,15 @@ export function createMessagingApiHandler({allowedOrigins,history,mutation,direc
       const result=messagingBudgetDecision(await reserveRequest(action,workUnits(action,payload)));
       return result.status==='ok'?null:json(codes[result.status],result);
     }
+    const unavailable=()=>json(503,{status:'unavailable'});
+    const enabled=async()=>!checkAvailable||await checkAvailable()===true;
+    async function protect(action,payload,perform){
+      if(!await enabled())return unavailable();
+      const limited=await budget(action,payload);
+      if(limited)return limited;
+      const response=await perform();
+      return response.ok&&!await enabled()?unavailable():response;
+    }
     if(!allowed)return json(403,{status:'forbidden'});
     if(request.method==='OPTIONS'){
       const requested=(request.headers.get('Access-Control-Request-Headers')||'').split(',').map(v=>v.trim().toLowerCase()).filter(Boolean);
@@ -53,19 +63,18 @@ export function createMessagingApiHandler({allowedOrigins,history,mutation,direc
     const bearer=/^Bearer ([^\s,]+)$/i.exec(request.headers.get('Authorization')||'');
     if(!bearer||bearer[1].length>MAX_TOKEN)return json(401,{status:'forbidden'});
     if(attachmentHttp&&request.headers.get('Content-Type')==='application/octet-stream'){
-      try{return await budget('attachmentUpload')??await attachmentHttp.upload(request,bearer[1],json);}
+      try{return await protect('attachmentUpload',{},()=>attachmentHttp.upload(request,bearer[1],json));}
       catch(_){return json(503,{status:'unavailable'});}
     }
     if(!/^application\/json(?:\s*;\s*charset\s*=\s*utf-8)?$/i.test(request.headers.get('Content-Type')||''))return json(415,{status:'invalid'});
     const decoded=await readJson(request);if(decoded.error)return json(decoded.error,{status:'invalid'});
     const body=decoded.value;
     if(!record(body)||Object.keys(body).length!==3||typeof body.action!=='string'||(!Object.hasOwn(operations,body.action)&&!(attachmentHttp&&body.action==='attachmentDownload'))||!isPersonId(body.expectedPersonId)||!record(body.payload)||Object.hasOwn(body.payload,'token')||Object.hasOwn(body.payload,'expectedPersonId'))return json(400,{status:'invalid'});
-    try{
-      const limited=await budget(body.action,body.payload);if(limited)return limited;
+    try{return await protect(body.action,body.payload,async()=>{
       if(body.action==='attachmentDownload')return attachmentHttp.download({...body.payload,token:bearer[1],expectedPersonId:body.expectedPersonId},headers,json);
       const result=await operations[body.action]({...body.payload,token:bearer[1],expectedPersonId:body.expectedPersonId});
       if(!record(result)||typeof result.status!=='string'||!Object.hasOwn(codes,result.status))return json(503,{status:'unavailable'});
       return json(codes[result.status],result);
-    }catch(_){return json(503,{status:'unavailable'});}
+    });}catch(_){return json(503,{status:'unavailable'});}
   };
 }

@@ -1,6 +1,7 @@
 // Exercise the real Firebase Admin Auth + RTDB SDK in the isolated demo project.
 // Never run this script against a production project or production credential.
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {initializeApp,deleteApp} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getDatabase} from 'firebase-admin/database';
@@ -18,6 +19,7 @@ if(process.env.FIREBASE_AUTH_EMULATOR_HOST!==authHost||process.env.FIREBASE_DATA
 const app=initializeApp({projectId,databaseURL:'https://'+projectId+'.firebaseio.com'},'messaging-history-demo');
 try{
   const auth=getAuth(app),db=getDatabase(app),service=createFirebaseMessagingHistoryService({auth,database:db});
+  await db.ref('messagingControlV1/enabled').set(true);
   async function anonymousAccount(){
     const response=await fetch('http://'+authHost+'/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo',{
       method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({returnSecureToken:true})
@@ -253,7 +255,8 @@ try{
   // The real HTTP boundary routes verified Firebase ID tokens to these actual
   // Emulator-backed services; the request and origin are synthetic.
   const apiOrigin='https://board.example.test';
-  const apiHandler=createMessagingApiHandler({allowedOrigins:[apiOrigin],history:service,mutation:writer,directory,conversations:controlService});
+  const gate=db.ref('messagingControlV1/enabled');
+  const apiHandler=createMessagingApiHandler({allowedOrigins:[apiOrigin],checkAvailable:async()=>(await gate.get()).val()===true,history:service,mutation:writer,directory,conversations:controlService});
   const apiCall=(account,personId,action,payload)=>apiHandler(new Request('https://api.example.test/messaging',{method:'POST',headers:{Origin:apiOrigin,'Content-Type':'application/json',Authorization:'Bearer '+account.idToken},body:JSON.stringify({action,payload:{roomId:directoryRoom,...payload},expectedPersonId:personId})}));
   const directoryResponse=await apiCall(alice,p,'directory',{});
   assert.equal(directoryResponse.status,200);assert.equal((await directoryResponse.json()).conversations.length,3);
@@ -291,6 +294,34 @@ try{
   assert.equal((await apiCall(alice,p,'unread',{conversationId:direct,personId:other})).status,400);
   console.log('MESSAGING_UNREAD_HTTP_EMULATOR_OK');
   console.log('MESSAGING_HTTP_BOUNDARY_EMULATOR_OK');
+  // Stop, snapshot only the synthetic room, and restore its exact keys.
+  const scopePaths=[directoryRoot,directoryAccess,rosterPath];
+  const snapshot=async()=>Object.fromEntries(await Promise.all(scopePaths.map(async location=>[location,(await db.ref(location).get()).val()])));
+  const canonical=value=>value&&typeof value==='object'&&!Array.isArray(value)
+    ?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+  const digest=value=>createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
+  const legacyPath='rooms/isolatedBackupLegacy/meta/reviewMarker';
+  await db.ref(legacyPath).set('isolated sentinel');
+  await gate.set(false);
+  assert.equal((await apiCall(alice,p,'history',{conversationId:personalConversation})).status,503);
+  const before=await snapshot(),backup=JSON.stringify(before),hash=digest(before);
+  await db.ref().update(Object.fromEntries(scopePaths.map(location=>[location,null])));
+  assert.ok(Object.values(await snapshot()).every(value=>value===null));
+  await db.ref().update(JSON.parse(backup));
+  assert.equal(digest(await snapshot()),hash);
+  assert.deepEqual(await snapshot(),before);
+  assert.equal((await db.ref(legacyPath).get()).val(),'isolated sentinel');
+  assert.equal((await apiCall(alice,p,'message',apiPayload)).status,503);
+  await gate.set(true);
+  const restoredHistory=await apiCall(alice,p,'history',{conversationId:personalConversation});
+  assert.equal(restoredHistory.status,200);
+  assert.deepEqual((await restoredHistory.json()).messages.map(row=>row.id),[apiId]);
+  assert.equal((await apiCall(bob,other,'history',{conversationId:personalConversation})).status,403);
+  assert.equal((await apiCall(alice,p,'message',apiPayload)).status,200);
+  assert.equal((await (await unreadCall()).json()).joinedAt,14000);
+  await db.ref(legacyPath).remove();
+  console.log('MESSAGING_SYNTHETIC_BACKUP_RESTORE_OK');
+
   const deniedGroup='group_g_'+'2'.repeat(32);
   preCommit=()=>db.ref(rosterPath+'/revision').set(2);
   assert.deepEqual(await command(alice,deniedGroup,createGroup),{status:'forbidden'});

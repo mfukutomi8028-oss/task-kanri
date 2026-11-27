@@ -21,9 +21,9 @@ const safely=fn=>{try{fn?.();}catch(_){/* Release other resources even if one di
 const validUid=v=>typeof v==='string'&&v.length>=1&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
 const validLabel=v=>typeof v==='string'&&v.length>=1&&v.length<=64&&v===v.trim()&&!/[\u0000-\u001f\u007f]/.test(v);
 
-export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImpl,attachmentsEnabled=false,keepNotificationSession=false,draftOwner=createMessagingDraftOwner(),onSummary=()=>{},onNotification=()=>{},onClose=()=>{}}={}){
+export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImpl,attachmentsEnabled=false,keepNotificationSession=false,draftOwner=createMessagingDraftOwner(),onSummary=()=>{},onAvailability=()=>{},onNotification=()=>{},onClose=()=>{}}={}){
   if(!root||!sdk?.db||['ref','get','onValue','set','update','runTransaction','serverTimestamp'].some(k=>typeof sdk[k]!=='function')||['getUid','getToken','observeAuth'].some(k=>typeof auth?.[k]!=='function')||['readSnapshot','readMemos','canReadRecord','openRecord','restoreConversation','subscribe'].some(k=>typeof board?.[k]!=='function')||[onClose,onSummary,onNotification].some(fn=>typeof fn!=='function'))throw new TypeError('Cloud messaging host adapters required');
-  const stops=[];let disposed=false,online=false,lastContext=null,store=null,view=null,resolver=null,stopStore=null;
+  const stops=[];let disposed=false,online=false,control=null,lastContext=null,store=null,view=null,resolver=null,stopStore=null;
   function disposeWorkspace(){const previousView=view,previousStore=store,previousStop=stopStore;view=null;store=null;resolver=null;stopStore=null;safely(previousStop);safely(()=>previousView?.dispose());safely(()=>previousStore?.dispose());}
   function own(resource){stops.push(()=>resource.dispose());return resource;}
   function dispose(){if(disposed)return;disposed=true;disposeWorkspace();for(const stop of stops.reverse())safely(stop);stops.length=0;}
@@ -31,17 +31,24 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
     const bindingPath=({roomId,uid})=>{if(!isMessagingRoomId(roomId)||!validUid(uid))throw new TypeError('Invalid binding scope');return 'messagingAccessV1/'+roomId+'/'+uid;};
     const read=async path=>(await sdk.get(sdk.ref(sdk.db,path))).val();
     const session=own(createMessagingSession({
-      getAuthUid:()=>online?auth.getUid():null,
+      getAuthUid:()=>online&&control===true?auth.getUid():null,
       readBinding:target=>read(bindingPath(target)),
       observeBinding:(target,changed,error)=>sdk.onValue(sdk.ref(sdk.db,bindingPath(target)),s=>changed(s.val()),error),
       observeAuth(changed){
-        let stopAuth,stopConnection;
+        let stopAuth,stopConnection,stopControl;
         try{
           stopAuth=auth.observeAuth(()=>{draftOwner.checkUid(auth.getUid());changed();});
           stopConnection=sdk.onValue(sdk.ref(sdk.db,'.info/connected'),snapshot=>{const next=snapshot.val()===true;if(online!==next){online=next;changed();}},()=>{online=false;changed();});
-          if(typeof stopAuth!=='function'||typeof stopConnection!=='function')throw new TypeError('Disposable auth and connection required');
-          return ()=>{online=false;safely(stopAuth);safely(stopConnection);};
-        }catch(error){safely(stopAuth);safely(stopConnection);throw error;}
+          const applyControl=value=>{
+            if(value===control)return;
+            control=value;
+            changed();
+            onAvailability(control);
+          };
+          stopControl=sdk.onValue(sdk.ref(sdk.db,'messagingControlV1/enabled'),snapshot=>applyControl(snapshot.val()===true),()=>applyControl(false));
+          if(typeof stopAuth!=='function'||typeof stopConnection!=='function'||typeof stopControl!=='function')throw new TypeError('Disposable auth and connection required');
+          return ()=>{online=false;safely(stopAuth);safely(stopConnection);safely(stopControl);};
+        }catch(error){safely(stopAuth);safely(stopConnection);safely(stopControl);throw error;}
       },onLock:()=>{},onBindingRejected:draftOwner.clear
     }));
     const api=own(createMessagingApiTransport({endpoint,session,getToken:()=>auth.getToken(),...(fetchImpl?{fetchImpl}:{})}));
@@ -110,6 +117,6 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
       syncContext(snapshot);
     });if(typeof stopBoard!=='function')throw new TypeError('Disposable canonical board required');stops.push(stopBoard);
     syncContext(board.readSnapshot());
-    return Object.freeze({getSnapshot:()=>session.getSnapshot(),getApprovalRequest(){const uid=auth.getUid();return !disposed&&session.getSnapshot().status==='locked'&&lastContext&&validUid(uid)?{roomId:lastContext.roomId,displayName:lastContext.selectedDisplayName,uid}:null;},subscribe:fn=>session.subscribe(fn),hideWorkspace,showWorkspace,share:ref=>view?.share(ref)??false,open:id=>view?.open(id)??Promise.resolve(false),restore(){const actor=session.getSnapshot(),state=store?.getSnapshot();return actor.status==='bound'&&state?.status==='ready'&&resolver?resolver.restore({...actor,conversationId:state.conversationId,joinedAt:state.joinedAt}):Promise.resolve(false);},dispose});
+    return Object.freeze({getSnapshot:()=>session.getSnapshot(),getAvailability:()=>control,getApprovalRequest(){const uid=auth.getUid();return !disposed&&control===true&&online&&session.getSnapshot().status==='locked'&&lastContext&&validUid(uid)?{roomId:lastContext.roomId,displayName:lastContext.selectedDisplayName,uid}:null;},subscribe:fn=>session.subscribe(fn),hideWorkspace,showWorkspace,share:ref=>view?.share(ref)??false,open:id=>view?.open(id)??Promise.resolve(false),restore(){const actor=session.getSnapshot(),state=store?.getSnapshot();return actor.status==='bound'&&state?.status==='ready'&&resolver?resolver.restore({...actor,conversationId:state.conversationId,joinedAt:state.joinedAt}):Promise.resolve(false);},dispose});
   }catch(error){dispose();throw error;}
 }
