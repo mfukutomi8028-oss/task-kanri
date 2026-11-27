@@ -899,13 +899,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
    if(taskListWrite)setOriginTaskListWriteFeedback('error',originTaskListWriteError(command));
    return false;
  }
- finally{
-   busy=false;
-   if(savingPanel){
-     if($('#editForm')?.dataset.messagingInvalidated==='true')closePanel(true,false);
-     else markOriginEditorSaving(false);
-   }
- }
+ finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
 }
 let originStickyMemoModeV659='business', originStickyControllerV659=null;
 function originMemoReadV660(){return window.WorkBoardPersonalStickyStoreV659?.readMemoChoice?.(snapshot.currentUser)||'business';}
@@ -3391,6 +3385,7 @@ function updateOriginDraftState(){
 function markOriginEditorSaving(saving,command){
  const form=$('#editForm'),indicator=$('#originDraftState');
  if(!form||panelMode!=='edit')return;
+ if(!saving&&form.dataset.messagingInvalidated==='true'){closePanel(true,false);return;}
  form.inert=saving;
  form.setAttribute('aria-busy',String(saving));
  if(indicator){
