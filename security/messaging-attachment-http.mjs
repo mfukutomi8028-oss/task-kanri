@@ -12,17 +12,19 @@ const encodeName=v=>encodeURIComponent(v).replace(/['()*]/g,c=>'%'+c.charCodeAt(
 export function createMessagingAttachmentHttp({attachments}={}){
   if(typeof attachments?.upload!=='function'||typeof attachments?.download!=='function')throw new TypeError('Attachment services required');
   function error(result,json){const status=Object.hasOwn(codes,result?.status)&&result.status!=='ok'?result.status:'unavailable';return json(codes[status],{status});}
-  async function upload(request,token,json){
+  async function upload(request,token,json,protect=(_metadata,perform)=>perform()){
     try{
       const header=request.headers.get('X-Workboard-Upload');
       if(!header||header.length>4096||!request.body)return json(400,{status:'invalid'});
       let metadata;try{metadata=JSON.parse(decodeURIComponent(header));}catch(_){return json(400,{status:'invalid'});}
       if(!record(metadata)||Object.keys(metadata).length!==fields.length||Object.keys(metadata).some(k=>!fields.includes(k))||!isPersonId(metadata.expectedPersonId)||!isMessagingRoomId(metadata.roomId)||!isConversationId(metadata.conversationId)||typeof metadata.requestId!=='string'||!/^q_[0-9a-f]{32}$/.test(metadata.requestId)||!Number.isInteger(metadata.slot)||metadata.slot<0||metadata.slot>4||!safeName(metadata.filename)||!mimeTypes.has(metadata.mime)||!validSize(metadata.declaredBytes))return json(400,{status:'invalid'});
       const length=request.headers.get('Content-Length');if(length!==null&&(!/^\d+$/.test(length)||Number(length)!==metadata.declaredBytes))return json(400,{status:'invalid'});
-      const result=await attachments.upload({...metadata,token,body:request.body});
-      if(result?.status!=='ok')return error(result,json);
-      if(!isMessagingAttachmentId(result.attachmentId)||result.filename!==metadata.filename||result.mime!==metadata.mime||result.bytes!==metadata.declaredBytes)return json(503,{status:'unavailable'});
-      return json(200,{status:'ok',attachmentId:result.attachmentId,filename:result.filename,mime:result.mime,bytes:result.bytes});
+      return await protect(metadata,async()=>{
+        const result=await attachments.upload({...metadata,token,body:request.body});
+        if(result?.status!=='ok')return error(result,json);
+        if(!isMessagingAttachmentId(result.attachmentId)||result.filename!==metadata.filename||result.mime!==metadata.mime||result.bytes!==metadata.declaredBytes)return json(503,{status:'unavailable'});
+        return json(200,{status:'ok',attachmentId:result.attachmentId,filename:result.filename,mime:result.mime,bytes:result.bytes});
+      });
     }catch(_){return json(503,{status:'unavailable'});}
   }
   async function download(input,headers,json){

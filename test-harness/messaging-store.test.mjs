@@ -201,3 +201,18 @@ test('a denied personal state read locks the conversation instead of exposing th
   const f=fixture({readPersonalStateHook:async()=>({status:'forbidden'})});
   assert.deepEqual(await f.store.setActiveConversation(c),{status:'forbidden'});assert.equal(f.store.getSnapshot().status,'forbidden');assert.deepEqual(f.store.getSnapshot().messages,[]);assert.equal(f.store.getSnapshot().preferences,null);f.store.dispose();
 });
+
+test('a send denial hides the draft until the same membership is reauthorized',async()=>{
+  const f=fixture({sendHook:async()=>({status:'forbidden'})});
+  await f.store.setActiveConversation(c);
+  f.store.setDraft('synthetic draft');
+  const composer=f.store.getComposer();
+  composer.attempt={payload:{body:'immutable retry'}};
+  assert.equal((await f.store.send({conversationId:c,requestId:'q_'+'7'.repeat(32),input:{body:'synthetic draft'}})).status,'locked');
+  assert.equal(f.store.getSnapshot().draft,'');
+  assert.equal(f.store.getComposer(),null);
+  await f.store.setActiveConversation(c);
+  assert.equal(f.store.getSnapshot().draft,'synthetic draft');
+  assert.equal(f.store.getComposer().attempt.payload.body,'immutable retry');
+  f.store.dispose();
+});

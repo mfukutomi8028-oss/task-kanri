@@ -67,10 +67,10 @@ test('the warm runtime checks the process kill switch on every request',async()=
 
 test('the central stop always reads the uncached HTTPS control and fails closed on errors or invalid values',async()=>{
   const f=fixture(),requests=[];
-  let value=true;
-  f.deps.cert=()=>({getAccessToken:async()=>({access_token:'fixture-token'})});
+  let value=true,tokenCalls=0;
+  f.deps.cert=()=>({getAccessToken:async()=>{tokenCalls++;return {access_token:'fixture-token',expires_in:3600};}});
   f.deps.fetchControl=async (url,options)=>{
-    requests.push({url,cache:options.cache,redirect:options.redirect});
+    requests.push({url,cache:options.headers['Cache-Control'],redirect:options.redirect});
     if(value instanceof Error)throw value;
     return Response.json(value);
   };
@@ -82,5 +82,28 @@ test('the central stop always reads the uncached HTTPS control and fails closed 
     assert.equal(await checkAvailable(),false);
   }
   assert.equal(requests.length,5);
-  assert.ok(requests.every(row=>row.url===base.WORKBOARD_FIREBASE_DATABASE_URL+'/messagingControlV1/enabled.json'&&row.cache==='no-store'&&row.redirect==='error'));
+  assert.equal(tokenCalls,1);
+  assert.ok(requests.every(row=>row.url===base.WORKBOARD_FIREBASE_DATABASE_URL+'/messagingControlV1/enabled.json'&&row.cache==='no-cache, no-store'&&row.redirect==='error'));
+});
+
+test('concurrent cold stop checks share the OAuth refresh but each reads the stop value',async()=>{
+  const f=fixture();
+  let refreshCalls=0,reads=0,replyStatus=200;
+  f.deps.cert=()=>({async getAccessToken(){
+    refreshCalls++;
+    await new Promise(resolve=>setImmediate(resolve));
+    return {access_token:'synthetic-access-'+refreshCalls,expires_in:3600};
+  }});
+  f.deps.fetchControl=async ()=>{reads++;return Response.json(true,{status:replyStatus});};
+  await createMessagingRuntime(f.deps)(request());
+  const {checkAvailable}=f.services.find(([kind])=>kind==='handler')[1];
+  assert.deepEqual(await Promise.all(Array.from({length:8},()=>checkAvailable())),Array(8).fill(true));
+  assert.equal(refreshCalls,1);
+  assert.equal(reads,8);
+  replyStatus=401;
+  assert.equal(await checkAvailable(),false);
+  replyStatus=200;
+  assert.equal(await checkAvailable(),true);
+  assert.equal(refreshCalls,2);
+  assert.equal(reads,10);
 });

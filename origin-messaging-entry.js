@@ -49,7 +49,7 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
   }
   const launcher=createOriginMessagingLauncher({readConfig,readBoard:board.readSnapshot,async connect(){const connection=await connect();const authSdk=connection.authSdk??await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");const auth=await connectFirebaseMessagingAuth({...connection,authSdk});return {sdk:connection.sdk,auth};},mount(options){
     const generation=++connectionEpoch;
-    return mountCloud({...options,draftOwner,root:target,keepNotificationSession:true,onSummary(value){if(generation===connectionEpoch&&current())renderBadge(value);},onAvailability(value){if(generation===connectionEpoch&&current()&&value===false){notice.textContent='メッセージ機能を停止中です。';approval.hidden=true;approvalText.value='';}},onNotification(kind){if(generation===connectionEpoch&&current())onNotification(kind);},board:{...board,
+    return mountCloud({...options,draftOwner,root:target,keepNotificationSession:true,onIdentityInvalidated(){if(generation===connectionEpoch&&current()&&suspended)board.closeMessagingDraft?.();},onSummary(value){if(generation===connectionEpoch&&current())renderBadge(value);},onAvailability(value){if(generation===connectionEpoch&&current()&&value===false){notice.textContent='メッセージ機能を停止中です。';approval.hidden=true;approvalText.value='';}},onNotification(kind){if(generation===connectionEpoch&&current())onNotification(kind);},board:{...board,
       openRecord:(ref,scope)=>suspend(()=>board.openRecord(ref,scope)),
       ...(typeof board.openBusinessDraft==='function'?{openBusinessDraft:(draft,scope)=>suspend(()=>board.openBusinessDraft(draft,scope))}:{}),
       restoreConversation(){if(!suspended||!current())return false;suspended=false;show();return true;}
@@ -61,7 +61,6 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
     const render=value=>{
       if(token!==epoch||!current())return;
       const connected=value?.status==='bound';
-      if(!connected&&suspended)board.closeMessagingDraft?.();
       notice.textContent=connected?'接続済み':handle.getAvailability?.()===false?'メッセージ機能を停止中です。':'未承認またはオフラインのため利用できません。管理者にご確認ください。';
       const request=connected?null:handle.getApprovalRequest?.();
       approval.hidden=!request;approvalText.value=request?['ルーム: '+request.roomId,'利用者: '+request.displayName,'端末ID: '+request.uid].join('\n'):'';

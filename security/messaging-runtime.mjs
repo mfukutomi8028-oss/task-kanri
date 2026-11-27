@@ -1,5 +1,6 @@
 // Server runtime wiring. Configuration stays in secret storage; a disabled or
 // incomplete deployment cannot initialize an Admin client or read any records.
+import {readApprovedMessagingActor} from './messaging-authorization.mjs';
 import {createMessagingBudget} from './messaging-budget.mjs';
 import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId} from '../workspace-messaging-core.js';
 const unavailable=()=>new Response(JSON.stringify({status:'unavailable'}),{status:503,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -57,6 +58,21 @@ export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDat
       if(typeof url!=='string'||!/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(url)||typeof key!=='string'||!key.trim()||typeof createSupabase!=='function')throw new TypeError('Trusted budget configuration required');
       const supabase=createSupabase(url,key);
       const {reserveRequest,reserveSend}=createMessagingBudget(supabase);
+      const authorizeRequest=({token,roomId})=>readApprovedMessagingActor({
+        token,roomId,verifyToken:value=>auth.verifyIdToken(value,true),
+        readBinding:async ({roomId,uid})=>(await database.ref('messagingAccessV1/'+roomId+'/'+uid).get()).val()
+      });
+      let accessToken=null,refreshingToken=null;
+      async function getControlToken(){
+        if(accessToken&&accessToken.refreshAt>Date.now())return accessToken.value;
+        refreshingToken??=Promise.resolve().then(async()=>{
+          const {access_token:value,expires_in:seconds}=await options.credential.getAccessToken();
+          if(typeof value!=='string'||!value)return null;
+          if(Number.isFinite(seconds)&&seconds>60)accessToken={value,refreshAt:Date.now()+(seconds-60)*1000};
+          return value;
+        }).finally(()=>{refreshingToken=null;});
+        return refreshingToken;
+      }
       const controlURL=new URL('messagingControlV1/enabled.json',config.databaseURL);
       async function checkAvailable(){
         if(getEnv('WORKBOARD_MESSAGING_ENABLED')!=='true')return false;
@@ -64,9 +80,10 @@ export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDat
         let timer;
         try{
           async function read(){
-            const {access_token}=await options.credential.getAccessToken();
+            const access_token=await getControlToken();
             if(controller.signal.aborted||typeof access_token!=='string'||!access_token)return false;
-            const response=await fetchControl(controlURL.href,{headers:{Authorization:'Bearer '+access_token},signal:controller.signal,cache:'no-store',redirect:'error'});
+            const response=await fetchControl(controlURL.href,{headers:{Authorization:'Bearer '+access_token,'Cache-Control':'no-cache, no-store'},signal:controller.signal,redirect:'error'});
+            if(response.status===401&&accessToken?.value===access_token)accessToken=null;
             return response.ok&&await response.json()===true;
           }
           return await Promise.race([read(),new Promise(resolve=>{
@@ -83,7 +100,7 @@ export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDat
         attachments=createAttachments({...shared,supabase});
         if([attachments?.upload,attachments?.download,attachments?.claim,attachments?.acquireSend].some(fn=>typeof fn!=='function'))throw new TypeError('Attachment services required');
       }
-      const handler=createApiHandler({reserveRequest,checkAvailable,allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,reserveSend,...(attachments?{claimAttachments:attachments.claim,acquireAttachmentLease:attachments.acquireSend}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments});
+      const handler=createApiHandler({reserveRequest,checkAvailable,authorizeRequest,allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,reserveSend,...(attachments?{claimAttachments:attachments.claim,acquireAttachmentLease:attachments.acquireSend}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments});
       if(typeof handler!=='function')throw new TypeError('Invalid API handler');
       return handler;
     }catch(_){if(app)try{await deleteApp(app);}catch(_){/* Do not expose startup errors or secrets. */}return null;}

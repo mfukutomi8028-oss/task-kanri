@@ -16,7 +16,7 @@ export function createMessagingBudget(supabase){
     }catch(_){return unavailable();}
   }
   return Object.freeze({
-    reserveRequest:(_action,units)=>reserve('workboard_reserve_messaging_request_v1',{p_units:units}),
+    reserveRequest:(_action,units,personId)=>reserve('workboard_reserve_messaging_request_v2',{p_units:units,p_person_id:personId}),
     reserveSend:personId=>reserve('workboard_reserve_messaging_send_v1',{p_person_id:personId})
   });
 }

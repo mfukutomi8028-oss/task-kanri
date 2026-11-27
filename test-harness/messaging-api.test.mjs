@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {createMessagingApiHandler} from '../security/messaging-api-handler.mjs';
 import {createMessagingApiTransport} from '../workspace-messaging-api.js';
 const origin='https://board.example.test',endpoint='https://api.example.test/messaging',roomId='roomA',p='p_'+'a'.repeat(32),conversationId='self_'+p,token='synthetic-id-token';
-function fixture(budget,checkAvailable){
+function fixture(budget,checkAvailable,authorizeRequest=null){
   const calls=[];
-  const handler=createMessagingApiHandler({allowedOrigins:[origin],reserveRequest:budget,checkAvailable,history:{async readHistory(input){calls.push(['history',input]);return input.token===token?{status:'ok',joinedAt:1000,messages:[],nextCursor:null,hasMore:false}:{status:'forbidden'};}},mutation:{async mutate(input){calls.push(['message',input]);return {status:'conflict'};}},directory:{async readDirectory(input){calls.push(['directory',input]);return {status:'ok',roomId,personId:p,conversations:[],invites:[],hasMore:false,nextCursor:null};},async readUnread(input){calls.push(['unread',input]);return {status:'ok',roomId,personId:p,conversationId,joinedAt:1000,unread:0,latestIncoming:null,muted:false,complete:true};}},conversations:{async readPeople(input){calls.push(['people',input]);return {status:'ok',roomId,personId:p,people:[]};},async execute(input){calls.push(['conversation',input]);return {status:'ok',conversationId,revision:1,indexPending:false};}}});
+  const handler=createMessagingApiHandler({allowedOrigins:[origin],reserveRequest:budget,checkAvailable,authorizeRequest:authorizeRequest??(budget?async input=>input.token===token?{personId:p}:null:null),history:{async readHistory(input){calls.push(['history',input]);return input.token===token?{status:'ok',joinedAt:1000,messages:[],nextCursor:null,hasMore:false}:{status:'forbidden'};}},mutation:{async mutate(input){calls.push(['message',input]);return {status:'conflict'};}},directory:{async readDirectory(input){calls.push(['directory',input]);return {status:'ok',roomId,personId:p,conversations:[],invites:[],hasMore:false,nextCursor:null};},async readUnread(input){calls.push(['unread',input]);return {status:'ok',roomId,personId:p,conversationId,joinedAt:1000,unread:0,latestIncoming:null,muted:false,complete:true};}},conversations:{async readPeople(input){calls.push(['people',input]);return {status:'ok',roomId,personId:p,people:[]};},async execute(input){calls.push(['conversation',input]);return {status:'ok',conversationId,revision:1,indexPending:false};}}});
   let identity={status:'bound',roomId,personId:p},listener;const session={getSnapshot:()=>identity,subscribe(fn){listener=fn;fn(identity);return ()=>{listener=null;};}};
   const fetchImpl=(url,init)=>{const headers=new Headers(init.headers);headers.set('Origin',origin);return handler(new Request(url,{...init,headers}));};
   return {handler,calls,session,fetchImpl,setIdentity(next){identity=next;listener?.(next);}};
@@ -81,4 +81,13 @@ test('a stop during an otherwise successful read withholds the result',async()=>
   const response=await f.handler(post(envelope('history')));
   assert.equal(response.status,503);
   assert.deepEqual(await response.json(),{status:'unavailable'});
+});
+
+test('unapproved requests never reach the messaging budget, control reader or service',async()=>{
+  const effects=[];
+  const f=fixture(async()=>{effects.push('budget');return {status:'ok'};},async()=>{effects.push('stop');return true;},async()=>null);
+  const result=await f.handler(post(envelope('people')));
+  assert.equal(result.status,403);
+  assert.deepEqual(effects,[]);
+  assert.deepEqual(f.calls,[]);
 });

@@ -23,12 +23,18 @@ test('Origin creates a canonical task and shares its reference from the detail',
     const conversationId='self_'+personId;
     const message={id:'msg_'+personId+'_q_'+'b'.repeat(32),senderId:personId,createdAt:2000,revision:1,body:'Synthetic task from a message\nReview summary',refs:[],attachmentIds:[],confirmationRequested:false,replyTo:null};
     window.__startupConnections=0;
-    window.__businessTest={conversationId,base,requests:[]};
+    let connected=true,enabled=true;
+    const watchers=new Map();
+    const update=(path,value)=>{for(const fn of watchers.get(path)??[])fn({val:()=>value});};
+    window.__businessTest={conversationId,base,requests:[],
+      setConnected(value){connected=value;update('.info/connected',value);},
+      setEnabled(value){enabled=value;update('messagingControlV1/enabled',value);}
+    };
     window.WorkBoardPaletteBridge={...base,readSnapshot:()=>map(base.readSnapshot()),subscribe:fn=>base.subscribe(s=>fn(map(s))),
       async getMessagingConnection(){
         window.__startupConnections++;
-        const getSnapshot=path=>({val:()=>(path==='.info/connected'||path==='messagingControlV1/enabled')?true:path==='messagingAccessV1/'+roomId+'/'+uid?{uid,roomId,personId,displayName:name,approved:true,active:true}:path.endsWith('/members/'+personId)?{active:true,joinedAt:1000,role:'member'}:path.endsWith('/'+message.id)?message:null});
-        const sdk={db:{},ref:(_,path)=>path,get:async path=>getSnapshot(path),onValue(path,fn){let disposed=false;queueMicrotask(()=>{if(!disposed)fn(getSnapshot(path));});return ()=>{disposed=true;};},set(){throw Error('Unexpected write');},update(){throw Error('Unexpected write');},runTransaction(_path,update){return Promise.resolve({committed:true,snapshot:{val:()=>update(null)}});},serverTimestamp:()=>({})};
+        const getSnapshot=path=>({val:()=>path==='.info/connected'?connected:path==='messagingControlV1/enabled'?enabled:path==='messagingAccessV1/'+roomId+'/'+uid?{uid,roomId,personId,displayName:name,approved:true,active:true}:path.endsWith('/members/'+personId)?{active:true,joinedAt:1000,role:'member'}:path.endsWith('/'+message.id)?message:null});
+        const sdk={db:{},ref:(_,path)=>path,get:async path=>getSnapshot(path),onValue(path,fn){const set=watchers.get(path)??new Set();watchers.set(path,set);set.add(fn);queueMicrotask(()=>{if(set.has(fn))fn(getSnapshot(path));});return ()=>set.delete(fn);},set(){throw Error('Unexpected write');},update(){throw Error('Unexpected write');},runTransaction(_path,update){return Promise.resolve({committed:true,snapshot:{val:()=>update(null)}});},serverTimestamp:()=>({})};
         const user={uid,getIdToken:async()=> 'synthetic-id-token'};
         return {app:{},sdk,authSdk:{getAuth:()=>({currentUser:user,authStateReady:async()=>{}}),signInAnonymously(){throw Error('Unexpected sign-in');},onAuthStateChanged(_auth,fn){queueMicrotask(fn);return ()=>{};}}};
       }};
@@ -77,6 +83,14 @@ test('Origin creates a canonical task and shares its reference from the detail',
   const form=root.locator('#editForm[data-kind="tasks"]');
   await expect(form.locator('[name=title]')).toHaveValue('Synthetic task from a message');
   await expect(form.locator('[name=desc]')).toHaveValue(/Review summary/);
+  await form.locator('[name=desc]').fill('Synthetic unsaved business edit');
+  for(const method of ['setConnected','setEnabled']){
+    await page.evaluate(method=>window.__businessTest[method](false),method);
+    await expect(dialog.locator('.origin-message-host-notice')).not.toHaveText('接続済み',{timeout:3000});
+    await expect(form.locator('[name=desc]')).toHaveValue('Synthetic unsaved business edit',{timeout:3000});
+    await page.evaluate(method=>window.__businessTest[method](true),method);
+    await expect(dialog.locator('.origin-message-host-notice')).toHaveText('接続済み',{timeout:3000});
+  }
   expect(await page.evaluate(()=>window.__businessTest.base.readSnapshot().tasks.some(t=>t.title==='Synthetic task from a message'))).toBe(false);
   await root.locator('#sheet button[form=editForm]').click();
   await expect(dialog).toBeVisible();

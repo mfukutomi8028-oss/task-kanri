@@ -1,7 +1,7 @@
 // Runtime-neutral authenticated HTTP boundary. The injected services enforce
 // authorization. CORS is a browser restriction, not a substitute for auth.
 import {messagingBudgetDecision} from './messaging-budget.mjs';
-import {isPersonId} from '../workspace-messaging-core.js';
+import {isPersonId,isMessagingRoomId} from '../workspace-messaging-core.js';
 import {createMessagingAttachmentHttp} from './messaging-attachment-http.mjs';
 const MAX_BODY_BYTES=65536,MAX_TOKEN=16384;
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);
@@ -26,10 +26,11 @@ function workUnits(action,payload){
   if(action==='attachmentUpload'||action==='attachmentDownload')return 64;
   return 24;
 }
-export function createMessagingApiHandler({allowedOrigins,history,mutation,directory,conversations,attachments=null,reserveRequest=null,checkAvailable=null}={}){
+export function createMessagingApiHandler({allowedOrigins,history,mutation,directory,conversations,attachments=null,reserveRequest=null,checkAvailable=null,authorizeRequest=null}={}){
   if(!Array.isArray(allowedOrigins)||!allowedOrigins.length||allowedOrigins.some(origin=>{try{const url=new URL(origin);return url.protocol!=='https:'||url.origin!==origin;}catch(_){return true;}}))throw new TypeError('Explicit HTTPS origins required');
   if(checkAvailable!==null&&typeof checkAvailable!=='function')throw new TypeError('Invalid messaging stop control');
-  if(reserveRequest!==null&&typeof reserveRequest!=='function')throw new TypeError('Invalid messaging request budget');
+  if(authorizeRequest!==null&&typeof authorizeRequest!=='function')throw new TypeError('Invalid messaging request authorization');
+  if(reserveRequest!==null&&(typeof reserveRequest!=='function'||!authorizeRequest))throw new TypeError('Invalid messaging request budget');
   const origins=new Set(allowedOrigins);
   const attachmentHttp=attachments===null?null:createMessagingAttachmentHttp({attachments});
   const operations={history:history?.readHistory,message:mutation?.mutate,directory:directory?.readDirectory,unread:directory?.readUnread,people:conversations?.readPeople,conversation:conversations?.execute,...(typeof attachments?.metadata==='function'?{attachmentMetadata:attachments.metadata}:{})};
@@ -39,16 +40,22 @@ export function createMessagingApiHandler({allowedOrigins,history,mutation,direc
     const headers=new Headers({'Cache-Control':'no-store','Vary':'Origin','X-Content-Type-Options':'nosniff'});
     if(allowed)headers.set('Access-Control-Allow-Origin',origin);
     function json(status,value){const h=new Headers(headers);h.set('Content-Type','application/json; charset=utf-8');if(status===429&&Number.isSafeInteger(value.retryAfter))h.set('Retry-After',String(value.retryAfter));return new Response(JSON.stringify(value),{status,headers:h});}
-    async function budget(action,payload={}){
+    async function budget(action,payload,actor){
       if(!reserveRequest)return null;
-      const result=messagingBudgetDecision(await reserveRequest(action,workUnits(action,payload)));
+      const result=messagingBudgetDecision(await reserveRequest(action,workUnits(action,payload),actor?.personId));
       return result.status==='ok'?null:json(codes[result.status],result);
     }
     const unavailable=()=>json(503,{status:'unavailable'});
     const enabled=async()=>!checkAvailable||await checkAvailable()===true;
-    async function protect(action,payload,perform){
+    async function protect(action,payload,expectedPersonId,perform){
+      let actor=null;
+      if(authorizeRequest){
+        if(!isMessagingRoomId(payload.roomId))return json(400,{status:'invalid'});
+        actor=await authorizeRequest({token:bearer[1],roomId:payload.roomId});
+        if(!actor||actor.personId!==expectedPersonId)return json(403,{status:'forbidden'});
+      }
       if(!await enabled())return unavailable();
-      const limited=await budget(action,payload);
+      const limited=await budget(action,payload,actor);
       if(limited)return limited;
       const response=await perform();
       return response.ok&&!await enabled()?unavailable():response;
@@ -63,14 +70,14 @@ export function createMessagingApiHandler({allowedOrigins,history,mutation,direc
     const bearer=/^Bearer ([^\s,]+)$/i.exec(request.headers.get('Authorization')||'');
     if(!bearer||bearer[1].length>MAX_TOKEN)return json(401,{status:'forbidden'});
     if(attachmentHttp&&request.headers.get('Content-Type')==='application/octet-stream'){
-      try{return await protect('attachmentUpload',{},()=>attachmentHttp.upload(request,bearer[1],json));}
+      try{return await attachmentHttp.upload(request,bearer[1],json,(metadata,perform)=>protect('attachmentUpload',metadata,metadata.expectedPersonId,perform));}
       catch(_){return json(503,{status:'unavailable'});}
     }
     if(!/^application\/json(?:\s*;\s*charset\s*=\s*utf-8)?$/i.test(request.headers.get('Content-Type')||''))return json(415,{status:'invalid'});
     const decoded=await readJson(request);if(decoded.error)return json(decoded.error,{status:'invalid'});
     const body=decoded.value;
     if(!record(body)||Object.keys(body).length!==3||typeof body.action!=='string'||(!Object.hasOwn(operations,body.action)&&!(attachmentHttp&&body.action==='attachmentDownload'))||!isPersonId(body.expectedPersonId)||!record(body.payload)||Object.hasOwn(body.payload,'token')||Object.hasOwn(body.payload,'expectedPersonId'))return json(400,{status:'invalid'});
-    try{return await protect(body.action,body.payload,async()=>{
+    try{return await protect(body.action,body.payload,body.expectedPersonId,async()=>{
       if(body.action==='attachmentDownload')return attachmentHttp.download({...body.payload,token:bearer[1],expectedPersonId:body.expectedPersonId},headers,json);
       const result=await operations[body.action]({...body.payload,token:bearer[1],expectedPersonId:body.expectedPersonId});
       if(!record(result)||typeof result.status!=='string'||!Object.hasOwn(codes,result.status))return json(503,{status:'unavailable'});

@@ -95,3 +95,31 @@ begin
   return 'ok';
 end;
 $recover$;
+
+-- Diagnosis is read-only. Age selects candidates and never proves an execution stopped.
+create or replace function pg_temp.workboard_list_send_fences(p_room_id text)
+returns table(conversation_id text,message_id text,lease_id uuid,acquired_at timestamptz)
+language sql stable security invoker set search_path='' as $list$
+  select f.conversation_id,f.message_id,f.lease_id,f.acquired_at
+  from public.workboard_attachment_send_fences_v1 f
+  where f.room_id=p_room_id and f.kind='send' and f.acquired_at<=clock_timestamp()-interval '10 minutes'
+  order by f.acquired_at,f.conversation_id,f.message_id limit 50
+$list$;
+
+-- The operator keeps admission stopped, proves old workers drained and checks
+-- the canonical message before confirming. This changes only one exact send lock.
+create or replace function pg_temp.workboard_release_stale_send_fence(
+  p_room_id text,p_conversation_id text,p_message_id text,p_lease_id uuid,
+  p_admission_stopped boolean,p_workers_drained boolean,p_canonical_checked boolean
+) returns text language plpgsql volatile security invoker set search_path='' as $release$
+begin
+  if p_admission_stopped is distinct from true or p_workers_drained is distinct from true
+    or p_canonical_checked is distinct from true or p_lease_id is null
+  then return 'protected'; end if;
+  delete from public.workboard_attachment_send_fences_v1 f
+  where f.room_id=p_room_id and f.conversation_id=p_conversation_id and f.message_id=p_message_id
+    and f.lease_id=p_lease_id and f.kind='send' and f.acquired_at<=clock_timestamp()-interval '10 minutes';
+  if found then return 'ok'; end if;
+  return 'missing-or-protected';
+end;
+$release$;

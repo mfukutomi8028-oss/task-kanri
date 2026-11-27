@@ -392,7 +392,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   }
   let readFrame=0;
   function scheduleVisibleRead(){cancelAnimationFrame(readFrame);readFrame=requestAnimationFrame(()=>{const c=context();if(!c||state.status!=='ready'||document.visibilityState!=='visible'||timeline.clientHeight===0||query||historyDates.fields.some(field=>field.value))return;const rect=timeline.getBoundingClientRect(),nodes=[...timeline.querySelectorAll('[data-message-id]')];const visible=nodes.filter(n=>{const r=n.getBoundingClientRect();return r.bottom>rect.top&&r.top<rect.bottom;}).at(-1);const m=state.messages.find(x=>x.id===visible?.dataset.messageId);if(m)void store.markRead({conversationId:c.conversationId,cursor:{id:m.id,createdAt:m.createdAt},visible:true});});}
-  function renderState(next){const previous=state;state=next;if(previewUrl&&previous.messages!==next.messages)closeDialog();const identityChanged=syncListIdentity();if(previous.conversationId!==state.conversationId||previous.joinedAt!==state.joinedAt&&previous.joinedAt!==null)closeDialog();renderHeader();const ready=state.status==='ready'&&Boolean(context());composer.hidden=!ready||archivedGroup();body.disabled=!ready||sendPending;sendButton.disabled=!ready||sendPending;if(!context()&&(state.status==='locked'||state.status==='forbidden')){resolver.clear?.();closeDialog();dialogContent.replaceChildren();if(state.status==='locked'){conversations=[];listGeneration++;renderList();}shared.hidden=true;shell.dataset.shared='false';}
+  function renderState(next){const previous=state;state=next;if(previewUrl&&previous.messages!==next.messages)closeDialog();const identityChanged=syncListIdentity();if(previous.conversationId!==state.conversationId||previous.joinedAt!==state.joinedAt&&previous.joinedAt!==null)closeDialog();renderHeader();const ready=state.status==='ready'&&Boolean(context());composer.hidden=!ready||archivedGroup();body.disabled=!ready||sendPending;sendButton.disabled=!ready||sendPending;if(!context()&&(state.status==='locked'||state.status==='forbidden')){closeDialog();dialogContent.replaceChildren();if(state.status==='locked'){conversations=[];listGeneration++;renderList();}shared.hidden=true;shell.dataset.shared='false';}
     if(state.conversationId!==lastId){body.value=state.draft||'';renderList();}else if(body.value!==state.draft)body.value=state.draft;
     if(ready)renderComposeContext();
     if(identityChanged&&listScope)void reloadList();
@@ -442,7 +442,10 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
         input=attempt.payload;
       }
       const result=editing?await store.edit({conversationId:c.conversationId,...editing,input}):await store.send({conversationId:c.conversationId,requestId:attempt.id,input,preserveDraft});
-      if(!current())return;
+      if(!current()){
+        if(result.status==='locked'&&state.status==='forbidden')notice('利用権限を確認できません。会話を開き直してください。');
+        return;
+      }
       if(result.status==='sent'||result.status==='ok'){
         if(preserveDraft)d.attempt=null;
         else{clearComposer(d);if(editing)store.setDraft('');}
@@ -452,7 +455,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
       }else if(result.status==='conflict'||result.status==='invalid'){
         if(!editing)d.attempt=null;
         notice('送信内容または更新の競合を確認してください。');
-      }else notice(editing?'保存できませんでした。入力内容は保持されています。':'送信結果を確認できません。入力内容を保持しています。');
+      }else notice(editing?'保存できませんでした。入力内容は保持されています。':'送信結果を確認できません。入力内容を保持しています。'+(retry?' 解消しない場合は管理者へご連絡ください。':''));
     }finally{sendPending=false;renderComposeContext();}
   }
   async function chooseReferences(){const c=context();if(!c||!compose())return;const snapshot=readBusinessData();if(snapshot?.roomId!==c.roomId)return;const panel=openDialog('業務データを添付'),q=el('input');q.type='search';q.placeholder='件名で検索';q.setAttribute('aria-label','業務データを検索');panel.append(q);const choices=el('div','om-choice-list'),chosen=new Map(compose().refs.map(r=>[key(r),r]));panel.append(choices);const candidates=[['task',snapshot.tasks],['schedule',snapshot.schedules],['memo',snapshot.memos]].flatMap(([type,items])=>(items||[]).map(item=>({roomId:c.roomId,type,recordId:item.id})));const rows=[];for(const ref of candidates){const resolved=await resolver.resolve(ref,c);if(resolved.status==='available')rows.push({title:resolved.title,ref});}if(!dialog.open||!messageContextValid(c)||!choices.isConnected)return;

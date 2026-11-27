@@ -56,7 +56,6 @@ export function createMessagingDraftOwner(){
     clear,
     hasDrafts:()=>[...rows.values()].some(occupied),
     forget(id){rows.delete(id);},
-    checkUid(uid){if(scope!==null&&JSON.parse(scope)[0]!==uid)clear();},
     row(id,epoch,create=false){
       if(scope===null)return null;
       const entry=rows.get(id);
@@ -105,7 +104,7 @@ export function createMessagingStore({session,transport,draftOwner=null,getUid=(
       historyReset:false,busy:false,error:null});
   }
   function lockConversation(){
-    const id=state.conversationId;detach();if(id){drafts.forget(id);cursors.delete(id);memberships.delete(id);}reset('forbidden');
+    const id=state.conversationId;detach();if(id){cursors.delete(id);memberships.delete(id);}reset('forbidden');
   }
   function onIdentity(next){
     if(disposed)return;

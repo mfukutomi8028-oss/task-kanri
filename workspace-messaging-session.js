@@ -23,10 +23,11 @@ export function resolveMessagingIdentity(context, binding) {
  * the approved binding for the current Firebase UID and report denied/disconnected
  * reads through onError. A local label, cached binding, or this UI state alone is
  * never proof of server authorization. */
-export function createMessagingSession({getAuthUid,readBinding,observeAuth,observeBinding,onLock,onBindingRejected=()=>{}} = {}) {
+export function createMessagingSession({getAuthUid,readBinding,observeAuth,observeBinding,onLock,onBindingRejected=()=>{},onBindingReassigned=()=>{}} = {}) {
   if ([getAuthUid,readBinding,observeAuth,observeBinding,onLock].some(fn => typeof fn !== 'function')) {
     throw new TypeError('Messaging session requires authoritative identity adapters');
   }
+  let lastBound = null;
   let context = null, generation = 0, snapshot = locked, disposed = false;
   let closeBinding = null, closeAuth = null;
   const listeners = new Set();
@@ -63,8 +64,9 @@ export function createMessagingSession({getAuthUid,readBinding,observeAuth,obser
       const next = resolveMessagingIdentity(target,binding);
       if (next.status === 'locked') { safely(onBindingRejected); publish(locked); if (stillCurrent()) safely(onLock); return; }
       // A binding can be revoked or reassigned. Never expose a previous person's state.
+      if (lastBound?.uid === uid && lastBound.roomId === next.roomId && lastBound.personId !== next.personId) safely(onBindingReassigned);
       if (snapshot.status === 'bound' && snapshot.personId !== next.personId) { publish(locked); if (stillCurrent()) safely(onLock); }
-      if (stillCurrent()) publish(next);
+      if (stillCurrent()) { lastBound = {uid, roomId:next.roomId, personId:next.personId}; publish(next); }
     }
     try {
       const stop = observeBinding(target,binding => {
