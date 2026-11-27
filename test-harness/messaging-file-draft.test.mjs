@@ -30,3 +30,42 @@ test('a mismatched upload reply or stale slot cannot become a message reference'
   assert.deepEqual(await draft.uploadMessagingFiles(input),{status:'unavailable'});assert.equal(uploaded.length,0);
   uploaded.push({file:good('different.txt').file,attachmentId:firstId});assert.deepEqual(await draft.uploadMessagingFiles(input),{status:'conflict'});
 });
+function stubImages({sizes,type='image/png',width=4000,height=3000,failBitmap=false}={}){
+  const calls={bitmap:0,encoded:[],closed:0};let n=0;
+  globalThis.createImageBitmap=async()=>{calls.bitmap++;if(failBitmap)throw new Error('decode');return {width,height,close(){calls.closed++;}};};
+  globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>({drawImage(){}}),toBlob(cb,mime){const canvas=this;calls.encoded.push([canvas.width,canvas.height,mime]);const size=sizes[Math.min(n++,sizes.length-1)];cb(new Blob([new Uint8Array(size)],{type:mime===type?type:mime}));}})};
+  return calls;
+}
+const pick=(name,bytes=1200000)=>draft.selectMessagingFiles([],[new File([new Uint8Array(bytes)],name)]).files;
+test('image selection is re-encoded once at selection time and the result is stable for retries',async()=>{
+  const calls=stubImages({sizes:[900000,400000]});
+  const result=await draft.prepareMessagingFiles(pick('shot.png'),{isCurrent:()=>true});
+  assert.equal(result.status,'ok');assert.equal(calls.bitmap,1);assert.equal(calls.closed,1);
+  assert.deepEqual(calls.encoded.map(x=>x[0]),[2048,1600]);assert.ok(result.files[0].file.size<=500000);
+  const uploaded=[],seen=[];const transport={async uploadAttachment(i){seen.push(i.file);return {status:'ok',attachmentId:firstId,filename:i.filename,mime:i.mime,bytes:i.file.size};}};
+  await draft.uploadMessagingFiles({files:result.files,uploaded,transport,scope,isCurrent:()=>true});
+  assert.equal(seen[0],result.files[0].file);assert.equal(calls.bitmap,1);
+});
+test('screenshots are never shrunk below 1600px and the byte target is not a hard limit',async()=>{
+  const calls=stubImages({sizes:[3000000]});
+  const result=await draft.prepareMessagingFiles(pick('shot.png'),{isCurrent:()=>true});
+  assert.equal(result.status,'ok');assert.equal(calls.encoded.at(-1)[0],1600);assert.equal(result.files[0].file.size,3000000);
+});
+test('original images are kept only by explicit choice and other files are never touched',async()=>{
+  const calls=stubImages({sizes:[1]});const files=[...pick('photo.jpg'),...pick('doc.pdf')];
+  const result=await draft.prepareMessagingFiles(files,{keepOriginalImages:true,isCurrent:()=>true});
+  assert.deepEqual(result.files,files);assert.equal(calls.bitmap,0);
+  assert.deepEqual((await draft.prepareMessagingFiles(pick('doc.pdf'),{isCurrent:()=>true})).files.map(x=>x.filename),['doc.pdf']);
+});
+test('failed compression never falls back to the original',async()=>{
+  stubImages({sizes:[1],failBitmap:true});
+  assert.deepEqual(await draft.prepareMessagingFiles(pick('photo.jpg'),{isCurrent:()=>true}),{status:'image-preparation-failed'});
+});
+test('losing the context mid-compression yields locked and no files',async()=>{
+  stubImages({sizes:[1]});let ok=true;globalThis.createImageBitmap=async()=>{ok=false;return {width:10,height:10,close(){}};};
+  assert.deepEqual(await draft.prepareMessagingFiles(pick('photo.jpg'),{isCurrent:()=>ok}),{status:'locked'});
+});
+test('unsupported encoder output type is renamed to the real extension',async()=>{
+  stubImages({sizes:[100]});globalThis.document.createElement=()=>({width:0,height:0,getContext:()=>({drawImage(){}}),toBlob(cb){cb(new Blob([new Uint8Array(100)],{type:'image/png'}));}});
+  const r=await draft.prepareMessagingFiles(pick('photo.webp'),{isCurrent:()=>true});assert.equal(r.files[0].filename,'photo.png');assert.equal(r.files[0].mime,'image/png');
+});

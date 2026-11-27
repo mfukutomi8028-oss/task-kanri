@@ -4,7 +4,7 @@ import {searchLoadedMessages,selectSharedData} from './workspace-messaging-refs.
 import {buildDailyReport} from './workspace-messaging-report.js';
 import {messagingReactionTypes} from './workspace-messaging-shared.js';
 import {createMessagingNotificationAdapter} from './workspace-messaging-notifications.js';
-import {messagingFileAccept,selectMessagingFiles,uploadMessagingFiles} from './workspace-messaging-file-draft.js';
+import {messagingFileAccept,prepareMessagingFiles,selectMessagingFiles,uploadMessagingFiles} from './workspace-messaging-file-draft.js';
 const labels={task:'タスク',schedule:'予定',memo:'業務メモ',url:'リンク',image:'画像',file:'ファイル'};
 const el=(tag,cls='',text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
 const button=(text,fn,cls='')=>{const b=el('button',cls,text);b.type='button';if(fn)b.addEventListener('click',fn);return b;};
@@ -49,6 +49,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   const refreshButton=button('更新',()=>void reloadList({retryUnread:true}),'om-outline');refreshButton.hidden=typeof commands.respondInvite!=='function';$('.om-list-head').append(refreshButton);
   const fileInput=el('input','om-file-input');fileInput.type='file';fileInput.multiple=true;fileInput.accept=messagingFileAccept;fileInput.hidden=true;composer.append(fileInput);
   const fileButton=button('ファイルを添付',()=>{if(!sendPending&&!compose()?.editing)fileInput.click();},'om-outline');fileButton.hidden=!fileEnabled;composeTools.prepend(fileButton);
+  const originalLabel=el('label','om-original'),keepOriginal=el('input','');keepOriginal.type='checkbox';const originalNote=el('small','om-original-note','原本には位置情報などのメタデータが残る場合があります。');originalNote.hidden=true;originalLabel.append(keepOriginal,el('span','','原本のまま送る'),originalNote);originalLabel.hidden=!fileEnabled;fileButton.after(originalLabel);keepOriginal.addEventListener('change',()=>{originalNote.hidden=!keepOriginal.checked;});
   const context=()=>{const identity=session.getSnapshot();return state.status==='ready'&&identity?.status==='bound'&&state.conversationId&&Number.isSafeInteger(state.joinedAt)?{...identity,conversationId:state.conversationId,joinedAt:state.joinedAt}:null;};
   const selected=()=>conversations.find(c=>c.id===state.conversationId);
   const archivedGroup=()=>selected()?.status==='archived';
@@ -441,7 +442,25 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
     if(identityChanged&&listScope)void reloadList();
     if(state.messages!==lastMessages||state.conversationId!==lastId||state.status!==previous.status){const older=state.messages.length>previous.messages.length&&previous.messages[0]&&state.messages[0]?.id!==previous.messages[0].id&&state.messages.at(-1)?.id===previous.messages.at(-1)?.id;void renderTimeline({older:Boolean(older)});lastMessages=state.messages;lastId=state.conversationId;if(!shared.hidden)void renderShared();}
   }
-  function addFiles(files){if(!fileEnabled||!context()||sendPending)return;const draft=compose();if(!draft||draft.editing)return;const picked=selectMessagingFiles(draft.files,files);if(!store.canRetainFiles(draft,picked.files)){notice('下書き内の添付ファイルは合計25MBまでです。');return;}if(picked.files.length!==draft.files.length){draft.files=picked.files;draft.fileVersion++;renderComposeContext();}if(picked.rejected)notice('添付できないファイルがあります。対応形式・1件5MB・最大5件を確認してください。');else notice('');}
+  const rejectedNotice='添付できないファイルがあります。対応形式・1件5MB・最大5件を確認してください。';
+  // Images are re-encoded once here (EXIF dropped); the stored File objects are reused by every retry.
+  async function addFiles(files){
+    if(!fileEnabled||!context()||sendPending)return;
+    const c=context(),draft=compose();if(!draft||draft.editing)return;
+    const picked=selectMessagingFiles(draft.files,files),fresh=picked.files.slice(draft.files.length),version=draft.fileVersion,keep=keepOriginal.checked;
+    if(!fresh.length){notice(picked.rejected?rejectedNotice:'');return;}
+    const valid=()=>messageContextValid(c)&&compose()===draft&&draft.fileVersion===version&&!draft.editing;
+    const hasImage=!keep&&fresh.some(item=>item.mime.startsWith('image/'));
+    let prepared;
+    if(hasImage){sendPending=true;renderComposeContext();notice('画像を準備しています…');}
+    try{prepared=await prepareMessagingFiles(fresh,{keepOriginalImages:keep,isCurrent:valid});}
+    finally{if(hasImage){sendPending=false;renderComposeContext();}}
+    if(!valid())return;
+    if(prepared.status!=='ok'){notice('画像を準備できませんでした。もう一度お試しいただくか、「原本のまま送る」を選んでください。');return;}
+    const next=[...draft.files,...prepared.files];
+    if(!store.canRetainFiles(draft,next)){notice('下書き内の添付ファイルは合計25MBまでです。');return;}
+    draft.files=next;draft.fileVersion++;renderComposeContext();notice(picked.rejected?rejectedNotice:'');
+  }
   fileInput.addEventListener('change',()=>{addFiles(Array.from(fileInput.files||[]));fileInput.value='';});
   composer.addEventListener('dragover',event=>{if(fileEnabled&&!sendPending&&Array.from(event.dataTransfer?.types||[]).includes('Files'))event.preventDefault();});
   composer.addEventListener('drop',event=>{if(!fileEnabled||!event.dataTransfer?.files?.length)return;event.preventDefault();addFiles(Array.from(event.dataTransfer.files));});

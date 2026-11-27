@@ -197,3 +197,28 @@ test('messaging invitation and file controls keep unknown unread totals and atta
   expect((await download).suggestedFilename()).toBe('報告.txt');
   expect(errors).toEqual([]);
 });
+
+test('selected images are prepared once, failures never send the original, and originals need an explicit choice',async({page})=>{
+  await page.setViewportSize({width:1366,height:900});
+  await page.route('**/*',r=>new URL(r.request().url()).origin==='http://127.0.0.1:4173'?r.continue():r.abort('blockedbyclient'));
+  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+  await page.goto('/test-harness/messaging-preview/index.html?liveControls=1');
+  await page.getByRole('button',{name:'システム課',exact:true}).click();
+  const composer=page.getByLabel('会話',{exact:true}),input=page.locator('.om-file-input');
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC','base64');
+  await input.setInputFiles({name:'photo.png',mimeType:'image/png',buffer:png});
+  await expect(composer.getByText('photo.png',{exact:true})).toBeVisible();
+  await composer.getByRole('button',{name:'解除',exact:true}).click();
+  await input.setInputFiles({name:'broken.png',mimeType:'image/png',buffer:Buffer.from('not an image')});
+  await expect(page.getByText('画像を準備できませんでした',{exact:false})).toBeVisible();
+  await expect(composer.getByText('broken.png',{exact:true})).toHaveCount(0);
+  const original=composer.getByLabel('原本のまま送る');
+  await expect(page.getByText('位置情報などのメタデータが残る場合があります')).toBeHidden();
+  await original.check();
+  await expect(page.getByText('位置情報などのメタデータが残る場合があります')).toBeVisible();
+  await input.setInputFiles({name:'raw.png',mimeType:'image/png',buffer:png});
+  await expect(composer.getByText('raw.png',{exact:true})).toBeVisible();
+  await composer.getByRole('button',{name:'送信',exact:true}).click();
+  await expect(page.getByLabel('メッセージ履歴').locator('.om-message').filter({hasText:'添付ファイル 1 をダウンロード'})).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
