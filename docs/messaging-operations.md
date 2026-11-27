@@ -79,7 +79,7 @@ Supabase Free の50万 Edge 呼び出し/月は組織の実使用量で確認す
 
 確保済み行は既存の期限切れ清掃から除外する。送信は会話・正本メッセージIDごとの永続ロックを取得してから確保処理を行い、Firebase書き込み終了後に解放する。旧Edgeの書き込みを止めたことを確認してからこの運用へ移行する。途中停止でロックが残る場合は、旧実行が終了したことと正本・台帳を確認するまで保留とする。
 
-1. 読み取り専用で対象を1件選び、room、会話、送信者、加入時点、要求ID、添付IDを台帳と照合する。管理用アダプターの `inspect({roomId,attachmentId})` はバイト数・SHA-256と正本の参照を突合する。結果が `committed`、`retained`、`protected`、`pending`、`unknown` の場合は削除しない。操作対象が明らかな `orphan-candidate` だけ検討する。復旧を優先し、再送可能なら本人が同じ要求ID・内容で再試行する。
+1. 読み取り専用で対象を1件選び、room、会話、送信者、加入時点、要求ID、添付IDを台帳と照合する。管理者は `workboard_attachments_v1` と `workboard_attachment_send_fences_v1` の対象行を確認し、`message_id` と同じFirebase正本のレコードを取得する。正本がある場合や照会に失敗した場合、送信ロックが残る場合は保留する。private Storageから該当IDの1件だけを暗号化された管理領域へ取得し、実測バイト数が台帳の `declared_bytes` と `actual_bytes`と、SHA-256が台帳ハッシュと一致することを確認する（Windowsでは `Get-Item -LiteralPath <ファイル>` と `Get-FileHash -LiteralPath <ファイル> -Algorithm SHA256`）。同じ正本IDで不存在が確認でき、行が `attached` または `deleting` で、ロックなし・実体一致の条件がそろった場合だけ次へ進める。復旧を優先し、再送可能なら本人が同じ要求ID・内容で再試行する。
 2. オペレーターがUUIDを一つ発行する。SQL Editorで既存の保守定義をトランザクション内に読み込み、`pg_temp.workboard_begin_claim_recovery(room,attachment,lease)` を実行してコミットする。`busy` の場合は待機・再確認する。ロック取得後、Firebaseを新規読み取りし、対象の正本がないことを確認する。通信失敗・墓標・正本レコードありは保留。準備前であれば同じUUIDで `abort` しロックを解放できる。
 3. 同じ保守定義とUUIDを使い、`pg_temp.workboard_recover_claimed_attachment(room,attachment,lease,'prepare',true,false)` を実行しコミットする。`ok` の行を対象にStorage APIで実体を1件だけ削除する。`deleting` の間も容量枠は予約されたまま。
 4. 正本とStorage APIで不存在を再確認し、同じUUIDで `'finish',true,true` を実行する。Storage台帳に実体が残る場合は拒否される。完了後も行と送信時の使用量は保持し、送信ロックだけを解放する。中断時は同じUUIDで再開する。SQLでStorage実体を削除しない。

@@ -45,7 +45,25 @@ test('search operates only on loaded authorized messages and current reference t
 });
 test('shared records are permission-filtered, bounded and link back to a message',async()=>{
   const f=fixture();const messages=[message(1,{refs:[ref('task','t1')]}),message(2,{refs:[ref('memo','m1')]}),message(3,{refs:[ref('task','t1')]}),message(4,{deletedAt:2000,refs:[ref('schedule','s1')]})];
-  const rows=await selectSharedData(messages,{context,resolver:f.resolver,type:'task',limit:1});
+  const {rows}=await selectSharedData(messages,{context,resolver:f.resolver,type:'task',limit:1});
   assert.equal(rows.length,1);assert.deepEqual(rows[0].ref,ref('task','t1'));assert.equal(rows[0].messageId,id(3));
-  f.setAllowed(false);assert.deepEqual(await selectSharedData(messages,{context,resolver:f.resolver}),[]);
+  f.setAllowed(false);assert.deepEqual((await selectSharedData(messages,{context,resolver:f.resolver})).rows,[]);
+});
+
+test('shared attachment metadata can page past 20 files to find an older authorized image',async()=>{
+  const f=fixture();
+  const attachmentId=i=>'00000000-0000-4000-8000-'+String(i).padStart(12,'0');
+  const messages=Array.from({length:21},(_,i)=>message(i+1,{attachmentIds:[attachmentId(i+1)]}));
+  const calls=[];
+  const options={context,resolver:f.resolver,type:'image',readAttachmentMetadata:async items=>{
+    calls.push(items.length);
+    return {status:'ok',items:items.map(item=>({...item,filename:'dummy',mime:item.messageId===id(1)?'image/png':'text/plain'}))};
+  }};
+  const first=await selectSharedData(messages,options);
+  assert.deepEqual(first.rows,[]);
+  assert.deepEqual(first.attachments,{offset:0,checked:20,total:21});
+  const second=await selectSharedData(messages,{...options,attachmentOffset:20});
+  assert.deepEqual(second.rows.map(row=>row.messageId),[id(1)]);
+  assert.deepEqual(second.attachments,{offset:20,checked:1,total:21});
+  assert.deepEqual(calls,[20,1]);
 });

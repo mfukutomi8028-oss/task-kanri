@@ -59,3 +59,14 @@ test('directory preferences survive selecting another conversation and closing t
   }
   f.dispose();
 });
+
+test('the saved mute preference takes precedence over an old unread projection',async()=>{
+  const sync=syncFixture(),f=fixture({unreadSync:sync});
+  f.rows[1].preferences={favorite:false,pinned:false,archived:false,muted:true};
+  sync.set(direct,{status:'ok',unread:2,muted:false,latestIncoming:{id:incoming,createdAt:2000}});
+  try{
+    const result=await f.commands.list();
+    assert.equal(result.conversations[1].unread,2);
+    assert.equal(result.conversations[1].muted,true);
+  }finally{f.dispose();}
+});

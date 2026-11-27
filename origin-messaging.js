@@ -37,7 +37,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   for(const type of ['image','file']){const option=el('option','',labels[type]);option.value=type;sharedFilter.append(option);}
   sharedFilter.after(sharedDates.box,sharedCoverage);
   const list=$('.om-conversations'),feedback=$('.om-feedback'),sendButton=$('[data-om=send]'),shared=$('.om-shared'),search=$('#om-message-search');
-  let conversations=[],invites=[],filter='all',disposed=false,listGeneration=0,renderGeneration=0,state=store.getSnapshot(),lastMessages=null,lastId=null,sendPending=false,query='',focusBeforeDialog=null,sharedGeneration=0,listScope=null,pendingShare=null;
+  let conversations=[],invites=[],filter='all',disposed=false,listGeneration=0,renderGeneration=0,state=store.getSnapshot(),lastMessages=null,lastId=null,sendPending=false,query='',focusBeforeDialog=null,sharedGeneration=0,sharedAttachmentOffset=0,listScope=null,pendingShare=null;
   const inviteArea=el('section','om-invites');inviteArea.setAttribute('aria-label','グループ招待');inviteArea.hidden=true;list.before(inviteArea);
   const refreshButton=button('更新',()=>void reloadList({retryUnread:true}),'om-outline');refreshButton.hidden=typeof commands.respondInvite!=='function';$('.om-list-head').append(refreshButton);
   const fileInput=el('input','om-file-input');fileInput.type='file';fileInput.multiple=true;fileInput.accept=messagingFileAccept;fileInput.hidden=true;composer.append(fileInput);
@@ -351,27 +351,36 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
     const c=context(),generation=++sharedGeneration,node=$('.om-shared-list');
     node.replaceChildren(el('p','om-empty-small','読み込み中…'));
     if(!c)return;
-    const current=()=>!disposed&&generation===sharedGeneration&&messageContextValid(c);
+    const current=()=>!disposed&&!shared.hidden&&generation===sharedGeneration&&messageContextValid(c);
     const type=sharedFilter.value||null,dates=sharedDates.read();
-    sharedCoverage.textContent='取得済み履歴が対象です。共有項目は最大50件、添付の確認は最新20件まで。';
+    sharedCoverage.textContent='取得済み履歴が対象です。共有項目は1ページ最大50件です。';
     try{
       const readAttachmentMetadata=typeof attachments?.readAttachmentMetadata==='function'
         ?items=>attachments.readAttachmentMetadata({...c,items}):null;
-      const rows=await selectSharedData(state.messages,{context:c,resolver,type,...dates,readAttachmentMetadata});
+      const {rows,attachments:page}=await selectSharedData(state.messages,{context:c,resolver,type,...dates,readAttachmentMetadata,attachmentOffset:sharedAttachmentOffset});
       if(!current())return;
       node.replaceChildren();
-      if(!rows.length)node.append(el('p','om-empty-small','この範囲に共有データはありません。'));
+      sharedAttachmentOffset=page.offset;
+      if(page.total){
+        sharedCoverage.textContent+=' 添付候補 '+(page.offset+1)+'〜'+(page.offset+page.checked)+' / '+page.total+'件を確認しました。';
+        const pages=el('div','om-shared-pages');
+        const openPage=offset=>{sharedAttachmentOffset=offset;void renderShared();};
+        if(page.offset>0)pages.append(button('前の添付候補',()=>openPage(page.offset-1),'om-outline'));
+        if(page.offset+page.checked<page.total)pages.append(button('次の添付候補',()=>openPage(page.offset+page.checked),'om-outline'));
+        if(pages.childElementCount)node.append(pages);
+      }
+      if(state.hasMore)node.append(button('以前の履歴を追加',async()=>{await store.loadOlder();},'om-load-more'));
+      if(!rows.length)node.append(el('p','om-empty-small','このページに一致する共有データはありません。'));
       for(const row of rows){
         const b=button(row.title||row.url,async()=>{
           if(!current())return;
-          if(row.ref){void resolver.open(row.ref,c,{conversationId:c.conversationId,messageId:row.messageId,scrollTop:timeline.scrollTop,query});return;}
           if(query||historyDates.fields.some(field=>field.value)){
             query='';search.value='';for(const field of historyDates.fields)field.value='';
             await renderTimeline();
           }
           if(!current())return;
           const message=timeline.querySelector('[data-message-id="'+row.messageId+'"]');
-          if(message){message.scrollIntoView({block:'center'});message.classList.add('om-highlight');message.tabIndex=-1;message.focus({preventScroll:true});}
+          if(message){shared.hidden=true;shell.dataset.shared='false';message.scrollIntoView({block:'center'});message.classList.add('om-highlight');message.tabIndex=-1;message.focus({preventScroll:true});}
         },'om-shared-row');
         b.prepend(el('small','',labels[row.type]));
         b.setAttribute('aria-label',row.title||row.url);
@@ -452,9 +461,9 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
     function build(){const s=readBusinessData();if(s?.roomId!==c.roomId)return;report=buildDailyReport({dayISO:date.value,personId:c.personId,roomId:c.roomId,tasks:s.tasks||[],schedules:s.schedules||[],resolvePerson});list.replaceChildren();selectedIds=new Set();for(const [title,items] of [['完了タスク',report.completedTasks],['本日の予定（実施未確認）',report.plannedSchedules],['進行中',report.inProgress]]){list.append(el('h3','om-group-label',title));for(const item of items){selectedIds.add(item.id);const label=el('label','om-choice'),input=el('input');input.type='checkbox';input.checked=true;input.addEventListener('change',()=>{if(input.checked)selectedIds.add(item.id);else selectedIds.delete(item.id);});label.append(input,el('span','',item.title));list.append(label);}}if(report.unknownCompletion.length)list.append(el('p','om-empty-small','完了日時不明：'+report.unknownCompletion.length+'件（集計対象外）'));}
     date.addEventListener('change',()=>{try{build();}catch(_){list.replaceChildren(el('p','','日付を確認してください。'));}});build();panel.append(button('下書きに入れる',()=>{if(!messageContextValid(c))return;const s=readBusinessData(),r=buildDailyReport({dayISO:date.value,personId:c.personId,roomId:c.roomId,tasks:s.tasks||[],schedules:s.schedules||[],resolvePerson,selectedIds:[...selectedIds],supplement:supplement.value});if(!r.withinMessageLimits){notice('報告内容が長すぎます。対象を減らしてください。');return;}compose().refs=r.refs;compose().replyTo=null;compose().editing=null;compose().attachmentIds=[];store.setDraft(r.body);renderComposeContext();closeDialog();},'om-primary'));}
   async function newConversation(){const scope=listIdentity();if(!scope)return;const panel=openDialog('新規メッセージ'),form=el('form','om-new-form'),kind=el('select'),title=el('input'),people=el('div','om-choice-list');kind.setAttribute('aria-label','会話の種類');for(const [value,text] of [['direct','1対1'],['group','グループ'],['self','自分宛て']]){const o=el('option','',text);o.value=value;kind.append(o);}title.placeholder='グループ名';title.setAttribute('aria-label','グループ名');title.maxLength=80;title.hidden=true;form.append(kind,title,people);const openingHead=panel.firstChild,users=await commands.users();if(disposed||!dialog.open||panel.firstChild!==openingHead||!sameScope(scope,listIdentity()))return;function renderPeople(){title.hidden=kind.value!=='group';people.hidden=kind.value==='self';people.replaceChildren();for(const user of users){const label=el('label','om-choice'),input=el('input');input.type=kind.value==='direct'?'radio':'checkbox';input.name='participants';input.value=user.personId;label.append(input,el('span','',user.displayName));people.append(label);}}kind.addEventListener('change',renderPeople);renderPeople();const submit=el('button','om-primary','作成する');submit.type='submit';form.append(submit);const error=el('p','om-feedback');form.append(error);form.addEventListener('submit',async e=>{e.preventDefault();submit.disabled=true;try{const ids=[...people.querySelectorAll('input:checked')].map(x=>x.value);const result=kind.value==='self'?await commands.openSelf():kind.value==='direct'&&ids.length===1?await commands.openDirect(ids[0]):kind.value==='group'&&title.value.trim()?await commands.createGroup({title:title.value.trim(),invitees:ids}):{status:'invalid'};if(disposed||!sameScope(scope,listIdentity())||!form.isConnected)return;if(result?.status==='ok'){closeDialog();await reloadList();if(sameScope(scope,listIdentity()))await openConversation(result.conversationId);}else error.textContent='会話の種類と参加者を確認してください。';}finally{submit.disabled=false;}});panel.append(form);}
-  timeline.addEventListener('scroll',scheduleVisibleRead,{passive:true});$('#om-list-search').addEventListener('input',renderList);search.addEventListener('input',()=>{query=search.value;void renderTimeline();});body.addEventListener('input',()=>{store.setDraft(body.value);});body.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.ctrlKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();void submit();}});$('[data-om=confirm]').addEventListener('change',e=>{compose().confirmationRequested=e.target.checked;});sendButton.addEventListener('click',()=>void submit());$('[data-om=refs]').addEventListener('click',chooseReferences);$('[data-om=report]').addEventListener('click',reportDialog);$('[data-om=new]').addEventListener('click',()=>void newConversation());$('[data-om=back]').addEventListener('click',()=>{shell.dataset.mobileView='list';});$('[data-om=close]').addEventListener('click',onClose);$('[data-om=settings]').addEventListener('click',conversationSettings);$('[data-om=shared]').addEventListener('click',()=>{shared.hidden=false;shell.dataset.shared='true';void renderShared();});$('[data-om=hide-shared]').addEventListener('click',()=>{shared.hidden=true;shell.dataset.shared='false';});$('#om-shared-filter').addEventListener('change',()=>void renderShared());$('.om-newer button').addEventListener('click',()=>{timeline.scrollTop=timeline.scrollHeight;$('.om-newer').hidden=true;});
+  timeline.addEventListener('scroll',scheduleVisibleRead,{passive:true});$('#om-list-search').addEventListener('input',renderList);search.addEventListener('input',()=>{query=search.value;void renderTimeline();});body.addEventListener('input',()=>{store.setDraft(body.value);});body.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.ctrlKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();void submit();}});$('[data-om=confirm]').addEventListener('change',e=>{compose().confirmationRequested=e.target.checked;});sendButton.addEventListener('click',()=>void submit());$('[data-om=refs]').addEventListener('click',chooseReferences);$('[data-om=report]').addEventListener('click',reportDialog);$('[data-om=new]').addEventListener('click',()=>void newConversation());$('[data-om=back]').addEventListener('click',()=>{shell.dataset.mobileView='list';});$('[data-om=close]').addEventListener('click',onClose);$('[data-om=settings]').addEventListener('click',conversationSettings);$('[data-om=shared]').addEventListener('click',()=>{sharedAttachmentOffset=0;shared.hidden=false;shell.dataset.shared='true';void renderShared();});$('[data-om=hide-shared]').addEventListener('click',()=>{shared.hidden=true;shell.dataset.shared='false';});$('#om-shared-filter').addEventListener('change',()=>{sharedAttachmentOffset=0;void renderShared();});$('.om-newer button').addEventListener('click',()=>{timeline.scrollTop=timeline.scrollHeight;$('.om-newer').hidden=true;});
   for(const field of historyDates.fields)field.addEventListener('change',()=>void renderTimeline());
-  for(const field of sharedDates.fields)field.addEventListener('change',()=>void renderShared());
+  for(const field of sharedDates.fields)field.addEventListener('change',()=>{sharedAttachmentOffset=0;void renderShared();});
   const stopStore=store.subscribe(renderState),stopList=commands.subscribe?.(options=>void reloadList(options));
   return {open:openConversation,share,announce,async restoreLocation(location){if(disposed||!context()||state.conversationId!==location?.conversationId||typeof location.query!=='string'||!Number.isFinite(location.scrollTop)||location.scrollTop<0)return false;const c=context();query=location.query;search.value=query;shell.dataset.mobileView='chat';await renderTimeline();if(!messageContextValid(c))return false;timeline.scrollTop=location.scrollTop;const target=timeline.querySelector('[data-message-id="'+location.messageId+'"]');if(target){target.tabIndex=-1;target.focus({preventScroll:true});}return true;},dispose(){disposed=true;cancelAnimationFrame(readFrame);listGeneration++;renderGeneration++;sharedGeneration++;stopStore?.();stopList?.();if(!summaryOwner)notifications.dispose();resolver.clear?.();closeDialog();shell.remove();}};
 }

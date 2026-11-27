@@ -43,10 +43,11 @@ export function createMessagingLiveCommands({session,directory,api,personal,acti
       const personalState=isSelected?preferences:null;
       if([unread?.status,personalState?.status].some(status=>status==='forbidden'||status==='locked')){directoryComplete=false;continue;}
       const saved=source.preferences??personalState?.preferences;
+      const hasDirectoryPreferences=preferenceKeys.every(key=>typeof source.preferences?.[key]==='boolean');
       if(preferenceKeys.every(key=>typeof saved?.[key]==='boolean')){
         Object.assign(row,saved,{archived:row.status==='archived'||saved.archived});
       }else if(source.preferences===null){row.preferencesUnavailable=true;directoryComplete=false;}
-      if(unreadSync?unread?.status==='ok':validUnread(unread,scope,row))Object.assign(row,{unread:unread.unread,latestIncoming:unread.latestIncoming,muted:unread.muted,updatedAt:Math.max(row.updatedAt,unread.latestIncoming?.createdAt??0)});
+      if(unreadSync?unread?.status==='ok':validUnread(unread,scope,row))Object.assign(row,{unread:unread.unread,latestIncoming:unread.latestIncoming,muted:hasDirectoryPreferences?saved.muted:unread.muted,updatedAt:Math.max(row.updatedAt,unread.latestIncoming?.createdAt??0)});
       rows.push(row);
     }
     return {status:'ok',...scope,conversations:rows,invites:[...invitations.values()],directoryComplete,complete:directoryComplete&&rows.every(row=>row.unread!==null)};

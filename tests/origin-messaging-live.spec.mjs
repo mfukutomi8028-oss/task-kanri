@@ -11,6 +11,7 @@ test('cloud composition clears the authorized directory on disconnect and dispos
     const roomId='live-room',personId='p_'+'1'.repeat(32),uid='synthetic-uid';
     const peerId='p_'+'2'.repeat(32),selfId='self_'+personId,directId='dm_'+personId+'_'+peerId,groupId='group_g_'+'a'.repeat(32);
     const imageId='00000000-0000-4000-8000-000000000001';
+    const textId=i=>'00000000-0000-4000-8000-'+String(i+1).padStart(12,'0');
     const imageBytes=Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a0foAAAAASUVORK5CYII='),c=>c.charCodeAt(0));
     const group={id:groupId,roomId,status:'active',kind:'group',title:'Synthetic group',revision:1,members:{[personId]:{active:true,joinedAt:1000,role:'owner'},[peerId]:{active:true,joinedAt:1000,role:'member'}}};
     const binding={uid,roomId,personId,displayName:'Synthetic',approved:true,active:true};
@@ -54,13 +55,13 @@ test('cloud composition clears the authorized directory on disconnect and dispos
         return sentRequests.length===1?Response.json({status:'unavailable'},{status:503}):Response.json({status:'sent',id});
       }
       if(action==='attachmentMetadata'){
-        return Response.json({status:'ok',items:payload.items.filter(item=>item.attachmentId===imageId).map(item=>({...item,filename:'synthetic.png',mime:'image/png',bytes:imageBytes.length}))});
+        return Response.json({status:'ok',items:payload.items.map(item=>item.attachmentId===imageId?{...item,filename:'synthetic.png',mime:'image/png',bytes:imageBytes.length}:{...item,filename:'synthetic.txt',mime:'text/plain',bytes:9})});
       }
       if(action==='attachmentDownload'&&payload.attachmentId===imageId){
         return new Response(imageBytes,{headers:{'Content-Type':'application/octet-stream','Content-Length':String(imageBytes.length),'X-Workboard-Filename':'synthetic.png','X-Workboard-Mime':'image/png'}});
       }
       if(action==='history'){
-        const make=(index,body)=>({id:'msg_'+personId+'_q_'+index.toString(16).padStart(32,'0'),senderId:personId,createdAt:2000+index,body,refs:[],replyTo:null,revision:1,attachmentIds:index===0?[imageId]:[],confirmationRequested:false});
+        const make=(index,body)=>({id:'msg_'+personId+'_q_'+index.toString(16).padStart(32,'0'),senderId:personId,createdAt:2000+index,body,refs:[],replyTo:null,revision:1,attachmentIds:index===0?[imageId]:index<=20?[textId(index)]:[],confirmationRequested:false});
         const messages=!seedHistory?[]:payload.before?[make(0,'Older searchable text')]:Array.from({length:50},(_,index)=>make(index+1,'Recent note '+index));
         return Response.json({status:'ok',joinedAt:1000,messages,nextCursor:messages.length===50?{id:messages[0].id,createdAt:messages[0].createdAt}:null,hasMore:messages.length===50});
       }
@@ -130,6 +131,10 @@ test('cloud composition clears the authorized directory on disconnect and dispos
   await root.getByRole('button',{name:'共有データ',exact:true}).click();
   await root.locator('#om-shared-filter').selectOption('image');
   const showImage=root.getByRole('button',{name:'synthetic.png を表示'});
+  await expect(root.locator('.om-shared .om-coverage')).toContainText('1〜20 / 21');
+  await expect(showImage).toHaveCount(0);
+  await root.getByRole('button',{name:'次の添付候補'}).click();
+  await expect(root.locator('.om-shared .om-coverage')).toContainText('21〜21 / 21');
   await expect(showImage).toBeVisible();
   expect(await page.evaluate(()=>window.__liveCloudTest.calls.includes('attachmentDownload'))).toBe(false);
   await showImage.click();

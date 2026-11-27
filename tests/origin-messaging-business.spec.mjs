@@ -33,6 +33,7 @@ test('Origin creates a canonical task and shares its reference from the detail',
         return {app:{},sdk,authSdk:{getAuth:()=>({currentUser:user,authStateReady:async()=>{}}),signInAnonymously(){throw Error('Unexpected sign-in');},onAuthStateChanged(_auth,fn){queueMicrotask(fn);return ()=>{};}}};
       }};
     const realFetch=window.fetch;
+    let sentMessage=null;
     window.fetch=(url,options)=>{
       if(url==='https://abcdefghijklmnopqrst.supabase.co/functions/v1/workboard-messaging'){
         const {action}=JSON.parse(options.body);
@@ -40,11 +41,12 @@ test('Origin creates a canonical task and shares its reference from the detail',
         if(action==='people')return Promise.resolve(Response.json({...scope,people:[{personId,displayName:name}]}));
         if(action==='directory')return Promise.resolve(Response.json({...scope,conversations:[{id:conversationId,kind:'self',status:'active',role:'member',memberCount:1,joinedAt:1000,revision:1,controlUpdatedAt:1000}],invites:[],hasMore:false,nextCursor:null}));
         if(action==='unread')return Promise.resolve(Response.json({...scope,conversationId,joinedAt:1000,unread:0,complete:true,muted:false,latestIncoming:null}));
-        if(action==='history')return Promise.resolve(Response.json({status:'ok',joinedAt:1000,messages:[message],nextCursor:null,hasMore:false}));
+        if(action==='history')return Promise.resolve(Response.json({status:'ok',joinedAt:1000,messages:sentMessage?[message,sentMessage]:[message],nextCursor:null,hasMore:false}));
         if(action==='message'){
           const {payload}=JSON.parse(options.body);
           window.__businessTest.requests.push(payload.command);
-          return Promise.resolve(Response.json({status:'sent',id:'msg_'+personId+'_'+payload.command.requestId}));
+          sentMessage={...message,...payload.command.input,id:'msg_'+personId+'_'+payload.command.requestId,createdAt:2001};
+          return Promise.resolve(Response.json({status:'sent',id:sentMessage.id}));
         }
         throw Error('Unexpected synthetic action');
 
@@ -95,6 +97,15 @@ test('Origin creates a canonical task and shares its reference from the detail',
     const t=window.__businessTest.base.readSnapshot().tasks.find(t=>t.title==='Synthetic task from a message');
     return window.__businessTest.requests[0].input.refs[0].recordId===t.id;
   })).toBe(true);
+  await dialog.locator('.origin-message-dismiss').click();
+  await sheet.locator('.sheet-close').click({timeout:5000});
+  await trigger.click();
+  await dialog.getByRole('button',{name:'自分宛てメッセージ',exact:true}).click();
+  await dialog.getByRole('button',{name:'共有データ',exact:true}).click();
+  await dialog.locator('#om-shared-filter').selectOption('task');
+  await dialog.locator('.om-shared-list').getByRole('button',{name:'Synthetic task from a message',exact:true}).click({timeout:5000});
+  await expect(dialog.locator('.om-message.om-highlight')).toBeFocused();
+  await expect(dialog).toHaveAttribute('open','');
   await page.evaluate(()=>window.WorkBoardDisplayController.selectMode('journal'));
   await expect(page.locator('html')).toHaveAttribute('data-wb-display','journal');
   await expect(dialog).not.toHaveAttribute('open','');

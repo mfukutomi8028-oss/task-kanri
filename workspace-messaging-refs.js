@@ -79,21 +79,22 @@ export async function searchLoadedMessages(messages,{query='',context,resolver,f
   }
   return {scope:'loaded',matches};
 }
-export async function selectSharedData(messages,{context,resolver,type=null,from=null,to=null,limit=50,readAttachmentMetadata=null}={}){
-  if(!resolver||type!==null&&![...types,'url','image','file'].includes(type))return [];
-  const rows=[],seen=new Set(),loaded=readableMessages(messages,context).filter(m=>within(m,from,to));
+const ATTACHMENT_METADATA_PAGE_SIZE=20;
+export async function selectSharedData(messages,{context,resolver,type=null,from=null,to=null,limit=50,readAttachmentMetadata=null,attachmentOffset=0}={}){
+  const rows=[],attachments={offset:0,checked:0,total:0},result={rows,attachments};
+  if(!resolver||type!==null&&![...types,'url','image','file'].includes(type))return result;
+  const seen=new Set(),loaded=readableMessages(messages,context).filter(m=>within(m,from,to));
   let metadata=new Map();
   if(readAttachmentMetadata&&(type===null||type==='image'||type==='file')){
-    const candidates=[];
-    for(const m of loaded){
-      for(const attachmentId of m.attachmentIds){
-        candidates.push({messageId:m.id,attachmentId});
-        if(candidates.length===20)break;
-      }
-      if(candidates.length===20)break;
-    }
-    if(candidates.length){
-      const response=await readAttachmentMetadata(candidates);
+    const candidates=loaded.flatMap(m=>m.attachmentIds.map(attachmentId=>({messageId:m.id,attachmentId})));
+    attachments.total=candidates.length;
+    const last=Math.max(0,Math.floor((attachments.total-1)/ATTACHMENT_METADATA_PAGE_SIZE));
+    const page=Number.isSafeInteger(attachmentOffset)&&attachmentOffset>=0?Math.floor(attachmentOffset/ATTACHMENT_METADATA_PAGE_SIZE):0;
+    attachments.offset=Math.min(page,last)*ATTACHMENT_METADATA_PAGE_SIZE;
+    const batch=candidates.slice(attachments.offset,attachments.offset+ATTACHMENT_METADATA_PAGE_SIZE);
+    attachments.checked=batch.length;
+    if(batch.length){
+      const response=await readAttachmentMetadata(batch);
       if(response?.status!=='ok'||!Array.isArray(response.items))throw new Error('Attachment metadata unavailable');
       metadata=new Map(response.items.map(item=>[item.messageId+'/'+item.attachmentId,item]));
     }
@@ -102,7 +103,7 @@ export async function selectSharedData(messages,{context,resolver,type=null,from
     if(type===null||types.has(type))for(const ref of m.refs){
       if(type!==null&&ref.type!==type)continue;const key=JSON.stringify([ref.type,ref.recordId]);if(seen.has(key))continue;
       const item=await resolver.resolve(ref,context);if(item.status!=='available')continue;
-      seen.add(key);rows.push({...item,type:ref.type,messageId:m.id,createdAt:m.createdAt});if(rows.length>=limitOf(limit))return rows;
+      seen.add(key);rows.push({...item,type:ref.type,messageId:m.id,createdAt:m.createdAt});if(rows.length>=limitOf(limit))return result;
     }
     if(type===null||type==='image'||type==='file')for(const attachmentId of m.attachmentIds){
       const item=metadata.get(m.id+'/'+attachmentId);
@@ -110,11 +111,11 @@ export async function selectSharedData(messages,{context,resolver,type=null,from
       const kind=['image/jpeg','image/png','image/webp'].includes(item.mime)?'image':'file';
       if(type!==null&&type!==kind)continue;
       rows.push({type:kind,title:item.filename,attachmentId,messageId:m.id,createdAt:m.createdAt});
-      if(rows.length>=limitOf(limit))return rows;
+      if(rows.length>=limitOf(limit))return result;
     }
     if(type===null||type==='url')for(const token of m.body.match(/https?:\/\/[^\s<>"']+/gi)??[]){
-      try{const url=new URL(token);if(!['http:','https:'].includes(url.protocol)||url.username||url.password||seen.has(url.href))continue;seen.add(url.href);rows.push({type:'url',url:url.href,messageId:m.id,createdAt:m.createdAt});if(rows.length>=limitOf(limit))return rows;}catch(_){}
+      try{const url=new URL(token);if(!['http:','https:'].includes(url.protocol)||url.username||url.password||seen.has(url.href))continue;seen.add(url.href);rows.push({type:'url',url:url.href,messageId:m.id,createdAt:m.createdAt});if(rows.length>=limitOf(limit))return result;}catch(_){}
     }
   }
-  return rows;
+  return result;
 }
