@@ -1,5 +1,7 @@
 // Trusted cloud adapters. The supplied Supabase client must be a server-only
 // service-role client; never construct this adapter in a browser.
+import {randomUUID} from 'node:crypto';
+import {inspectMessagingAttachment} from './messaging-attachment-recovery.mjs';
 import {createMessagingAttachmentUploadService} from './messaging-attachment-upload.mjs';
 import {createMessagingAttachmentAccessService} from './messaging-attachment-access.mjs';
 import {MESSAGING_ATTACHMENT_MAX_BYTES} from './messaging-attachment-content.mjs';
@@ -33,10 +35,20 @@ export function createFirebaseSupabaseAttachmentUploadService({auth,database,sup
     },
     finalize:target=>rpc('workboard_finalize_attachment_v1',{p_attachment_id:target.attachmentId,...scope(target),p_actual_bytes:target.actualBytes,p_sha256:target.sha256})
   });
-  const access=createMessagingAttachmentAccessService({...common,readLedger,readObject,
-    readMessage:({roomId,conversationId,messageId})=>read('messagingV1/'+roomId+'/messages/'+conversationId+'/'+messageId),
+  const readMessage=({roomId,conversationId,messageId})=>read('messagingV1/'+roomId+'/messages/'+conversationId+'/'+messageId);
+  const access=createMessagingAttachmentAccessService({...common,readLedger,readObject,readMessage,
     reserveDownload:({bytes})=>rpc('workboard_reserve_attachment_download_v1',{p_bytes:bytes}),
     claimBatch:({roomId,conversationId,personId,joinedAt,requestId,messageId,attachmentIds})=>rpc('workboard_claim_attachments_v1',{p_room_id:roomId,p_conversation_id:conversationId,p_uploader_id:personId,p_joined_at:joinedAt,p_request_id:requestId,p_message_id:messageId,p_attachment_ids:attachmentIds})
   });
-  return Object.freeze({...upload,...access});
+  async function acquireSend({roomId,conversationId,messageId}){
+    const args={p_room_id:roomId,p_conversation_id:conversationId,p_message_id:messageId,p_lease_id:randomUUID()};
+    const result=await rpc('workboard_acquire_attachment_send_v1',args);
+    return result.status==='ok'?{status:'ok',release:()=>rpc('workboard_release_attachment_send_v1',args)}:unavailable();
+  }
+  async function readFence({roomId,conversationId,messageId}){
+    const {data,error}=await supabase.from('workboard_attachment_send_fences_v1').select('kind').eq('room_id',roomId).eq('conversation_id',conversationId).eq('message_id',messageId).maybeSingle();
+    if(error)throw Error('Attachment fence unavailable');
+    return data;
+  }
+  return Object.freeze({...upload,...access,acquireSend,inspect:target=>inspectMessagingAttachment(target,{readLedger,readMessage,readObject,readFence})});
 }

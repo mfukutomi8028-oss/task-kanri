@@ -31,8 +31,8 @@ function report(diagnostic,stage,error=null){
   }catch(_){/* Observability must not change the result. */}
 }
 
-export function createMessagingMutationService({verifyToken,readBinding,readControl,transactMessage,digestKey,clock=Date.now,publishActivity=null,claimAttachments=null,reserveSend=null,diagnostic=null}={}){
-  if([verifyToken,readBinding,readControl,transactMessage,clock].some(fn=>typeof fn!=='function')||publishActivity!==null&&typeof publishActivity!=='function'||claimAttachments!==null&&typeof claimAttachments!=='function'||reserveSend!==null&&typeof reserveSend!=='function')throw new TypeError('Trusted mutation adapters required');
+export function createMessagingMutationService({verifyToken,readBinding,readControl,transactMessage,digestKey,clock=Date.now,publishActivity=null,claimAttachments=null,reserveSend=null,acquireAttachmentLease=null,diagnostic=null}={}){
+  if([verifyToken,readBinding,readControl,transactMessage,clock].some(fn=>typeof fn!=='function')||publishActivity!==null&&typeof publishActivity!=='function'||claimAttachments!==null&&typeof claimAttachments!=='function'||reserveSend!==null&&typeof reserveSend!=='function'||acquireAttachmentLease!==null&&typeof acquireAttachmentLease!=='function')throw new TypeError('Trusted mutation adapters required');
   const commands=createMessagingMessageCommands({digestKey});
   async function authorize(token,roomId,conversationId){
     let identity;try{identity=await verifyToken(token);}catch(_){return null;}
@@ -60,7 +60,7 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
         if(type==='edit')clean.input=validateRoomMessageInput(command.input,roomId);
       }
     }catch(_){return fail('invalid');}
-    let stage='authorize';
+    let stage='authorize',releaseAttachmentLease=null;
     try{
       const access=await authorize(token,roomId,conversationId);
       if(!access||expectedPersonId!==undefined&&access.personId!==expectedPersonId)return fail('forbidden');
@@ -81,7 +81,13 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
         if(!claimAttachments)return fail('unavailable');
         const proposed=commands.apply(null,clean,{...access,now,active:true,conversationStatus:'active'});
         if(proposed.status!=='sent')return fail(proposed.status);
-        const claimed=await claimAttachments({roomId,conversationId,personId:access.personId,joinedAt:access.joinedAt,requestId:clean.requestId,messageId,attachmentIds:clean.input.attachmentIds});
+        const claim={roomId,conversationId,personId:access.personId,joinedAt:access.joinedAt,requestId:clean.requestId,messageId,attachmentIds:clean.input.attachmentIds};
+        if(acquireAttachmentLease){
+          const lease=await acquireAttachmentLease(claim);
+          if(lease?.status!=='ok'||typeof lease.release!=='function')return fail('unavailable');
+          releaseAttachmentLease=lease.release;
+        }
+        const claimed=await claimAttachments(claim);
         if(claimed?.status!=='ok')return fail(['invalid','conflict','forbidden'].includes(claimed?.status)?claimed.status:claimed?.status==='expired'?'conflict':'unavailable');
         const fresh=await authorize(token,roomId,conversationId);
         if(!fresh||fresh.uid!==access.uid||fresh.personId!==access.personId||fresh.joinedAt!==access.joinedAt)return fail('forbidden');
@@ -107,6 +113,11 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
       if(!['invalid','conflict','forbidden'].includes(decision?.status))report(diagnostic,'decision-result');
       return fail(['invalid','conflict','forbidden'].includes(decision?.status)?decision.status:'unavailable');
     }catch(error){report(diagnostic,stage,error);return fail('unavailable');}
+    finally{
+      if(releaseAttachmentLease)try{
+        if((await releaseAttachmentLease())?.status!=='ok')report(diagnostic,'attachment-fence-release');
+      }catch(error){report(diagnostic,'attachment-fence-release',error);}
+    }
   }
   return Object.freeze({mutate});
 }
@@ -114,10 +125,10 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
 // The factory must create a server-only Admin database instance with this exact
 // databaseAuthVariableOverride and dispose it after the callback. Never mint a
 // client authentication token containing this reserved service scope.
-export function createFirebaseMessagingMutationService({auth,database,withActorDatabase,digestKey,clock,claimAttachments=null,reserveSend=null,diagnostic=null}={}){
+export function createFirebaseMessagingMutationService({auth,database,withActorDatabase,digestKey,clock,claimAttachments=null,reserveSend=null,acquireAttachmentLease=null,diagnostic=null}={}){
   if(typeof auth?.verifyIdToken!=='function'||typeof database?.ref!=='function'||typeof withActorDatabase!=='function')throw new TypeError('Scoped Firebase adapters required');
   const read=async path=>(await database.ref(path).get()).val();
-  return createMessagingMutationService({digestKey,clock,claimAttachments,reserveSend,diagnostic,publishActivity:createFirebaseMessagingActivityPublisher({database}),
+  return createMessagingMutationService({digestKey,clock,claimAttachments,reserveSend,acquireAttachmentLease,diagnostic,publishActivity:createFirebaseMessagingActivityPublisher({database}),
     verifyToken:token=>auth.verifyIdToken(token,true),
     readBinding:({roomId,uid})=>read('messagingAccessV1/'+roomId+'/'+uid),
     readControl:({roomId,conversationId})=>read('messagingV1/'+roomId+'/control/'+conversationId),

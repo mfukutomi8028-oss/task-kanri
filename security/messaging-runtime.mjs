@@ -64,9 +64,9 @@ export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDat
       if(getEnv('WORKBOARD_MESSAGING_ATTACHMENTS_ENABLED')==='true'){
         if(typeof createAttachments!=='function')throw new TypeError('Trusted attachment configuration required');
         attachments=createAttachments({...shared,supabase});
-        if([attachments?.upload,attachments?.download,attachments?.claim].some(fn=>typeof fn!=='function'))throw new TypeError('Attachment services required');
+        if([attachments?.upload,attachments?.download,attachments?.claim,attachments?.acquireSend].some(fn=>typeof fn!=='function'))throw new TypeError('Attachment services required');
       }
-      const handler=createApiHandler({reserveRequest,allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,reserveSend,...(attachments?{claimAttachments:attachments.claim}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments});
+      const handler=createApiHandler({reserveRequest,allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,reserveSend,...(attachments?{claimAttachments:attachments.claim,acquireAttachmentLease:attachments.acquireSend}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments});
       if(typeof handler!=='function')throw new TypeError('Invalid API handler');
       return handler;
     }catch(_){if(app)try{await deleteApp(app);}catch(_){/* Do not expose startup errors or secrets. */}return null;}
