@@ -242,3 +242,49 @@ test('capacity is fetched only on demand, cached, compact, and warns before atta
   expect(await page.evaluate(()=>globalThis.__usageReads)).toBe(1);
   expect(errors).toEqual([]);
 });
+
+test('image preparation stays consistent across conversation switches, draft return, upload failure retry and revoked sessions',async({page})=>{
+  await page.setViewportSize({width:1366,height:900});
+  await page.route('**/*',r=>new URL(r.request().url()).origin==='http://127.0.0.1:4173'?r.continue():r.abort('blockedbyclient'));
+  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+  await page.addInitScript(()=>{const original=globalThis.createImageBitmap.bind(globalThis);globalThis.__holdImages=false;globalThis.createImageBitmap=async(...args)=>{if(globalThis.__holdImages)await new Promise(resolve=>{globalThis.__releaseImages=resolve;});return original(...args);};});
+  await page.goto('/test-harness/messaging-preview/index.html?liveControls=1');
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC','base64');
+  const composer=page.getByLabel('会話',{exact:true}),input=page.locator('.om-file-input');
+  const team=()=>page.getByRole('button',{name:'システム課',exact:true}).click();
+  const self=()=>page.getByRole('button',{name:'自分宛てメッセージ',exact:true}).click();
+  // 1) Switching conversation while an image is being prepared never attaches it anywhere.
+  await team();await page.evaluate(()=>{globalThis.__holdImages=true;});
+  await input.setInputFiles({name:'photo.png',mimeType:'image/png',buffer:png});
+  await expect(page.getByText('画像を準備しています…',{exact:true})).toBeVisible();
+  await expect(composer.getByRole('button',{name:'送信',exact:true})).toBeDisabled();
+  await page.waitForFunction(()=>typeof globalThis.__releaseImages==='function');
+  await self();await page.evaluate(()=>{globalThis.__holdImages=false;globalThis.__releaseImages();globalThis.__releaseImages=null;});
+  await expect(composer.getByText('photo.png',{exact:true})).toHaveCount(0);
+  await team();await expect(composer.getByText('photo.png',{exact:true})).toHaveCount(0);
+  // 2) A prepared image stays in the draft when leaving and returning.
+  await input.setInputFiles({name:'photo.png',mimeType:'image/png',buffer:png});
+  await expect(composer.getByText('photo.png',{exact:true})).toBeVisible();
+  await self();await team();
+  await expect(composer.getByText('photo.png',{exact:true})).toBeVisible();
+  // 3) An upload failure is retried with the identical prepared bytes and one message.
+  await page.evaluate(()=>{globalThis.__failUploads=1;globalThis.__uploads=[];});
+  await composer.getByRole('button',{name:'送信',exact:true}).click();
+  await expect(page.getByText('添付を保存できません',{exact:false})).toBeVisible();
+  await composer.getByRole('button',{name:'送信',exact:true}).click();
+  await expect(page.getByLabel('メッセージ履歴').locator('.om-message').filter({hasText:'添付ファイル 1 をダウンロード'})).toHaveCount(1);
+  const uploads=await page.evaluate(()=>globalThis.__uploads);
+  expect(uploads).toHaveLength(2);
+  expect(uploads[1].requestId).toBe(uploads[0].requestId);
+  expect(uploads[1].bytes).toEqual(uploads[0].bytes);
+  expect(Buffer.from(uploads[0].bytes).equals(png)).toBe(false);
+  // 4) Losing authorization during preparation discards the result.
+  await page.evaluate(()=>{globalThis.__holdImages=true;});
+  await input.setInputFiles({name:'late.png',mimeType:'image/png',buffer:png});
+  await page.waitForFunction(()=>typeof globalThis.__releaseImages==='function');
+  await page.evaluate(async()=>{await globalThis.__previewSession.setContext(null);globalThis.__holdImages=false;globalThis.__releaseImages();});
+  await page.evaluate(()=>globalThis.__previewSession.setContext(globalThis.__previewContext));
+  await team();
+  await expect(composer.getByText('late.png',{exact:true})).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
