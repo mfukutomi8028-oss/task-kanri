@@ -10,7 +10,7 @@ create schema storage;
 create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
 create table storage.objects(bucket_id text,name text,primary key(bucket_id,name));
 SQL
-for migration in workboard-attachments-v1 workboard-attachments-epoch-v1 workboard-attachments-claim-v1; do
+for migration in workboard-attachments-v1 workboard-attachments-epoch-v1 workboard-attachments-claim-v1 workboard-attachment-usage-v1; do
   "${db[@]}" --single-transaction -f "security/supabase/${migration}.sql" >/dev/null
 done
 for migration in workboard-messaging-budget-v1 workboard-attachment-send-fence-v1 workboard-messaging-budget-v2; do

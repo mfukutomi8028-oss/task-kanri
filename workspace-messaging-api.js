@@ -49,6 +49,7 @@ export function createMessagingApiTransport({endpoint,session,getToken,fetchImpl
       if(value.status==='ok'&&['directory','people','unread'].includes(action)&&(value.roomId!==actor.roomId||value.personId!==actor.personId))return fail('locked');
       if(value.status==='ok'&&action==='unread'&&value.conversationId!==payload.conversationId)return fail('unavailable');
       if(action==='attachmentUpload'&&value.status==='ok'&&(!isMessagingAttachmentId(value.attachmentId)||value.filename!==payload.filename||value.mime!==payload.mime||value.bytes!==payload.declaredBytes))return fail('unavailable');
+      if(action==='attachmentUsage'&&value.status==='ok'&&!['globalBytes','personBytes','conversationBytes','dailyBytes','limitBytes','warnBytes','cleanupBytes','dailyLimitBytes'].every(key=>Number.isSafeInteger(value[key])&&value[key]>=0))return fail('unavailable');
       return value;
     }catch(_){return fail(current()?'unavailable':'locked');}finally{clearTimeout(timeout);active.delete(controller);}
   }
@@ -58,6 +59,7 @@ export function createMessagingApiTransport({endpoint,session,getToken,fetchImpl
       return invoke('attachmentUpload',{roomId,conversationId,requestId,slot,filename,mime,declaredBytes:file.size},file);
     },
     readAttachmentMetadata:({roomId,conversationId,items}={})=>isConversationId(conversationId)&&Array.isArray(items)&&items.length>=1&&items.length<=20?invoke('attachmentMetadata',{roomId,conversationId,items}):Promise.resolve(fail('invalid')),
+    readAttachmentUsage:({roomId,conversationId}={})=>isConversationId(conversationId)?invoke('attachmentUsage',{roomId,conversationId}):Promise.resolve(fail('invalid')),
     downloadAttachment:({roomId,conversationId,messageId,attachmentId}={})=>isConversationId(conversationId)&&isMessageId(messageId)&&isMessagingAttachmentId(attachmentId)?invoke('attachmentDownload',{roomId,conversationId,messageId,attachmentId}):Promise.resolve(fail('invalid')),
     readHistory:({roomId,conversationId,before=null,limit=50}={})=>invoke('history',{roomId,conversationId,before,limit}),
     send:({roomId,conversationId,requestId,input}={})=>invoke('message',{roomId,conversationId,command:{type:'send',requestId,input}}),

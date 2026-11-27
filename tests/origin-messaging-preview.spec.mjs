@@ -222,3 +222,23 @@ test('selected images are prepared once, failures never send the original, and o
   await expect(page.getByLabel('メッセージ履歴').locator('.om-message').filter({hasText:'添付ファイル 1 をダウンロード'})).toHaveCount(1);
   expect(errors).toEqual([]);
 });
+
+test('capacity is fetched only on demand, cached, compact, and warns before attaching',async({page})=>{
+  await page.setViewportSize({width:1366,height:900});
+  await page.route('**/*',r=>new URL(r.request().url()).origin==='http://127.0.0.1:4173'?r.continue():r.abort('blockedbyclient'));
+  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+  await page.goto('/test-harness/messaging-preview/index.html?liveControls=1');
+  await page.getByRole('button',{name:'システム課',exact:true}).click();
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(()=>globalThis.__usageReads)).toBe(0);
+  await page.getByLabel('会話',{exact:true}).getByRole('button',{name:'ファイルを添付',exact:true}).click();
+  await expect(page.getByText('保存容量が少なくなっています',{exact:false})).toBeVisible();
+  await page.getByRole('button',{name:'共有データ',exact:true}).click();
+  const usage=page.locator('.om-usage');
+  await expect(usage).toContainText('全体 650MB/800MB');
+  await expect(usage).toContainText('本人 3.0MB');
+  await expect(usage).toContainText('本日 1.0MB/20.0MB');
+  await expect(usage).toContainText('残りが少なくなっています');
+  expect(await page.evaluate(()=>globalThis.__usageReads)).toBe(1);
+  expect(errors).toEqual([]);
+});

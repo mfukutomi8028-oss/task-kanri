@@ -48,7 +48,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   const inviteArea=el('section','om-invites');inviteArea.setAttribute('aria-label','グループ招待');inviteArea.hidden=true;list.before(inviteArea);
   const refreshButton=button('更新',()=>void reloadList({retryUnread:true}),'om-outline');refreshButton.hidden=typeof commands.respondInvite!=='function';$('.om-list-head').append(refreshButton);
   const fileInput=el('input','om-file-input');fileInput.type='file';fileInput.multiple=true;fileInput.accept=messagingFileAccept;fileInput.hidden=true;composer.append(fileInput);
-  const fileButton=button('ファイルを添付',()=>{if(!sendPending&&!compose()?.editing)fileInput.click();},'om-outline');fileButton.hidden=!fileEnabled;composeTools.prepend(fileButton);
+  const fileButton=button('ファイルを添付',()=>{if(!sendPending&&!compose()?.editing){void warnAboutCapacity();fileInput.click();}},'om-outline');fileButton.hidden=!fileEnabled;composeTools.prepend(fileButton);
   const originalLabel=el('label','om-original'),keepOriginal=el('input','');keepOriginal.type='checkbox';const originalNote=el('small','om-original-note','原本には位置情報などのメタデータが残る場合があります。');originalNote.hidden=true;originalLabel.append(keepOriginal,el('span','','原本のまま送る'),originalNote);originalLabel.hidden=!fileEnabled;fileButton.after(originalLabel);keepOriginal.addEventListener('change',()=>{originalNote.hidden=!keepOriginal.checked;});
   const context=()=>{const identity=session.getSnapshot();return state.status==='ready'&&identity?.status==='bound'&&state.conversationId&&Number.isSafeInteger(state.joinedAt)?{...identity,conversationId:state.conversationId,joinedAt:state.joinedAt}:null;};
   const selected=()=>conversations.find(c=>c.id===state.conversationId);
@@ -391,7 +391,34 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
     if(older)timeline.scrollTop=beforeTop+timeline.scrollHeight-beforeHeight;else if(nearBottom||lastId!==state.conversationId)timeline.scrollTop=timeline.scrollHeight;else{timeline.scrollTop=beforeTop;$('.om-newer').hidden=false;}
     scheduleVisibleRead();
   }
+  // Capacity is fetched on demand (shared panel open / attach click) and cached for 60s.
+  const usageNode=el('p','om-usage');usageNode.hidden=true;usageNode.setAttribute('role','status');$('.om-shared-list').before(usageNode);
+  let usage=null;
+  const mb=v=>(v/1e6).toFixed(v>=1e8?0:1)+'MB';
+  const usageLevel=u=>u.globalBytes>=u.cleanupBytes?'cleanup':u.globalBytes>=u.warnBytes?'warn':'ok';
+  function renderUsage(){
+    const c=context(),u=usage&&c&&usage.id===c.conversationId?usage.value:null;
+    usageNode.hidden=!u;if(!u)return;
+    const level=usageLevel(u);usageNode.dataset.level=level;
+    usageNode.textContent='保存容量 全体 '+mb(u.globalBytes)+'/'+mb(u.limitBytes)+'（本人 '+mb(u.personBytes)+'・この会話 '+mb(u.conversationBytes)+'・本日 '+mb(u.dailyBytes)+'/'+mb(u.dailyLimitBytes)+'）'+(level==='cleanup'?'。整理が必要です。不要な添付の削除を検討してください。':level==='warn'?'。残りが少なくなっています。':'');
+  }
+  async function refreshUsage(){
+    const c=context();if(!c||typeof attachments?.readAttachmentUsage!=='function')return null;
+    if(!(usage&&usage.id===c.conversationId&&Date.now()-usage.at<60000)){
+      const result=await attachments.readAttachmentUsage({roomId:c.roomId,conversationId:c.conversationId});
+      if(!messageContextValid(c))return null;
+      usage=result.status==='ok'?{id:c.conversationId,at:Date.now(),value:result}:null;
+    }
+    renderUsage();return usage?.value??null;
+  }
+  async function warnAboutCapacity(){
+    const u=await refreshUsage().catch(()=>null);if(!u||sendPending)return;
+    if(u.dailyBytes>=u.dailyLimitBytes)notice('本日のアップロード上限（'+mb(u.dailyLimitBytes)+'）に達しています。');
+    else if(usageLevel(u)==='cleanup')notice('保存容量の整理が必要です。新しい添付は上限に達すると保存できません。');
+    else if(usageLevel(u)==='warn')notice('保存容量が少なくなっています。不要な添付の整理をご検討ください。');
+  }
   async function renderShared(){
+    void refreshUsage().catch(()=>{});
     const c=context(),generation=++sharedGeneration,node=$('.om-shared-list');
     node.replaceChildren(el('p','om-empty-small','読み込み中…'));
     if(!c)return;

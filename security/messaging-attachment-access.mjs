@@ -15,7 +15,7 @@ const safeFilename=v=>typeof v==='string'&&v===v.trim()&&Array.from(v).length>=1
 const size=v=>Number.isSafeInteger(v)&&v>=1&&v<=5000000;
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
 const sameActor=(a,b)=>a!==null&&b!==null&&a.uid===b.uid&&a.personId===b.personId&&a.joinedAt===b.joinedAt;
-export function createMessagingAttachmentAccessService({verifyToken,readBinding,readControl,readMessage,readLedger,reserveDownload,readObject,claimBatch}={}){
+export function createMessagingAttachmentAccessService({verifyToken,readBinding,readControl,readMessage,readLedger,reserveDownload,readObject,claimBatch,readUsage=null}={}){
   if([verifyToken,readBinding,readControl,readMessage,readLedger,reserveDownload,readObject,claimBatch].some(fn=>typeof fn!=='function'))throw new TypeError('Trusted attachment access adapters required');
   async function authorize({token,roomId,conversationId,expectedPersonId}){
     const actor=await readApprovedMessagingActor({token,roomId,verifyToken,readBinding});
@@ -90,5 +90,21 @@ export function createMessagingAttachmentAccessService({verifyToken,readBinding,
       return fail(['ok','invalid','conflict','expired','forbidden'].includes(result?.status)?result.status:'unavailable');
     }catch(_){return fail('unavailable');}
   }
-  return Object.freeze({download,metadata,claim});
+  // On-demand, read-only capacity summary. Only the caller's own totals and the
+  // aggregate of a conversation they currently belong to are returned.
+  const usageFields=new Set(['token','roomId','conversationId','expectedPersonId']);
+  const amount=v=>Number.isSafeInteger(v)&&v>=0;
+  async function usage(request){
+    if(typeof readUsage!=='function')return fail('unavailable');
+    if(!record(request)||Object.keys(request).some(key=>!usageFields.has(key))||typeof request.token!=='string'||!request.token||request.token.length>16384||!isMessagingRoomId(request.roomId)||!isConversationId(request.conversationId)||!isPersonId(request.expectedPersonId))return fail('invalid');
+    try{
+      const actor=await authorize(request);if(!actor)return fail('forbidden');
+      const value=await readUsage({roomId:request.roomId,conversationId:request.conversationId,personId:actor.personId});
+      if(value?.status!=='ok'||!['globalBytes','personBytes','conversationBytes','dailyBytes','limitBytes','warnBytes','cleanupBytes','dailyLimitBytes'].every(key=>amount(value[key])))return fail('unavailable');
+      if(!sameActor(actor,await authorize(request)))return fail('forbidden');
+      const {globalBytes,personBytes,conversationBytes,dailyBytes,limitBytes,warnBytes,cleanupBytes,dailyLimitBytes}=value;
+      return {status:'ok',globalBytes,personBytes,conversationBytes,dailyBytes,limitBytes,warnBytes,cleanupBytes,dailyLimitBytes};
+    }catch(_){return fail('unavailable');}
+  }
+  return Object.freeze({download,metadata,claim,usage});
 }

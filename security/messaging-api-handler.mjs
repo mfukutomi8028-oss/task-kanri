@@ -21,6 +21,7 @@ function workUnits(action,payload){
   if(action==='directory')return 4+3*bounded(payload.limit,100);
   if(action==='history')return 8+bounded(payload.limit,50);
   if(action==='attachmentMetadata')return 10+3*bounded(payload.items?.length,20);
+  if(action==='attachmentUsage')return 12;
   if(action==='unread')return 130;
   if(action==='conversation')return 128;
   if(action==='attachmentUpload'||action==='attachmentDownload')return 64;
@@ -33,7 +34,7 @@ export function createMessagingApiHandler({allowedOrigins,history,mutation,direc
   if(reserveRequest!==null&&(typeof reserveRequest!=='function'||!authorizeRequest))throw new TypeError('Invalid messaging request budget');
   const origins=new Set(allowedOrigins);
   const attachmentHttp=attachments===null?null:createMessagingAttachmentHttp({attachments});
-  const operations={history:history?.readHistory,message:mutation?.mutate,directory:directory?.readDirectory,unread:directory?.readUnread,people:conversations?.readPeople,conversation:conversations?.execute,...(typeof attachments?.metadata==='function'?{attachmentMetadata:attachments.metadata}:{})};
+  const operations={history:history?.readHistory,message:mutation?.mutate,directory:directory?.readDirectory,unread:directory?.readUnread,people:conversations?.readPeople,conversation:conversations?.execute,...(typeof attachments?.metadata==='function'?{attachmentMetadata:attachments.metadata}:{}),...(typeof attachments?.usage==='function'?{attachmentUsage:attachments.usage}:{})};
   if(Object.values(operations).some(fn=>typeof fn!=='function'))throw new TypeError('Messaging services required');
   return async function handle(request){
     const origin=request.headers.get('Origin'),allowed=origins.has(origin);
