@@ -144,8 +144,9 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
       const scope=returnScope,target=store;
       if(!scope||!target||!scopeActor(scope))return false;
       if(!currentConversation(scope))await target.setActiveConversation(scope.conversationId);
-      if(returnScope!==scope||store!==target||!currentConversation(scope)){
-        if(returnScope===scope){returnScope=null;resolver?.clear();}
+      if(returnScope!==scope||store!==target||!scopeActor(scope))return false;
+      if(!currentConversation(scope)){
+        returnScope=null;resolver?.clear();
         return false;
       }
       returnScope=null;

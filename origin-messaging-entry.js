@@ -23,7 +23,7 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
   const style=make('style','');style.textContent='.origin-message-trigger{position:relative}.origin-message-trigger[hidden],.origin-message-badge[hidden]{display:none!important}.origin-message-badge{position:absolute;inset-block-start:-4px;inset-inline-end:-5px;min-inline-size:17px;block-size:17px;box-sizing:border-box;padding:0 4px;border:1px solid var(--paper,#fff);border-radius:999px;background:#b52b43;color:white;font:700 10px/15px system-ui,sans-serif;text-align:center;white-space:nowrap;pointer-events:none}.origin-message-host{box-sizing:border-box;position:fixed;inset:0;margin:auto;width:min(1480px,calc(100% - 32px));height:min(900px,calc(100dvh - 32px));max-width:none;max-height:none;border:1px solid var(--line,#ddd);border-radius:16px;background:var(--paper,#fff);color:var(--ink,#222);padding:0;overflow:hidden}.origin-message-host[open]{display:flex;flex-direction:column}.origin-message-host::backdrop{background:rgba(20,25,40,.42)}.origin-message-host-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 12px;min-height:48px;border-bottom:1px solid var(--line,#ddd)}.origin-message-host-status{flex:1;min-width:0}.origin-message-approval{font-size:12px;max-width:480px}.origin-message-approval[hidden]{display:none!important}.origin-message-approval textarea{box-sizing:border-box;width:100%;max-width:100%;font:inherit;color:inherit;background:var(--bg,#f5f5f5);border:1px solid var(--line,#ccc);border-radius:6px;padding:6px}.origin-message-host-notice{margin:0;font-size:12px;color:var(--muted,#666);overflow-wrap:anywhere}.origin-message-dismiss{min-height:44px;min-width:64px;border:1px solid var(--line,#ddd);border-radius:8px;background:var(--paper,#fff);color:inherit;font:inherit;cursor:pointer}.origin-message-dismiss:focus-visible{outline:2px solid var(--accent,#535fd0);outline-offset:2px}.origin-message-host-content{min-height:0;flex:1;overflow:hidden}.origin-message-host-content .om-shell{height:100%;min-height:0;max-width:none;border:0;border-radius:0}@media(max-width:760px){.origin-message-host{width:100%;height:100dvh;border:0;border-radius:0}.origin-message-host-head{padding:2px 8px}}';
   const link=make('link','');link.rel='stylesheet';link.href=cssUrl;
   anchor.after(trigger);root.append(link,style,dialog);
-  let disposed=false,suspended=false,workspaceOpen=false,openingKey=null,sessionStop=null,epoch=0,connectionEpoch=0;
+  let disposed=false,suspended=false,returnRequested=false,restoring=false,workspaceOpen=false,openingKey=null,sessionStop=null,epoch=0,connectionEpoch=0;
   const usable=()=>!disposed&&isActive()&&Boolean(resolveMessagingLaunchConfig(readConfig()));
   const draftOwner=createMessagingDraftOwner();
   let draftKey=null;
@@ -34,7 +34,7 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
   const safeStop=()=>{try{sessionStop?.();}catch(_){}sessionStop=null;};
   const show=()=>{if(!dialog.open)dialog.showModal();};
   function close(restoreFocus=true,terminate=false){
-    epoch++;workspaceOpen=false;suspended=false;safeStop();const handle=launcher.getHandle();let retained=false;
+    epoch++;workspaceOpen=false;suspended=false;returnRequested=false;restoring=false;safeStop();const handle=launcher.getHandle();let retained=false;
     if(!terminate&&current()&&handle?.getSnapshot()?.status==='bound')try{retained=handle.hideWorkspace?.()===true;}catch(_){}
     if(!retained){connectionEpoch++;openingKey=null;launcher.close();renderBadge(null);}
     if(dialog.open)dialog.close();target.replaceChildren();approval.hidden=true;approval.open=false;approvalText.value='';
@@ -42,7 +42,7 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
   }
   async function suspend(action){
     if(!current()||!dialog.open)return false;
-    const token=epoch;suspended=true;dialog.close();
+    const token=epoch;suspended=true;returnRequested=false;dialog.close();
     try{if(await action()===true&&token===epoch&&current())return true;}catch(_){/* Restore the current workspace. */}
     if(token===epoch&&current()){suspended=false;show();}
     return false;
@@ -52,7 +52,7 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
     return mountCloud({...options,draftOwner,root:target,keepNotificationSession:true,onIdentityInvalidated(){if(generation===connectionEpoch&&current()&&suspended)board.closeMessagingDraft?.();},onSummary(value){if(generation===connectionEpoch&&current())renderBadge(value);},onAvailability(value){if(generation===connectionEpoch&&current()&&value===false){notice.textContent='メッセージ機能を停止中です。';approval.hidden=true;approvalText.value='';}},onNotification(kind){if(generation===connectionEpoch&&current())onNotification(kind);},board:{...board,
       openRecord:(ref,scope)=>suspend(()=>board.openRecord(ref,scope)),
       ...(typeof board.openBusinessDraft==='function'?{openBusinessDraft:(draft,scope)=>suspend(()=>board.openBusinessDraft(draft,scope))}:{}),
-      restoreConversation(){if(!suspended||!current())return false;suspended=false;show();return true;}
+      restoreConversation(){if(!suspended||!current())return false;suspended=false;returnRequested=false;show();return true;}
     },onClose:()=>close()});
   }});
   async function open(){if(!usable())return false;if(openingKey!==null&&openingKey!==scopeKey())close(false,true);if(dialog.open)return true;if(suspended)return resume();openingKey=scopeKey();draftKey=openingKey;workspaceOpen=true;const token=++epoch;notice.textContent='\u63a5\u7d9a\u3092\u78ba\u8a8d\u3057\u3066\u3044\u307e\u3059\u2026';show();dismiss.focus({preventScroll:true});const result=await launcher.open();if(token!==epoch||!current()||!dialog.open)return false;
@@ -65,9 +65,24 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
       const request=connected?null:handle.getApprovalRequest?.();
       approval.hidden=!request;approvalText.value=request?['ルーム: '+request.roomId,'利用者: '+request.displayName,'端末ID: '+request.uid].join('\n'):'';
       if(!request)approval.open=false;
+      if(connected&&returnRequested)void resume();
     };render(handle.getSnapshot?.());if(typeof handle.subscribe==='function')sessionStop=handle.subscribe(render);return true;
   }
-  async function resume(){if(!suspended||!current())return false;const token=epoch;try{if(await launcher.getHandle()?.restore?.()===true&&token===epoch&&current())return true;}catch(_){}if(token===epoch)close();return false;}
+  async function resume(){
+    if(!suspended||!current()||restoring)return false;
+    returnRequested=true;
+    const handle=launcher.getHandle(),token=epoch;
+    if(handle?.getSnapshot()?.status!=='bound'){show();dismiss.focus({preventScroll:true});return true;}
+    restoring=true;
+    try{if(await handle.restore?.()===true&&token===epoch&&current())return true;}
+    catch(_){/* A new authorization is required on reconnection. */}
+    finally{if(token===epoch)restoring=false;}
+    if(token===epoch&&current()){
+      if(handle.getSnapshot()?.status!=='bound'){show();dismiss.focus({preventScroll:true});return true;}
+      close();
+    }
+    return false;
+  }
   function sync(){if(disposed)return;const enabled=usable(),key=scopeKey();if(draftKey!==null&&draftKey!==key){draftKey=null;draftOwner.clear();}trigger.hidden=!enabled;if(!enabled||openingKey!==null&&openingKey!==scopeKey()){if(suspended)board.closeMessagingDraft?.();close(false,true);}}
   trigger.addEventListener('click',()=>void open());dismiss.addEventListener('click',()=>close());dialog.addEventListener('cancel',event=>{if(event.target===dialog){event.preventDefault();close();}});dialog.addEventListener('close',()=>{if(!dialog.open&&!suspended&&workspaceOpen)close();});
   const stop=board.subscribe(sync);sync();

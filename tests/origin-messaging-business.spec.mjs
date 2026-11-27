@@ -23,17 +23,26 @@ test('Origin creates a canonical task and shares its reference from the detail',
     const conversationId='self_'+personId;
     const message={id:'msg_'+personId+'_q_'+'b'.repeat(32),senderId:personId,createdAt:2000,revision:1,body:'Synthetic task from a message\nReview summary',refs:[],attachmentIds:[],confirmationRequested:false,replyTo:null};
     window.__startupConnections=0;
-    let connected=true,enabled=true;
+    let connected=true,enabled=true,approved=true,holdSave=false,finishSave;
     const watchers=new Map();
     const update=(path,value)=>{for(const fn of watchers.get(path)??[])fn({val:()=>value});};
+    const binding=()=>({uid,roomId,personId,displayName:name,approved,active:true});
     window.__businessTest={conversationId,base,requests:[],
       setConnected(value){connected=value;update('.info/connected',value);},
-      setEnabled(value){enabled=value;update('messagingControlV1/enabled',value);}
+      setEnabled(value){enabled=value;update('messagingControlV1/enabled',value);},
+      revoke(){approved=false;update('messagingAccessV1/'+roomId+'/'+uid,binding());},
+      holdSave(){holdSave=true;},
+      saving:()=>typeof finishSave==='function',
+      failSave(){finishSave?.({ok:false,error:'network'});}
     };
     window.WorkBoardPaletteBridge={...base,readSnapshot:()=>map(base.readSnapshot()),subscribe:fn=>base.subscribe(s=>fn(map(s))),
+      dispatch(command){
+        if(holdSave&&command.type==='task.create'){holdSave=false;return new Promise(resolve=>{finishSave=resolve;});}
+        return base.dispatch(command);
+      },
       async getMessagingConnection(){
         window.__startupConnections++;
-        const getSnapshot=path=>({val:()=>path==='.info/connected'?connected:path==='messagingControlV1/enabled'?enabled:path==='messagingAccessV1/'+roomId+'/'+uid?{uid,roomId,personId,displayName:name,approved:true,active:true}:path.endsWith('/members/'+personId)?{active:true,joinedAt:1000,role:'member'}:path.endsWith('/'+message.id)?message:null});
+        const getSnapshot=path=>({val:()=>path==='.info/connected'?connected:path==='messagingControlV1/enabled'?enabled:path==='messagingAccessV1/'+roomId+'/'+uid?binding():path.endsWith('/members/'+personId)?{active:true,joinedAt:1000,role:'member'}:path.endsWith('/'+message.id)?message:null});
         const sdk={db:{},ref:(_,path)=>path,get:async path=>getSnapshot(path),onValue(path,fn){const set=watchers.get(path)??new Set();watchers.set(path,set);set.add(fn);queueMicrotask(()=>{if(set.has(fn))fn(getSnapshot(path));});return ()=>set.delete(fn);},set(){throw Error('Unexpected write');},update(){throw Error('Unexpected write');},runTransaction(_path,update){return Promise.resolve({committed:true,snapshot:{val:()=>update(null)}});},serverTimestamp:()=>({})};
         const user={uid,getIdToken:async()=> 'synthetic-id-token'};
         return {app:{},sdk,authSdk:{getAuth:()=>({currentUser:user,authStateReady:async()=>{}}),signInAnonymously(){throw Error('Unexpected sign-in');},onAuthStateChanged(_auth,fn){queueMicrotask(fn);return ()=>{};}}};
@@ -69,14 +78,18 @@ test('Origin creates a canonical task and shares its reference from the detail',
   await expect(root.getByText('接続済み',{exact:true})).toBeVisible();
 
   await dialog.getByRole('button',{name:'自分宛てメッセージ',exact:true}).click();
-  const msg=dialog.locator('.om-message', {hasText:'Synthetic task from a message'});
+  const msg=dialog.locator('.om-message', {hasText:'Review summary'});
   await msg.getByRole('button',{name:'その他',exact:true}).click();
   await dialog.getByRole('button',{name:'予定を作成',exact:true}).click();
   const schedule=root.locator('#editForm[data-kind="events"]');
   await expect(schedule.locator('[name=title]')).toHaveValue('Synthetic task from a message');
   await expect(schedule.locator('[name=memo]')).toHaveValue(/Review summary/);
+  await page.evaluate(()=>window.__businessTest.setConnected(false));
   await root.locator('#sheet').getByRole('button',{name:'キャンセル',exact:true}).click();
   await expect(dialog).toBeVisible();
+  await expect(msg).toHaveCount(0);
+  await page.evaluate(()=>window.__businessTest.setConnected(true));
+  await expect(msg).toBeVisible();
   expect(await page.evaluate(()=>window.__businessTest.base.readSnapshot().schedules.some(t=>t.title==='Synthetic task from a message'))).toBe(false);
   await msg.getByRole('button',{name:'その他',exact:true}).click();
   await dialog.getByRole('button',{name:'タスクを作成',exact:true}).click({timeout:2500});
@@ -128,6 +141,18 @@ test('Origin creates a canonical task and shares its reference from the detail',
   await page.evaluate(()=>window.WorkBoardDisplayController.selectMode('modern'));
   await expect(trigger).toBeVisible();
   await expect(dialog).not.toHaveAttribute('open','');
+  await trigger.click();
+  await dialog.getByRole('button',{name:'自分宛てメッセージ',exact:true}).click();
+  await msg.getByRole('button',{name:'その他',exact:true}).click();
+  await dialog.getByRole('button',{name:'タスクを作成',exact:true}).click();
+  await form.locator('[name=title]').fill('Synthetic form revoked while saving');
+  await page.evaluate(()=>window.__businessTest.holdSave());
+  await root.locator('#sheet button[form=editForm]').click();
+  await expect.poll(()=>page.evaluate(()=>window.__businessTest.saving())).toBe(true);
+  await page.evaluate(()=>window.__businessTest.revoke());
+  await expect(form).toBeHidden({timeout:3000});
+  await page.evaluate(()=>window.__businessTest.failSave());
+  await expect(form).toHaveCount(0);
   expect(errors).toEqual([]);
 
 });

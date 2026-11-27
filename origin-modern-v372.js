@@ -899,7 +899,13 @@ async function send(command,label,{close=false,returnToTask=false}={}){
    if(taskListWrite)setOriginTaskListWriteFeedback('error',originTaskListWriteError(command));
    return false;
  }
- finally{busy=false;if(savingPanel)markOriginEditorSaving(false)}
+ finally{
+   busy=false;
+   if(savingPanel){
+     if($('#editForm')?.dataset.messagingInvalidated==='true')closePanel(true,false);
+     else markOriginEditorSaving(false);
+   }
+ }
 }
 let originStickyMemoModeV659='business', originStickyControllerV659=null;
 function originMemoReadV660(){return window.WorkBoardPersonalStickyStoreV659?.readMemoChoice?.(snapshot.currentUser)||'business';}
@@ -4645,7 +4651,12 @@ if(window.WORK_BOARD_MESSAGING?.enabled===true&&typeof bridge.getMessagingConnec
    board:{readSnapshot:()=>bridge.readSnapshot(),readMemos:()=>memoBridge.readSnapshot(),subscribe:fn=>bridge.subscribe(fn),
     canReadRecord,
     closeMessagingDraft(){
-     if($('#editForm')?.dataset.messagingSource==='true'&&!busy)closePanel(true,false);
+     const form=$('#editForm');
+     if(form?.dataset.messagingSource!=='true')return;
+     if(!busy){closePanel(true,false);return;}
+     form.dataset.messagingInvalidated='true';
+     form.inert=true;
+     form.style.visibility='hidden';
     },
     openBusinessDraft(draft,scope){
      const current=bridge.readSnapshot(),kind={task:'tasks',schedule:'events'}[draft?.kind];
