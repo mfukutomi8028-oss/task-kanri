@@ -393,21 +393,22 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   }
   // Capacity is fetched on demand (shared panel open / attach click) and cached for 60s.
   const usageNode=el('p','om-usage');usageNode.hidden=true;usageNode.setAttribute('role','status');$('.om-shared-list').before(usageNode);
-  let usage=null;
+  // Keyed by room, person, conversation and join epoch so a rejoin or revocation never reuses old totals.
+  let usage=null;const usageKey=c=>[c.roomId,c.personId,c.conversationId,c.joinedAt].join('|');
   const mb=v=>(v/1e6).toFixed(v>=1e8?0:1)+'MB';
   const usageLevel=u=>u.globalBytes>=u.cleanupBytes?'cleanup':u.globalBytes>=u.warnBytes?'warn':'ok';
   function renderUsage(){
-    const c=context(),u=usage&&c&&usage.id===c.conversationId?usage.value:null;
+    const c=context(),u=usage&&c&&state.status==='ready'&&usage.id===usageKey(c)?usage.value:null;if(!u)usage=null;
     usageNode.hidden=!u;if(!u)return;
     const level=usageLevel(u);usageNode.dataset.level=level;
     usageNode.textContent='保存容量 全体 '+mb(u.globalBytes)+'/'+mb(u.limitBytes)+'（本人 '+mb(u.personBytes)+'・この会話 '+mb(u.conversationBytes)+'・本日 '+mb(u.dailyBytes)+'/'+mb(u.dailyLimitBytes)+'）'+(level==='cleanup'?'。整理が必要です。不要な添付の削除を検討してください。':level==='warn'?'。残りが少なくなっています。':'');
   }
   async function refreshUsage(){
     const c=context();if(!c||typeof attachments?.readAttachmentUsage!=='function')return null;
-    if(!(usage&&usage.id===c.conversationId&&Date.now()-usage.at<60000)){
+    if(!(usage&&usage.id===usageKey(c)&&Date.now()-usage.at<60000)){
       const result=await attachments.readAttachmentUsage({roomId:c.roomId,conversationId:c.conversationId});
       if(!messageContextValid(c))return null;
-      usage=result.status==='ok'?{id:c.conversationId,at:Date.now(),value:result}:null;
+      usage=result.status==='ok'?{id:usageKey(c),at:Date.now(),value:result}:null;
     }
     renderUsage();return usage?.value??null;
   }
@@ -463,7 +464,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   }
   let readFrame=0;
   function scheduleVisibleRead(){cancelAnimationFrame(readFrame);readFrame=requestAnimationFrame(()=>{const c=context();if(!c||state.status!=='ready'||document.visibilityState!=='visible'||timeline.clientHeight===0||query||historyDates.fields.some(field=>field.value))return;const rect=timeline.getBoundingClientRect(),nodes=[...timeline.querySelectorAll('[data-message-id]')];const visible=nodes.filter(n=>{const r=n.getBoundingClientRect();return r.bottom>rect.top&&r.top<rect.bottom;}).at(-1);const m=state.messages.find(x=>x.id===visible?.dataset.messageId);if(m)void store.markRead({conversationId:c.conversationId,cursor:{id:m.id,createdAt:m.createdAt},visible:true});});}
-  function renderState(next){const previous=state;state=next;if(previewUrl&&previous.messages!==next.messages)closeDialog();const identityChanged=syncListIdentity();if(previous.conversationId!==state.conversationId||previous.joinedAt!==state.joinedAt&&previous.joinedAt!==null)closeDialog();renderHeader();const ready=state.status==='ready'&&Boolean(context());composer.hidden=!ready||archivedGroup();body.disabled=!ready||sendPending;sendButton.disabled=!ready||sendPending;if(!context()&&(state.status==='locked'||state.status==='forbidden')){closeDialog();dialogContent.replaceChildren();if(state.status==='locked'){conversations=[];listGeneration++;renderList();}shared.hidden=true;shell.dataset.shared='false';}
+  function renderState(next){const previous=state;state=next;renderUsage();if(previewUrl&&previous.messages!==next.messages)closeDialog();const identityChanged=syncListIdentity();if(previous.conversationId!==state.conversationId||previous.joinedAt!==state.joinedAt&&previous.joinedAt!==null)closeDialog();renderHeader();const ready=state.status==='ready'&&Boolean(context());composer.hidden=!ready||archivedGroup();body.disabled=!ready||sendPending;sendButton.disabled=!ready||sendPending;if(!context()&&(state.status==='locked'||state.status==='forbidden')){closeDialog();dialogContent.replaceChildren();if(state.status==='locked'){conversations=[];listGeneration++;renderList();}shared.hidden=true;shell.dataset.shared='false';}
     if(state.conversationId!==lastId){body.value=state.draft||'';renderList();}else if(body.value!==state.draft)body.value=state.draft;
     if(ready)renderComposeContext();
     if(identityChanged&&listScope)void reloadList();

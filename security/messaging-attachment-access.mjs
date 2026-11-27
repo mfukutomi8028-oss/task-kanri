@@ -99,7 +99,7 @@ export function createMessagingAttachmentAccessService({verifyToken,readBinding,
     if(!record(request)||Object.keys(request).some(key=>!usageFields.has(key))||typeof request.token!=='string'||!request.token||request.token.length>16384||!isMessagingRoomId(request.roomId)||!isConversationId(request.conversationId)||!isPersonId(request.expectedPersonId))return fail('invalid');
     try{
       const actor=await authorize(request);if(!actor)return fail('forbidden');
-      const value=await readUsage({roomId:request.roomId,conversationId:request.conversationId,personId:actor.personId});
+      const value=await readUsage({roomId:request.roomId,conversationId:request.conversationId,personId:actor.personId,joinedAt:actor.joinedAt});
       if(value?.status!=='ok'||!['globalBytes','personBytes','conversationBytes','dailyBytes','limitBytes','warnBytes','cleanupBytes','dailyLimitBytes'].every(key=>amount(value[key])))return fail('unavailable');
       if(!sameActor(actor,await authorize(request)))return fail('forbidden');
       const {globalBytes,personBytes,conversationBytes,dailyBytes,limitBytes,warnBytes,cleanupBytes,dailyLimitBytes}=value;

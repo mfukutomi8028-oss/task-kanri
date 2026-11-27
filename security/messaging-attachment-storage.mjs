@@ -37,7 +37,7 @@ export function createFirebaseSupabaseAttachmentUploadService({auth,database,sup
   });
   const readMessage=({roomId,conversationId,messageId})=>read('messagingV1/'+roomId+'/messages/'+conversationId+'/'+messageId);
   const access=createMessagingAttachmentAccessService({...common,readLedger,readObject,readMessage,
-    readUsage:({roomId,conversationId,personId})=>rpc('workboard_attachment_usage_v1',{p_room_id:roomId,p_conversation_id:conversationId,p_person_id:personId}),
+    readUsage:({roomId,conversationId,personId,joinedAt})=>rpc('workboard_attachment_usage_v1',{p_room_id:roomId,p_conversation_id:conversationId,p_person_id:personId,p_joined_at:joinedAt}),
     reserveDownload:({bytes})=>rpc('workboard_reserve_attachment_download_v1',{p_bytes:bytes}),
     claimBatch:({roomId,conversationId,personId,joinedAt,requestId,messageId,attachmentIds})=>rpc('workboard_claim_attachments_v1',{p_room_id:roomId,p_conversation_id:conversationId,p_uploader_id:personId,p_joined_at:joinedAt,p_request_id:requestId,p_message_id:messageId,p_attachment_ids:attachmentIds})
   });

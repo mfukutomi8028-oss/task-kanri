@@ -11,7 +11,7 @@ function fixture(){
 }
 test('usage returns only the caller totals and the authorized conversation aggregate',async()=>{
   const f=fixture();assert.deepEqual(await f.service.usage(f.request),value);
-  assert.deepEqual(f.calls,[{roomId,conversationId,personId}]);
+  assert.deepEqual(f.calls,[{roomId,conversationId,personId,joinedAt:1000}]);
 });
 test('archived conversations still show usage; unapproved, revoked, left or forged requests read nothing',async()=>{
   const a=fixture();a.status('archived');assert.equal((await a.service.usage(a.request)).status,'ok');
