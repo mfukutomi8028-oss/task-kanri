@@ -207,6 +207,7 @@ export function createMessagingStore({session,transport,draftOwner=null,getUid=(
           }
           onActivity(token);return {status:'sent',id:response.id};
         }
+        if(response?.status==='limit')return {status:'limit',retryAfter:response.retryAfter};
         return result(['conflict','invalid'].includes(response?.status)?response.status:'failed');
       }catch(_){return result(stillMember(token,joinedAt)?'failed':'locked');}
       finally{if(pendingSends.get(key)===entry)pendingSends.delete(key);}

@@ -2,13 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as runtime from '../security/messaging-runtime.mjs';
 const {createMessagingRuntime}=runtime;
-const base={WORKBOARD_MESSAGING_ENABLED:'true',WORKBOARD_FIREBASE_SERVICE_ACCOUNT_JSON:JSON.stringify({type:'service_account',project_id:'synthetic-project',client_email:'synthetic@synthetic-project.iam.gserviceaccount.com',private_key:'-----BEGIN PRIVATE KEY-----\nSYNTHETIC\n-----END PRIVATE KEY-----\n'}),WORKBOARD_FIREBASE_DATABASE_URL:'https://synthetic-project-default-rtdb.firebaseio.com',WORKBOARD_MESSAGING_ALLOWED_ORIGINS:'https://board.example.test',WORKBOARD_MESSAGING_DIGEST_KEY_HEX:'a'.repeat(64)};
+const base={SUPABASE_URL:'https://abcdefghijklmnopqrst.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'synthetic-server-key',WORKBOARD_MESSAGING_ENABLED:'true',WORKBOARD_FIREBASE_SERVICE_ACCOUNT_JSON:JSON.stringify({type:'service_account',project_id:'synthetic-project',client_email:'synthetic@synthetic-project.iam.gserviceaccount.com',private_key:'-----BEGIN PRIVATE KEY-----\nSYNTHETIC\n-----END PRIVATE KEY-----\n'}),WORKBOARD_FIREBASE_DATABASE_URL:'https://synthetic-project-default-rtdb.firebaseio.com',WORKBOARD_MESSAGING_ALLOWED_ORIGINS:'https://board.example.test',WORKBOARD_MESSAGING_DIGEST_KEY_HEX:'a'.repeat(64)};
 const request=()=>new Request('https://api.example.test/messaging',{method:'POST',headers:{Origin:'https://board.example.test'}});
 function fixture(env=base){
   const apps=[],deleted=[],services=[],requests=[];
   let failInit=false,failHandler=false;
   const deps={
     getEnv:key=>env[key],
+    createSupabase:()=>({rpc:async()=>({data:{status:'ok'},error:null})}),
     cert:value=>({syntheticCredential:value}),
     initializeApp(options,name){if(failInit)throw Error('private credential content');const app={options,name};apps.push(app);return app;},
     getAuth:app=>({app}),getDatabase:app=>({app}),deleteApp:async app=>{deleted.push(app);},

@@ -360,6 +360,8 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
         if(preserveDraft)d.attempt=null;
         else{clearComposer(d);if(editing)store.setDraft('');}
         notice('');
+      }else if(result.status==='limit'){
+        notice('送信回数の上限に達しました。時間をおいて再試行してください。下書きは保持しています。');
       }else if(result.status==='conflict'||result.status==='invalid'){
         if(!editing)d.attempt=null;
         notice('送信内容または更新の競合を確認してください。');

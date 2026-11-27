@@ -1,5 +1,6 @@
 // Server runtime wiring. Configuration stays in secret storage; a disabled or
 // incomplete deployment cannot initialize an Admin client or read any records.
+import {createMessagingBudget} from './messaging-budget.mjs';
 import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId} from '../workspace-messaging-core.js';
 const unavailable=()=>new Response(JSON.stringify({status:'unavailable'}),{status:503,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 function configuration(getEnv){
@@ -52,18 +53,20 @@ export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDat
           try{if(actor)await deleteApp(actor);}finally{activeActors--;}
         }
       }
+      const url=getEnv('SUPABASE_URL'),key=getEnv('SUPABASE_SERVICE_ROLE_KEY');
+      if(typeof url!=='string'||!/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(url)||typeof key!=='string'||!key.trim()||typeof createSupabase!=='function')throw new TypeError('Trusted budget configuration required');
+      const supabase=createSupabase(url,key);
+      const {reserveRequest,reserveSend}=createMessagingBudget(supabase);
       const shared={auth,database};
       // Attachments are separately gated until the private bucket, RPCs and
       // Firebase authorization have passed deployment verification.
       let attachments=null;
       if(getEnv('WORKBOARD_MESSAGING_ATTACHMENTS_ENABLED')==='true'){
-        const url=getEnv('SUPABASE_URL'),key=getEnv('SUPABASE_SERVICE_ROLE_KEY');
-        if(typeof url!=='string'||!/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(url)||typeof key!=='string'||!key.trim()||typeof createSupabase!=='function'||typeof createAttachments!=='function')throw new TypeError('Trusted attachment configuration required');
-        const supabase=createSupabase(url,key);
+        if(typeof createAttachments!=='function')throw new TypeError('Trusted attachment configuration required');
         attachments=createAttachments({...shared,supabase});
         if([attachments?.upload,attachments?.download,attachments?.claim].some(fn=>typeof fn!=='function'))throw new TypeError('Attachment services required');
       }
-      const handler=createApiHandler({allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,...(attachments?{claimAttachments:attachments.claim}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments});
+      const handler=createApiHandler({reserveRequest,allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,reserveSend,...(attachments?{claimAttachments:attachments.claim}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments});
       if(typeof handler!=='function')throw new TypeError('Invalid API handler');
       return handler;
     }catch(_){if(app)try{await deleteApp(app);}catch(_){/* Do not expose startup errors or secrets. */}return null;}

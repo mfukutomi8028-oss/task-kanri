@@ -13,18 +13,18 @@ function validateSummary(value,actor,entry){
 }
 export function createMessagingUnreadSync({session,observeActivity,readUnread,maxWatched=100,parallel=4}={}){
   if(typeof session?.subscribe!=='function'||typeof session?.getSnapshot!=='function'||typeof observeActivity!=='function'||typeof readUnread!=='function'||!Number.isInteger(maxWatched)||maxWatched<1||maxWatched>100||!Number.isInteger(parallel)||parallel<1||parallel>4)throw new TypeError('Bounded unread adapters required');
-  let actor=null,disposed=false,scheduled=false,notifyQueued=false,running=0;
+  let actor=null,disposed=false,scheduled=false,notifyQueued=false,running=0,retryTimer=null;
   const entries=new Map(),queue=new Set(),listeners=new Set();
   const current=entry=>!disposed&&actor!==null&&same(actor,bound(session.getSnapshot()))&&entries.get(entry.id)===entry&&!entry.failed;
   function changed(){if(disposed||notifyQueued)return;notifyQueued=true;queueMicrotask(()=>{notifyQueued=false;if(!disposed)for(const fn of [...listeners])if(listeners.has(fn))safely(fn);});}
   function remove(entry){entries.delete(entry.id);queue.delete(entry);entry.version++;entry.failed=true;safely(entry.stop);entry.stop=null;entry.summary=null;}
-  function clear(){for(const entry of [...entries.values()])remove(entry);queue.clear();changed();}
+  function clear(){clearTimeout(retryTimer);retryTimer=null;for(const entry of [...entries.values()])remove(entry);queue.clear();changed();}
   const stopSession=session.subscribe(value=>{const next=bound(value);if(!same(actor,next)){clear();actor=next;}});
   if(typeof stopSession!=='function'){clear();throw new TypeError('Disposable identity required');}
   function fail(entry){if(!current(entry))return;entry.failed=true;entry.version++;entry.summary=null;queue.delete(entry);safely(entry.stop);entry.stop=null;changed();}
   function enqueue(entry){if(!current(entry))return;entry.version++;if(entry.summary!==null){entry.summary=null;changed();}queue.add(entry);pump();}
   function pump(){
-    if(disposed||scheduled)return;scheduled=true;
+    if(disposed||scheduled||retryTimer!==null)return;scheduled=true;
     queueMicrotask(()=>{
       scheduled=false;if(disposed)return;
       for(const entry of queue){
@@ -35,6 +35,11 @@ export function createMessagingUnreadSync({session,observeActivity,readUnread,ma
         const version=entry.version,scope=actor;
         Promise.resolve().then(()=>current(entry)?readUnread({roomId:scope.roomId,conversationId:entry.id}):null).then(value=>{
           if(!current(entry)||entry.version!==version)return;
+          if(value?.status==='limit'&&Number.isSafeInteger(value.retryAfter)&&value.retryAfter>=1&&value.retryAfter<=3600){
+            queue.add(entry);
+            if(retryTimer===null)retryTimer=setTimeout(()=>{retryTimer=null;pump();},value.retryAfter*1000);
+            return;
+          }
           entry.summary=validateSummary(value,scope,entry);changed();
         },()=>{if(current(entry)&&entry.version===version){entry.summary=null;changed();}}).finally(()=>{entry.inflight=false;running--;pump();});
       }

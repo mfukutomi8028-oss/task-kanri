@@ -4,12 +4,12 @@ import {createMessagingMutationService} from '../security/messaging-mutation-ser
 const p='p_'+'a'.repeat(32), b='p_'+'b'.repeat(32), roomId='roomA', conversationId='dm_'+p+'_'+b;
 const requestId='q_'+'c'.repeat(32), messageId='msg_'+p+'_'+requestId;
 const request={token:'synthetic-token',roomId,conversationId,command:{type:'send',requestId,input:{body:'Report'}}};
-function fixture(){
+function fixture(reserveSend){
   let binding={uid:'uidA',roomId,personId:p,approved:true,active:true};
   let member={active:true,joinedAt:1000,role:'member'}, status='active',stored=null,revoked=false, beforeCommit=()=>{}, now=2000;
   const calls=[];
   const service=createMessagingMutationService({
-    digestKey:new Uint8Array(32).fill(7),clock:()=>now,
+    digestKey:new Uint8Array(32).fill(7),clock:()=>now,reserveSend,
     async verifyToken(token){if(token!=='synthetic-token'||revoked)throw Error('invalid');return {uid:'uidA'};},
     async readBinding(target){return target.roomId===roomId&&target.uid==='uidA'?binding:null;},
     async readControl(target){return target.roomId===roomId&&target.conversationId===conversationId?{status, members:{[p]:member}}:null;},
@@ -72,4 +72,13 @@ test('confirmation targets derive from the trusted conversation snapshot and cap
 test('the bound UI person assertion rejects a token for another person before writing',async()=>{
   const f=fixture();assert.deepEqual(await f.service.mutate({...request,expectedPersonId:b}),{status:'forbidden'});assert.equal(f.calls.length,0);assert.equal(f.stored,null);
   assert.equal((await f.service.mutate({...request,expectedPersonId:p})).status,'sent');
+});
+
+test('per-person send budget uses the server verified person and stops before the write',async()=>{
+  const reservations=[];
+  const f=fixture(async actor=>{reservations.push(actor);return {status:'limit',retryAfter:19};});
+  assert.deepEqual(await f.service.mutate({...request,expectedPersonId:b}),{status:'forbidden'});
+  assert.deepEqual(await f.service.mutate({...request,expectedPersonId:p}),{status:'limit',retryAfter:19});
+  assert.deepEqual(reservations,[p]);
+  assert.deepEqual(f.calls,[]);
 });

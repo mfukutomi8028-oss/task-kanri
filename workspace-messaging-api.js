@@ -11,12 +11,14 @@ const codes=Object.freeze({ok:200,sent:200,invalid:400,forbidden:403,conflict:40
 export function createMessagingApiTransport({endpoint,session,getToken,fetchImpl=globalThis.fetch}={}){
   let url;try{url=new URL(endpoint);}catch(_){throw new TypeError('HTTPS endpoint required');}
   if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash||typeof session?.subscribe!=='function'||typeof session?.getSnapshot!=='function'||typeof getToken!=='function'||typeof fetchImpl!=='function')throw new TypeError('HTTPS endpoint and bound session required');
-  let identity=null,generation=0,disposed=false;const active=new Set();
-  function invalidate(){generation++;for(const controller of active)controller.abort();active.clear();}
+  let identity=null,generation=0,disposed=false;const active=new Set(),retryUntil=new Map();
+  function invalidate(){generation++;for(const controller of active)controller.abort();active.clear();retryUntil.clear();}
   const stop=session.subscribe(value=>{const next=bound(value);if(!same(identity,next)){invalidate();identity=next;}});
   if(typeof stop!=='function')throw new TypeError('Disposable session required');
   async function invoke(action,payload,file=null){
     if(disposed||!identity||payload.roomId!==identity.roomId||!same(identity,bound(session.getSnapshot())))return fail('locked');
+    const cooldown=retryUntil.get(action)??0;
+    if(cooldown>Date.now())return {status:'limit',retryAfter:Math.ceil((cooldown-Date.now())/1000)};
     const tokenGeneration=generation,actor=identity,controller=new AbortController();active.add(controller);
     const current=()=>!disposed&&generation===tokenGeneration&&same(actor,bound(session.getSnapshot()));
     const timeout=setTimeout(()=>controller.abort(),file||action==='attachmentDownload'?60000:20000);
@@ -41,6 +43,9 @@ export function createMessagingApiTransport({endpoint,session,getToken,fetchImpl
       if(!value||typeof value!=='object'||!Object.hasOwn(codes,value.status))return fail('unavailable');
       if(value.status==='forbidden'&&response.status===401)return fail('forbidden');
       if(codes[value.status]!==response.status)return fail('unavailable');
+      if(value.status==='limit'&&Number.isSafeInteger(value.retryAfter)&&value.retryAfter>=1&&value.retryAfter<=3600){
+        retryUntil.set(action,Date.now()+value.retryAfter*1000);
+      }
       if(value.status==='ok'&&['directory','people','unread'].includes(action)&&(value.roomId!==actor.roomId||value.personId!==actor.personId))return fail('locked');
       if(value.status==='ok'&&action==='unread'&&value.conversationId!==payload.conversationId)return fail('unavailable');
       if(action==='attachmentUpload'&&value.status==='ok'&&(!isMessagingAttachmentId(value.attachmentId)||value.filename!==payload.filename||value.mime!==payload.mime||value.bytes!==payload.declaredBytes))return fail('unavailable');

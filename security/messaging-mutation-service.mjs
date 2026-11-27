@@ -1,5 +1,6 @@
 // Server-side orchestration. Persistence must enforce the exact supplied actor,
 // membership epoch and record at commit time, not just before a transaction.
+import {messagingBudgetDecision} from './messaging-budget.mjs';
 import {createMessagingMessageCommands} from './messaging-message-commands.mjs';
 import {createFirebaseMessagingActivityPublisher} from './messaging-activity-publisher.mjs';
 import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,messageIdFor,validateRoomMessageInput} from '../workspace-messaging-core.js';
@@ -30,8 +31,8 @@ function report(diagnostic,stage,error=null){
   }catch(_){/* Observability must not change the result. */}
 }
 
-export function createMessagingMutationService({verifyToken,readBinding,readControl,transactMessage,digestKey,clock=Date.now,publishActivity=null,claimAttachments=null,diagnostic=null}={}){
-  if([verifyToken,readBinding,readControl,transactMessage,clock].some(fn=>typeof fn!=='function')||publishActivity!==null&&typeof publishActivity!=='function'||claimAttachments!==null&&typeof claimAttachments!=='function')throw new TypeError('Trusted mutation adapters required');
+export function createMessagingMutationService({verifyToken,readBinding,readControl,transactMessage,digestKey,clock=Date.now,publishActivity=null,claimAttachments=null,reserveSend=null,diagnostic=null}={}){
+  if([verifyToken,readBinding,readControl,transactMessage,clock].some(fn=>typeof fn!=='function')||publishActivity!==null&&typeof publishActivity!=='function'||claimAttachments!==null&&typeof claimAttachments!=='function'||reserveSend!==null&&typeof reserveSend!=='function')throw new TypeError('Trusted mutation adapters required');
   const commands=createMessagingMessageCommands({digestKey});
   async function authorize(token,roomId,conversationId){
     let identity;try{identity=await verifyToken(token);}catch(_){return null;}
@@ -66,6 +67,11 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
       stage='prepare';
       const messageId=type==='send'?messageIdFor(access.personId,clean.requestId):clean.messageId;
       if(!messageId.startsWith('msg_'+access.personId+'_'))return fail('forbidden');
+      if(type==='send'&&reserveSend){
+        stage='send-budget';
+        const budget=messagingBudgetDecision(await reserveSend(access.personId));
+        if(budget.status!=='ok')return budget;
+      }
       const now=clock();if(!isMessagingTimestamp(now)||now<=access.joinedAt)return fail('conflict');
       const {members,controlRevision,...actor}=access;
       const requested=clean.input?.confirmationRequested===true;
@@ -108,10 +114,10 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
 // The factory must create a server-only Admin database instance with this exact
 // databaseAuthVariableOverride and dispose it after the callback. Never mint a
 // client authentication token containing this reserved service scope.
-export function createFirebaseMessagingMutationService({auth,database,withActorDatabase,digestKey,clock,claimAttachments=null,diagnostic=null}={}){
+export function createFirebaseMessagingMutationService({auth,database,withActorDatabase,digestKey,clock,claimAttachments=null,reserveSend=null,diagnostic=null}={}){
   if(typeof auth?.verifyIdToken!=='function'||typeof database?.ref!=='function'||typeof withActorDatabase!=='function')throw new TypeError('Scoped Firebase adapters required');
   const read=async path=>(await database.ref(path).get()).val();
-  return createMessagingMutationService({digestKey,clock,claimAttachments,diagnostic,publishActivity:createFirebaseMessagingActivityPublisher({database}),
+  return createMessagingMutationService({digestKey,clock,claimAttachments,reserveSend,diagnostic,publishActivity:createFirebaseMessagingActivityPublisher({database}),
     verifyToken:token=>auth.verifyIdToken(token,true),
     readBinding:({roomId,uid})=>read('messagingAccessV1/'+roomId+'/'+uid),
     readControl:({roomId,conversationId})=>read('messagingV1/'+roomId+'/control/'+conversationId),

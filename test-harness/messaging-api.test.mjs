@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {createMessagingApiHandler} from '../security/messaging-api-handler.mjs';
 import {createMessagingApiTransport} from '../workspace-messaging-api.js';
 const origin='https://board.example.test',endpoint='https://api.example.test/messaging',roomId='roomA',p='p_'+'a'.repeat(32),conversationId='self_'+p,token='synthetic-id-token';
-function fixture(){
+function fixture(budget){
   const calls=[];
-  const handler=createMessagingApiHandler({allowedOrigins:[origin],history:{async readHistory(input){calls.push(['history',input]);return input.token===token?{status:'ok',joinedAt:1000,messages:[],nextCursor:null,hasMore:false}:{status:'forbidden'};}},mutation:{async mutate(input){calls.push(['message',input]);return {status:'conflict'};}},directory:{async readDirectory(input){calls.push(['directory',input]);return {status:'ok',roomId,personId:p,conversations:[],invites:[],hasMore:false,nextCursor:null};},async readUnread(input){calls.push(['unread',input]);return {status:'ok',roomId,personId:p,conversationId,joinedAt:1000,unread:0,latestIncoming:null,muted:false,complete:true};}},conversations:{async readPeople(input){calls.push(['people',input]);return {status:'ok',roomId,personId:p,people:[]};},async execute(input){calls.push(['conversation',input]);return {status:'ok',conversationId,revision:1,indexPending:false};}}});
+  const handler=createMessagingApiHandler({allowedOrigins:[origin],reserveRequest:budget,history:{async readHistory(input){calls.push(['history',input]);return input.token===token?{status:'ok',joinedAt:1000,messages:[],nextCursor:null,hasMore:false}:{status:'forbidden'};}},mutation:{async mutate(input){calls.push(['message',input]);return {status:'conflict'};}},directory:{async readDirectory(input){calls.push(['directory',input]);return {status:'ok',roomId,personId:p,conversations:[],invites:[],hasMore:false,nextCursor:null};},async readUnread(input){calls.push(['unread',input]);return {status:'ok',roomId,personId:p,conversationId,joinedAt:1000,unread:0,latestIncoming:null,muted:false,complete:true};}},conversations:{async readPeople(input){calls.push(['people',input]);return {status:'ok',roomId,personId:p,people:[]};},async execute(input){calls.push(['conversation',input]);return {status:'ok',conversationId,revision:1,indexPending:false};}}});
   let identity={status:'bound',roomId,personId:p},listener;const session={getSnapshot:()=>identity,subscribe(fn){listener=fn;fn(identity);return ()=>{listener=null;};}};
   const fetchImpl=(url,init)=>{const headers=new Headers(init.headers);headers.set('Origin',origin);return handler(new Request(url,{...init,headers}));};
   return {handler,calls,session,fetchImpl,setIdentity(next){identity=next;listener?.(next);}};
@@ -50,4 +50,16 @@ test('unread transport rejects a summary for another conversation or person',asy
     const f=fixture(),api=createMessagingApiTransport({endpoint,session:f.session,getToken:async()=>token,fetchImpl:async()=>new Response(JSON.stringify({status:'ok',roomId,personId:p,conversationId,joinedAt:1000,unread:0,latestIncoming:null,muted:false,complete:true,...patch}),{status:200})});
     assert.ok(['locked','unavailable'].includes((await api.readUnread({roomId,conversationId})).status));api.dispose();
   }
+});
+
+test('global work budget rejects before a costly service and returns bounded Retry-After',async()=>{
+  const reservations=[];
+  const f=fixture(async (action,units)=>{reservations.push({action,units});return {status:'limit',retryAfter:120};});
+  const response=await f.handler(post(envelope('directory',{roomId,limit:40})));
+  assert.equal(response.status,429);
+  assert.equal(response.headers.get('Retry-After'),'120');
+  assert.deepEqual(await response.json(),{status:'limit',retryAfter:120});
+  assert.equal(reservations[0].action,'directory');
+  assert.ok(reservations[0].units>=120);
+  assert.deepEqual(f.calls,[]);
 });
