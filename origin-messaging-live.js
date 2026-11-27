@@ -1,6 +1,7 @@
 // Compose the production-intended view with Firebase and the authenticated
 // HTTP API. The host supplies the existing database connection and canonical
 // business-data bridge. This module never uses a preview fixture or admin key.
+import {createMessagingRecordLinkTransport,recordLinkKey} from './workspace-messaging-record-links.js';
 import {createMessagingSession} from './workspace-messaging-session.js';
 import {createMessagingApiTransport} from './workspace-messaging-api.js';
 import {createFirebaseMessagingActivityTransport} from './workspace-messaging-activity.js';
@@ -59,6 +60,19 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
     function currentConversation(scope){const s=store?.getSnapshot();return Boolean(scopeActor(scope)&&s?.status==='ready'&&s.conversationId===scope.conversationId&&(scope.joinedAt===undefined||s.joinedAt===scope.joinedAt));}
     function guard(fn){return async scope=>{const before=scopeActor(scope);if(!before)return fail('locked');try{const value=await fn(scope);return scopeActor(scope)===before?value:fail('locked');}catch(_){return fail(scopeActor(scope)===before?'unavailable':'locked');}};}
     const guardMethods=resource=>Object.freeze(Object.fromEntries(Object.entries(resource).map(([key,fn])=>[key,guard(fn)])));
+    // Permanent record links (personId-keyed). A source is remembered only while its draft form is open.
+    const recordLinks=createMessagingRecordLinkTransport(sdk),pendingLinks=new Map();let draftSource=null;
+    const linkActor=source=>{const actor=session.getSnapshot();return !disposed&&control===true&&actor.status==='bound'&&actor.roomId===source.roomId&&actor.personId===source.personId?actor:null;};
+    async function flushLink(key){
+      const item=pendingLinks.get(key);if(!item)return false;
+      if(!linkActor(item))return false;
+      const result=await recordLinks.writeLink(item,item.ref,item);
+      if(pendingLinks.get(key)!==item)return result.status==='ok';
+      if(result.status==='ok'||result.status==='conflict'||result.status==='forbidden'||result.status==='invalid')pendingLinks.delete(key);
+      return result.status==='ok';
+    }
+    const flushLinks=()=>Promise.all([...pendingLinks.keys()].map(key=>flushLink(key).catch(()=>false)));
+    stops.push(session.subscribe(value=>{if(value?.status==='bound'&&pendingLinks.size)void flushLinks();}));
     const personal=guardMethods(createMessagingPersonalStateTransport(sdk)),decorations=guardMethods(createMessagingSharedTransport(sdk));
     const receiptTransport=createMessagingConfirmationTransport(sdk);
     const confirmations=guardMethods({...receiptTransport,async readMembers(scope){
@@ -105,7 +119,7 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
       async canRead(target,scope){if(!currentConversation(scope))return false;if(target.kind==='message')return isMessageId(target.messageId);return await board.canReadRecord(target.ref,scope)===true&&currentConversation(scope);},
       async readMessage({roomId,conversationId,messageId}){const actor=session.getSnapshot(),scope={...actor,roomId,conversationId};if(!currentConversation(scope)||!isMessageId(messageId))return null;const value=await read('messagingV1/'+roomId+'/messages/'+conversationId+'/'+messageId);return scopeActor(scope)===actor&&currentConversation(scope)?value:null;},
       openRecord:(ref,scope)=>openFromConversation(scope,()=>board.openRecord(ref,scope)),
-      ...(typeof board.openBusinessDraft==='function'?{openBusinessDraft:(draft,scope)=>openFromConversation(scope,()=>board.openBusinessDraft(draft,scope))}:{}),
+      ...(typeof board.openBusinessDraft==='function'?{openBusinessDraft:(draft,scope)=>{draftSource=draft?.source?.roomId===scope.roomId&&draft.source.conversationId===scope.conversationId?{roomId:scope.roomId,personId:scope.personId,conversationId:draft.source.conversationId,messageId:draft.source.messageId}:null;return openFromConversation(scope,()=>board.openBusinessDraft(draft,scope));}}:{}),
       async restoreConversation(location,scope){if(!currentConversation(scope)||await board.restoreConversation(location,scope)!==true||!currentConversation(scope))return false;return view?.restoreLocation(location)??false;}
     });
     function readBusinessData(){const actor=session.getSnapshot(),snapshot=board.readSnapshot();return !disposed&&actor.status==='bound'&&snapshot?.roomId===actor.roomId&&snapshot.connectionMode==='remote-online'?{...snapshot,memos:board.readMemos()}:{roomId:null,tasks:[],schedules:[],memos:[]};}
@@ -140,7 +154,28 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
       syncContext(snapshot);
     });if(typeof stopBoard!=='function')throw new TypeError('Disposable canonical board required');stops.push(stopBoard);
     syncContext(board.readSnapshot());
-    return Object.freeze({getSnapshot:()=>session.getSnapshot(),getAvailability:()=>control,getApprovalRequest(){const uid=auth.getUid();return !disposed&&control===true&&online&&session.getSnapshot().status==='locked'&&lastContext&&validUid(uid)?{roomId:lastContext.roomId,displayName:lastContext.selectedDisplayName,uid}:null;},subscribe:fn=>session.subscribe(fn),hideWorkspace,showWorkspace,share:ref=>view?.share(ref)??false,open:id=>view?.open(id)??Promise.resolve(false),async restore(){
+    return Object.freeze({getSnapshot:()=>session.getSnapshot(),getAvailability:()=>control,getApprovalRequest(){const uid=auth.getUid();return !disposed&&control===true&&online&&session.getSnapshot().status==='locked'&&lastContext&&validUid(uid)?{roomId:lastContext.roomId,displayName:lastContext.selectedDisplayName,uid}:null;},subscribe:fn=>session.subscribe(fn),hideWorkspace,showWorkspace,share:ref=>view?.share(ref)??false,open:id=>view?.open(id)??Promise.resolve(false),
+      async linkRecord(ref){
+        const source=draftSource;draftSource=null;const key=recordLinkKey(ref);
+        if(!source||!key||ref.roomId!==source.roomId)return false;
+        const pendingKey=source.roomId+'|'+source.personId+'|'+key;
+        if(!pendingLinks.has(pendingKey))pendingLinks.set(pendingKey,{...source,ref:{roomId:ref.roomId,type:ref.type,recordId:ref.recordId}});
+        return flushLink(pendingKey).catch(()=>false);
+      },
+      async readRecordLink(ref){
+        const actor=session.getSnapshot();if(disposed||control!==true||actor.status!=='bound'||!recordLinkKey(ref)||ref.roomId!==actor.roomId)return {status:'unavailable'};
+        void flushLinks();
+        const link=await recordLinks.readLink(actor,ref);
+        return link.status==='ok'&&session.getSnapshot()===actor?{status:'available'}:{status:link.status==='missing'?'missing':'unavailable'};
+      },
+      async openRecordLink(ref){
+        const actor=session.getSnapshot();if(disposed||control!==true||actor.status!=='bound'||!recordLinkKey(ref)||ref.roomId!==actor.roomId||!view)return false;
+        const link=await recordLinks.readLink(actor,ref);
+        if(link.status!=='ok'||session.getSnapshot()!==actor||control!==true)return false;
+        return await view.openMessage(link.conversationId,link.messageId)===true&&session.getSnapshot()===actor;
+      },
+      async restore(){
+      void flushLinks();
       const scope=returnScope,target=store;
       if(!scope||!target||!scopeActor(scope))return false;
       if(!currentConversation(scope))await target.setActiveConversation(scope.conversationId);

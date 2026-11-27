@@ -1,5 +1,5 @@
 // Origin messaging view. Storage and authorization belong to injected services.
-import {isConversationId,summarizeMessageConfirmation,validateRoomMessageInput} from './workspace-messaging-core.js';
+import {isConversationId,isMessageId,summarizeMessageConfirmation,validateRoomMessageInput} from './workspace-messaging-core.js';
 import {searchLoadedMessages,selectSharedData} from './workspace-messaging-refs.js';
 import {buildDailyReport} from './workspace-messaging-report.js';
 import {messagingReactionTypes} from './workspace-messaging-shared.js';
@@ -563,5 +563,32 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   for(const field of historyDates.fields)field.addEventListener('change',()=>{expandHistory(true);void renderTimeline();});
   for(const field of sharedDates.fields)field.addEventListener('change',()=>{sharedAttachmentOffset=0;void renderShared();});
   const stopStore=store.subscribe(renderState),stopList=commands.subscribe?.(options=>void reloadList(options));
-  return {open:openConversation,share,announce,async restoreLocation(location){if(disposed||!context()||state.conversationId!==location?.conversationId||typeof location.query!=='string'||!Number.isFinite(location.scrollTop)||location.scrollTop<0)return false;const c=context();query=location.query;search.value=query;expandHistory(Boolean(query));shell.dataset.mobileView='chat';await renderTimeline();if(!messageContextValid(c))return false;timeline.scrollTop=location.scrollTop;const target=timeline.querySelector('[data-message-id="'+location.messageId+'"]');if(target){target.tabIndex=-1;target.focus({preventScroll:true});}return true;},dispose(){disposed=true;cancelAnimationFrame(readFrame);listGeneration++;renderGeneration++;sharedGeneration++;stopStore?.();stopList?.();if(!summaryOwner)notifications.dispose();resolver.clear?.();closeDialog();shell.remove();}};
+  // Loads older pages until the target is present; an unloaded target is never reported as success.
+  async function loadUntil(c,messageId){
+    let pages=0,waits=0;
+    for(;;){
+      const snap=store.getSnapshot();
+      if(!messageContextValid(c)||snap.status!=='ready'||snap.conversationId!==c.conversationId)return null;
+      const found=snap.messages.find(m=>m.id===messageId);
+      if(found)return found.deletedAt==null?pages:null;
+      if(!snap.hasMore||pages>=40)return null;
+      const loaded=await store.loadOlder();
+      if(loaded?.status==='busy'){if(++waits>100)return null;await new Promise(resolve=>setTimeout(resolve,50));continue;}
+      pages++;
+      const after=store.getSnapshot();
+      if(after.messages.length===snap.messages.length&&after.hasMore)return null;
+    }
+  }
+  function focusMessage(messageId){const target=timeline.querySelector('[data-message-id="'+messageId+'"]');if(!target)return false;target.scrollIntoView({block:'center'});target.tabIndex=-1;target.focus({preventScroll:true});return true;}
+  async function openMessage(conversationId,messageId){
+    if(disposed||!isMessageId(messageId))return false;
+    await openConversation(conversationId);
+    // History arrives asynchronously; wait (bounded) for this exact conversation to be ready.
+    const ready=()=>{const now=context();return now&&now.conversationId===conversationId?now:null;};
+    if(!ready())await new Promise(resolve=>{let stop=null;const finish=()=>{clearTimeout(timer);stop?.();resolve();};const timer=setTimeout(finish,10000);stop=store.subscribe(()=>queueMicrotask(()=>{if(ready()||['forbidden','locked'].includes(store.getSnapshot().status)||disposed)finish();}));});
+    const c=ready();if(!c)return false;
+    const pages=await loadUntil(c,messageId);if(pages===null||!messageContextValid(c))return false;
+    await renderTimeline();return messageContextValid(c)&&focusMessage(messageId);
+  }
+  return {open:openConversation,openMessage,share,announce,async restoreLocation(location){if(disposed||!context()||state.conversationId!==location?.conversationId||!isMessageId(location.messageId)||typeof location.query!=='string'||!Number.isFinite(location.scrollTop)||location.scrollTop<0)return false;const c=context();const pages=await loadUntil(c,location.messageId);if(pages===null)return false;query=location.query;search.value=query;expandHistory(Boolean(query));shell.dataset.mobileView='chat';await renderTimeline();if(!messageContextValid(c))return false;if(pages===0){timeline.scrollTop=location.scrollTop;const target=timeline.querySelector('[data-message-id="'+location.messageId+'"]');if(!target)return false;target.tabIndex=-1;target.focus({preventScroll:true});return true;}return focusMessage(location.messageId);},dispose(){disposed=true;cancelAnimationFrame(readFrame);listGeneration++;renderGeneration++;sharedGeneration++;stopStore?.();stopList?.();if(!summaryOwner)notifications.dispose();resolver.clear?.();closeDialog();shell.remove();}};
 }

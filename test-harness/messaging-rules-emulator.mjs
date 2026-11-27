@@ -163,6 +163,34 @@ try {
   assert.deepEqual(await first.readPersonalState({...scope,joinedAt:2050}),{status:'ok',preferences:{favorite:false,muted:false,archived:false,pinned:false},cursor:null});
   assert.deepEqual(await first.markRead({...scope,joinedAt:2050,cursor:cursor(3,2100)}),{status:'ok',cursor:cursor(3,2100)});
   console.log('MESSAGING_PERSONAL_STATE_EMULATOR_OK');
+  // Permanent record links: personId-keyed, member-only, post-join, non-deleted, immutable target.
+  {
+    const linkPath=root+'/recordLinks/'+p+'/task/task-1',link=n=>({conversationId:personalGroup,messageId:msg(n),createdAt:serverTimestamp()});
+    // State left by the personal-state section: p rejoined at 2050, msg(1) deleted.
+    await env.withSecurityRulesDisabled(admin=>set(path(admin,root+'/messages/'+personalGroup+'/'+msg(5)),message(5,2200)));
+    await assertSucceeds(set(path(member,linkPath),link(3)));
+    await deny(set(path(env.authenticatedContext('uidA2'),linkPath),link(3)));
+    await assertSucceeds(get(path(env.authenticatedContext('uidA2'),linkPath)));
+    await deny(set(path(member,linkPath),link(5)));
+    await deny(get(path(nonmember,linkPath)));
+    await deny(set(path(nonmember,root+'/recordLinks/'+p+'/task/task-2'),link(3)));
+    await deny(set(path(member,root+'/recordLinks/'+other+'/task/task-2'),link(3)));
+    for(const ctx of [anon,unknown,unapproved])await deny(get(path(ctx,linkPath)));
+    await deny(set(path(member,root+'/recordLinks/'+p+'/task/pre-join'),link(2)));
+    await deny(set(path(member,root+'/recordLinks/'+p+'/task/deleted'),link(4)));
+    await deny(set(path(member,root+'/recordLinks/'+p+'/memo/m1'),link(3)));
+    await deny(set(path(member,root+'/recordLinks/'+p+'/task/extra'),{...link(3),body:'copied'}));
+    await deny(set(path(member,root+'/recordLinks/'+p+'/schedule/s1'),{...link(3),createdAt:5}));
+    await assertSucceeds(set(path(member,root+'/recordLinks/'+p+'/schedule/s1'),link(5)));
+    await env.withSecurityRulesDisabled(admin=>set(path(admin,'messagingControlV1/enabled'),false));
+    await deny(get(path(member,linkPath)));
+    await env.withSecurityRulesDisabled(admin=>set(path(admin,'messagingControlV1/enabled'),true));
+    await env.withSecurityRulesDisabled(admin=>set(path(admin,pc+'/members/'+p+'/active'),false));
+    await deny(set(path(member,root+'/recordLinks/'+p+'/task/after-leave'),link(5)));
+    await assertSucceeds(get(path(member,linkPath)));
+    await env.withSecurityRulesDisabled(admin=>set(path(admin,pc+'/members/'+p+'/active'),true));
+    console.log('MESSAGING_RECORD_LINK_RULES_OK');
+  }
   // A separate fixture keeps receipt authorization independent of cursor tests.
   const cg='group_g_'+'f'.repeat(32),confirmControl=root+'/control/'+cg,confirmId='msg_'+p+'_q_'+'e'.repeat(32);
   const confirmMessage=root+'/messages/'+cg+'/'+confirmId,receiptRoot=root+'/confirmationReceipts/'+cg+'/'+confirmId;
