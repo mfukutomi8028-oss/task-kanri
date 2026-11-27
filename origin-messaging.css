@@ -56,3 +56,38 @@
 .om-group-operation input,.om-group-operation select{flex:1;min-inline-size:0}
 
 .om-image-preview{display:block;max-inline-size:100%;max-block-size:min(55vh,360px);margin:auto;object-fit:contain}
+
+.om-mobile-only{display:none}
+.om-compose-tools{display:contents}
+
+@media(max-width:760px){
+  .om-shell .om-mobile-only{display:inline-block}
+  .om-shell[data-history-open=false] .om-search-bar{display:none}
+  .om-chat-head{min-height:52px;padding-block:4px}
+  .om-chat-title h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .om-chat-title p{display:none}
+  .om-shell button[data-om=search-toggle]{min-width:44px;white-space:nowrap}
+  .om-timeline{padding:10px 10px;gap:8px}
+  .om-message{display:grid;grid-template-columns:minmax(0,1fr) 44px;grid-template-areas:"meta meta" "body more";align-items:center;gap:2px 4px;max-width:96%}
+  .om-message.om-own{grid-template-columns:44px minmax(0,1fr);grid-template-areas:"meta meta" "more body";align-items:center}
+  .om-message-meta{grid-area:meta}
+  .om-own .om-message-meta{justify-self:end}
+  .om-message-body{grid-area:body}
+  .om-message-actions{grid-area:more}
+  .om-shell .om-message-quick,.om-more-label{display:none}
+  .om-shell .om-message-more{min-width:44px;padding:0;color:var(--ink-soft);font-size:20px}
+  .om-shell .om-mobile-message-actions{display:flex;flex-wrap:wrap;gap:6px}
+  .om-composer{grid-template-columns:44px minmax(0,1fr) auto;align-items:end}
+  .om-compose-context,.om-compose-tools,.om-feedback{grid-column:1/-1}
+  .om-composer .om-label{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .om-shell .om-composer #om-body{height:44px;min-height:44px;max-height:96px;font-size:16px;line-height:1.45;resize:none;overflow:auto}
+  @supports(field-sizing:content){
+    .om-shell .om-composer #om-body{height:auto;field-sizing:content}
+  }
+  .om-compose-actions{display:contents}
+  .om-compose-tools{grid-row:3;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .om-shell[data-tools-open=false] .om-compose-tools,.om-composer .om-spacer{display:none}
+  .om-composer .om-feedback{min-height:0}
+  .om-composer .om-feedback:empty{display:none}
+  .om-newer{position:relative;bottom:auto}
+}

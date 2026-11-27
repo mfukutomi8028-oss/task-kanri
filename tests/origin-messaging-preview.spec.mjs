@@ -1,5 +1,44 @@
 import {test, expect} from '@playwright/test';
 
+test('a compact mobile composer leaves room to read several recent messages', async ({page}) => {
+  await page.setViewportSize({width:375,height:650});
+  await page.route('**/*',r=>new URL(r.request().url()).origin==='http://127.0.0.1:4173'?r.continue():r.abort('blockedbyclient'));
+  await page.goto('/test-harness/messaging-preview/index.html');
+  await page.getByRole('button',{name:'自分宛てメッセージ',exact:true}).click();
+  const body=page.getByRole('textbox',{name:'メッセージ本文'}),timeline=page.getByRole('log');
+  for(let index=1;index<=5;index++){
+    const text='表示範囲を確認する架空のメッセージ '+index;
+    await body.fill(text);
+    await page.getByRole('button',{name:'送信',exact:true}).click();
+    await expect(timeline.getByText(text,{exact:true})).toBeVisible();
+  }
+  await body.fill('まだ送信していない下書き');
+  const measure=()=>timeline.evaluate(log=>{
+    const frame=log.getBoundingClientRect();
+    return {height:log.clientHeight,visible:[...log.querySelectorAll('.om-message-body')].filter(bubble=>{
+      const box=bubble.getBoundingClientRect();return box.top>=frame.top-1&&box.bottom<=frame.bottom+1;
+    }).length};
+  });
+  const space=await measure();
+  console.log('MOBILE_TIMELINE_WITH_DRAFT',JSON.stringify(space));
+  expect(space.height).toBeGreaterThanOrEqual(350);
+  expect(space.visible).toBeGreaterThanOrEqual(3);
+  const search=page.getByRole('searchbox',{name:'読み込んだ履歴を検索'});
+  await expect(search).toBeHidden();
+  await page.getByRole('button',{name:'検索',exact:true}).click();
+  await expect(search).toBeVisible();
+  await search.fill('メッセージ 3');
+  await expect(timeline.locator('.om-message')).toHaveCount(1);
+  await page.getByRole('button',{name:'検索を閉じる',exact:true}).click();
+  await expect(timeline.locator('.om-message')).toHaveCount(6);
+  await expect(body).toHaveValue('まだ送信していない下書き');
+});
+
+async function exposeMobileControl(page,name){
+  const disclosure=page.getByRole('button',{name,exact:true});
+  if(await disclosure.isVisible()&&await disclosure.getAttribute('aria-expanded')==='false')await disclosure.click();
+}
+
 // Uses only the isolated fixture and the production-intended view/store modules.
 for(const [width,height,theme] of [[1366,900,'light'],[390,844,'light'],[320,740,'dark']]){
   test('messaging preview '+width+' '+theme+' supports work-linked conversation',async({page})=>{
@@ -25,11 +64,15 @@ for(const [width,height,theme] of [[1366,900,'light'],[390,844,'light'],[320,740
     await dialog.getByRole('button',{name:'閉じる',exact:true}).click();
     const body=page.getByRole('textbox',{name:'メッセージ本文'});
     await body.fill('新しい確認依頼です');
+    await exposeMobileControl(page,'入力オプション');
     await page.getByRole('checkbox',{name:'確認依頼',exact:true}).check();
     await page.getByRole('button',{name:'送信',exact:true}).click();
     const fresh=timeline.locator('.om-message').filter({hasText:'新しい確認依頼です'});
     await expect(fresh.getByRole('button',{name:'確認状況',exact:true})).toBeVisible();
-    await fresh.getByRole('button',{name:'編集',exact:true}).click();
+    if(width<=760){
+      await fresh.getByRole('button',{name:'その他',exact:true}).click();
+      await dialog.getByRole('button',{name:'編集',exact:true}).click();
+    }else await fresh.getByRole('button',{name:'編集',exact:true}).click();
     await body.fill('更新した確認依頼です');
     await page.getByRole('button',{name:'更新',exact:true}).click();
     const edited=timeline.locator('.om-message').filter({hasText:'更新した確認依頼です'});
@@ -41,6 +84,7 @@ for(const [width,height,theme] of [[1366,900,'light'],[390,844,'light'],[320,740
     await expect(timeline.getByText('確認テスト',{exact:true})).toHaveCount(0);
     await page.getByRole('button',{name:'送信',exact:true}).click();
     await expect(timeline.getByText('確認テスト',{exact:true})).toBeVisible();
+    await exposeMobileControl(page,'入力オプション');
     await page.getByRole('button',{name:'業務を添付',exact:true}).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.getByRole('checkbox',{name:'PC初期設定手順書',exact:true}).check();
@@ -53,6 +97,7 @@ for(const [width,height,theme] of [[1366,900,'light'],[390,844,'light'],[320,740
     await expect(page.getByRole('heading',{name:'共有データ',exact:true})).toBeVisible();
     await expect(page.locator('.om-shared').getByRole('button',{name:'PC初期設定手順書',exact:true})).toBeVisible();
     await page.getByRole('button',{name:'共有データを閉じる'}).click();
+    await exposeMobileControl(page,'入力オプション');
     await page.getByRole('button',{name:'日次報告',exact:true}).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByRole('dialog').getByText('外来PC初期設定',{exact:true})).toBeVisible();
@@ -60,6 +105,7 @@ for(const [width,height,theme] of [[1366,900,'light'],[390,844,'light'],[320,740
     await expect(body).toHaveValue(/日次業務報告/);
     if(width<680)await page.getByRole('button',{name:'一覧',exact:true}).click();
     await page.getByRole('button',{name:'自分宛てメッセージ',exact:true}).click();
+    await exposeMobileControl(page,'入力オプション');
     await expect(page.getByRole('checkbox',{name:'確認依頼',exact:true})).toBeDisabled();
     expect(await page.locator('html').evaluate(e=>e.scrollWidth<=innerWidth)).toBe(true);
     expect(errors).toEqual([]);
@@ -94,7 +140,7 @@ for(const [width,height,theme] of [[1366,900,'light'],[390,844,'light'],[320,740
     await expect(menu.getByRole('button',{name:'会話に固定',exact:true})).toBeEnabled();
     await menu.getByRole('button',{name:'閉じる',exact:true}).click();
     const settings=page.getByRole('dialog',{name:'会話設定'});
-    const openSettings=()=>page.getByRole('button',{name:'会話設定',exact:true}).click();
+    const openSettings=async()=>{await exposeMobileControl(page,'検索');await page.getByRole('button',{name:'会話設定',exact:true}).click();};
     const closeSettings=()=>settings.getByRole('button',{name:'閉じる',exact:true}).click();
     const back=async()=>{if(width<=760)await page.getByRole('button',{name:'一覧',exact:true}).click();};
     await openSettings();
