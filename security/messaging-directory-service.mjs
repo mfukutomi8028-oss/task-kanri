@@ -7,6 +7,7 @@ const fail=status=>({status});
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);
 const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
 const maxPage=100,maxParticipants=1000;
+const preferenceKeys=['favorite','muted','pinned','archived'];
 const validIndexRow=row=>record(row)&&isConversationId(row.id)&&Number.isSafeInteger(row.revision)&&row.revision>=1&&['member','pending','inactive'].includes(row.state);
 const requestFields=new Set(['token','roomId','after','limit','expectedPersonId']);
 const unreadFields=new Set(['token','roomId','conversationId','expectedPersonId']);
@@ -55,7 +56,7 @@ export function createMessagingIndexReconciler({readControl,writeIndexRow,readCo
   return Object.freeze({reconcile,reconcilePage});
 }
 
-export function createMessagingDirectoryService({verifyToken,readBinding,readControl,readIndexPage,readPersonal,readUnreadPage}={}){
+export function createMessagingDirectoryService({verifyToken,readBinding,readControl,readIndexPage,readPreferences,readPersonal,readUnreadPage}={}){
   if([verifyToken,readBinding,readControl,readIndexPage].some(fn=>typeof fn!=='function'))throw new TypeError('Trusted directory adapters required');
   async function authorize(token,roomId){
     let identity;try{identity=await verifyToken(token);}catch(_){return null;}
@@ -77,7 +78,15 @@ export function createMessagingDirectoryService({verifyToken,readBinding,readCon
         const control=await readControl({roomId,conversationId:item.id});
         if(control===null)return {item,revision:null,state:'inactive'};
         if(!isValidConversationControl(control,item.id,roomId)||control.revision<item.revision)throw Error('Inconsistent control');
-        return {item,revision:control.revision,...project(control,access.personId)};
+        const projection=project(control,access.personId);
+        if(projection.state==='member'&&typeof readPreferences==='function'){
+          try{
+            const prefs=await readPreferences({roomId,personId:access.personId,conversationId:item.id,joinedAt:projection.row.joinedAt});
+            projection.row.preferences=prefs===null||record(prefs)&&Object.keys(prefs).every(key=>preferenceKeys.includes(key)&&typeof prefs[key]==='boolean')
+              ?Object.fromEntries(preferenceKeys.map(key=>[key,prefs?.[key]===true])):null;
+          }catch(_){projection.row.preferences=null;}
+        }
+        return {item,revision:control.revision,...projection};
       });
       // Recheck the canonical revision before returning. This detects changes
       // during collection, but cannot revoke a response already delivered.
@@ -127,6 +136,7 @@ export function createFirebaseMessagingDirectoryServices({auth,database}={}){
   const indexPath=({roomId,personId})=>root(roomId)+'/directoryIndex/'+personId;
   const readControl=({roomId,conversationId})=>read(root(roomId)+'/control/'+conversationId);
   const directory=createMessagingDirectoryService({readControl,verifyToken:token=>auth.verifyIdToken(token,true),readBinding:({roomId,uid})=>read('messagingAccessV1/'+roomId+'/'+uid),
+    readPreferences:({roomId,personId,conversationId,joinedAt})=>read(root(roomId)+'/personal/'+personId+'/'+conversationId+'/'+joinedAt+'/preferences'),
     async readPersonal({roomId,personId,conversationId,joinedAt}){
       const path=root(roomId)+'/personal/'+personId+'/'+conversationId+'/'+joinedAt;
       const [cursor,muted]=await Promise.all([read(path+'/readCursor'),read(path+'/preferences/muted')]);

@@ -42,7 +42,10 @@ export function createMessagingLiveCommands({session,directory,api,personal,acti
       const unread=unreadSync?unreadSync.read(row.id,row.joinedAt):isSelected?summary:null;
       const personalState=isSelected?preferences:null;
       if([unread?.status,personalState?.status].some(status=>status==='forbidden'||status==='locked')){directoryComplete=false;continue;}
-      if(personalState?.status==='ok'&&preferenceKeys.every(k=>typeof personalState.preferences?.[k]==='boolean'))Object.assign(row,personalState.preferences,{archived:row.status==='archived'||personalState.preferences.archived});
+      const saved=source.preferences??personalState?.preferences;
+      if(preferenceKeys.every(key=>typeof saved?.[key]==='boolean')){
+        Object.assign(row,saved,{archived:row.status==='archived'||saved.archived});
+      }else if(source.preferences===null){row.preferencesUnavailable=true;directoryComplete=false;}
       if(unreadSync?unread?.status==='ok':validUnread(unread,scope,row))Object.assign(row,{unread:unread.unread,latestIncoming:unread.latestIncoming,muted:unread.muted,updatedAt:Math.max(row.updatedAt,unread.latestIncoming?.createdAt??0)});
       rows.push(row);
     }
@@ -59,7 +62,7 @@ export function createMessagingLiveCommands({session,directory,api,personal,acti
       const snapshot=directory.getSnapshot();
       if(refresh?.status!=='ok'||!people||snapshot.status!=='ready'||!same(scope,snapshot))throw Error('Unavailable');
       const row=snapshot.conversations.find(v=>v.id===selected);let summary=null,preferences=null;
-      if(row){
+      if(row&&(!unreadSync||row.preferences===undefined)){
         const target={roomId:scope.roomId,conversationId:row.id};
         [summary,preferences]=await Promise.all([unreadSync?null:api.readUnread(target),personal.readPersonalState({...target,personId:scope.personId,joinedAt:row.joinedAt})]);
         if(!current(token)||seq!==listSequence)return fail('locked');

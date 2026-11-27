@@ -13,7 +13,7 @@ test('cloud composition clears the authorized directory on disconnect and dispos
     const binding={uid,roomId,personId,displayName:'Synthetic',approved:true,active:true};
     const boardSnapshot={roomId,currentUser:'Synthetic',connectionMode:'remote-online',tasks:[],schedules:[]};
     const subscriptions=new Set(),calls=[],summaries=[],notices=[],sentRequests=[],sentRecords=new Map();
-    let online=true,unread=2,marker='00000000-0000-4000-8000-000000000001';const unreadCalls=[];
+    let online=true,seedHistory=false,unread=2,marker='00000000-0000-4000-8000-000000000001';const unreadCalls=[];
     const bindingKey='messagingAccessV1/'+roomId+'/'+uid;
     const value=path=>path==='.info/connected'?online:path===bindingKey?binding:
       [selfId,directId].some(id=>path==='messagingV1/'+roomId+'/control/'+id+'/members/'+personId)?{active:true,joinedAt:1000,role:'member'}:
@@ -40,7 +40,11 @@ test('cloud composition clears the authorized directory on disconnect and dispos
         sentRecords.set(id,input);
         return sentRequests.length===1?Response.json({status:'unavailable'},{status:503}):Response.json({status:'sent',id});
       }
-      if(action==='history')return Response.json({status:'ok',joinedAt:1000,messages:[],nextCursor:null,hasMore:false});
+      if(action==='history'){
+        const make=(index,body)=>({id:'msg_'+personId+'_q_'+index.toString(16).padStart(32,'0'),senderId:personId,createdAt:2000+index,body,refs:[],replyTo:null,revision:1,attachmentIds:[],confirmationRequested:false});
+        const messages=!seedHistory?[]:payload.before?[make(0,'Older searchable text')]:Array.from({length:50},(_,index)=>make(index+1,'Recent note '+index));
+        return Response.json({status:'ok',joinedAt:1000,messages,nextCursor:messages.length===50?{id:messages[0].id,createdAt:messages[0].createdAt}:null,hasMore:messages.length===50});
+      }
       if(action==='unread'){
         const conversationId=payload.conversationId;if(![selfId,directId].includes(conversationId))throw Error('Unexpected conversation');
         unreadCalls.push(conversationId);
@@ -49,7 +53,7 @@ test('cloud composition clears the authorized directory on disconnect and dispos
       throw Error('Unexpected request '+action);
     };
     const handle=mountCloudOriginMessaging({root,endpoint:'https://example.invalid/messaging',sdk,auth,board,fetchImpl,keepNotificationSession:true,onSummary:s=>summaries.push(s),onNotification:kind=>notices.push(kind)});
-    window.__liveCloudTest={handle,calls,sentRequests,sentRecords,unreadCalls,selfId,directId,summaries,notices,incoming(){unread++;marker='00000000-0000-4000-8000-'+String(unread).padStart(12,'0');for(const row of [...subscriptions])if(row.path==='messagingV1/'+roomId+'/activity/'+directId)row.fn(snapshot(row.path));},disconnect(){online=false;for(const row of [...subscriptions])if(row.path==='.info/connected')row.fn(snapshot(row.path));},subscriptionCount:()=>subscriptions.size};
+    window.__liveCloudTest={handle,calls,sentRequests,sentRecords,seedHistory(){seedHistory=true;},unreadCalls,selfId,directId,summaries,notices,incoming(){unread++;marker='00000000-0000-4000-8000-'+String(unread).padStart(12,'0');for(const row of [...subscriptions])if(row.path==='messagingV1/'+roomId+'/activity/'+directId)row.fn(snapshot(row.path));},disconnect(){online=false;for(const row of [...subscriptions])if(row.path==='.info/connected')row.fn(snapshot(row.path));},subscriptionCount:()=>subscriptions.size};
   });
   const root=page.locator('#liveCloud');
   await expect(root.getByText('自分宛てメッセージ',{exact:true})).toBeVisible();
@@ -96,6 +100,14 @@ test('cloud composition clears the authorized directory on disconnect and dispos
   await expect(root.getByLabel('メッセージの未読件数')).toHaveText('未読 4件');
   expect(await page.evaluate(()=>window.__liveCloudTest.notices)).toEqual(['message']);
   expect(await page.evaluate(()=>window.__liveCloudTest.subscriptionCount())).toBe(watched);
+  await page.evaluate(()=>window.__liveCloudTest.seedHistory());
+  await root.getByRole('button',{name:'自分宛てメッセージ',exact:true}).click();
+  await root.locator('#om-message-search').fill('Older searchable');
+  await expect(root.locator('.om-timeline')).toContainText('一致するメッセージがありません');
+  await root.getByRole('button',{name:'以前の履歴を追加して検索'}).click();
+  await expect(root.locator('.om-timeline')).toContainText('Older searchable text');
+  await expect(root.locator('#om-message-search')).toHaveValue('Older searchable');
+  await expect(root.locator('.om-search-bar .om-coverage')).toContainText('取得済み 51件');
   expect(await page.evaluate(()=>window.__liveCloudTest.handle.hideWorkspace())).toBe(true);
   await page.evaluate(()=>window.__liveCloudTest.disconnect());
   await expect.poll(()=>page.evaluate(()=>window.__liveCloudTest.handle.getSnapshot().status)).toBe('locked');

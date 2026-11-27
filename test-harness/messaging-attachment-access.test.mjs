@@ -44,3 +44,15 @@ test('claim is bound to server-derived deterministic message and unique bounded 
   const f=fixture();assert.deepEqual(await f.service.claim(f.claim),{status:'ok'});assert.deepEqual(f.calls,[['claim',f.claim]]);
   for(const patch of [{messageId:'msg_'+personId+'_'+requestId},{attachmentIds:[attachmentId,attachmentId]},{attachmentIds:['pending']},{attachmentIds:[]},{personId:'staff'},{joinedAt:-1},{roomId:'x/y'}]){const g=fixture();assert.deepEqual(await g.service.claim({...g.claim,...patch}),{status:'invalid'});assert.deepEqual(g.calls,[]);}
 });
+
+test('shared metadata omits deleted or inaccessible attachments without reading bytes or spending download quota',async()=>{
+  const f=fixture();
+  const {messageId,attachmentId,...actor}=f.request;
+  const input={...actor,items:[{messageId,attachmentId},{messageId,attachmentId:secondId}]};
+  assert.deepEqual(await f.service.metadata(input),{status:'ok',items:[{messageId,attachmentId,filename:'report.txt',mime:'text/plain',bytes:6}]});
+  f.message({deletedAt:2100});
+  assert.deepEqual(await f.service.metadata(input),{status:'ok',items:[]});
+  f.member({active:false});
+  assert.deepEqual(await f.service.metadata(input),{status:'forbidden'});
+  assert.equal(f.calls.filter(([kind])=>kind==='storage'||kind==='quota').length,0);
+});

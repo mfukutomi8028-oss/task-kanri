@@ -8,6 +8,7 @@ const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u000
 const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(v);
 const ids=v=>Array.isArray(v)&&v.length>=1&&v.length<=5&&Array.from(v).every(uuid)&&new Set(v).size===v.length;
 const requestFields=new Set(['token','roomId','conversationId','expectedPersonId','messageId','attachmentId']);
+const metadataFields=new Set(['token','roomId','conversationId','expectedPersonId','items']);
 const claimFields=new Set(['roomId','conversationId','personId','joinedAt','requestId','messageId','attachmentIds']);
 const mimeTypes=new Set(['image/jpeg','image/png','image/webp','application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.openxmlformats-officedocument.presentationml.presentation','text/plain','text/csv']);
 const safeFilename=v=>typeof v==='string'&&v===v.trim()&&Array.from(v).length>=1&&Array.from(v).length<=200&&!/[\\/:\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/.test(v);
@@ -52,6 +53,33 @@ export function createMessagingAttachmentAccessService({verifyToken,readBinding,
       return {status:'ok',filename:reference.filename,mime:reference.mime,bytes};
     }catch(_){return fail('unavailable');}
   }
+  async function metadata(request){
+    if(!record(request)||Object.keys(request).some(key=>!metadataFields.has(key))
+      ||typeof request.token!=='string'||!request.token||request.token.length>16384||!isMessagingRoomId(request.roomId)
+      ||!isConversationId(request.conversationId)||!isPersonId(request.expectedPersonId)
+      ||!Array.isArray(request.items)||request.items.length<1||request.items.length>20)return fail('invalid');
+    const keys=new Set();
+    for(const item of request.items){
+      if(!record(item)||Object.keys(item).length!==2||!isMessageId(item.messageId)||!uuid(item.attachmentId))return fail('invalid');
+      const key=item.messageId+'/'+item.attachmentId;
+      if(keys.has(key))return fail('invalid');
+      keys.add(key);
+    }
+    try{
+      const actor=await authorize(request);
+      if(!actor)return fail('forbidden');
+      const items=[];
+      for(let i=0;i<request.items.length;i+=4){
+        const batch=await Promise.all(request.items.slice(i,i+4).map(async item=>{
+          const reference=await verifiedReference({...request,...item},actor);
+          return reference?{...item,filename:reference.filename,mime:reference.mime,bytes:reference.bytes}:null;
+        }));
+        items.push(...batch.filter(Boolean));
+      }
+      if(!sameActor(actor,await authorize(request)))return fail('forbidden');
+      return {status:'ok',items};
+    }catch(_){return fail('unavailable');}
+  }
   // Internal-only operation: the mutation service supplies the authenticated
   // sender and epoch. The SQL adapter must claim the entire batch atomically.
   async function claim(target){
@@ -63,5 +91,5 @@ export function createMessagingAttachmentAccessService({verifyToken,readBinding,
       return fail(['ok','invalid','conflict','expired','forbidden'].includes(result?.status)?result.status:'unavailable');
     }catch(_){return fail('unavailable');}
   }
-  return Object.freeze({download,claim});
+  return Object.freeze({download,metadata,claim});
 }

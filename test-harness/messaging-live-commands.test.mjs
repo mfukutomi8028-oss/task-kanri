@@ -46,3 +46,16 @@ test('all known unread summaries are projected without repeating directory, rost
  assert.equal(updates.length,1);assert.deepEqual(updates[0],{cached:true});const second=await f.commands.list(updates[0]);assert.deepEqual(second.conversations.map(r=>r.unread),[0,2]);assert.equal(second.conversations[1].favorite,true);assert.equal(second.conversations[1].muted,true);assert.equal(second.complete,true);assert.equal(f.calls.length,3);
  sync.set(direct,{status:'forbidden'});const revoked=await f.commands.list({cached:true});assert.deepEqual(revoked.conversations.map(r=>r.id),[self]);assert.equal(revoked.complete,false);f.change({status:'locked'});assert.equal((await f.commands.list({cached:true})).status,'locked');f.dispose();
 });
+
+test('directory preferences survive selecting another conversation and closing the workspace',async()=>{
+  const f=fixture();
+  const saved={favorite:true,pinned:true,archived:true,muted:true};
+  f.rows[1].preferences=saved;
+  for(const active of [self,null]){
+    f.setActive(active);
+    const result=await f.commands.list();
+    const row=result.conversations.find(value=>value.id===direct);
+    assert.deepEqual(Object.fromEntries(Object.keys(saved).map(key=>[key,row[key]])),saved);
+  }
+  f.dispose();
+});

@@ -52,6 +52,7 @@ export function createMessagingApiTransport({endpoint,session,getToken,fetchImpl
       if(!(file instanceof Blob)||!validFileSize(file.size)||!safeFilename(filename)||typeof mime!=='string'||!mime||mime.length>150||!isConversationId(conversationId)||typeof requestId!=='string'||!/^q_[0-9a-f]{32}$/.test(requestId)||!Number.isInteger(slot)||slot<0||slot>4)return Promise.resolve(fail('invalid'));
       return invoke('attachmentUpload',{roomId,conversationId,requestId,slot,filename,mime,declaredBytes:file.size},file);
     },
+    readAttachmentMetadata:({roomId,conversationId,items}={})=>isConversationId(conversationId)&&Array.isArray(items)&&items.length>=1&&items.length<=20?invoke('attachmentMetadata',{roomId,conversationId,items}):Promise.resolve(fail('invalid')),
     downloadAttachment:({roomId,conversationId,messageId,attachmentId}={})=>isConversationId(conversationId)&&isMessageId(messageId)&&isMessagingAttachmentId(attachmentId)?invoke('attachmentDownload',{roomId,conversationId,messageId,attachmentId}):Promise.resolve(fail('invalid')),
     readHistory:({roomId,conversationId,before=null,limit=50}={})=>invoke('history',{roomId,conversationId,before,limit}),
     send:({roomId,conversationId,requestId,input}={})=>invoke('message',{roomId,conversationId,command:{type:'send',requestId,input}}),

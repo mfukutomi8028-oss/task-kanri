@@ -42,3 +42,12 @@
 .om-invite-copy{display:grid;gap:3px;overflow-wrap:anywhere}.om-invite-copy small{color:var(--muted)}
 .om-invite-actions{display:flex;gap:6px;margin-top:5px}.om-invite-actions button{flex:1}
 .om-draft-ref span{overflow-wrap:anywhere}
+
+.om-search-bar{flex-wrap:wrap}
+.om-search-options,.om-search-bar .om-coverage{flex-basis:100%;grid-column:1/-1}
+.om-coverage{color:var(--muted);font-size:12px;margin:0}
+.om-coverage:empty{display:none}
+.om-search-options summary{cursor:pointer;min-height:32px}
+.om-date-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.om-date-fields label{display:grid;gap:3px;min-width:0;font-size:12px}
+.om-date-fields input{inline-size:100%;min-inline-size:0}

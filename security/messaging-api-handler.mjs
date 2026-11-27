@@ -19,7 +19,7 @@ export function createMessagingApiHandler({allowedOrigins,history,mutation,direc
   if(!Array.isArray(allowedOrigins)||!allowedOrigins.length||allowedOrigins.some(origin=>{try{const url=new URL(origin);return url.protocol!=='https:'||url.origin!==origin;}catch(_){return true;}}))throw new TypeError('Explicit HTTPS origins required');
   const origins=new Set(allowedOrigins);
   const attachmentHttp=attachments===null?null:createMessagingAttachmentHttp({attachments});
-  const operations={history:history?.readHistory,message:mutation?.mutate,directory:directory?.readDirectory,unread:directory?.readUnread,people:conversations?.readPeople,conversation:conversations?.execute};
+  const operations={history:history?.readHistory,message:mutation?.mutate,directory:directory?.readDirectory,unread:directory?.readUnread,people:conversations?.readPeople,conversation:conversations?.execute,...(typeof attachments?.metadata==='function'?{attachmentMetadata:attachments.metadata}:{})};
   if(Object.values(operations).some(fn=>typeof fn!=='function'))throw new TypeError('Messaging services required');
   return async function handle(request){
     const origin=request.headers.get('Origin'),allowed=origins.has(origin);

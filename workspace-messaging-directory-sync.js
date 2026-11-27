@@ -10,10 +10,16 @@ const revision=v=>Number.isSafeInteger(v)&&v>=1;
 const title=v=>typeof v==='string'&&v.length>0&&v.length<=80&&v.trim()===v&&!/[\u0000-\u001f\u007f]/.test(v);
 const empty=Object.freeze([]);
 const blank=status=>Object.freeze({status,roomId:null,personId:null,conversations:empty,invites:empty,complete:false,nextCursor:null});
+const preferenceKeys=['favorite','muted','pinned','archived'];
 function memberRow(row,identity){
   if(!record(row)||!isConversationId(row.id)||!['active','archived'].includes(row.status)||!['owner','admin','member'].includes(row.role)||!Number.isInteger(row.memberCount)||row.memberCount<1||row.memberCount>100||!isMessagingTimestamp(row.joinedAt)||!revision(row.revision)||!isMessagingTimestamp(row.controlUpdatedAt)||row.controlUpdatedAt<row.joinedAt)throw new TypeError('Invalid conversation row');
   const {id,kind,status,role,memberCount,joinedAt,revision:rev,controlUpdatedAt}=row;
   const clean={id,kind,status,role,memberCount,joinedAt,revision:rev,controlUpdatedAt};
+  if(Object.hasOwn(row,'preferences')){
+    const value=row.preferences;
+    if(value!==null&&(!record(value)||Object.keys(value).length!==4||preferenceKeys.some(key=>typeof value[key]!=='boolean')))throw new TypeError('Invalid directory preferences');
+    clean.preferences=value===null?null:Object.freeze({...value});
+  }
   if(kind==='group'&&id.startsWith('group_')&&title(row.title))return Object.freeze({...clean,title:row.title});
   if(status!=='active'||role!=='member')throw new TypeError('Invalid individual conversation');
   if(kind==='self'&&memberCount===1&&id===conversationIdFor({...identity,kind,personIds:[identity.personId]}))return Object.freeze(clean);

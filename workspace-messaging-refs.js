@@ -69,25 +69,48 @@ export function createMessagingReferenceResolver({readSnapshot,readMemos,canRead
 }
 const limitOf=value=>Number.isInteger(value)&&value>0?Math.min(value,50):50;
 const within=(m,from,to)=>(from==null||m.createdAt>=from)&&(to==null||m.createdAt<to);
-export async function searchLoadedMessages(messages,{query='',context,resolver,from=null,to=null,senderId=null,limit=50}={}){
+export async function searchLoadedMessages(messages,{query='',context,resolver,from=null,to=null,senderId=null,resolvePerson=null,limit=50}={}){
   const matches=[];const needle=String(query).trim().toLocaleLowerCase();
   for(const m of readableMessages(messages,context)){
     if(!within(m,from,to)||senderId!==null&&m.senderId!==senderId)continue;
-    let hit=!needle||m.body.toLocaleLowerCase().includes(needle);
+    let hit=!needle||m.body.toLocaleLowerCase().includes(needle)||String(resolvePerson?.(m.senderId)??'').toLocaleLowerCase().includes(needle);
     if(!hit&&resolver)for(const ref of m.refs){const item=await resolver.resolve(ref,context);if(item.status==='available'&&item.title.toLocaleLowerCase().includes(needle)){hit=true;break;}}
     if(hit)matches.push(m);if(matches.length>=limitOf(limit))break;
   }
   return {scope:'loaded',matches};
 }
-export async function selectSharedData(messages,{context,resolver,type=null,from=null,to=null,limit=50}={}){
-  if(!resolver||type!==null&&!types.has(type)&&type!=='url')return [];
-  const rows=[],seen=new Set();
-  for(const m of readableMessages(messages,context)){
-    if(!within(m,from,to))continue;
+export async function selectSharedData(messages,{context,resolver,type=null,from=null,to=null,limit=50,readAttachmentMetadata=null}={}){
+  if(!resolver||type!==null&&![...types,'url','image','file'].includes(type))return [];
+  const rows=[],seen=new Set(),loaded=readableMessages(messages,context).filter(m=>within(m,from,to));
+  let metadata=new Map();
+  if(readAttachmentMetadata&&(type===null||type==='image'||type==='file')){
+    const candidates=[];
+    for(const m of loaded){
+      for(const attachmentId of m.attachmentIds){
+        candidates.push({messageId:m.id,attachmentId});
+        if(candidates.length===20)break;
+      }
+      if(candidates.length===20)break;
+    }
+    if(candidates.length){
+      const response=await readAttachmentMetadata(candidates);
+      if(response?.status!=='ok'||!Array.isArray(response.items))throw new Error('Attachment metadata unavailable');
+      metadata=new Map(response.items.map(item=>[item.messageId+'/'+item.attachmentId,item]));
+    }
+  }
+  for(const m of loaded){
     if(type===null||types.has(type))for(const ref of m.refs){
       if(type!==null&&ref.type!==type)continue;const key=JSON.stringify([ref.type,ref.recordId]);if(seen.has(key))continue;
       const item=await resolver.resolve(ref,context);if(item.status!=='available')continue;
       seen.add(key);rows.push({...item,type:ref.type,messageId:m.id,createdAt:m.createdAt});if(rows.length>=limitOf(limit))return rows;
+    }
+    if(type===null||type==='image'||type==='file')for(const attachmentId of m.attachmentIds){
+      const item=metadata.get(m.id+'/'+attachmentId);
+      if(!item||typeof item.filename!=='string'||typeof item.mime!=='string')continue;
+      const kind=['image/jpeg','image/png','image/webp'].includes(item.mime)?'image':'file';
+      if(type!==null&&type!==kind)continue;
+      rows.push({type:kind,title:item.filename,attachmentId,messageId:m.id,createdAt:m.createdAt});
+      if(rows.length>=limitOf(limit))return rows;
     }
     if(type===null||type==='url')for(const token of m.body.match(/https?:\/\/[^\s<>"']+/gi)??[]){
       try{const url=new URL(token);if(!['http:','https:'].includes(url.protocol)||url.username||url.password||seen.has(url.href))continue;seen.add(url.href);rows.push({type:'url',url:url.href,messageId:m.id,createdAt:m.createdAt});if(rows.length>=limitOf(limit))return rows;}catch(_){}
