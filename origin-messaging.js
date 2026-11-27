@@ -50,6 +50,8 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   const fileInput=el('input','om-file-input');fileInput.type='file';fileInput.multiple=true;fileInput.accept=messagingFileAccept;fileInput.hidden=true;composer.append(fileInput);
   const fileButton=button('ファイルを添付',()=>{if(!sendPending&&!compose()?.editing){void warnAboutCapacity();fileInput.click();}},'om-outline');fileButton.hidden=!fileEnabled;composeTools.prepend(fileButton);
   const originalLabel=el('label','om-original'),keepOriginal=el('input','');keepOriginal.type='checkbox';const originalNote=el('small','om-original-note','原本には位置情報などのメタデータが残る場合があります。');originalNote.hidden=true;originalLabel.append(keepOriginal,el('span','','原本のまま送る'),originalNote);originalLabel.hidden=!fileEnabled;fileButton.after(originalLabel);keepOriginal.addEventListener('change',()=>{originalNote.hidden=!keepOriginal.checked;});
+  // The original choice covers one attach action only; it never carries over.
+  const resetOriginal=()=>{keepOriginal.checked=false;originalNote.hidden=true;};
   const context=()=>{const identity=session.getSnapshot();return state.status==='ready'&&identity?.status==='bound'&&state.conversationId&&Number.isSafeInteger(state.joinedAt)?{...identity,conversationId:state.conversationId,joinedAt:state.joinedAt}:null;};
   const selected=()=>conversations.find(c=>c.id===state.conversationId);
   const archivedGroup=()=>selected()?.status==='archived';
@@ -92,7 +94,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   const sameScope=(a,b)=>a===null&&b===null||a&&b&&a.roomId===b.roomId&&a.personId===b.personId;
   function announce(event){if(disposed)return;const node=$('.om-list-notice');node.hidden=false;node.textContent=event.kind==='invite'?'新しいグループ招待があります。':'新着メッセージがあります。';}
   const notifications=summaryOwner??createMessagingNotificationAdapter({notify:announce});
-  function syncListIdentity(){const current=listIdentity();if(sameScope(current,listScope))return false;listScope=current;listGeneration++;conversations=[];invites=[];inviteArea.replaceChildren();inviteArea.hidden=true;fileInput.value='';expandTools(false);expandHistory(false);if(!summaryOwner)notifications.bind(current);$('.om-unread-total').textContent='';$('.om-list-notice').hidden=true;$('.om-list-notice').textContent='';closeDialog();shared.hidden=true;shell.dataset.shared='false';shell.dataset.mobileView='list';renderList();return true;}
+  function syncListIdentity(){const current=listIdentity();if(sameScope(current,listScope))return false;listScope=current;listGeneration++;resetOriginal();conversations=[];invites=[];inviteArea.replaceChildren();inviteArea.hidden=true;fileInput.value='';expandTools(false);expandHistory(false);if(!summaryOwner)notifications.bind(current);$('.om-unread-total').textContent='';$('.om-list-notice').hidden=true;$('.om-list-notice').textContent='';closeDialog();shared.hidden=true;shell.dataset.shared='false';shell.dataset.mobileView='list';renderList();return true;}
   const filterNames=[['all','すべて'],['unread','未読'],['favorite','お気に入り'],['archived','アーカイブ']];
   function renderList(){
     const needle=$('#om-list-search').value.trim().toLocaleLowerCase();
@@ -312,7 +314,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
         const action=button(label,async()=>{
           if(!current())return;
           action.disabled=true;
-          const location={conversationId:c.conversationId,messageId:m.id,scrollTop:timeline.scrollTop,query};
+          const location={conversationId:c.conversationId,messageId:m.id,scrollTop:timeline.scrollTop,query,dates:historyDates.fields.map(field=>field.value)};
           if(await resolver.openDraft(kind,m.revision,c,location)){closeDialog();return;}
           if(current()){action.disabled=false;status.textContent='元のメッセージを確認できません。';}
         },'om-outline');
@@ -468,6 +470,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
     if(state.conversationId!==lastId){body.value=state.draft||'';renderList();}else if(body.value!==state.draft)body.value=state.draft;
     if(ready)renderComposeContext();
     if(identityChanged&&listScope)void reloadList();
+    if(state.conversationId!==lastId)resetOriginal();
     if(state.messages!==lastMessages||state.conversationId!==lastId||state.status!==previous.status){const older=state.messages.length>previous.messages.length&&previous.messages[0]&&state.messages[0]?.id!==previous.messages[0].id&&state.messages.at(-1)?.id===previous.messages.at(-1)?.id;void renderTimeline({older:Boolean(older)});lastMessages=state.messages;lastId=state.conversationId;if(!shared.hidden)void renderShared();}
   }
   const rejectedNotice='添付できないファイルがあります。対応形式・1件5MB・最大5件を確認してください。';
@@ -475,7 +478,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   async function addFiles(files){
     if(!fileEnabled||!context()||sendPending)return;
     const c=context(),draft=compose();if(!draft||draft.editing)return;
-    const picked=selectMessagingFiles(draft.files,files),fresh=picked.files.slice(draft.files.length),version=draft.fileVersion,keep=keepOriginal.checked;
+    const picked=selectMessagingFiles(draft.files,files),fresh=picked.files.slice(draft.files.length),version=draft.fileVersion,keep=keepOriginal.checked;resetOriginal();
     if(!fresh.length){notice(picked.rejected?rejectedNotice:'');return;}
     const valid=()=>messageContextValid(c)&&compose()===draft&&draft.fileVersion===version&&!draft.editing;
     const hasImage=!keep&&fresh.some(item=>item.mime.startsWith('image/'));
@@ -563,22 +566,28 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   for(const field of historyDates.fields)field.addEventListener('change',()=>{expandHistory(true);void renderTimeline();});
   for(const field of sharedDates.fields)field.addEventListener('change',()=>{sharedAttachmentOffset=0;void renderShared();});
   const stopStore=store.subscribe(renderState),stopList=commands.subscribe?.(options=>void reloadList(options));
-  // Loads older pages until the target is present; an unloaded target is never reported as success.
+  // Loads the target by id in one bounded request (with everything newer that is
+  // not loaded yet, so history stays contiguous). An unloaded, deleted or too old
+  // target is never reported as success.
   async function loadUntil(c,messageId){
-    let pages=0,waits=0;
+    let requested=false,waits=0;
     for(;;){
       const snap=store.getSnapshot();
-      if(!messageContextValid(c)||snap.status!=='ready'||snap.conversationId!==c.conversationId)return null;
+      if(!messageContextValid(c)||snap.status!=='ready'||snap.conversationId!==c.conversationId)return {status:'unavailable'};
       const found=snap.messages.find(m=>m.id===messageId);
-      if(found)return found.deletedAt==null?pages:null;
-      if(!snap.hasMore||pages>=40)return null;
-      const loaded=await store.loadOlder();
-      if(loaded?.status==='busy'){if(++waits>100)return null;await new Promise(resolve=>setTimeout(resolve,50));continue;}
-      pages++;
-      const after=store.getSnapshot();
-      if(after.messages.length===snap.messages.length&&after.hasMore)return null;
+      if(found)return found.deletedAt==null?{status:'ok',loaded:requested}:{status:'missing'};
+      if(requested)return {status:'unavailable'};
+      const loaded=await store.loadUntil(messageId);
+      if(loaded?.status==='busy'){if(++waits>100)return {status:'unavailable'};await new Promise(resolve=>setTimeout(resolve,50));continue;}
+      if(loaded?.status==='missing'||loaded?.status==='too-far')return {status:loaded.status};
+      if(loaded?.status!=='ok')return {status:'unavailable'};
+      requested=true;
     }
   }
+  let lastJump='unavailable';
+  const jumpNotice={missing:'対象のメッセージは削除されたか、閲覧できません。',
+    'too-far':'対象のメッセージが古いため移動できません。最新のメッセージを表示しています。',
+    unavailable:'対象のメッセージを読み込めませんでした。最新のメッセージを表示しています。'};
   function focusMessage(messageId){const target=timeline.querySelector('[data-message-id="'+messageId+'"]');if(!target)return false;target.scrollIntoView({block:'center'});target.tabIndex=-1;target.focus({preventScroll:true});return true;}
   async function openMessage(conversationId,messageId){
     if(disposed||!isMessageId(messageId))return false;
@@ -586,9 +595,10 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
     // History arrives asynchronously; wait (bounded) for this exact conversation to be ready.
     const ready=()=>{const now=context();return now&&now.conversationId===conversationId?now:null;};
     if(!ready())await new Promise(resolve=>{let stop=null;const finish=()=>{clearTimeout(timer);stop?.();resolve();};const timer=setTimeout(finish,10000);stop=store.subscribe(()=>queueMicrotask(()=>{if(ready()||['forbidden','locked'].includes(store.getSnapshot().status)||disposed)finish();}));});
-    const c=ready();if(!c)return false;
-    const pages=await loadUntil(c,messageId);if(pages===null||!messageContextValid(c))return false;
+    const c=ready();if(!c){lastJump='unavailable';return false;}
+    const jump=await loadUntil(c,messageId);lastJump=jump.status;
+    if(jump.status!=='ok'||!messageContextValid(c)){if(messageContextValid(c))notice(jumpNotice[jump.status]||jumpNotice.unavailable);return false;}
     await renderTimeline();return messageContextValid(c)&&focusMessage(messageId);
   }
-  return {open:openConversation,openMessage,share,announce,async restoreLocation(location){if(disposed||!context()||state.conversationId!==location?.conversationId||!isMessageId(location.messageId)||typeof location.query!=='string'||!Number.isFinite(location.scrollTop)||location.scrollTop<0)return false;const c=context();const pages=await loadUntil(c,location.messageId);if(pages===null)return false;query=location.query;search.value=query;expandHistory(Boolean(query));shell.dataset.mobileView='chat';await renderTimeline();if(!messageContextValid(c))return false;if(pages===0){timeline.scrollTop=location.scrollTop;const target=timeline.querySelector('[data-message-id="'+location.messageId+'"]');if(!target)return false;target.tabIndex=-1;target.focus({preventScroll:true});return true;}return focusMessage(location.messageId);},dispose(){disposed=true;cancelAnimationFrame(readFrame);listGeneration++;renderGeneration++;sharedGeneration++;stopStore?.();stopList?.();if(!summaryOwner)notifications.dispose();resolver.clear?.();closeDialog();shell.remove();}};
+  return {open:openConversation,openMessage,share,announce,lastJump:()=>lastJump,async restoreLocation(location){if(disposed||!context()||state.conversationId!==location?.conversationId||!isMessageId(location.messageId)||typeof location.query!=='string'||!Number.isFinite(location.scrollTop)||location.scrollTop<0)return false;const c=context();const jump=await loadUntil(c,location.messageId);if(jump.status!=='ok'){if(messageContextValid(c))notice(jumpNotice[jump.status]||jumpNotice.unavailable);return false;}query=location.query;search.value=query;const dates=Array.isArray(location.dates)&&location.dates.length===historyDates.fields.length?location.dates:null;historyDates.fields.forEach((field,i)=>{field.value=dates?.[i]??'';});expandHistory(Boolean(query||dates?.some(Boolean)));shell.dataset.mobileView='chat';await renderTimeline();if(!messageContextValid(c))return false;if(!jump.loaded){timeline.scrollTop=location.scrollTop;const target=timeline.querySelector('[data-message-id="'+location.messageId+'"]');if(!target)return false;target.tabIndex=-1;target.focus({preventScroll:true});return true;}return focusMessage(location.messageId);},dispose(){disposed=true;cancelAnimationFrame(readFrame);listGeneration++;renderGeneration++;sharedGeneration++;stopStore?.();stopList?.();if(!summaryOwner)notifications.dispose();resolver.clear?.();closeDialog();shell.remove();}};
 }

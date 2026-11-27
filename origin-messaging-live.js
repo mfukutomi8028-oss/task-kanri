@@ -22,7 +22,23 @@ const safely=fn=>{try{fn?.();}catch(_){/* Release other resources even if one di
 const validUid=v=>typeof v==='string'&&v.length>=1&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
 const validLabel=v=>typeof v==='string'&&v.length>=1&&v.length<=64&&v===v.trim()&&!/[\u0000-\u001f\u007f]/.test(v);
 
-export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImpl,attachmentsEnabled=false,keepNotificationSession=false,draftOwner=createMessagingDraftOwner(),onSummary=()=>{},onAvailability=()=>{},onIdentityInvalidated=()=>{},onNotification=()=>{},onClose=()=>{}}={}){
+const pendingKey=scope=>'wb-messaging-pending-links-v1|'+scope.roomId+'|'+scope.personId;
+const PENDING_MAX_AGE=14*86400000,PENDING_MAX=50;
+// Unsaved link intents only (record id and source message id), never message content.
+export function createPendingLinkStore(storage){
+  const memory=new Map();
+  const load=scope=>{try{const value=JSON.parse(storage?.getItem(pendingKey(scope))||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(_){return {};}};
+  const save=(scope,value)=>{memory.set(pendingKey(scope),value);try{if(Object.keys(value).length)storage?.setItem(pendingKey(scope),JSON.stringify(value));else storage?.removeItem(pendingKey(scope));}catch(_){/* Memory-only when storage is blocked. */}};
+  const valid=item=>recordLinkKey(item)&&isConversationId(item.conversationId)&&isMessageId(item.messageId)&&Number.isSafeInteger(item.at)&&Date.now()-item.at<PENDING_MAX_AGE;
+  const read=scope=>{const all={...load(scope),...(memory.get(pendingKey(scope))||{})};return Object.fromEntries(Object.entries(all).filter(([key,item])=>key===recordLinkKey(item)&&valid(item)));};
+  return Object.freeze({
+    read,
+    add(scope,item){const key=recordLinkKey(item);if(!key)return null;const next={...read(scope),[key]:{type:item.type,recordId:item.recordId,conversationId:item.conversationId,messageId:item.messageId,at:Date.now()}};save(scope,Object.fromEntries(Object.entries(next).slice(-PENDING_MAX)));return key;},
+    remove(scope,key){const next=read(scope);delete next[key];save(scope,next);},
+    clear(scope){save(scope,{});}
+  });
+}
+export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImpl,storage=globalThis.localStorage,attachmentsEnabled=false,keepNotificationSession=false,draftOwner=createMessagingDraftOwner(),onSummary=()=>{},onAvailability=()=>{},onIdentityInvalidated=()=>{},onNotification=()=>{},onClose=()=>{}}={}){
   if(!root||!sdk?.db||['ref','get','onValue','set','update','runTransaction','serverTimestamp'].some(k=>typeof sdk[k]!=='function')||['getUid','getToken','observeAuth'].some(k=>typeof auth?.[k]!=='function')||['readSnapshot','readMemos','canReadRecord','openRecord','restoreConversation','subscribe'].some(k=>typeof board?.[k]!=='function')||[onClose,onSummary,onNotification,onIdentityInvalidated].some(fn=>typeof fn!=='function'))throw new TypeError('Cloud messaging host adapters required');
   const stops=[];let disposed=false,online=false,control=null,lastContext=null,store=null,view=null,resolver=null,returnScope=null,stopStore=null;
   function disposeWorkspace(){const previousView=view,previousStore=store,previousStop=stopStore;view=null;store=null;resolver=null;returnScope=null;stopStore=null;safely(previousStop);safely(()=>previousView?.dispose());safely(()=>previousStore?.dispose());}
@@ -33,7 +49,8 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
     const read=async path=>(await sdk.get(sdk.ref(sdk.db,path))).val();
     let lastUid=auth.getUid();
     const clearScope=()=>{draftOwner.clear();resolver?.clear();returnScope=null;};
-    const identityInvalidated=()=>{clearScope();onIdentityInvalidated();};
+    const pending=createPendingLinkStore(storage);let boundScope=null;
+    const identityInvalidated=()=>{clearScope();if(boundScope)pending.clear(boundScope);boundScope=null;onIdentityInvalidated();};
     const session=own(createMessagingSession({
       getAuthUid:()=>online&&control===true?auth.getUid():null,
       readBinding:target=>read(bindingPath(target)),
@@ -60,19 +77,20 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
     function currentConversation(scope){const s=store?.getSnapshot();return Boolean(scopeActor(scope)&&s?.status==='ready'&&s.conversationId===scope.conversationId&&(scope.joinedAt===undefined||s.joinedAt===scope.joinedAt));}
     function guard(fn){return async scope=>{const before=scopeActor(scope);if(!before)return fail('locked');try{const value=await fn(scope);return scopeActor(scope)===before?value:fail('locked');}catch(_){return fail(scopeActor(scope)===before?'unavailable':'locked');}};}
     const guardMethods=resource=>Object.freeze(Object.fromEntries(Object.entries(resource).map(([key,fn])=>[key,guard(fn)])));
-    // Permanent record links (personId-keyed). A source is remembered only while its draft form is open.
-    const recordLinks=createMessagingRecordLinkTransport(sdk),pendingLinks=new Map();let draftSource=null;
-    const linkActor=source=>{const actor=session.getSnapshot();return !disposed&&control===true&&actor.status==='bound'&&actor.roomId===source.roomId&&actor.personId===source.personId?actor:null;};
-    async function flushLink(key){
-      const item=pendingLinks.get(key);if(!item)return false;
-      if(!linkActor(item))return false;
-      const result=await recordLinks.writeLink(item,item.ref,item);
-      if(pendingLinks.get(key)!==item)return result.status==='ok';
-      if(result.status==='ok'||result.status==='conflict'||result.status==='forbidden'||result.status==='invalid')pendingLinks.delete(key);
-      return result.status==='ok';
+    // Shared record links. A source is remembered only while its draft form is open.
+    // Unsaved links survive reloads in this browser, separated by room and person,
+    // and are dropped when that person's authorization is rejected or reassigned.
+    const recordLinks=createMessagingRecordLinkTransport(sdk);let draftSource=null;
+    const linkActor=scope=>{const actor=session.getSnapshot();return !disposed&&control===true&&actor.status==='bound'&&actor.roomId===scope?.roomId&&actor.personId===scope.personId?actor:null;};
+    async function flushLink(scope,key){
+      const item=pending.read(scope)[key];if(!item||!linkActor(scope))return 'pending';
+      const result=await recordLinks.writeLink(scope,{roomId:scope.roomId,type:item.type,recordId:item.recordId},item);
+      // A link that can never be written (revoked access, conflict) is dropped, never restored later.
+      if(result.status!=='unavailable'&&linkActor(scope))pending.remove(scope,key);
+      return result.status==='ok'?'ok':result.status==='unavailable'?'pending':'failed';
     }
-    const flushLinks=()=>Promise.all([...pendingLinks.keys()].map(key=>flushLink(key).catch(()=>false)));
-    stops.push(session.subscribe(value=>{if(value?.status==='bound'&&pendingLinks.size)void flushLinks();}));
+    const flushLinks=(scope=boundScope)=>scope?Promise.all(Object.keys(pending.read(scope)).map(key=>flushLink(scope,key).catch(()=>'pending'))):Promise.resolve([]);
+    stops.push(session.subscribe(value=>{if(value?.status==='bound'){boundScope={roomId:value.roomId,personId:value.personId};void flushLinks(boundScope);}}));
     const personal=guardMethods(createMessagingPersonalStateTransport(sdk)),decorations=guardMethods(createMessagingSharedTransport(sdk));
     const receiptTransport=createMessagingConfirmationTransport(sdk);
     const confirmations=guardMethods({...receiptTransport,async readMembers(scope){
@@ -134,6 +152,11 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
     });return true;
       }catch(error){disposeWorkspace();summaryOwner.unavailable();throw error;}
     }
+    function waitBound(ms){
+      const ready=()=>{const actor=session.getSnapshot();return !disposed&&control===true&&actor.status==='bound'?actor:null;};
+      if(ready())return Promise.resolve(ready());
+      return new Promise(resolve=>{let stop=null,done=false;const finish=value=>{if(done)return;done=true;clearTimeout(timer);try{stop?.();}catch(_){}resolve(value);};const timer=setTimeout(()=>finish(ready()),ms);stop=session.subscribe(()=>{if(ready())queueMicrotask(()=>finish(ready()));});});
+    }
     showWorkspace();
     directory.setVisible(true);
     // New memberships and invitations have no existing conversation watcher.
@@ -155,24 +178,29 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
     });if(typeof stopBoard!=='function')throw new TypeError('Disposable canonical board required');stops.push(stopBoard);
     syncContext(board.readSnapshot());
     return Object.freeze({getSnapshot:()=>session.getSnapshot(),getAvailability:()=>control,getApprovalRequest(){const uid=auth.getUid();return !disposed&&control===true&&online&&session.getSnapshot().status==='locked'&&lastContext&&validUid(uid)?{roomId:lastContext.roomId,displayName:lastContext.selectedDisplayName,uid}:null;},subscribe:fn=>session.subscribe(fn),hideWorkspace,showWorkspace,share:ref=>view?.share(ref)??false,open:id=>view?.open(id)??Promise.resolve(false),
-      async linkRecord(ref){
-        const source=draftSource;draftSource=null;const key=recordLinkKey(ref);
-        if(!source||!key||ref.roomId!==source.roomId)return false;
-        const pendingKey=source.roomId+'|'+source.personId+'|'+key;
-        if(!pendingLinks.has(pendingKey))pendingLinks.set(pendingKey,{...source,ref:{roomId:ref.roomId,type:ref.type,recordId:ref.recordId}});
-        return flushLink(pendingKey).catch(()=>false);
+      // Links every record actually created from the current draft (one or many).
+      // Saved locally first, so a reload or reconnection can retry without duplicates.
+      async linkRecords(refs){
+        const source=draftSource;draftSource=null;
+        const list=Array.isArray(refs)?refs:[];
+        if(!source||!list.length||list.some(ref=>!recordLinkKey(ref)||ref.roomId!==source.roomId))return false;
+        const scope={roomId:source.roomId,personId:source.personId};
+        const keys=list.map(ref=>pending.add(scope,{type:ref.type,recordId:ref.recordId,conversationId:source.conversationId,messageId:source.messageId}));
+        const results=await Promise.all(keys.map(key=>flushLink(scope,key).catch(()=>'pending')));
+        return results.every(status=>status==='ok');
       },
-      async readRecordLink(ref){
-        const actor=session.getSnapshot();if(disposed||control!==true||actor.status!=='bound'||!recordLinkKey(ref)||ref.roomId!==actor.roomId)return {status:'unavailable'};
-        void flushLinks();
-        const link=await recordLinks.readLink(actor,ref);
-        return link.status==='ok'&&session.getSnapshot()===actor?{status:'available'}:{status:link.status==='missing'?'missing':'unavailable'};
-      },
+      // Explicit check from a record's detail. Waits for this device's own approved
+      // binding before reading, and reports missing and forbidden alike.
       async openRecordLink(ref){
-        const actor=session.getSnapshot();if(disposed||control!==true||actor.status!=='bound'||!recordLinkKey(ref)||ref.roomId!==actor.roomId||!view)return false;
+        if(disposed||!recordLinkKey(ref)||!view)return 'unavailable';
+        const actor=await waitBound(10000);
+        if(!actor||ref.roomId!==actor.roomId)return 'locked';
+        const scope={roomId:actor.roomId,personId:actor.personId},key=recordLinkKey(ref);
+        if(pending.read(scope)[key]&&await flushLink(scope,key).catch(()=>'pending')==='pending')return 'pending';
         const link=await recordLinks.readLink(actor,ref);
-        if(link.status!=='ok'||session.getSnapshot()!==actor||control!==true)return false;
-        return await view.openMessage(link.conversationId,link.messageId)===true&&session.getSnapshot()===actor;
+        if(session.getSnapshot()!==actor||control!==true)return 'locked';
+        if(link.status!=='ok')return link.status==='unavailable'?'retry':'unavailable';
+        return await view.openMessage(link.conversationId,link.messageId)===true&&session.getSnapshot()===actor?'opened':'unavailable';
       },
       async restore(){
       void flushLinks();

@@ -2,7 +2,7 @@
 // atomic persistence on the server. A bound UI session is not authorization.
 import {isPersonId,isMessagingRoomId,compareCursor,advanceReadCursor,messageIdFor,isConversationId,isMessageId,isMessagingTimestamp,validateRoomMessageInput,projectMessagingMessage} from './workspace-messaging-core.js';
 
-const PAGE_SIZE=50;
+const PAGE_SIZE=50,RANGE_MAX=300;
 const sameIdentity=(a,b)=>a?.roomId===b?.roomId&&a?.personId===b?.personId;
 const result=status=>({status});
 const emptyMessages=Object.freeze([]);
@@ -20,9 +20,10 @@ const immutable=value=>{
   }return value;
 };
 const safeMessage=(raw,roomId,joinedAt)=>immutable(projectMessagingMessage(raw,{roomId,joinedAt}));
-function decodePage(page,roomId,before){
-  if(!page||page.status!=='ok'||!isMessagingTimestamp(page.joinedAt)||!Array.isArray(page.messages)||page.messages.length>PAGE_SIZE
-      ||page.hasMore!==(page.messages.length===PAGE_SIZE))throw new TypeError('Invalid history page');
+function decodePage(page,roomId,before,until=null){
+  if(!page||page.status!=='ok'||!isMessagingTimestamp(page.joinedAt)||!Array.isArray(page.messages)
+      ||(until===null?page.messages.length>PAGE_SIZE||page.hasMore!==(page.messages.length===PAGE_SIZE)
+        :page.messages.length<1||page.messages.length>RANGE_MAX||typeof page.hasMore!=='boolean'||page.messages[0]?.id!==until))throw new TypeError('Invalid history page');
   const messages=page.messages.map(item=>safeMessage(item,roomId,page.joinedAt));
   for(let i=0;i<messages.length;i++){
     if(i&&compareCursor(messages[i-1],messages[i])>=0||before&&compareCursor(messages[i],before)>=0)throw new TypeError('Invalid history ordering');
@@ -112,21 +113,26 @@ export function createMessagingStore({session,transport,draftOwner=null,getUid=(
     if(bound&&identity&&sameIdentity(identity,bound))return;
     detach();identity=bound;if(bound)drafts.bind(getUid(),bound);else if(!draftOwner)drafts.clear();cursors.clear();memberships.clear();pendingSends.clear();reset(bound?'idle':'locked');
   }
-  function requestPage(kind){
+  // kind 'until' loads, in one bounded request, every message from a known
+  // target up to the oldest loaded one, keeping the history contiguous.
+  function requestPage(kind,until=null){
     const target=current();if(!target||disposed)return Promise.resolve(result('locked'));
-    if(kind==='older'&&!state.hasMore)return Promise.resolve(result('ignored'));
-    if(pageRequest)return pageRequest.kind===kind?pageRequest.promise:Promise.resolve(result('busy'));
-    const before=kind==='older'?state.nextCursor:null,token=generation;
+    if(kind==='until'&&(!isMessageId(until)||state.status!=='ready'))return Promise.resolve(result('invalid'));
+    if(kind==='until'&&state.messages.some(m=>m.id===until))return Promise.resolve(result('ok'));
+    if((kind==='older'||kind==='until')&&!state.hasMore)return Promise.resolve(result(kind==='until'?'missing':'ignored'));
+    if(pageRequest)return pageRequest.kind===kind&&kind!=='until'?pageRequest.promise:Promise.resolve(result('busy'));
+    const before=kind==='older'||kind==='until'?state.nextCursor:null,token=generation;
     const ticket={kind,promise:null};pageRequest=ticket;
     ticket.promise=Promise.resolve().then(async()=>{
       if(!stillCurrent(token))return result('locked');
       publish({busy:true,error:null,status:state.joinedAt===null?'loading':state.status});
       if(!stillCurrent(token))return result('locked');
       try{
-        const raw=await transport.readHistory({...target,before,limit:PAGE_SIZE});
+        const raw=await transport.readHistory(kind==='until'?{...target,before,limit:PAGE_SIZE,until}:{...target,before,limit:PAGE_SIZE});
         if(!stillCurrent(token))return result('locked');
         if(raw?.status==='forbidden'||raw?.status==='locked'){lockConversation();return result('forbidden');}
-        const page=decodePage(raw,target.roomId,before);
+        if(kind==='until'&&(raw?.status==='missing'||raw?.status==='too-far')){publish({busy:false});return result(raw.status);}
+        const page=decodePage(raw,target.roomId,before,kind==='until'?until:null);
         const previousBoundary=memberships.get(target.conversationId);
         const changedBoundary=previousBoundary!==undefined&&previousBoundary!==page.joinedAt;
         memberships.set(target.conversationId,page.joinedAt);
@@ -136,7 +142,7 @@ export function createMessagingStore({session,transport,draftOwner=null,getUid=(
           publish({status:'loading',messages:emptyMessages,joinedAt:page.joinedAt,hasMore:false,nextCursor:null,draft:'',readCursor:null,preferences:null,historyReset:true});
           if(!stillCurrent(token))return result('locked');
           // An older-page response cannot establish a new membership's latest page.
-          if(kind==='older'){refreshQueued=true;return result('ok');}
+          if(kind!=='latest'){refreshQueued=true;return result(kind==='until'?'unavailable':'ok');}
         }
         let preferences=state.preferences;
         // Only the active conversation needs its two small personal-state reads.
@@ -153,7 +159,7 @@ export function createMessagingStore({session,transport,draftOwner=null,getUid=(
         const replace=changedBoundary||state.joinedAt===null||kind==='latest'&&!overlap;
         const historyReset=changedBoundary||kind==='latest'&&state.messages.length>0&&!overlap;
         const messages=replace?page.messages:mergeMessages(state.messages,page.messages);
-        const usePageCursor=replace||kind==='older';
+        const usePageCursor=replace||kind!=='latest';
         publish({status:'ready',messages,joinedAt:page.joinedAt,historyReset:state.historyReset||historyReset,
           hasMore:usePageCursor?page.hasMore:state.hasMore,nextCursor:usePageCursor?page.nextCursor:state.nextCursor,
           draft:drafts.row(target.conversationId,page.joinedAt)?.body??'',readCursor:cursors.get(target.conversationId)??null,preferences,busy:false,error:null});
@@ -255,7 +261,7 @@ export function createMessagingStore({session,transport,draftOwner=null,getUid=(
       return row.composer??={refs:[],replyTo:null,editing:null,confirmationRequested:false,files:[],attachmentIds:[],fileVersion:0,attempt:null};
     },
     canRetainFiles:(current,files)=>drafts.canRetainFiles(current,files),
-    setActiveConversation,loadOlder:()=>requestPage('older'),refreshLatest:()=>requestPage('latest'),setDraft,send,
+    setActiveConversation,loadOlder:()=>requestPage('older'),loadUntil:messageId=>requestPage('until',messageId),refreshLatest:()=>requestPage('latest'),setDraft,send,
     edit:request=>mutate('edit',request),remove:request=>mutate('remove',request),markRead,
     dispose(){if(disposed)return;disposed=true;detach();safeCall(stopSession);stopSession=null;identity=null;if(!draftOwner)drafts.clear();cursors.clear();memberships.clear();pendingSends.clear();reset('locked');subscribers.clear();}
   });

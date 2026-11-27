@@ -6,6 +6,7 @@ import {get,ref,set,update,runTransaction,serverTimestamp,query,orderByChild,ord
 import {createMessagingPersonalStateTransport} from '../workspace-messaging-personal.js';
 import {createMessagingConfirmationTransport} from '../workspace-messaging-confirmations.js';
 import {createMessagingSharedTransport} from '../workspace-messaging-shared.js';
+import {createMessagingRecordLinkTransport} from '../workspace-messaging-record-links.js';
 
 const host='127.0.0.1:9002';
 if(process.env.FIREBASE_DATABASE_EMULATOR_HOST!==host) throw new Error('Messaging rules require the isolated loopback emulator: '+host);
@@ -163,32 +164,73 @@ try {
   assert.deepEqual(await first.readPersonalState({...scope,joinedAt:2050}),{status:'ok',preferences:{favorite:false,muted:false,archived:false,pinned:false},cursor:null});
   assert.deepEqual(await first.markRead({...scope,joinedAt:2050,cursor:cursor(3,2100)}),{status:'ok',cursor:cursor(3,2100)});
   console.log('MESSAGING_PERSONAL_STATE_EMULATOR_OK');
-  // Permanent record links: personId-keyed, member-only, post-join, non-deleted, immutable target.
+  // Shared record links: one per business record; each reader's own binding,
+  // membership, join time, deletion and stop state are checked on every link.
   {
-    const linkPath=root+'/recordLinks/'+p+'/task/task-1',link=n=>({conversationId:personalGroup,messageId:msg(n),createdAt:serverTimestamp()});
+    const third='p_'+'9'.repeat(32),links=root+'/recordLinks',taskLink=links+'/task/task-1';
+    const link=(n,by=p)=>({conversationId:personalGroup,messageId:msg(n),createdBy:by,createdAt:serverTimestamp()});
+    const transport=ctx=>createMessagingRecordLinkTransport({db:ctx.database(),ref,get,set,serverTimestamp});
+    const actor={roomId:room,personId:p},task=id=>({roomId:room,type:'task',recordId:id});
     // State left by the personal-state section: p rejoined at 2050, msg(1) deleted.
-    await env.withSecurityRulesDisabled(admin=>set(path(admin,root+'/messages/'+personalGroup+'/'+msg(5)),message(5,2200)));
-    await assertSucceeds(set(path(member,linkPath),link(3)));
-    await deny(set(path(env.authenticatedContext('uidA2'),linkPath),link(3)));
-    await assertSucceeds(get(path(env.authenticatedContext('uidA2'),linkPath)));
-    await deny(set(path(member,linkPath),link(5)));
-    await deny(get(path(nonmember,linkPath)));
-    await deny(set(path(nonmember,root+'/recordLinks/'+p+'/task/task-2'),link(3)));
-    await deny(set(path(member,root+'/recordLinks/'+other+'/task/task-2'),link(3)));
-    for(const ctx of [anon,unknown,unapproved])await deny(get(path(ctx,linkPath)));
-    await deny(set(path(member,root+'/recordLinks/'+p+'/task/pre-join'),link(2)));
-    await deny(set(path(member,root+'/recordLinks/'+p+'/task/deleted'),link(4)));
-    await deny(set(path(member,root+'/recordLinks/'+p+'/memo/m1'),link(3)));
-    await deny(set(path(member,root+'/recordLinks/'+p+'/task/extra'),{...link(3),body:'copied'}));
-    await deny(set(path(member,root+'/recordLinks/'+p+'/schedule/s1'),{...link(3),createdAt:5}));
-    await assertSucceeds(set(path(member,root+'/recordLinks/'+p+'/schedule/s1'),link(5)));
+    await env.withSecurityRulesDisabled(async admin=>{
+      await set(path(admin,root+'/messages/'+personalGroup+'/'+msg(5)),message(5,2200));
+      await set(path(admin,access+'/uidC'),binding('uidC',third));
+      await set(path(admin,'rooms/'+room+'/tasks'),{'task-1':{title:'Synthetic task'},'task-2':{title:'Synthetic task 2'},'task-3':{title:'Synthetic task 3'}});
+      await set(path(admin,'rooms/'+room+'/schedules'),{'s1':{title:'Synthetic schedule'},'s2':{title:'Synthetic schedule 2'}});
+    });
+    const outsider=env.authenticatedContext('uidC'),secondDevice=env.authenticatedContext('uidA2');
+    assert.deepEqual(await transport(member).readLink(actor,task('task-1')),{status:'missing'});
+    assert.deepEqual(await transport(member).writeLink(actor,task('task-1'),{conversationId:personalGroup,messageId:msg(3)}),{status:'ok'});
+    // Retrying the same link is idempotent; a different target is a conflict.
+    assert.deepEqual(await transport(secondDevice).writeLink(actor,task('task-1'),{conversationId:personalGroup,messageId:msg(3)}),{status:'ok'});
+    assert.deepEqual(await transport(member).writeLink(actor,task('task-1'),{conversationId:personalGroup,messageId:msg(5)}),{status:'conflict'});
+    await deny(set(path(member,taskLink),null));
+    // Another authorized member (not the creator) can use the shared link.
+    assert.deepEqual(await transport(nonmember).readLink({roomId:room,personId:other},task('task-1')),{status:'ok',conversationId:personalGroup,messageId:msg(3)});
+    // Unapproved, unknown, anonymous and non-member readers learn nothing.
+    assert.deepEqual(await transport(outsider).readLink({roomId:room,personId:third},task('task-1')),{status:'forbidden'});
+    for(const ctx of [anon,unknown,unapproved,outsider])await deny(get(path(ctx,taskLink)));
+    for(const ctx of [anon,unknown,unapproved])await deny(get(path(ctx,links+'/task/task-9')));
+    // A parent read can never bypass per-link authorization.
+    for(const ctx of [member,nonmember,outsider])for(const parent of [links,links+'/task',root])await deny(get(path(ctx,parent)));
+    // Forged references and non-existent records are rejected.
+    await deny(set(path(member,links+'/task/missing-record'),link(3)));
+    await deny(set(path(member,links+'/task/task-2'),link(3,other)));
+    await deny(set(path(outsider,links+'/task/task-2'),link(3,third)));
+    await deny(set(path(member,links+'/task/task-2'),{...link(3),conversationId:'group_g_'+'0'.repeat(32)}));
+    await deny(set(path(member,links+'/task/task-2'),link(2)));
+    await deny(set(path(member,links+'/task/task-2'),link(4)));
+    await deny(set(path(member,links+'/task/task-2'),link(9)));
+    await deny(set(path(member,links+'/memo/task-2'),link(3)));
+    await deny(set(path(member,links+'/task/task-2'),{...link(3),body:'copied'}));
+    await deny(set(path(member,links+'/schedule/s1'),{...link(5),createdAt:5}));
+    await deny(set(path(member,links+'/schedule/task-1'),link(5)));
+    await assertSucceeds(set(path(member,links+'/schedule/s1'),link(5)));
+    await assertSucceeds(set(path(nonmember,links+'/schedule/s2'),link(5,other)));
+    // Emergency stop hides every link.
     await env.withSecurityRulesDisabled(admin=>set(path(admin,'messagingControlV1/enabled'),false));
-    await deny(get(path(member,linkPath)));
+    await deny(get(path(member,taskLink)));
+    await deny(set(path(member,links+'/task/task-3'),link(5)));
     await env.withSecurityRulesDisabled(admin=>set(path(admin,'messagingControlV1/enabled'),true));
+    // Leaving the conversation hides the link and blocks new links; rejoining
+    // later than the message keeps it hidden.
     await env.withSecurityRulesDisabled(admin=>set(path(admin,pc+'/members/'+p+'/active'),false));
-    await deny(set(path(member,root+'/recordLinks/'+p+'/task/after-leave'),link(5)));
-    await assertSucceeds(get(path(member,linkPath)));
-    await env.withSecurityRulesDisabled(admin=>set(path(admin,pc+'/members/'+p+'/active'),true));
+    await deny(get(path(member,taskLink)));
+    await deny(set(path(member,links+'/task/task-3'),link(5)));
+    await env.withSecurityRulesDisabled(admin=>set(path(admin,pc+'/members/'+p),{active:true,joinedAt:2150,role:'member'}));
+    await deny(get(path(member,taskLink)));
+    await assertSucceeds(get(path(member,links+'/schedule/s1')));
+    // Device revocation and message deletion.
+    await env.withSecurityRulesDisabled(admin=>set(path(admin,access+'/uidA2/active'),false));
+    await deny(get(path(secondDevice,links+'/schedule/s1')));
+    await env.withSecurityRulesDisabled(admin=>set(path(admin,root+'/messages/'+personalGroup+'/'+msg(5)+'/deletedAt'),2300));
+    await deny(get(path(member,links+'/schedule/s1')));
+    await deny(get(path(nonmember,links+'/schedule/s2')));
+    await env.withSecurityRulesDisabled(async admin=>{
+      await set(path(admin,root+'/messages/'+personalGroup+'/'+msg(5)+'/deletedAt'),null);
+      await set(path(admin,access+'/uidA2/active'),true);
+      await set(path(admin,pc+'/members/'+p),{active:true,joinedAt:2050,role:'member'});
+    });
     console.log('MESSAGING_RECORD_LINK_RULES_OK');
   }
   // A separate fixture keeps receipt authorization independent of cursor tests.

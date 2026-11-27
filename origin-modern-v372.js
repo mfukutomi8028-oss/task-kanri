@@ -813,6 +813,17 @@ async function send(command,label,{close=false,returnToTask=false}={}){
      ?await window.WorkBoardOriginCommentBridge?.dispatch(command):command.type.startsWith('memo.')
      ? await memoBridge?.dispatch?.(command) : await bridge.dispatch(command);
    if(result?.ok){
+     // Link right after the records exist, before any follow-up save can fail:
+     // a later start-date retry updates the same task and must not lose the link.
+     let linkNotice='';
+     if(returnToMessaging){
+       const linkType={'task.create':'task','schedule.create':'schedule','schedule.batch':'schedule'}[command.type];
+       const ids=command.type==='schedule.batch'?(Array.isArray(result.ids)?result.ids:[]):result.id?[result.id]:[];
+       if(linkType&&ids.length&&typeof originMessagingEntry?.linkRecords==='function'){
+         const linked=await originMessagingEntry.linkRecords(ids.map(recordId=>({roomId:snapshot.roomId,type:linkType,recordId}))).catch(()=>false);
+         if(linked!==true)linkNotice=label+'。元メッセージへのリンクは未保存です。接続後に自動で再保存します。詳細の「元メッセージを確認」からも再試行できます。';
+       }
+     }
      if(command.type.startsWith('task.')&&command.startDate!==undefined){
        const latest=bridge.readSnapshot().tasks.find(x=>x.id===result.id);
        const starts=window.WorkBoardOriginStartBridge;
@@ -859,16 +870,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
          panelReturnAnchor=null;panelReturnSearch=null;scheduleGlobalReturn=null;
        }else restorePanelReturnPosition(returning.kind,returning.id);
      }
-     let linkNotice='';
-     if(returnToMessaging){
-       // The record is already saved; the link lives in the messaging area and is retried there.
-       const linkType={'task.create':'task','schedule.create':'schedule'}[command.type];
-       if(linkType&&result.id&&typeof originMessagingEntry?.linkRecord==='function'){
-         const linked=await originMessagingEntry.linkRecord({roomId:snapshot.roomId,type:linkType,recordId:result.id}).catch(()=>false);
-         if(linked!==true)linkNotice=label+'。元メッセージへのリンクは接続回復後に再保存します。';
-       }
-       void originMessagingEntry?.resume();
-     }
+     if(returnToMessaging)void originMessagingEntry?.resume();
      notify(linkNotice||label);return true;
    }
    if(result?.error==='cancelled'||result?.pending){
@@ -3248,19 +3250,29 @@ function panelShow(kind,id,edit=false,seed={}){
  $('#sheet').innerHTML=sheetFrame('DETAIL · '+singular[kind],t.title,detailPager(kind,id)+originRelatedBackBar()+body,footer);
  }
  $('#sheet').dataset.readerKind=edit?'':kind;
- if(!edit&&id&&(kind==='tasks'||kind==='events'))void showOriginMessageLink(kind,id);
+ if(!edit&&id&&(kind==='tasks'||kind==='events'))showOriginMessageLink(kind,id);
  $('#overlay').hidden=false;document.body.style.overflow='hidden';syncOriginEditorViewport();if(edit&&window.innerWidth>770)$('#editForm [name="title"]')?.focus();else $('#sheet .sheet-close')?.focus();
 }
-// Shows "元メッセージを開く" only when the messaging area holds an authorized link.
-// The record itself never depends on it, so an unavailable link hides nothing else.
-async function showOriginMessageLink(kind,id){
- const entry=originMessagingEntry;if(typeof entry?.readRecordLink!=='function')return;
+// An explicit "check the source message" action. Nothing connects to messaging
+// or reveals whether a link exists until the person asks and their own device
+// is approved; the record itself never depends on the link.
+const originMessageLinkNotice={
+ locked:'メッセージに接続できないため確認できません。端末の承認と接続を確認してください。',
+ pending:'元メッセージへのリンクは未保存です。接続を確認して、もう一度「元メッセージを確認」を押してください。',
+ retry:'元メッセージを確認できませんでした。接続を確認して、もう一度お試しください。',
+ unavailable:'確認できる元メッセージはありません。リンクがないか、閲覧できない会話です。'
+};
+function showOriginMessageLink(kind,id){
+ const entry=originMessagingEntry;if(typeof entry?.openRecordLink!=='function')return;
+ const anchor=$('#sheet .detail-list');if(!anchor||$('#sheet .origin-message-link'))return;
  const ref={roomId:snapshot.roomId,type:kind==='tasks'?'task':'schedule',recordId:id};
- const result=await entry.readRecordLink(ref).catch(()=>null);
- if(result?.status!=='available'||!panelOpen||panelKind!==kind||panelId!==id||panelMode!=='detail'||$('#sheet .origin-message-link'))return;
- const anchor=$('#sheet .detail-list');if(!anchor)return;
- const button=document.createElement('button');button.type='button';button.className='origin-related-link origin-message-link';button.textContent='元メッセージを開く';
- button.addEventListener('click',async()=>{button.disabled=true;const ok=await entry.openRecordLink(ref).catch(()=>false);button.disabled=false;if(ok!==true)notify('元メッセージを表示できません。会話への参加状況、削除状態、接続を確認してください。');});
+ const button=document.createElement('button');button.type='button';button.className='origin-related-link origin-message-link';button.textContent='元メッセージを確認';
+ button.addEventListener('click',async()=>{
+  button.disabled=true;
+  const status=await entry.openRecordLink(ref).catch(()=>'retry');
+  button.disabled=false;
+  if(status!=='opened'){notify(originMessageLinkNotice[status]||originMessageLinkNotice.unavailable);if(button.isConnected&&status!=='locked')button.focus({preventScroll:true});}
+ });
  anchor.after(button);
 }
 function formSnapshot(f){

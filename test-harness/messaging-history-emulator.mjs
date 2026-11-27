@@ -49,6 +49,15 @@ try{
   assert.equal(JSON.stringify(newest).includes('Removed text'),false);
   assert.equal(JSON.stringify(newest).includes('Removed title'),false);
   assert.deepEqual(newest.messages.find(m=>m.id===msgId(55)),{id:msgId(55),senderId:p,createdAt:1050,revision:1,deletedAt:1100});
+  // Jump to a known message: one capped range read keeps history contiguous with tied timestamps.
+  const range=await service.readHistory({...call,before:newest.nextCursor,until:msgId(3)});
+  assert.equal(range.status,'ok');assert.deepEqual(range.messages.map(m=>m.id),[3,4,5,6].map(msgId));
+  assert.equal(range.hasMore,true);assert.deepEqual(range.nextCursor,{id:msgId(3),createdAt:1050});
+  const first=await service.readHistory({...call,until:msgId(2),before:{id:msgId(4),createdAt:1050}});
+  assert.deepEqual(first.messages.map(m=>m.id),[2,3].map(msgId));assert.equal(first.hasMore,false);
+  for(const target of [msgId(0),msgId(55),msgId(999)])assert.deepEqual(await service.readHistory({...call,until:target}),{status:'missing'});
+  assert.deepEqual(await service.readHistory({...call,until:msgId(3),token:bob.idToken}),{status:'forbidden'});
+  console.log('MESSAGING_HISTORY_RANGE_OK');
   for(const patch of [{token:bob.idToken},{token:unknown.idToken},{token:'forged'},{roomId:'other'}]){
     assert.deepEqual(await service.readHistory({...call,...patch}),{status:'forbidden'});
   }

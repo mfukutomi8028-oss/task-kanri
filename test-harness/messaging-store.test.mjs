@@ -216,3 +216,32 @@ test('a send denial hides the draft until the same membership is reauthorized',a
   assert.equal(f.store.getComposer().attempt.payload.body,'immutable retry');
   f.store.dispose();
 });
+test('loadUntil fetches the target and the gap in one request and never reports an absent target',async()=>{
+  const records=Array.from({length:400},(_,i)=>message(i+1));
+  const f=fixture({records,readHook(q){
+    const list=records;
+    if(q.until){
+      const index=list.findIndex(m=>m.id===q.until);if(index<0)return {status:'missing'};
+      const slice=list.slice(index).filter(m=>!q.before||m.createdAt<q.before.createdAt);
+      if(slice.length>300)return {status:'too-far'};
+      return {status:'ok',joinedAt:1000,messages:structuredClone(slice),hasMore:index>0,nextCursor:index>0?cursor(slice[0]):null};
+    }
+    const matches=list.filter(m=>!q.before||m.createdAt<q.before.createdAt).slice(-q.limit);
+    return {status:'ok',joinedAt:1000,messages:structuredClone(matches),hasMore:matches.length===q.limit,nextCursor:matches.length===q.limit?cursor(matches[0]):null};
+  }});
+  await f.store.setActiveConversation(c);
+  assert.deepEqual(await f.store.loadUntil(id(9999)),{status:'missing'});
+  assert.deepEqual(await f.store.loadUntil(id(10)),{status:'too-far'});
+  assert.equal(f.store.getSnapshot().messages.length,50);
+  const before=f.calls.length;
+  assert.deepEqual(await f.store.loadUntil(id(200)),{status:'ok'});
+  assert.equal(f.calls.length-before,1);
+  const snap=f.store.getSnapshot();
+  assert.equal(snap.messages[0].id,id(200));assert.equal(snap.messages.length,201);
+  assert.equal(snap.hasMore,true);assert.deepEqual(snap.nextCursor,cursor(snap.messages[0]));
+  // History stays contiguous: the next older page continues right before the target.
+  await f.store.loadOlder();assert.equal(f.store.getSnapshot().messages[0].id,id(150));
+  // Already loaded targets need no request.
+  const count=f.calls.length;assert.deepEqual(await f.store.loadUntil(id(300)),{status:'ok'});assert.equal(f.calls.length,count);
+  f.store.dispose();
+});

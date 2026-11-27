@@ -7,7 +7,7 @@ const same=(a,b)=>a===null&&b===null||a!==null&&b!==null&&a.roomId===b.roomId&&a
 const MAX_FILE_BYTES=5000000;
 const validFileSize=v=>Number.isSafeInteger(v)&&v>=1&&v<=MAX_FILE_BYTES;
 const safeFilename=v=>typeof v==='string'&&v===v.trim()&&Array.from(v).length>=1&&Array.from(v).length<=200&&!/[\\/:\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/.test(v);
-const codes=Object.freeze({ok:200,sent:200,invalid:400,forbidden:403,conflict:409,stale:409,limit:429,expired:409,'storage-limit':429,'daily-limit':429,unavailable:503});
+const codes=Object.freeze({ok:200,sent:200,invalid:400,forbidden:403,conflict:409,stale:409,limit:429,expired:409,'storage-limit':429,'daily-limit':429,missing:404,'too-far':422,unavailable:503});
 export function createMessagingApiTransport({endpoint,session,getToken,fetchImpl=globalThis.fetch}={}){
   let url;try{url=new URL(endpoint);}catch(_){throw new TypeError('HTTPS endpoint required');}
   if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash||typeof session?.subscribe!=='function'||typeof session?.getSnapshot!=='function'||typeof getToken!=='function'||typeof fetchImpl!=='function')throw new TypeError('HTTPS endpoint and bound session required');
@@ -61,7 +61,7 @@ export function createMessagingApiTransport({endpoint,session,getToken,fetchImpl
     readAttachmentMetadata:({roomId,conversationId,items}={})=>isConversationId(conversationId)&&Array.isArray(items)&&items.length>=1&&items.length<=20?invoke('attachmentMetadata',{roomId,conversationId,items}):Promise.resolve(fail('invalid')),
     readAttachmentUsage:({roomId,conversationId}={})=>isConversationId(conversationId)?invoke('attachmentUsage',{roomId,conversationId}):Promise.resolve(fail('invalid')),
     downloadAttachment:({roomId,conversationId,messageId,attachmentId}={})=>isConversationId(conversationId)&&isMessageId(messageId)&&isMessagingAttachmentId(attachmentId)?invoke('attachmentDownload',{roomId,conversationId,messageId,attachmentId}):Promise.resolve(fail('invalid')),
-    readHistory:({roomId,conversationId,before=null,limit=50}={})=>invoke('history',{roomId,conversationId,before,limit}),
+    readHistory:({roomId,conversationId,before=null,limit=50,until=null}={})=>invoke('history',until===null?{roomId,conversationId,before,limit}:{roomId,conversationId,before,limit,until}),
     send:({roomId,conversationId,requestId,input}={})=>invoke('message',{roomId,conversationId,command:{type:'send',requestId,input}}),
     edit:({roomId,conversationId,messageId,expectedRevision,input}={})=>invoke('message',{roomId,conversationId,command:{type:'edit',messageId,expectedRevision,input}}),
     remove:({roomId,conversationId,messageId,expectedRevision}={})=>invoke('message',{roomId,conversationId,command:{type:'remove',messageId,expectedRevision}}),

@@ -288,3 +288,38 @@ test('image preparation stays consistent across conversation switches, draft ret
   await expect(composer.getByText('late.png',{exact:true})).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test('the original choice covers one attach action only and never carries to the next attachment or conversation',async({page})=>{
+  await page.setViewportSize({width:1366,height:900});
+  await page.route('**/*',r=>new URL(r.request().url()).origin===(process.env.WB_TEST_ORIGIN||'http://127.0.0.1:4173')?r.continue():r.abort('blockedbyclient'));
+  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+  await page.goto('/test-harness/messaging-preview/index.html?liveControls=1');
+  // A PNG carrying a text metadata chunk: kept only when sent as the original.
+  const base=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC','base64');
+  const {crc32}=await import('node:zlib');
+  const data=Buffer.from('Comment\0synthetic-metadata','latin1'),type=Buffer.from('tEXt');
+  const chunk=Buffer.concat([Buffer.alloc(4),type,data,Buffer.alloc(4)]);chunk.writeUInt32BE(data.length,0);chunk.writeUInt32BE(crc32(Buffer.concat([type,data]))>>>0,8+data.length);
+  const png=Buffer.concat([base.subarray(0,33),chunk,base.subarray(33)]);
+  const composer=page.getByLabel('会話',{exact:true}),input=page.locator('.om-file-input'),original=composer.getByLabel('原本のまま送る');
+  const has=bytes=>Buffer.from(bytes).includes('synthetic-metadata');
+  await page.getByRole('button',{name:'システム課',exact:true}).click();
+  await page.evaluate(()=>{globalThis.__uploads=[];});
+  await original.check();
+  await input.setInputFiles({name:'raw.png',mimeType:'image/png',buffer:png});
+  await expect(composer.getByText('raw.png',{exact:true})).toBeVisible();
+  // The choice is consumed by that attach action.
+  await expect(original).not.toBeChecked();
+  await expect(page.getByText('位置情報などのメタデータが残る場合があります')).toBeHidden();
+  await input.setInputFiles({name:'next.png',mimeType:'image/png',buffer:png});
+  await expect(composer.getByText('next.png',{exact:true})).toBeVisible();
+  await composer.getByRole('button',{name:'送信',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>(globalThis.__uploads||[]).length)).toBe(2);
+  const uploads=await page.evaluate(()=>globalThis.__uploads);
+  expect(has(uploads.find(u=>u.filename==='raw.png').bytes)).toBe(true);
+  expect(has(uploads.find(u=>u.filename==='next.png').bytes)).toBe(false);
+  // Checking it and switching conversation clears it too.
+  await original.check();
+  await page.getByRole('button',{name:'自分宛てメッセージ',exact:true}).click();
+  await expect(original).not.toBeChecked();
+  expect(errors).toEqual([]);
+});

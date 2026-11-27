@@ -5,7 +5,7 @@ import {isPersonId,isMessagingRoomId} from '../workspace-messaging-core.js';
 import {createMessagingAttachmentHttp} from './messaging-attachment-http.mjs';
 const MAX_BODY_BYTES=65536,MAX_TOKEN=16384;
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);
-const codes=Object.freeze({ok:200,sent:200,invalid:400,forbidden:403,conflict:409,stale:409,limit:429,unavailable:503});
+const codes=Object.freeze({ok:200,sent:200,invalid:400,forbidden:403,conflict:409,stale:409,limit:429,missing:404,'too-far':422,unavailable:503});
 async function readJson(request){
   const advertised=request.headers.get('Content-Length');if(advertised!==null&&Number(advertised)>MAX_BODY_BYTES)return {error:413};
   if(!request.body)return {error:400};
@@ -19,7 +19,7 @@ async function readJson(request){
 function workUnits(action,payload){
   const bounded=(value,max)=>Number.isInteger(value)&&value>=1&&value<=max?value:max;
   if(action==='directory')return 4+3*bounded(payload.limit,100);
-  if(action==='history')return 8+bounded(payload.limit,50);
+  if(action==='history')return payload.until?8+300:8+bounded(payload.limit,50);
   if(action==='attachmentMetadata')return 10+3*bounded(payload.items?.length,20);
   if(action==='attachmentUsage')return 12;
   if(action==='unread')return 130;

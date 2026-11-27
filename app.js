@@ -6101,7 +6101,7 @@ async function copyScheduleOccurrences(source, dates, sourceIsDraft = false) {
   if (items.length !== dates.length) return { ok: false, error: "invalid-copy-date" };
   const affectedPaths = items.map(item => `rooms/${ROOM_ID}/schedules/${item.id}`);
 
-  return executeWrite("schedule-copy", source.id, async () => {
+  const outcome = await executeWrite("schedule-copy", source.id, async () => {
     if (state.connectionMode === "local-only") {
       return transactionRoom(root => {
         const currentSource = root.schedules?.[source.id];
@@ -6143,6 +6143,8 @@ async function copyScheduleOccurrences(source, dates, sourceIsDraft = false) {
     applyCommittedResult({ snapshot, affectedPaths, mutationKind: "schedule-copy" });
     return { committed: true, snapshot, snapshotScope: "root", affectedPaths, mutationKind: "schedule-copy" };
   });
+  // The ids actually created, so callers can attach per-record metadata.
+  return outcome?.ok ? { ...outcome, createdIds: items.map(item => item.id) } : outcome;
 }
 
 async function submitScheduleCopy() {
@@ -13113,7 +13115,7 @@ async function copyPaletteScheduleV372(command) {
   if (parsed.error) return {ok:false,error:parsed.error};
   if (!paletteScheduleOwnerV372(command)) return {ok:false,error:"owner-mismatch"};
   const result = await copyScheduleOccurrences(parsed.source, preview.dates, parsed.sourceIsDraft);
-  return result.ok ? {ok:true,count:preview.count} : result;
+  return result.ok ? {ok:true,count:preview.count,ids:result.createdIds||[]} : result;
 }
 
 // Palette NEXT shares the canonical business writers, including optimistic

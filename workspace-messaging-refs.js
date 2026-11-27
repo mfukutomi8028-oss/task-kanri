@@ -38,7 +38,7 @@ export function createMessagingReferenceResolver({readSnapshot,readMemos,canRead
   async function openFromMessage(open,context,location){
     if(!validContext(context)||!location||location.conversationId!==context.conversationId||!isMessageId(location.messageId)||!Number.isFinite(location.scrollTop)||location.scrollTop<0||typeof location.query!=='string')return false;
     try{
-      returnLocation={key:contextKey(context),location:{conversationId:location.conversationId,messageId:location.messageId,scrollTop:location.scrollTop,query:location.query}};
+      returnLocation={key:contextKey(context),location:{conversationId:location.conversationId,messageId:location.messageId,scrollTop:location.scrollTop,query:location.query,dates:Array.isArray(location.dates)&&location.dates.length<=2&&location.dates.every(v=>typeof v==='string'&&/^(\d{4}-\d{2}-\d{2})?$/.test(v))?[...location.dates]:[]}};
       if(await open()===true)return true;
     }catch(_){/* A failed transition leaves the conversation in place. */}
     returnLocation=null;return false;

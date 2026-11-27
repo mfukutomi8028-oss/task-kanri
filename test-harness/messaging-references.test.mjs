@@ -32,10 +32,13 @@ test('quotes respect membership boundary and never expose deleted bodies',async(
   f.setAllowed(false);assert.deepEqual(await f.resolver.resolveQuote(id(1),context),{status:'unavailable'});
 });
 test('opening an authorized record and restoring the conversation retains the source location',async()=>{
-  const f=fixture();const location={conversationId,messageId:id(1),scrollTop:420,query:'PC'};
+  const f=fixture();const location={conversationId,messageId:id(1),scrollTop:420,query:'PC',dates:['2026-11-01','']};
   assert.equal(await f.resolver.open(ref('schedule','s1'),context,location),true);assert.deepEqual(f.opened,[ref('schedule','s1')]);
   assert.equal(await f.resolver.restore(context),true);assert.deepEqual(f.restored,[location]);
   f.setAllowed(false);assert.equal(await f.resolver.open(ref('memo','m1'),context,location),false);
+  // Malformed period filters are dropped rather than restored.
+  f.setAllowed(true);assert.equal(await f.resolver.open(ref('schedule','s1'),context,{...location,dates:['<x>']}),true);
+  assert.equal(await f.resolver.restore(context),true);assert.deepEqual(f.restored.at(-1).dates,[]);
 });
 test('search operates only on loaded authorized messages and current reference titles',async()=>{
   const f=fixture();const messages=[message(1,{body:'Other',refs:[ref('task','t1')]}),message(2,{body:'Report PC'}),message(3,{body:'PC old',deletedAt:2000}),message(4,{body:'Other'})];

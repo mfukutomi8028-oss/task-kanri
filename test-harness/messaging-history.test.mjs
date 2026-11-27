@@ -87,3 +87,27 @@ test('the bound UI person assertion must match the token before history is queri
   const f=fixture();assert.deepEqual(await f.service.readHistory({...call,expectedPersonId:bob}),{status:'forbidden'});assert.equal(f.queries.length,0);
   assert.equal((await f.service.readHistory({...call,expectedPersonId:alice})).status,'ok');
 });
+test('range history loads a known target and everything newer in one capped read',async()=>{
+  const records=Array.from({length:400},(_,i)=>row(i+2));
+  const ranges=[];
+  const base={verifyToken:async token=>token==='tokenA'?{uid:'uidA'}:null,readBinding:async()=>okBinding(),readMember:async()=>okMember(),readPage:async()=>[]};
+  const service=createMessagingHistoryService({...base,readRange:async request=>{
+    ranges.push(request);const index=records.findIndex(r=>r.id===request.until);
+    if(index<0)return {status:'missing'};
+    const slice=records.slice(index).filter(r=>!request.before||r.createdAt<request.before.createdAt);
+    if(slice.length>request.max)return {status:'too-far'};
+    return {status:'ok',records:structuredClone(slice),hasMore:index>0};
+  }});
+  const before={createdAt:records[350].createdAt,id:records[350].id};
+  const r=await service.readHistory({...call,before,until:records[100].id});
+  assert.equal(r.status,'ok');assert.equal(r.messages.length,250);assert.equal(r.messages[0].id,records[100].id);
+  assert.equal(r.hasMore,true);assert.deepEqual(r.nextCursor,{createdAt:records[100].createdAt,id:records[100].id});
+  assert.equal(ranges[0].max,300);assert.equal(ranges[0].joinedAt,1000);
+  assert.deepEqual(await service.readHistory({...call,before,until:msgId(9999)}),{status:'missing'});
+  assert.deepEqual(await service.readHistory({...call,until:records[0].id}),{status:'too-far'});
+  // The range must start at the target itself.
+  const lying=createMessagingHistoryService({...base,readRange:async()=>({status:'ok',records:[records[5]],hasMore:false})});
+  assert.deepEqual(await lying.readHistory({...call,until:records[4].id}),{status:'unavailable'});
+  // Without a trusted range reader the request is invalid, never a silent page.
+  assert.deepEqual(await createMessagingHistoryService(base).readHistory({...call,until:records[4].id}),{status:'invalid'});
+});

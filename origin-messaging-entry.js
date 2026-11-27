@@ -87,12 +87,15 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
   trigger.addEventListener('click',()=>void open());dismiss.addEventListener('click',()=>close());dialog.addEventListener('cancel',event=>{if(event.target===dialog){event.preventDefault();close();}});dialog.addEventListener('close',()=>{if(!dialog.open&&!suspended&&workspaceOpen)close();});
   const stop=board.subscribe(sync);sync();
   return Object.freeze({open,close,resume,sync,
-    linkRecord:ref=>launcher.getHandle()?.linkRecord?.(ref)??Promise.resolve(false),
-    async readRecordLink(ref){if(!usable())return {status:'unavailable'};return launcher.getHandle()?.readRecordLink?.(ref)??{status:'unavailable'};},
+    linkRecords:refs=>launcher.getHandle()?.linkRecords?.(refs)??Promise.resolve(false),
+    // Opens messaging only on this explicit request. The dialog itself shows
+    // approval or offline state; nothing about the link is read before binding.
     async openRecordLink(ref){
-      if(!usable()||await board.canReadRecord(ref,{roomId:ref.roomId})!==true)return false;
-      if(await open()!==true||!current()||!dialog.open)return false;
-      return launcher.getHandle()?.openRecordLink?.(ref)??false;
+      if(!usable()||await board.canReadRecord(ref,{roomId:ref.roomId})!==true)return 'unavailable';
+      if(await open()!==true||!current()||!dialog.open)return 'locked';
+      const status=await (launcher.getHandle()?.openRecordLink?.(ref)??'unavailable');
+      if(['unavailable','pending','retry'].includes(status)&&current()&&dialog.open&&!suspended)close(false);
+      return status;
     },
     async share(ref){
       if(!usable()||await board.canReadRecord(ref,{roomId:ref.roomId})!==true)return false;
