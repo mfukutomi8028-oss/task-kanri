@@ -451,6 +451,8 @@
         label.title='現在の公開バージョン Ver.'+release;
       }
     }
+    // Both the display observer and the Origin workspace own one entry handle.
+    let originMessagingEntry=null;
     const controller=window.WorkBoardDisplayController;
     new MutationObserver(()=>{if(document.documentElement.dataset.wbDisplay!=='modern')document.body.style.overflow='';originMessagingEntry?.sync();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-wb-display']});
     
@@ -506,7 +508,6 @@ mount.querySelector('style').appendChild(document.createTextNode(".origin-memo-n
 const memoBridge=window.WorkBoardPaletteMemoBridgeV369;
 let snapshot=bridge.readSnapshot();
 let memoItems=memoBridge?.readSnapshot?.()||[];
-let originMessagingEntry=null;
 let data={tasks:[],todos:[],events:[],memos:[],templates:[],knowledge:[]};
 const clock=(v)=>{const d=new Date(v||0);return Number.isNaN(d.getTime())?'':String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
 function scheduleLocalInput(v){const d=new Date(v);return Number.isFinite(d.getTime())?key(d)+'T'+clock(d):''}
