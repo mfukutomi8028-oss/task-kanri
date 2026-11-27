@@ -1,7 +1,8 @@
 // The Origin entry owns its modal lifecycle; canonical board and cloud data
 // remain in their existing owners. No sign-in or subscriptions when disabled.
 import {createOriginMessagingLauncher,connectFirebaseMessagingAuth,resolveMessagingLaunchConfig} from './origin-messaging-launcher.js';
-const context=s=>JSON.stringify([s?.roomId,s?.currentUser,s?.connectionMode]);
+import {createMessagingDraftOwner} from './workspace-messaging-store.js';
+const context=s=>JSON.stringify([s?.roomId,s?.currentUser]);
 export function installOriginMessagingEntry({root,anchor,readConfig,board,connect,mountCloud,cssUrl,isActive=()=>true,onNotification=()=>{}}={}){
   if(typeof readConfig!=='function'||!resolveMessagingLaunchConfig(readConfig()))return null;
   if(!root||!anchor?.parentNode||['readSnapshot','readMemos','canReadRecord','openRecord','subscribe'].some(k=>typeof board?.[k]!=='function')||typeof connect!=='function'||typeof mountCloud!=='function'||typeof isActive!=='function'||typeof onNotification!=='function')throw new TypeError('Origin host adapters required');
@@ -24,6 +25,10 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
   anchor.after(trigger);root.append(link,style,dialog);
   let disposed=false,suspended=false,workspaceOpen=false,openingKey=null,sessionStop=null,epoch=0,connectionEpoch=0;
   const usable=()=>!disposed&&isActive()&&Boolean(resolveMessagingLaunchConfig(readConfig()));
+  const draftOwner=createMessagingDraftOwner();
+  let draftKey=null;
+  const beforeUnload=event=>{if(draftOwner.hasDrafts()){event.preventDefault();event.returnValue=true;}};
+  window.addEventListener('beforeunload',beforeUnload);
   const scopeKey=()=>JSON.stringify([context(board.readSnapshot()),resolveMessagingLaunchConfig(readConfig())]);
   const current=()=>usable()&&openingKey!==null&&openingKey===scopeKey();
   const safeStop=()=>{try{sessionStop?.();}catch(_){}sessionStop=null;};
@@ -37,12 +42,12 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
   }
   const launcher=createOriginMessagingLauncher({readConfig,readBoard:board.readSnapshot,async connect(){const connection=await connect();const authSdk=connection.authSdk??await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");const auth=await connectFirebaseMessagingAuth({...connection,authSdk});return {sdk:connection.sdk,auth};},mount(options){
     const generation=++connectionEpoch;
-    return mountCloud({...options,root:target,keepNotificationSession:true,onSummary(value){if(generation===connectionEpoch&&current())renderBadge(value);},onNotification(kind){if(generation===connectionEpoch&&current())onNotification(kind);},board:{...board,
+    return mountCloud({...options,draftOwner,root:target,keepNotificationSession:true,onSummary(value){if(generation===connectionEpoch&&current())renderBadge(value);},onNotification(kind){if(generation===connectionEpoch&&current())onNotification(kind);},board:{...board,
       async openRecord(ref,scope){if(!current()||!dialog.open)return false;const token=epoch;suspended=true;dialog.close();try{if(await board.openRecord(ref,scope)===true&&token===epoch&&current())return true;}catch(_){}if(token===epoch&&current()){suspended=false;show();}return false;},
       restoreConversation(){if(!suspended||!current())return false;suspended=false;show();return true;}
     },onClose:()=>close()});
   }});
-  async function open(){if(!usable())return false;if(openingKey!==null&&openingKey!==scopeKey())close(false,true);if(dialog.open)return true;if(suspended)return resume();openingKey=scopeKey();workspaceOpen=true;const token=++epoch;notice.textContent='\u63a5\u7d9a\u3092\u78ba\u8a8d\u3057\u3066\u3044\u307e\u3059\u2026';show();dismiss.focus({preventScroll:true});const result=await launcher.open();if(token!==epoch||!current()||!dialog.open)return false;
+  async function open(){if(!usable())return false;if(openingKey!==null&&openingKey!==scopeKey())close(false,true);if(dialog.open)return true;if(suspended)return resume();openingKey=scopeKey();draftKey=openingKey;workspaceOpen=true;const token=++epoch;notice.textContent='\u63a5\u7d9a\u3092\u78ba\u8a8d\u3057\u3066\u3044\u307e\u3059\u2026';show();dismiss.focus({preventScroll:true});const result=await launcher.open();if(token!==epoch||!current()||!dialog.open)return false;
     if(result.status!=='opened'){notice.textContent='\u30e1\u30c3\u30bb\u30fc\u30b8\u306b\u63a5\u7d9a\u3067\u304d\u307e\u305b\u3093\u3002\u5171\u540c\u7de8\u96c6\u306e\u63a5\u7d9a\u3092\u78ba\u8a8d\u3057\u3001\u9589\u3058\u3066\u304b\u3089\u3082\u3046\u4e00\u5ea6\u958b\u3044\u3066\u304f\u3060\u3055\u3044\u3002';return false;}
     const handle=launcher.getHandle();try{if(handle?.showWorkspace?.()===false)throw Error('Workspace unavailable');}catch(_){close(false,true);return false;}
     const render=value=>{
@@ -55,8 +60,8 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
     };render(handle.getSnapshot?.());if(typeof handle.subscribe==='function')sessionStop=handle.subscribe(render);return true;
   }
   async function resume(){if(!suspended||!current())return false;const token=epoch;try{if(await launcher.getHandle()?.restore?.()===true&&token===epoch&&current())return true;}catch(_){}if(token===epoch)close();return false;}
-  function sync(){if(disposed)return;const enabled=usable();trigger.hidden=!enabled;if(!enabled||openingKey!==null&&openingKey!==scopeKey())close(false,true);}
+  function sync(){if(disposed)return;const enabled=usable(),key=scopeKey();if(draftKey!==null&&draftKey!==key){draftKey=null;draftOwner.clear();}trigger.hidden=!enabled;if(!enabled||openingKey!==null&&openingKey!==scopeKey())close(false,true);}
   trigger.addEventListener('click',()=>void open());dismiss.addEventListener('click',()=>close());dialog.addEventListener('cancel',event=>{if(event.target===dialog){event.preventDefault();close();}});dialog.addEventListener('close',()=>{if(!dialog.open&&!suspended&&workspaceOpen)close();});
   const stop=board.subscribe(sync);sync();
-  return Object.freeze({open,close,resume,sync,dispose(){if(disposed)return;close(false,true);disposed=true;stop?.();trigger.remove();dialog.remove();link.remove();style.remove();}});
+  return Object.freeze({open,close,resume,sync,dispose(){if(disposed)return;close(false,true);draftOwner.clear();disposed=true;window.removeEventListener('beforeunload',beforeUnload);stop?.();trigger.remove();dialog.remove();link.remove();style.remove();}});
 }

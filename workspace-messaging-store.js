@@ -42,10 +42,51 @@ function mergeMessages(current,incoming){
   return [...map.values()].sort(compareCursor);
 }
 
-export function createMessagingStore({session,transport}={}){
+// Browser-memory only. The owner can survive a hidden view without retaining history.
+export function createMessagingDraftOwner(){
+  let scope=null;
+  const rows=new Map();
+  const occupied=({body,composer:c})=>Boolean(body||c&&(c.replyTo||c.refs.length||c.editing||c.files.length||c.confirmationRequested||c.attempt?.payload));
+  const clear=()=>{scope=null;rows.clear();};
+  return Object.freeze({
+    bind(uid,actor){
+      const next=JSON.stringify([uid,actor.roomId,actor.personId]);
+      if(scope!==next){rows.clear();scope=next;}
+    },
+    clear,
+    hasDrafts:()=>[...rows.values()].some(occupied),
+    forget(id){rows.delete(id);},
+    checkUid(uid){if(scope!==null&&JSON.parse(scope)[0]!==uid)clear();},
+    row(id,epoch,create=false){
+      if(scope===null)return null;
+      const entry=rows.get(id);
+      if(entry?.epoch===epoch)return entry;
+      if(entry)rows.delete(id);
+      if(!create)return null;
+      if(rows.size>=50){
+        for(const [key,value] of rows){
+          if(!occupied(value)){rows.delete(key);break;}
+        }
+      }
+      if(rows.size>=50)return null;
+      const row={epoch,body:'',version:0,composer:null};
+      rows.set(id,row);
+      return row;
+    },
+    canRetainFiles(current,files){
+      let bytes=files.reduce((sum,item)=>sum+item.file.size,0);
+      for(const row of rows.values())if(row.composer&&row.composer!==current){
+        for(const item of row.composer.files)bytes+=item.file.size;
+      }
+      return bytes<=25_000_000;
+    }
+  });
+}
+
+export function createMessagingStore({session,transport,draftOwner=null,getUid=()=>null}={}){
   if(typeof session?.subscribe!=='function'||['readHistory','observeActivity','send','edit','remove','markRead'].some(k=>typeof transport?.[k]!=='function'))throw new TypeError('Messaging transport and session required');
-  const subscribers=new Set(),drafts=new Map(),cursors=new Map(),memberships=new Map(),pendingSends=new Map();
-  let identity=null,disposed=false,generation=0,stopActivity=null,stopSession=null,pageRequest=null,refreshQueued=false,draftVersion=0;
+  const subscribers=new Set(),drafts=draftOwner??createMessagingDraftOwner(),cursors=new Map(),memberships=new Map(),pendingSends=new Map();
+  let identity=null,disposed=false,generation=0,stopActivity=null,stopSession=null,pageRequest=null,refreshQueued=false;
   let state=immutable({status:'locked',conversationId:null,messages:emptyMessages,joinedAt:null,hasMore:false,nextCursor:null,draft:'',readCursor:null,preferences:null,historyReset:false,busy:false,error:null});
   const current=()=>state.conversationId&&identity?{roomId:identity.roomId,conversationId:state.conversationId}:null;
   const stillCurrent=token=>!disposed&&generation===token;
@@ -64,13 +105,13 @@ export function createMessagingStore({session,transport}={}){
       historyReset:false,busy:false,error:null});
   }
   function lockConversation(){
-    const id=state.conversationId;detach();if(id){drafts.delete(id);cursors.delete(id);memberships.delete(id);}reset('forbidden');
+    const id=state.conversationId;detach();if(id){drafts.forget(id);cursors.delete(id);memberships.delete(id);}reset('forbidden');
   }
   function onIdentity(next){
     if(disposed)return;
     const bound=next?.status==='bound'&&isMessagingRoomId(next.roomId)&&isPersonId(next.personId)?{roomId:next.roomId,personId:next.personId}:null;
     if(bound&&identity&&sameIdentity(identity,bound))return;
-    detach();identity=bound;drafts.clear();cursors.clear();memberships.clear();pendingSends.clear();reset(bound?'idle':'locked');
+    detach();identity=bound;if(bound)drafts.bind(getUid(),bound);else if(!draftOwner)drafts.clear();cursors.clear();memberships.clear();pendingSends.clear();reset(bound?'idle':'locked');
   }
   function requestPage(kind){
     const target=current();if(!target||disposed)return Promise.resolve(result('locked'));
@@ -91,7 +132,7 @@ export function createMessagingStore({session,transport}={}){
         const changedBoundary=previousBoundary!==undefined&&previousBoundary!==page.joinedAt;
         memberships.set(target.conversationId,page.joinedAt);
         if(changedBoundary){
-          drafts.delete(target.conversationId);cursors.delete(target.conversationId);
+          drafts.forget(target.conversationId);cursors.delete(target.conversationId);
           // Purge the prior membership before any asynchronous personal-state read.
           publish({status:'loading',messages:emptyMessages,joinedAt:page.joinedAt,hasMore:false,nextCursor:null,draft:'',readCursor:null,preferences:null,historyReset:true});
           if(!stillCurrent(token))return result('locked');
@@ -116,7 +157,7 @@ export function createMessagingStore({session,transport}={}){
         const usePageCursor=replace||kind==='older';
         publish({status:'ready',messages,joinedAt:page.joinedAt,historyReset:state.historyReset||historyReset,
           hasMore:usePageCursor?page.hasMore:state.hasMore,nextCursor:usePageCursor?page.nextCursor:state.nextCursor,
-          draft:drafts.get(target.conversationId)?.body??'',readCursor:cursors.get(target.conversationId)??null,preferences,busy:false,error:null});
+          draft:drafts.row(target.conversationId,page.joinedAt)?.body??'',readCursor:cursors.get(target.conversationId)??null,preferences,busy:false,error:null});
         return result('ok');
       }catch(_){
         if(!stillCurrent(token))return result('locked');
@@ -144,25 +185,29 @@ export function createMessagingStore({session,transport}={}){
   }
   function setDraft(body){
     if(disposed||!current()||state.status!=='ready'||typeof body!=='string'||body.length>6000)return false;
-    drafts.set(state.conversationId,{body,version:++draftVersion});publish({draft:body});return true;
+    const row=drafts.row(state.conversationId,state.joinedAt,true);
+    if(!row)return false;
+    row.body=body;row.version++;publish({draft:body});return true;
   }
-  function send({conversationId,requestId,input}={}){
+  function send({conversationId,requestId,input,preserveDraft=false}={}){
     const target=current();if(!target||disposed)return Promise.resolve(result('locked'));
     if(conversationId!==target.conversationId||state.status!=='ready')return Promise.resolve(result('invalid'));
     let normalized,expectedId;try{normalized=validateRoomMessageInput(input,target.roomId);expectedId=messageIdFor(identity.personId,requestId);}catch(_){return Promise.resolve(result('invalid'));}
     const token=generation,joinedAt=state.joinedAt,bodyKey=JSON.stringify(normalized),key=conversationId+'/'+requestId;
     const prior=pendingSends.get(key);if(prior)return prior.bodyKey===bodyKey?prior.promise:Promise.resolve(result('conflict'));
-    const draft=drafts.get(conversationId),entry={bodyKey,promise:null};pendingSends.set(key,entry);
+    const draft=drafts.row(conversationId,joinedAt),version=draft?.version,entry={bodyKey,promise:null};pendingSends.set(key,entry);
     entry.promise=(async()=>{
       try{
         const response=await transport.send({...target,requestId,input:normalized});
         if(!stillMember(token,joinedAt))return result('locked');
         if(response?.status==='locked'||response?.status==='forbidden'){lockConversation();return result('locked');}
         if(response?.status==='sent'&&response.id===expectedId){
-          if(draft&&draft.version===drafts.get(conversationId)?.version&&draft.body===normalized.body){drafts.delete(conversationId);publish({draft:''});}
+          if(!preserveDraft&&draft&&draft.version===version&&draft===drafts.row(conversationId,joinedAt)&&draft.body===normalized.body){
+            draft.body='';draft.version++;publish({draft:''});
+          }
           onActivity(token);return {status:'sent',id:response.id};
         }
-        return result(response?.status==='conflict'?'conflict':'failed');
+        return result(['conflict','invalid'].includes(response?.status)?response.status:'failed');
       }catch(_){return result(stillMember(token,joinedAt)?'failed':'locked');}
       finally{if(pendingSends.get(key)===entry)pendingSends.delete(key);}
     })();return entry.promise;
@@ -203,8 +248,15 @@ export function createMessagingStore({session,transport}={}){
   stopSession=session.subscribe(onIdentity);
   if(typeof stopSession!=='function')throw new TypeError('Session subscription must be disposable');
   return Object.freeze({getSnapshot:()=>state,subscribe(fn){if(typeof fn!=='function')throw new TypeError('Listener required');if(disposed){safeCall(()=>fn(state));return ()=>{};}subscribers.add(fn);safeCall(()=>fn(state));return ()=>subscribers.delete(fn);},
+    getComposer(){
+      if(state.status!=='ready')return null;
+      const row=drafts.row(state.conversationId,state.joinedAt,true);
+      if(!row)return null;
+      return row.composer??={refs:[],replyTo:null,editing:null,confirmationRequested:false,files:[],attachmentIds:[],fileVersion:0,attempt:null};
+    },
+    canRetainFiles:(current,files)=>drafts.canRetainFiles(current,files),
     setActiveConversation,loadOlder:()=>requestPage('older'),refreshLatest:()=>requestPage('latest'),setDraft,send,
     edit:request=>mutate('edit',request),remove:request=>mutate('remove',request),markRead,
-    dispose(){if(disposed)return;disposed=true;detach();safeCall(stopSession);stopSession=null;identity=null;drafts.clear();cursors.clear();memberships.clear();pendingSends.clear();reset('locked');subscribers.clear();}
+    dispose(){if(disposed)return;disposed=true;detach();safeCall(stopSession);stopSession=null;identity=null;if(!draftOwner)drafts.clear();cursors.clear();memberships.clear();pendingSends.clear();reset('locked');subscribers.clear();}
   });
 }

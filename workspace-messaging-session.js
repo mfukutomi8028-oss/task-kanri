@@ -23,7 +23,7 @@ export function resolveMessagingIdentity(context, binding) {
  * the approved binding for the current Firebase UID and report denied/disconnected
  * reads through onError. A local label, cached binding, or this UI state alone is
  * never proof of server authorization. */
-export function createMessagingSession({getAuthUid,readBinding,observeAuth,observeBinding,onLock} = {}) {
+export function createMessagingSession({getAuthUid,readBinding,observeAuth,observeBinding,onLock,onBindingRejected=()=>{}} = {}) {
   if ([getAuthUid,readBinding,observeAuth,observeBinding,onLock].some(fn => typeof fn !== 'function')) {
     throw new TypeError('Messaging session requires authoritative identity adapters');
   }
@@ -61,7 +61,7 @@ export function createMessagingSession({getAuthUid,readBinding,observeAuth,obser
     function apply(binding) {
       if (!stillCurrent()) { fail(); return; }
       const next = resolveMessagingIdentity(target,binding);
-      if (next.status === 'locked') { publish(locked); if (stillCurrent()) safely(onLock); return; }
+      if (next.status === 'locked') { safely(onBindingRejected); publish(locked); if (stillCurrent()) safely(onLock); return; }
       // A binding can be revoked or reassigned. Never expose a previous person's state.
       if (snapshot.status === 'bound' && snapshot.personId !== next.personId) { publish(locked); if (stillCurrent()) safely(onLock); }
       if (stillCurrent()) publish(next);

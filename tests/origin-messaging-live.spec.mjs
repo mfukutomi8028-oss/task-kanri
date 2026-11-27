@@ -12,7 +12,7 @@ test('cloud composition clears the authorized directory on disconnect and dispos
     const peerId='p_'+'2'.repeat(32),selfId='self_'+personId,directId='dm_'+personId+'_'+peerId;
     const binding={uid,roomId,personId,displayName:'Synthetic',approved:true,active:true};
     const boardSnapshot={roomId,currentUser:'Synthetic',connectionMode:'remote-online',tasks:[],schedules:[]};
-    const subscriptions=new Set(),calls=[],summaries=[],notices=[];
+    const subscriptions=new Set(),calls=[],summaries=[],notices=[],sentRequests=[],sentRecords=new Map();
     let online=true,unread=2,marker='00000000-0000-4000-8000-000000000001';const unreadCalls=[];
     const bindingKey='messagingAccessV1/'+roomId+'/'+uid;
     const value=path=>path==='.info/connected'?online:path===bindingKey?binding:
@@ -33,6 +33,14 @@ test('cloud composition clears the authorized directory on disconnect and dispos
       const scope={status:'ok',roomId,personId};
       if(action==='people')return Response.json({...scope,people:[{personId,displayName:'Synthetic'},{personId:peerId,displayName:'Peer'}]});
       if(action==='directory')return Response.json({...scope,conversations:[{id:selfId,kind:'self',status:'active',role:'member',memberCount:1,joinedAt:1000,revision:1,controlUpdatedAt:1000},{id:directId,kind:'direct',peerId,status:'active',role:'member',memberCount:2,joinedAt:1000,revision:1,controlUpdatedAt:1000}],invites:[],hasMore:false,nextCursor:null});
+      if(action==='message'){
+        const {requestId,input}=payload.command;
+        const id='msg_'+personId+'_'+requestId;
+        sentRequests.push({requestId,input});
+        sentRecords.set(id,input);
+        return sentRequests.length===1?Response.json({status:'unavailable'},{status:503}):Response.json({status:'sent',id});
+      }
+      if(action==='history')return Response.json({status:'ok',joinedAt:1000,messages:[],nextCursor:null,hasMore:false});
       if(action==='unread'){
         const conversationId=payload.conversationId;if(![selfId,directId].includes(conversationId))throw Error('Unexpected conversation');
         unreadCalls.push(conversationId);
@@ -41,7 +49,7 @@ test('cloud composition clears the authorized directory on disconnect and dispos
       throw Error('Unexpected request '+action);
     };
     const handle=mountCloudOriginMessaging({root,endpoint:'https://example.invalid/messaging',sdk,auth,board,fetchImpl,keepNotificationSession:true,onSummary:s=>summaries.push(s),onNotification:kind=>notices.push(kind)});
-    window.__liveCloudTest={handle,calls,unreadCalls,selfId,directId,summaries,notices,incoming(){unread++;marker='00000000-0000-4000-8000-'+String(unread).padStart(12,'0');for(const row of [...subscriptions])if(row.path==='messagingV1/'+roomId+'/activity/'+directId)row.fn(snapshot(row.path));},disconnect(){online=false;for(const row of [...subscriptions])if(row.path==='.info/connected')row.fn(snapshot(row.path));},subscriptionCount:()=>subscriptions.size};
+    window.__liveCloudTest={handle,calls,sentRequests,sentRecords,unreadCalls,selfId,directId,summaries,notices,incoming(){unread++;marker='00000000-0000-4000-8000-'+String(unread).padStart(12,'0');for(const row of [...subscriptions])if(row.path==='messagingV1/'+roomId+'/activity/'+directId)row.fn(snapshot(row.path));},disconnect(){online=false;for(const row of [...subscriptions])if(row.path==='.info/connected')row.fn(snapshot(row.path));},subscriptionCount:()=>subscriptions.size};
   });
   const root=page.locator('#liveCloud');
   await expect(root.getByText('自分宛てメッセージ',{exact:true})).toBeVisible();
@@ -53,6 +61,28 @@ test('cloud composition clears the authorized directory on disconnect and dispos
   await expect(root.getByLabel('メッセージの未読件数')).toHaveText('未読 3件');
   const after=await page.evaluate(()=>({directory:window.__liveCloudTest.calls.filter(a=>a==='directory').length,people:window.__liveCloudTest.calls.filter(a=>a==='people').length,unread:window.__liveCloudTest.unreadCalls.length,last:window.__liveCloudTest.unreadCalls.at(-1),directId:window.__liveCloudTest.directId}));
   expect(after.directory).toBe(before.directory);expect(after.people).toBe(before.people);expect(after.unread).toBe(before.unread+1);expect(after.last).toBe(after.directId);
+  await root.getByRole('button',{name:'自分宛てメッセージ',exact:true}).click();
+  const draft=root.locator('#om-body');
+  await draft.fill('Synthetic unsent draft');
+  expect(await page.evaluate(()=>window.__liveCloudTest.handle.hideWorkspace())).toBe(true);
+  expect(await page.evaluate(()=>window.__liveCloudTest.handle.showWorkspace())).toBe(true);
+  await root.getByRole('button',{name:'自分宛てメッセージ',exact:true}).click();
+  await expect(draft).toHaveValue('Synthetic unsent draft',{timeout:2500});
+  expect(await page.evaluate(()=>window.__liveCloudTest.sentRequests.length)).toBe(0);
+  await root.getByRole('button',{name:'送信',exact:true}).click();
+  await expect(root.getByText('送信結果を確認できません。入力内容を保持しています。')).toBeVisible();
+  await page.evaluate(()=>{window.__liveCloudTest.handle.hideWorkspace();window.__liveCloudTest.handle.showWorkspace();});
+  await root.getByRole('button',{name:'自分宛てメッセージ',exact:true}).click();
+  await expect(draft).toHaveValue('Synthetic unsent draft');
+  await draft.fill('Synthetic newer draft');
+  await root.getByRole('button',{name:'前回の送信を確認・再試行'}).click();
+  await expect.poll(()=>page.evaluate(()=>window.__liveCloudTest.sentRequests.length)).toBe(2);
+  expect(await page.evaluate(()=>{
+    const {sentRequests,sentRecords}=window.__liveCloudTest;
+    return {samePayload:JSON.stringify(sentRequests[0])===JSON.stringify(sentRequests[1]),records:sentRecords.size};
+  })).toEqual({samePayload:true,records:1});
+  await expect(draft).toHaveValue('Synthetic newer draft');
+  await page.evaluate(()=>{window.__liveCloudTest.handle.hideWorkspace();window.__liveCloudTest.handle.showWorkspace();});
   const watched=await page.evaluate(()=>window.__liveCloudTest.subscriptionCount());
   expect(await page.evaluate(()=>window.__liveCloudTest.handle.hideWorkspace())).toBe(true);
   await expect(root.getByRole('heading',{name:'メッセージ',exact:true})).toHaveCount(0);
@@ -61,7 +91,7 @@ test('cloud composition clears the authorized directory on disconnect and dispos
   await page.evaluate(()=>window.__liveCloudTest.incoming());
   await expect.poll(()=>page.evaluate(()=>window.__liveCloudTest.summaries.at(-1)?.unread)).toBe(4);
   expect(await page.evaluate(()=>window.__liveCloudTest.notices)).toEqual(['message']);
-  expect(await page.evaluate(()=>window.__liveCloudTest.calls.every(action=>['directory','people','unread'].includes(action)))).toBe(true);
+  expect(await page.evaluate(()=>window.__liveCloudTest.calls.every(action=>['directory','people','unread','history','message'].includes(action)))).toBe(true);
   expect(await page.evaluate(()=>window.__liveCloudTest.handle.showWorkspace())).toBe(true);
   await expect(root.getByLabel('メッセージの未読件数')).toHaveText('未読 4件');
   expect(await page.evaluate(()=>window.__liveCloudTest.notices)).toEqual(['message']);
