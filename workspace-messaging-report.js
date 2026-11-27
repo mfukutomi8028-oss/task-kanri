@@ -43,6 +43,7 @@ export function prepareBusinessDraftFromMessage(message,{kind,context,canRead}={
     const item=projectMessagingMessage(message,context);if(item.deletedAt!=null||!item.body.trim())return null;
     const title=Array.from(item.body.split(/\r?\n/).find(s=>s.trim()).trim()).slice(0,80).join('');
     const source={roomId:context.roomId,conversationId:context.conversationId,messageId:item.id};
-    return kind==='task'?{kind,title,description:item.body,source}:{kind,title,memo:item.body,source};
+    const excerpt=Array.from(item.body).slice(0,500).join('');
+    return kind==='task'?{kind,title,description:excerpt,source}:{kind,title,memo:excerpt,source};
   }catch(_){return null;}
 }

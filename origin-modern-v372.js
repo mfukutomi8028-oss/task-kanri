@@ -801,6 +801,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
   setOriginTaskListWriteFeedback('saving',text+' ほかの更新操作は完了後に行えます。');
  }
  const savingPanel=Boolean((close||returnToTask)&&panelOpen&&panelMode==='edit');
+ const returnToMessaging=savingPanel&&$('#editForm')?.dataset.messagingSource==='true';
  const todoReturn=close&&savingPanel&&['todo.update','todo.delete'].includes(command.type)&&!panelReturnSearch
    ?captureOriginTodoListReturn(command.id):null;
  const beforeTodo=todoReturn?data.todos.find(item=>item.id===command.id):null;
@@ -858,6 +859,7 @@ async function send(command,label,{close=false,returnToTask=false}={}){
          panelReturnAnchor=null;panelReturnSearch=null;scheduleGlobalReturn=null;
        }else restorePanelReturnPosition(returning.kind,returning.id);
      }
+     if(returnToMessaging)void originMessagingEntry?.resume();
      notify(label);return true;
    }
    if(result?.error==='cancelled'||result?.pending){
@@ -3138,6 +3140,9 @@ function originPanelFooter(kind,id,editing,item){
      secondary=`<button type="button" class="secondary-button" data-action="todo-toggle" data-id="${safeId}">${item.done?'未完了に戻す':'完了にする'}</button><button type="button" class="secondary-button" data-action="todo-move" data-id="${safeId}" data-value="up" ${index<=0?'disabled':''}>上へ移動</button><button type="button" class="secondary-button" data-action="todo-move" data-id="${safeId}" data-value="down" ${index>=rows.length-1?'disabled':''}>下へ移動</button>`;
    }
    if(kind==='memos')secondary=`<button type="button" class="secondary-button" data-action="memo-task" data-id="${safeId}">タスクにする</button>`;
+   if(originMessagingEntry&&['tasks','events','memos'].includes(kind)){
+     secondary+='<button type="button" class="secondary-button" data-action="message-share" data-kind="'+kind+'" data-id="'+safeId+'">メッセージに共有</button>';
+   }
    if(kind==='events')secondary+=`<button type="button" class="secondary-button" data-action="schedule-copy" data-id="${safeId}">複製して作成</button>`;
  }
  const dangerous=editing&&id
@@ -4423,6 +4428,13 @@ function handleAction(el,event){const a=el.dataset.action,id=el.dataset.id,kind=
    return;
  }
  if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;detailTrail=[];panelReturnSearch=null;panelReturnAnchor=null;scheduleGlobalReturn=null;closeCreateMenu();return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
+ if(a==='message-share'){
+   const type={tasks:'task',events:'schedule',memos:'memo'}[kind];
+   if(panelOpen&&panelMode==='detail'&&panelKind===kind&&panelId===id&&type&&findItem(kind,id)){
+     void originMessagingEntry?.share({roomId:snapshot.roomId,type,recordId:id}).then(ok=>{if(!ok)notify('メッセージの共有先を開けませんでした。');});
+   }
+   return;
+ }
  if(a==='list-quick-edit'){
    const routes={tasks:'tasks',todos:'todos',memos:'notes'};
    if(panelOpen||routes[kind]!==view||!id||!findItem(kind,id))return;
@@ -4631,7 +4643,21 @@ if(window.WORK_BOARD_MESSAGING?.enabled===true&&typeof bridge.getMessagingConnec
    connect:()=>bridge.getMessagingConnection(),mountCloud:cloud.mountCloudOriginMessaging,
    onNotification:kind=>notify(kind==='invite'?'新しいグループ招待があります。':'新着メッセージがあります。'),
    board:{readSnapshot:()=>bridge.readSnapshot(),readMemos:()=>memoBridge.readSnapshot(),subscribe:fn=>bridge.subscribe(fn),
-    canReadRecord,openRecord(ref,scope){if(!canReadRecord(ref,scope))return false;closeOriginSettings();closeCreateMenu();closeSearch();panelShow(recordKind[ref.type],ref.recordId,false);return panelOpen&&panelKind===recordKind[ref.type]&&panelId===ref.recordId;}
+    canReadRecord,
+    closeMessagingDraft(){
+     if($('#editForm')?.dataset.messagingSource==='true'&&!busy)closePanel(true,false);
+    },
+    openBusinessDraft(draft,scope){
+     const current=bridge.readSnapshot(),kind={task:'tasks',schedule:'events'}[draft?.kind];
+     if(!kind||current.roomId!==scope?.roomId||draft.source?.roomId!==current.roomId||current.connectionMode!=='remote-online')return false;
+     closeOriginSettings();closeCreateMenu();closeSearch();
+     panelShow(kind,null,true,{title:draft.title,desc:draft.description??draft.memo,date:selectedDay});
+     const form=$('#editForm');
+     if(!form||form.dataset.kind!==kind||form.dataset.id)return false;
+     form.dataset.messagingSource='true';
+     return true;
+    },
+    openRecord(ref,scope){if(!canReadRecord(ref,scope))return false;closeOriginSettings();closeCreateMenu();closeSearch();panelShow(recordKind[ref.type],ref.recordId,false);return panelOpen&&panelKind===recordKind[ref.type]&&panelId===ref.recordId;}
    }
   });
  }).catch(()=>{if(document.documentElement.dataset.wbDisplay==='modern')notify('\u30e1\u30c3\u30bb\u30fc\u30b8\u6a5f\u80fd\u3092\u8d77\u52d5\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f\u3002');});

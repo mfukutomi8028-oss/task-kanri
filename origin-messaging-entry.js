@@ -40,10 +40,18 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
     if(dialog.open)dialog.close();target.replaceChildren();approval.hidden=true;approval.open=false;approvalText.value='';
     if(restoreFocus&&trigger.isConnected&&!trigger.hidden&&isActive())trigger.focus({preventScroll:true});
   }
+  async function suspend(action){
+    if(!current()||!dialog.open)return false;
+    const token=epoch;suspended=true;dialog.close();
+    try{if(await action()===true&&token===epoch&&current())return true;}catch(_){/* Restore the current workspace. */}
+    if(token===epoch&&current()){suspended=false;show();}
+    return false;
+  }
   const launcher=createOriginMessagingLauncher({readConfig,readBoard:board.readSnapshot,async connect(){const connection=await connect();const authSdk=connection.authSdk??await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");const auth=await connectFirebaseMessagingAuth({...connection,authSdk});return {sdk:connection.sdk,auth};},mount(options){
     const generation=++connectionEpoch;
     return mountCloud({...options,draftOwner,root:target,keepNotificationSession:true,onSummary(value){if(generation===connectionEpoch&&current())renderBadge(value);},onNotification(kind){if(generation===connectionEpoch&&current())onNotification(kind);},board:{...board,
-      async openRecord(ref,scope){if(!current()||!dialog.open)return false;const token=epoch;suspended=true;dialog.close();try{if(await board.openRecord(ref,scope)===true&&token===epoch&&current())return true;}catch(_){}if(token===epoch&&current()){suspended=false;show();}return false;},
+      openRecord:(ref,scope)=>suspend(()=>board.openRecord(ref,scope)),
+      ...(typeof board.openBusinessDraft==='function'?{openBusinessDraft:(draft,scope)=>suspend(()=>board.openBusinessDraft(draft,scope))}:{}),
       restoreConversation(){if(!suspended||!current())return false;suspended=false;show();return true;}
     },onClose:()=>close()});
   }});
@@ -53,6 +61,7 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
     const render=value=>{
       if(token!==epoch||!current())return;
       const connected=value?.status==='bound';
+      if(!connected&&suspended)board.closeMessagingDraft?.();
       notice.textContent=connected?'接続済み':'未承認またはオフラインのため利用できません。管理者にご確認ください。';
       const request=connected?null:handle.getApprovalRequest?.();
       approval.hidden=!request;approvalText.value=request?['ルーム: '+request.roomId,'利用者: '+request.displayName,'端末ID: '+request.uid].join('\n'):'';
@@ -60,8 +69,14 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
     };render(handle.getSnapshot?.());if(typeof handle.subscribe==='function')sessionStop=handle.subscribe(render);return true;
   }
   async function resume(){if(!suspended||!current())return false;const token=epoch;try{if(await launcher.getHandle()?.restore?.()===true&&token===epoch&&current())return true;}catch(_){}if(token===epoch)close();return false;}
-  function sync(){if(disposed)return;const enabled=usable(),key=scopeKey();if(draftKey!==null&&draftKey!==key){draftKey=null;draftOwner.clear();}trigger.hidden=!enabled;if(!enabled||openingKey!==null&&openingKey!==scopeKey())close(false,true);}
+  function sync(){if(disposed)return;const enabled=usable(),key=scopeKey();if(draftKey!==null&&draftKey!==key){draftKey=null;draftOwner.clear();}trigger.hidden=!enabled;if(!enabled||openingKey!==null&&openingKey!==scopeKey()){if(suspended)board.closeMessagingDraft?.();close(false,true);}}
   trigger.addEventListener('click',()=>void open());dismiss.addEventListener('click',()=>close());dialog.addEventListener('cancel',event=>{if(event.target===dialog){event.preventDefault();close();}});dialog.addEventListener('close',()=>{if(!dialog.open&&!suspended&&workspaceOpen)close();});
   const stop=board.subscribe(sync);sync();
-  return Object.freeze({open,close,resume,sync,dispose(){if(disposed)return;close(false,true);draftOwner.clear();disposed=true;window.removeEventListener('beforeunload',beforeUnload);stop?.();trigger.remove();dialog.remove();link.remove();style.remove();}});
+  return Object.freeze({open,close,resume,sync,
+    async share(ref){
+      if(!usable()||await board.canReadRecord(ref,{roomId:ref.roomId})!==true)return false;
+      if(await open()!==true||!current()||!dialog.open)return false;
+      return launcher.getHandle()?.share?.(ref)??false;
+    },
+    dispose(){if(disposed)return;close(false,true);draftOwner.clear();disposed=true;window.removeEventListener('beforeunload',beforeUnload);stop?.();trigger.remove();dialog.remove();link.remove();style.remove();}});
 }

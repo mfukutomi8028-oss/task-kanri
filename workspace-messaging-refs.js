@@ -1,5 +1,6 @@
 // Resolve current business data through the canonical board bridge. The host
 // provides current authorization, not a saved title or the selected name alone.
+import {prepareBusinessDraftFromMessage} from './workspace-messaging-report.js';
 import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,projectMessagingMessage,validateRoomMessageInput,compareCursor} from './workspace-messaging-core.js';
 const unavailable=()=>({status:'unavailable'});
 const types=new Set(['task','schedule','memo']);
@@ -8,7 +9,7 @@ const contextKey=c=>JSON.stringify([c.roomId,c.personId,c.conversationId,c.joine
 const normalizeRef=(ref,context)=>validateRoomMessageInput({body:'reference',refs:[ref]},context.roomId).refs[0];
 function project(raw,context){try{return projectMessagingMessage(raw,context);}catch(_){return null;}}
 const readableMessages=(messages,context)=>validContext(context)&&Array.isArray(messages)?messages.map(m=>project(m,context)).filter(m=>m&&m.deletedAt==null).sort((a,b)=>compareCursor(b,a)):[];
-export function createMessagingReferenceResolver({readSnapshot,readMemos,canRead,readMessage,openRecord,restoreConversation}={}){
+export function createMessagingReferenceResolver({readSnapshot,readMemos,canRead,readMessage,openRecord,restoreConversation,openBusinessDraft=null}={}){
   if([readSnapshot,readMemos,canRead,readMessage,openRecord,restoreConversation].some(fn=>typeof fn!=='function'))throw new TypeError('Authorized business bridge required');
   let returnLocation=null;
   async function resolve(ref,context){
@@ -34,16 +35,30 @@ export function createMessagingReferenceResolver({readSnapshot,readMemos,canRead
       return {status:'available',messageId,senderId:m.senderId,excerpt:Array.from(m.body.replace(/\s+/g,' ').trim()).slice(0,160).join('')};
     }catch(_){return unavailable();}
   }
+  async function openFromMessage(open,context,location){
+    if(!validContext(context)||!location||location.conversationId!==context.conversationId||!isMessageId(location.messageId)||!Number.isFinite(location.scrollTop)||location.scrollTop<0||typeof location.query!=='string')return false;
+    try{
+      returnLocation={key:contextKey(context),location:{conversationId:location.conversationId,messageId:location.messageId,scrollTop:location.scrollTop,query:location.query}};
+      if(await open()===true)return true;
+    }catch(_){/* A failed transition leaves the conversation in place. */}
+    returnLocation=null;return false;
+  }
   return Object.freeze({resolve,resolveQuote,
+    ...(typeof openBusinessDraft==='function'?{async openDraft(kind,revision,context,location){
+      if(!validContext(context)||!isMessageId(location?.messageId))return false;
+      const request={kind:'message',messageId:location.messageId};
+      try{
+        if(await canRead(request,context)!==true)return false;
+        const raw=await readMessage({...context,messageId:location.messageId});
+        if(raw?.revision!==revision||await canRead(request,context)!==true)return false;
+        const draft=prepareBusinessDraftFromMessage(raw,{kind,context,canRead:true});
+        return draft?openFromMessage(()=>openBusinessDraft(draft,context),context,location):false;
+      }catch(_){return false;}
+    }}:{}),
     async shareRecord(ref,context){const result=await resolve(ref,context);return result.status==='available'?result.ref:null;},
     async open(ref,context,location){
-      if(!validContext(context)||!location||location.conversationId!==context.conversationId||!isMessageId(location.messageId)||!Number.isFinite(location.scrollTop)||location.scrollTop<0||typeof location.query!=='string')return false;
       const found=await resolve(ref,context);if(found.status!=='available')return false;
-      try{
-        if(await canRead({kind:'record',ref:found.ref},context)!==true)return false;
-        returnLocation={key:contextKey(context),location:{conversationId:location.conversationId,messageId:location.messageId,scrollTop:location.scrollTop,query:location.query}};
-        if(await openRecord(found.ref,context)===true)return true;
-      }catch(_){}returnLocation=null;return false;
+      return openFromMessage(async()=>await canRead({kind:'record',ref:found.ref},context)===true&&await openRecord(found.ref,context)===true,context,location);
     },
     async restore(context){
       const previous=returnLocation;returnLocation=null;

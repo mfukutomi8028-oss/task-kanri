@@ -75,10 +75,11 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
       async canRead(target,scope){if(!currentConversation(scope))return false;if(target.kind==='message')return isMessageId(target.messageId);return await board.canReadRecord(target.ref,scope)===true&&currentConversation(scope);},
       async readMessage({roomId,conversationId,messageId}){const actor=session.getSnapshot(),scope={...actor,roomId,conversationId};if(!currentConversation(scope)||!isMessageId(messageId))return null;const value=await read('messagingV1/'+roomId+'/messages/'+conversationId+'/'+messageId);return scopeActor(scope)===actor&&currentConversation(scope)?value:null;},
       openRecord:(ref,scope)=>currentConversation(scope)?board.openRecord(ref,scope):false,
+      ...(typeof board.openBusinessDraft==='function'?{openBusinessDraft:(draft,scope)=>currentConversation(scope)?board.openBusinessDraft(draft,scope):false}:{}),
       async restoreConversation(location,scope){if(!currentConversation(scope)||await board.restoreConversation(location,scope)!==true||!currentConversation(scope))return false;return view?.restoreLocation(location)??false;}
     });
     function readBusinessData(){const actor=session.getSnapshot(),snapshot=board.readSnapshot();return !disposed&&actor.status==='bound'&&snapshot?.roomId===actor.roomId&&snapshot.connectionMode==='remote-online'?{...snapshot,memos:board.readMemos()}:{roomId:null,tasks:[],schedules:[],memos:[]};}
-    view=mountOriginMessaging({root,store,session,commands,resolver,readBusinessData,resolvePerson:id=>commands.resolvePerson(id),confirmations,personal,decorations,attachments:attachmentsEnabled?api:null,summaryOwner,onClose(){if(!keepNotificationSession)dispose();onClose();}});
+    view=mountOriginMessaging({root,store,session,commands,resolver,readBusinessData,resolvePerson:id=>commands.resolvePerson(id),confirmations,personal,decorations,attachments:attachmentsEnabled?api:null,canShareRecord:board.canReadRecord,summaryOwner,onClose(){if(!keepNotificationSession)dispose();onClose();}});
     let last=null,queued=false;
     const mountedStore=store;
     stopStore=store.subscribe(next=>{
@@ -109,6 +110,6 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
       syncContext(snapshot);
     });if(typeof stopBoard!=='function')throw new TypeError('Disposable canonical board required');stops.push(stopBoard);
     syncContext(board.readSnapshot());
-    return Object.freeze({getSnapshot:()=>session.getSnapshot(),getApprovalRequest(){const uid=auth.getUid();return !disposed&&session.getSnapshot().status==='locked'&&lastContext&&validUid(uid)?{roomId:lastContext.roomId,displayName:lastContext.selectedDisplayName,uid}:null;},subscribe:fn=>session.subscribe(fn),hideWorkspace,showWorkspace,open:id=>view?.open(id)??Promise.resolve(false),restore(){const actor=session.getSnapshot(),state=store?.getSnapshot();return actor.status==='bound'&&state?.status==='ready'&&resolver?resolver.restore({...actor,conversationId:state.conversationId,joinedAt:state.joinedAt}):Promise.resolve(false);},dispose});
+    return Object.freeze({getSnapshot:()=>session.getSnapshot(),getApprovalRequest(){const uid=auth.getUid();return !disposed&&session.getSnapshot().status==='locked'&&lastContext&&validUid(uid)?{roomId:lastContext.roomId,displayName:lastContext.selectedDisplayName,uid}:null;},subscribe:fn=>session.subscribe(fn),hideWorkspace,showWorkspace,share:ref=>view?.share(ref)??false,open:id=>view?.open(id)??Promise.resolve(false),restore(){const actor=session.getSnapshot(),state=store?.getSnapshot();return actor.status==='bound'&&state?.status==='ready'&&resolver?resolver.restore({...actor,conversationId:state.conversationId,joinedAt:state.joinedAt}):Promise.resolve(false);},dispose});
   }catch(error){dispose();throw error;}
 }
