@@ -1,3 +1,4 @@
+import {readApprovedMessagingActor} from './messaging-authorization.mjs';
 // Server-side orchestration. Persistence must enforce the exact supplied actor,
 // membership epoch and record at commit time, not just before a transaction.
 import {messagingBudgetDecision} from './messaging-budget.mjs';
@@ -5,7 +6,6 @@ import {createMessagingMessageCommands} from './messaging-message-commands.mjs';
 import {createFirebaseMessagingActivityPublisher} from './messaging-activity-publisher.mjs';
 import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,messageIdFor,validateRoomMessageInput} from '../workspace-messaging-core.js';
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);
-const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
 const requestFields=new Set(['token','roomId','conversationId','command','expectedPersonId']);
 const commandFields={send:['type','requestId','input'],edit:['type','messageId','expectedRevision','input'],remove:['type','messageId','expectedRevision']};
 const fail=status=>({status});
@@ -35,11 +35,10 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
   if([verifyToken,readBinding,readControl,transactMessage,clock].some(fn=>typeof fn!=='function')||publishActivity!==null&&typeof publishActivity!=='function'||claimAttachments!==null&&typeof claimAttachments!=='function'||reserveSend!==null&&typeof reserveSend!=='function'||acquireAttachmentLease!==null&&typeof acquireAttachmentLease!=='function')throw new TypeError('Trusted mutation adapters required');
   const commands=createMessagingMessageCommands({digestKey});
   async function authorize(token,roomId,conversationId){
-    let identity;try{identity=await verifyToken(token);}catch(_){return null;}
-    const uid=identity?.uid;if(!uidKey(uid))return null;
-    const binding=await readBinding({roomId,uid});
-    if(!record(binding)||binding.uid!==uid||binding.roomId!==roomId||binding.approved!==true||binding.active!==true||!isPersonId(binding.personId))return null;
-    const personId=binding.personId,control=await readControl({roomId,conversationId});
+    const actor=await readApprovedMessagingActor({token,roomId,verifyToken,readBinding});
+    if(!actor)return null;
+    const {uid,personId}=actor;
+    const control=await readControl({roomId,conversationId});
     const member=control?.members?.[personId];
     if(control?.status!=='active'||member?.active!==true||!isMessagingTimestamp(member.joinedAt))return null;
     return {uid,roomId,conversationId,personId,joinedAt:member.joinedAt,members:control.members,controlRevision:control.revision};

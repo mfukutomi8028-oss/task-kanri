@@ -1,10 +1,10 @@
+import {readApprovedMessagingActor} from './messaging-authorization.mjs';
 // Trusted upload orchestration. The private bucket and durable quota ledger
 // remain inaccessible to clients. A ready upload is not yet a message reference.
 import {createHash} from 'node:crypto';
 import {isMessagingRoomId,isConversationId,isPersonId,isMessagingTimestamp} from '../workspace-messaging-core.js';
 import {inspectMessagingAttachment,readMessagingAttachmentBody,MESSAGING_ATTACHMENT_MAX_BYTES} from './messaging-attachment-content.mjs';
 const fail=status=>({status});
-const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
 const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(v);
 const requestIdValid=v=>typeof v==='string'&&/^q_[0-9a-f]{32}$/.test(v);
 const fields=new Set(['token','roomId','conversationId','expectedPersonId','requestId','slot','filename','mime','declaredBytes','body']);
@@ -18,13 +18,12 @@ const publicResult=(attachmentId,{filename,mime,bytes})=>({status:'ok',attachmen
 export function createMessagingAttachmentUploadService({verifyToken,readBinding,readControl,reserve,readLedger,putObject,readObject,finalize,clock=Date.now}={}){
   if([verifyToken,readBinding,readControl,reserve,readLedger,putObject,readObject,finalize,clock].some(fn=>typeof fn!=='function'))throw new TypeError('Trusted attachment adapters required');
   async function authorize(token,roomId,conversationId){
-    let identity;try{identity=await verifyToken(token);}catch(_){return null;}
-    const uid=identity?.uid;if(!uidKey(uid))return null;
-    const binding=await readBinding({uid,roomId});
-    if(!record(binding)||binding.uid!==uid||binding.roomId!==roomId||binding.active!==true||binding.approved!==true||!isPersonId(binding.personId))return null;
-    const control=await readControl({roomId,conversationId}),member=control?.members?.[binding.personId];
+    const actor=await readApprovedMessagingActor({token,roomId,verifyToken,readBinding});
+    if(!actor)return null;
+    const {uid,personId}=actor;
+    const control=await readControl({roomId,conversationId}),member=control?.members?.[personId];
     if(control?.id!==conversationId||control.roomId!==roomId||control.status!=='active'||member?.active!==true||!isMessagingTimestamp(member.joinedAt))return null;
-    return {uid,personId:binding.personId,joinedAt:member.joinedAt};
+    return {uid,personId,joinedAt:member.joinedAt};
   }
   async function upload(request){
     if(!record(request)||Object.keys(request).some(key=>!fields.has(key)))return fail('invalid');

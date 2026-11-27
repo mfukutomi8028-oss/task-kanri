@@ -65,6 +65,17 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
       const members={};for(const [id,m] of Object.entries(raw)){if(!isPersonId(id)||typeof m?.active!=='boolean'||!isMessagingTimestamp(m.joinedAt))return fail('unavailable');members[id]={active:m.active,joinedAt:m.joinedAt};}
       return {status:'ok',members};
     }});
+    const readGroup=guard(async scope=>{
+      if(!currentConversation(scope)||!isConversationId(scope.conversationId)||!scope.conversationId.startsWith('group_'))return fail('forbidden');
+      const data=await read('messagingV1/'+scope.roomId+'/control/'+scope.conversationId),self=data?.members?.[scope.personId];
+      if(!currentConversation(scope)||data?.id!==scope.conversationId||data.roomId!==scope.roomId||self?.active!==true||self.joinedAt!==scope.joinedAt)return fail('forbidden');
+      const roles=['owner','admin','member'];
+      if(!Number.isSafeInteger(data.revision)||data.revision<1||!roles.includes(self.role)||!['active','archived'].includes(data.status)||typeof data.title!=='string')return fail('unavailable');
+      const members=Object.entries(data.members);
+      const invitations=Object.entries(data.invites??{});
+      if(members.length>100||invitations.length>100||members.some(([id,row])=>!isPersonId(id)||!roles.includes(row?.role)||typeof row.active!=='boolean')||invitations.some(([id,row])=>!isPersonId(id)||!['pending','accepted','declined'].includes(row?.state)))return fail('unavailable');
+      return {status:'ok',revision:data.revision,title:data.title,archived:data.status==='archived',role:self.role,members:members.filter(([,row])=>row.active).map(([id,row])=>({id,role:row.role})),invitations:invitations.filter(([,row])=>row.state==='pending').map(([id])=>id)};
+    });
     const activity=createFirebaseMessagingActivityTransport({...sdk,session});
     const directory=own(createMessagingDirectorySync({session,transport:api}));
     const unreadSync=own(createMessagingUnreadSync({session,observeActivity:activity.observeActivity,readUnread:api.readUnread}));
@@ -86,7 +97,7 @@ export function mountCloudOriginMessaging({root,endpoint,sdk,auth,board,fetchImp
       async restoreConversation(location,scope){if(!currentConversation(scope)||await board.restoreConversation(location,scope)!==true||!currentConversation(scope))return false;return view?.restoreLocation(location)??false;}
     });
     function readBusinessData(){const actor=session.getSnapshot(),snapshot=board.readSnapshot();return !disposed&&actor.status==='bound'&&snapshot?.roomId===actor.roomId&&snapshot.connectionMode==='remote-online'?{...snapshot,memos:board.readMemos()}:{roomId:null,tasks:[],schedules:[],memos:[]};}
-    view=mountOriginMessaging({root,store,session,commands,resolver,readBusinessData,resolvePerson:id=>commands.resolvePerson(id),confirmations,personal,decorations,attachments:attachmentsEnabled?api:null,canShareRecord:board.canReadRecord,summaryOwner,onClose(){if(!keepNotificationSession)dispose();onClose();}});
+    view=mountOriginMessaging({root,store,session,commands,resolver,readBusinessData,resolvePerson:id=>commands.resolvePerson(id),confirmations,personal,decorations,attachments:attachmentsEnabled?api:null,canShareRecord:board.canReadRecord,readGroup,summaryOwner,onClose(){if(!keepNotificationSession)dispose();onClose();}});
     let last=null,queued=false;
     const mountedStore=store;
     stopStore=store.subscribe(next=>{

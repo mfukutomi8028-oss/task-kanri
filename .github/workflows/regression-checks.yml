@@ -189,6 +189,17 @@ jobs:
     if: ${{ needs.scope.outputs.authorization == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      workboard-postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: workboard_messaging_test
+          POSTGRES_PASSWORD: workboard-local-ci
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d workboard_messaging_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -210,6 +221,11 @@ jobs:
           key: npm-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
       - name: Install test dependencies
         run: npm ci --no-audit --no-fund
+      - name: Messaging PostgreSQL concurrent budget and attachment fence
+        run: bash test-harness/messaging-postgres-regression.sh
+        env:
+          WORKBOARD_PG_TEST: '1'
+          PGPASSWORD: workboard-local-ci
       - name: Messaging isolated access-boundary rules
         run: npm run test:messaging:rules
       - name: Isolated Ver.568 candidate authorization rules

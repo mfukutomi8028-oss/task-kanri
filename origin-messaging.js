@@ -12,7 +12,7 @@ const dateText=ms=>new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:
 const timeText=ms=>new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(ms);
 const key=ref=>JSON.stringify([ref.type,ref.recordId]);
 const newRequest=()=> 'q_'+Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
-export function mountOriginMessaging({root,store,session,commands,resolver,readBusinessData,resolvePerson,confirmations=null,personal=null,decorations=null,attachments=null,canShareRecord=null,summaryOwner=null,onClose=()=>{}}){
+export function mountOriginMessaging({root,store,session,commands,resolver,readBusinessData,resolvePerson,confirmations=null,personal=null,decorations=null,attachments=null,canShareRecord=null,readGroup=null,summaryOwner=null,onClose=()=>{}}){
   if(!root||!store||!session||!commands||!resolver||typeof readBusinessData!=='function'||typeof resolvePerson!=='function')throw new TypeError('Messaging view adapters required');
   const shell=el('section','om-shell');shell.setAttribute('aria-label','メッセージワークスペース');
   shell.innerHTML=`<aside class="om-list" aria-label="会話一覧"><div class="om-list-head"><h1>メッセージ</h1><button type="button" class="om-primary" data-om="new">新規</button></div><p class="om-unread-total" aria-label="メッセージの未読件数" aria-live="polite"></p><p class="om-list-notice" role="status" hidden></p><label class="om-label" for="om-list-search">会話を検索</label><input id="om-list-search" type="search" autocomplete="off" placeholder="名前・グループ名"><div class="om-filters" aria-label="会話の絞り込み"></div><div class="om-conversations" aria-live="polite"></div></aside><main class="om-chat" aria-label="会話"><header class="om-chat-head"><button type="button" data-om="back" class="om-back">一覧</button><div class="om-chat-title"><h2>会話を選択</h2><p></p></div><button type="button" data-om="shared" class="om-outline">共有データ</button><button type="button" data-om="close" class="om-close" aria-label="メッセージを閉じる">閉じる</button></header><div class="om-search-bar" hidden><label for="om-message-search" class="om-label">読み込んだ履歴を検索</label><input id="om-message-search" type="search" autocomplete="off" placeholder="本文・件名"><button type="button" class="om-outline om-settings" data-om="settings" hidden>会話設定</button></div><div class="om-timeline" role="log" aria-label="メッセージ履歴" tabindex="0"></div><div class="om-newer" hidden><button type="button">新着メッセージへ</button></div><footer class="om-composer" hidden><div class="om-compose-context"></div><label for="om-body" class="om-label">メッセージ本文</label><textarea id="om-body" rows="3" maxlength="6000" placeholder="メッセージを入力"></textarea><div class="om-compose-actions"><button type="button" data-om="refs" class="om-outline">業務を添付</button><button type="button" data-om="report" class="om-outline">日次報告</button><label class="om-confirm"><input type="checkbox" data-om="confirm">確認依頼</label><span class="om-spacer"></span><button type="button" class="om-primary" data-om="send">送信</button></div><p class="om-feedback" role="status"></p></footer></main><aside class="om-shared" aria-label="共有データ" hidden><div class="om-shared-head"><h2>共有データ</h2><button type="button" class="om-outline" data-om="hide-shared" aria-label="共有データを閉じる">閉じる</button></div><label for="om-shared-filter" class="om-label">種類</label><select id="om-shared-filter"><option value="">すべて</option><option value="task">タスク</option><option value="schedule">予定</option><option value="memo">業務メモ</option><option value="url">リンク</option></select><div class="om-shared-list"></div></aside><dialog class="om-dialog" aria-labelledby="om-dialog-title"><div class="om-dialog-content"></div></dialog>`;
@@ -44,12 +44,33 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   const fileButton=button('ファイルを添付',()=>{if(!sendPending&&!compose()?.editing)fileInput.click();},'om-outline');fileButton.hidden=!fileEnabled;$('.om-compose-actions').prepend(fileButton);
   const context=()=>{const identity=session.getSnapshot();return state.status==='ready'&&identity?.status==='bound'&&state.conversationId&&Number.isSafeInteger(state.joinedAt)?{...identity,conversationId:state.conversationId,joinedAt:state.joinedAt}:null;};
   const selected=()=>conversations.find(c=>c.id===state.conversationId);
+  const archivedGroup=()=>selected()?.status==='archived';
   const compose=()=>store.getComposer();
   const messageContextValid=(c)=>{const now=context();return !disposed&&now&&c.roomId===now.roomId&&c.personId===now.personId&&c.conversationId===now.conversationId&&c.joinedAt===now.joinedAt;};
   const notice=text=>{feedback.textContent=text||'';};
-  const closeDialog=()=>{if(dialog.open)dialog.close();};
-  dialog.addEventListener('close',()=>{if(focusBeforeDialog?.isConnected)focusBeforeDialog.focus({preventScroll:true});focusBeforeDialog=null;});
-  function openDialog(title){focusBeforeDialog=shell.getRootNode().activeElement||document.activeElement;dialogContent.replaceChildren();const head=el('div','om-dialog-head'),h=el('h2','',title);h.id='om-dialog-title';head.append(h,button('閉じる',closeDialog,'om-outline'));dialogContent.append(head);if(!dialog.open)dialog.showModal();return dialogContent;}
+  let previewUrl=null;
+  function clearPreview(){
+    if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
+  }
+  const closeDialog=()=>{clearPreview();if(dialog.open)dialog.close();};
+  function attachmentStillVisible(c,messageId,attachmentId){
+    return messageContextValid(c)&&state.messages.some(row=>row.id===messageId&&row.deletedAt==null&&row.attachmentIds?.includes(attachmentId));
+  }
+  async function previewImage(row,c){
+    if(!fileEnabled||!attachmentStillVisible(c,row.messageId,row.attachmentId))return;
+    const panel=openDialog('画像プレビュー'),status=el('p','om-feedback','読み込み中…');
+    panel.append(status);
+    try{
+      const result=await attachments.downloadAttachment({roomId:c.roomId,conversationId:c.conversationId,messageId:row.messageId,attachmentId:row.attachmentId});
+      if(!dialog.open||!status.isConnected||!attachmentStillVisible(c,row.messageId,row.attachmentId))return;
+      if(result.status!=='ok'||!(result.bytes instanceof Uint8Array)||!['image/png','image/jpeg','image/webp'].includes(result.mime)){status.textContent='画像を取得できません。';return;}
+      const image=el('img','om-image-preview');image.alt=row.title;
+      previewUrl=URL.createObjectURL(new Blob([result.bytes],{type:result.mime}));
+      image.src=previewUrl;status.replaceWith(image);
+    }catch(_){if(status.isConnected)status.textContent='画像を取得できません。';}
+  }
+  dialog.addEventListener('close',()=>{clearPreview();if(focusBeforeDialog?.isConnected)focusBeforeDialog.focus({preventScroll:true});focusBeforeDialog=null;});
+  function openDialog(title){clearPreview();focusBeforeDialog=shell.getRootNode().activeElement||document.activeElement;dialogContent.replaceChildren();const head=el('div','om-dialog-head'),h=el('h2','',title);h.id='om-dialog-title';head.append(h,button('閉じる',closeDialog,'om-outline'));dialogContent.append(head);if(!dialog.open)dialog.showModal();return dialogContent;}
   const listIdentity=()=>{const value=session.getSnapshot();return value?.status==='bound'?{roomId:value.roomId,personId:value.personId}:null;};
   const sameScope=(a,b)=>a===null&&b===null||a&&b&&a.roomId===b.roomId&&a.personId===b.personId;
   function announce(event){if(disposed)return;const node=$('.om-list-notice');node.hidden=false;node.textContent=event.kind==='invite'?'新しいグループ招待があります。':'新着メッセージがあります。';}
@@ -59,7 +80,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   function renderList(){
     const needle=$('#om-list-search').value.trim().toLocaleLowerCase();
     $('.om-filters').replaceChildren(...filterNames.map(([v,name])=>{const b=button(name,()=>{filter=v;renderList();});b.setAttribute('aria-pressed',String(filter===v));return b;}));
-    const visible=conversations.filter(c=>(filter==='archived'?c.archived:!c.archived)&&(filter!=='unread'||c.unread>0)&&(filter!=='favorite'||c.favorite)&&(!needle||c.title.toLocaleLowerCase().includes(needle)));
+    const visible=conversations.filter(c=>(filter==='archived'?c.archived:!c.archived)&&(filter!=='unread'||c.unread>0)&&(filter!=='favorite'||c.favorite)&&(!needle||c.title.toLocaleLowerCase().includes(needle)||c.participantIds?.some(id=>resolvePerson(id)?.toLocaleLowerCase().includes(needle))));
     const groups=[['self','自分宛て'],['direct','個人'],['group','グループ']];list.replaceChildren();
     if(!visible.length){list.append(el('p','om-empty-small','一致する会話がありません。'));return;}
     for(const [kind,title] of groups){const rows=visible.filter(c=>c.kind===kind).sort((a,b)=>Number(Boolean(b.pinned))-Number(Boolean(a.pinned))||(b.updatedAt||0)-(a.updatedAt||0));if(!rows.length)continue;list.append(el('h3','om-group-label',title));for(const c of rows){const b=button('',()=>void openConversation(c.id),'om-conversation');b.setAttribute('aria-label',c.title);b.setAttribute('aria-current',String(c.id===state.conversationId));const avatar=el('span','om-avatar',Array.from(c.title).slice(0,2).join(''));avatar.setAttribute('aria-hidden','true');const info=el('span','om-conv-copy');info.append(el('strong','',c.title),el('span','om-conv-preview',c.preview||'会話を開始する'));b.append(avatar,info);const meta=el('span','om-conv-meta');if(c.pinned)meta.append(el('span','om-list-state','固定'));if(c.muted)meta.append(el('span','om-list-state','ミュート'));if(c.preferencesUnavailable)meta.append(el('span','om-list-state','会話設定を未取得'));if(c.updatedAt)meta.append(el('span','',timeText(c.updatedAt)));if(c.unread>0)meta.append(el('span','om-unread',c.unread>99?'99+':String(c.unread)));b.append(meta);list.append(b);}}
@@ -107,7 +128,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
     if(listScope)void reloadList();
     return true;
   }
-  function renderHeader(){const c=selected();$('.om-chat-title h2').textContent=c?.title||'会話を選択';$('.om-chat-title p').textContent=c?.kind==='group'?(c.memberCount||0)+'人のグループ':c?.kind==='self'?'自分だけのメッセージ':c?'個人メッセージ':'';$('[data-om=shared]').disabled=!c;$('.om-search-bar').hidden=!c;const settings=$('[data-om=settings]');settings.hidden=!personal;settings.disabled=!c||state.status!=='ready';}
+  function renderHeader(){const c=selected();$('.om-chat-title h2').textContent=c?.title||'会話を選択';$('.om-chat-title p').textContent=c?.kind==='group'?(c.memberCount||0)+'人のグループ':c?.kind==='self'?'自分だけのメッセージ':c?'個人メッセージ':'';$('[data-om=shared]').disabled=!c;$('.om-search-bar').hidden=!c;const settings=$('[data-om=settings]');settings.hidden=!personal;settings.disabled=!c||state.status!=='ready';composer.hidden=!context()||archivedGroup();}
   function refButton(ref,c,location){const b=button(labels[ref.type]||'業務データ',()=>void resolver.open(ref,c,{...location,scrollTop:timeline.scrollTop,query}),'om-reference');b.disabled=true;const stamp=renderGeneration;void resolver.resolve(ref,c).then(result=>{if(!b.isConnected||stamp!==renderGeneration||!messageContextValid(c))return;if(result.status==='available'){b.replaceChildren(el('span','om-reference-type',labels[ref.type]),el('strong','',result.title),el('small','',result.currentState||''));b.disabled=false;}else b.textContent='参照できない業務データ';});return b;}
   function renderComposeContext(){
     const c=context(),node=$('.om-compose-context');node.replaceChildren();
@@ -170,6 +191,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
         const result=await personal.readPersonalState(c);if(!current())return;
         if(result?.status!=='ok'||!result.preferences||preferenceLabels.some(([key])=>typeof result.preferences[key]!=='boolean'))throw Error('Unavailable');
         const prefs={...result.preferences};status.textContent='';content.replaceChildren();
+        if(selected()?.kind==='group'&&readGroup&&commands.manageGroup)content.append(button('グループ管理',groupSettings,'om-outline'));
         const controls=[];
         for(const [key,name,description] of preferenceLabels){
           const label=el('label','om-setting-row'),text=el('span','om-setting-copy'),input=el('input');input.type='checkbox';input.checked=prefs[key];input.setAttribute('aria-label',name);controls.push(input);text.append(el('strong','',name),el('small','',description));label.append(text,input);content.append(label);
@@ -181,6 +203,61 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
           });
         }
       }catch(_){if(current()){status.textContent='設定を取得できません。';content.replaceChildren(button('再試行',()=>{content.replaceChildren();status.textContent='読み込み中…';void load();},'om-outline'));}}
+    }
+    void load();
+  }
+  function groupSettings(){
+    const c=context();if(!c)return;
+    const panel=openDialog('グループ管理'),content=el('div','om-settings-content'),status=el('p','om-feedback','読み込み中…');
+    status.setAttribute('role','status');panel.append(content,status);
+    const current=()=>dialog.open&&content.isConnected&&messageContextValid(c);
+    async function load(){
+      try{
+        const group=await readGroup(c);if(!current())return;
+        if(group.status!=='ok')throw Error('Group unavailable');
+        const roster=group.archived||group.role==='member'?[]:await commands.users();
+        if(!current())return;
+        status.textContent='';content.replaceChildren();
+        content.append(el('h3','','参加者'));
+        const roleLabels={owner:'所有者',admin:'管理者',member:'参加者'},names=el('ul');
+        for(const row of group.members)names.append(el('li','',(resolvePerson(row.id)||'利用者')+'（'+roleLabels[row.role]+'）'));
+        content.append(names);
+        if(group.invitations.length)content.append(el('p','','招待中 '+group.invitations.length+'人'));
+        let pending=false;
+        async function save(change){
+          if(!current()||pending)return;
+          pending=true;status.textContent='保存しています…';
+          try{
+            const result=await commands.manageGroup(c.conversationId,{...change,expectedRevision:group.revision});
+            if(!current())return;
+            if(result.status==='ok'){
+              if(change.type==='leave'){closeDialog();await store.setActiveConversation(null);shell.dataset.mobileView='list';return;}
+              await load();
+            }else if(result.status==='conflict'){
+              await load();if(current())status.textContent='ほかの端末で更新されました。内容を確認してください。';
+            }else status.textContent='グループ設定を保存できません。';
+          }finally{pending=false;}
+        }
+        function picker(label,people,onSelect){
+          const select=el('select');select.setAttribute('aria-label',label+'の対象');
+          for(const person of people){const option=el('option','',person.displayName);option.value=person.personId;select.append(option);}
+          const row=el('div','om-group-operation');row.append(select,button(label,()=>{if(select.value)onSelect(select.value);},'om-outline'));content.append(row);
+        }
+        if(group.role!=='member'){
+          if(!group.archived){
+            const title=el('input');title.type='text';title.maxLength=80;title.value=group.title;title.setAttribute('aria-label','グループ名');
+            const rename=el('div','om-group-operation');rename.append(title,button('名前を変更',()=>void save({type:'rename',title:title.value}),'om-outline'));content.append(rename);
+            const invites=roster.filter(person=>!group.members.some(member=>member.id===person.personId)&&!group.invitations.includes(person.personId));
+            if(invites.length)picker('招待',invites,personId=>void save({type:'invite',personIds:[personId]}));
+            const others=group.members.filter(member=>member.id!==c.personId&&member.role!=='owner').map(member=>({personId:member.id,displayName:resolvePerson(member.id)||'利用者',role:member.role}));
+            const removable=others.filter(member=>group.role==='owner'||member.role!=='admin');
+            if(removable.length)picker('グループから除外',removable,personId=>{if(window.confirm('選んだ参加者をグループから除外しますか？'))void save({type:'removeMember',personId});});
+            if(group.role==='owner'&&others.length)picker('所有者を移譲',others,personId=>{if(window.confirm('選んだ参加者に所有者を移譲しますか？'))void save({type:'transferOwner',personId});});
+          }
+          content.append(button(group.archived?'会話を再開':'グループをアーカイブ',()=>void save({type:'setArchived',archived:!group.archived}),'om-outline'));
+        }
+        if(group.role!=='owner')content.append(button('グループから退出',()=>{if(window.confirm('退出するとこの会話を閲覧できなくなります。退出しますか？'))void save({type:'leave'});},'om-outline'));
+      }catch(_){if(current())status.textContent='グループ情報を取得できません。';}
     }
     void load();
   }
@@ -235,7 +312,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
       download.disabled=true;
       try{
         const result=await attachments.downloadAttachment({roomId:c.roomId,conversationId:c.conversationId,messageId,attachmentId});
-        if(!messageContextValid(c)||!state.messages.some(row=>row.id===messageId&&row.deletedAt==null&&row.attachmentIds?.includes(attachmentId)))return;
+        if(!attachmentStillVisible(c,messageId,attachmentId))return;
         if(result?.status!=='ok'||!(result.bytes instanceof Uint8Array)){
           notice(result?.status==='limit'?'ダウンロード上限に達しました。時間をおいて再試行してください。':'添付ファイルを取得できません。');return;
         }
@@ -255,7 +332,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
     for(const [i,attachmentId] of (m.attachmentIds??[]).entries())content.append(attachmentButton('添付ファイル '+(i+1)+' をダウンロード',m.id,attachmentId,c));
     if(m.confirmationRequested)renderConfirmation(m,c,content);article.append(content);
     const actions=el('div','om-message-actions');actions.append(button('返信',()=>{const draft=compose();if(!draft)return;draft.replyTo=m.id;draft.editing=null;draft.attachmentIds=[];renderComposeContext();body.focus();}));
-    if(own){actions.append(button('編集',()=>{const d=compose();if(!d)return;d.editing={messageId:m.id,expectedRevision:m.revision};d.attachmentIds=[...(m.attachmentIds??[])];d.files=[];d.fileVersion++;d.refs=[...(m.refs??[])];d.replyTo=m.replyTo;d.confirmationRequested=Boolean(m.confirmationRequested);store.setDraft(m.body);renderComposeContext();body.focus();}),button('削除',()=>{const panel=openDialog('メッセージを削除');panel.append(el('p','','削除すると本文と参照は表示されなくなります。'),button('削除する',async()=>{const result=await store.remove({conversationId:c.conversationId,messageId:m.id,expectedRevision:m.revision});if(result.status==='ok')closeDialog();else notice('削除できませんでした。再読み込みしてください。');},'om-danger'));}));}if(personal||decorations||resolver.openDraft)actions.append(button('その他',()=>messageActions(m,c)));article.append(actions);return article;
+    if(own&&!archivedGroup()){actions.append(button('編集',()=>{const d=compose();if(!d)return;d.editing={messageId:m.id,expectedRevision:m.revision};d.attachmentIds=[...(m.attachmentIds??[])];d.files=[];d.fileVersion++;d.refs=[...(m.refs??[])];d.replyTo=m.replyTo;d.confirmationRequested=Boolean(m.confirmationRequested);store.setDraft(m.body);renderComposeContext();body.focus();}),button('削除',()=>{const panel=openDialog('メッセージを削除');panel.append(el('p','','削除すると本文と参照は表示されなくなります。'),button('削除する',async()=>{const result=await store.remove({conversationId:c.conversationId,messageId:m.id,expectedRevision:m.revision});if(result.status==='ok')closeDialog();else notice('削除できませんでした。再読み込みしてください。');},'om-danger'));}));}if(personal||decorations||resolver.openDraft)actions.append(button('その他',()=>messageActions(m,c)));article.append(actions);return article;
   }
   async function renderTimeline({older=false}={}){
     const generation=++renderGeneration,c=context(),beforeHeight=timeline.scrollHeight,beforeTop=timeline.scrollTop,nearBottom=beforeHeight-beforeTop-timeline.clientHeight<90;
@@ -299,13 +376,14 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
         b.prepend(el('small','',labels[row.type]));
         b.setAttribute('aria-label',row.title||row.url);
         node.append(b);
+        if(row.type==='image')node.append(button(row.title+' を表示',()=>void previewImage(row,c),'om-outline'));
         if(row.attachmentId)node.append(attachmentButton(row.title+' をダウンロード',row.messageId,row.attachmentId,c));
       }
     }catch(_){if(current())node.replaceChildren(el('p','om-empty-small','共有データを取得できません。もう一度開いてください。'));}
   }
   let readFrame=0;
   function scheduleVisibleRead(){cancelAnimationFrame(readFrame);readFrame=requestAnimationFrame(()=>{const c=context();if(!c||state.status!=='ready'||document.visibilityState!=='visible'||timeline.clientHeight===0||query||historyDates.fields.some(field=>field.value))return;const rect=timeline.getBoundingClientRect(),nodes=[...timeline.querySelectorAll('[data-message-id]')];const visible=nodes.filter(n=>{const r=n.getBoundingClientRect();return r.bottom>rect.top&&r.top<rect.bottom;}).at(-1);const m=state.messages.find(x=>x.id===visible?.dataset.messageId);if(m)void store.markRead({conversationId:c.conversationId,cursor:{id:m.id,createdAt:m.createdAt},visible:true});});}
-  function renderState(next){const previous=state;state=next;const identityChanged=syncListIdentity();if(previous.conversationId!==state.conversationId||previous.joinedAt!==state.joinedAt&&previous.joinedAt!==null)closeDialog();renderHeader();const ready=state.status==='ready'&&Boolean(context());composer.hidden=!ready;body.disabled=!ready||sendPending;sendButton.disabled=!ready||sendPending;if(!context()&&(state.status==='locked'||state.status==='forbidden')){resolver.clear?.();closeDialog();dialogContent.replaceChildren();if(state.status==='locked'){conversations=[];listGeneration++;renderList();}shared.hidden=true;shell.dataset.shared='false';}
+  function renderState(next){const previous=state;state=next;if(previewUrl&&previous.messages!==next.messages)closeDialog();const identityChanged=syncListIdentity();if(previous.conversationId!==state.conversationId||previous.joinedAt!==state.joinedAt&&previous.joinedAt!==null)closeDialog();renderHeader();const ready=state.status==='ready'&&Boolean(context());composer.hidden=!ready||archivedGroup();body.disabled=!ready||sendPending;sendButton.disabled=!ready||sendPending;if(!context()&&(state.status==='locked'||state.status==='forbidden')){resolver.clear?.();closeDialog();dialogContent.replaceChildren();if(state.status==='locked'){conversations=[];listGeneration++;renderList();}shared.hidden=true;shell.dataset.shared='false';}
     if(state.conversationId!==lastId){body.value=state.draft||'';renderList();}else if(body.value!==state.draft)body.value=state.draft;
     if(ready)renderComposeContext();
     if(identityChanged&&listScope)void reloadList();
@@ -321,7 +399,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   }
   async function submit(retry=false){
     const c=context(),d=compose();
-    if(!c||!d||sendPending)return;
+    if(!c||!d||sendPending||archivedGroup())return;
     const editing=retry?null:d.editing,files=[...d.files];
     let input={body:body.value,replyTo:d.replyTo,refs:d.refs,confirmationRequested:d.confirmationRequested,attachmentIds:editing?[...d.attachmentIds]:[]};
     const fingerprint=JSON.stringify([input,d.fileVersion]);

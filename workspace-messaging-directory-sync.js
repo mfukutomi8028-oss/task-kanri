@@ -20,7 +20,11 @@ function memberRow(row,identity){
     if(value!==null&&(!record(value)||Object.keys(value).length!==4||preferenceKeys.some(key=>typeof value[key]!=='boolean')))throw new TypeError('Invalid directory preferences');
     clean.preferences=value===null?null:Object.freeze({...value});
   }
-  if(kind==='group'&&id.startsWith('group_')&&title(row.title))return Object.freeze({...clean,title:row.title});
+  if(kind==='group'&&id.startsWith('group_')&&title(row.title)){
+    const ids=row.participantIds;
+    if(ids!==undefined&&(!Array.isArray(ids)||ids.length!==memberCount||new Set(ids).size!==ids.length||!ids.includes(identity.personId)||ids.some(id=>!isPersonId(id))))throw new TypeError('Invalid group participants');
+    return Object.freeze({...clean,title:row.title,...(ids?{participantIds:Object.freeze([...ids])}:{})});
+  }
   if(status!=='active'||role!=='member')throw new TypeError('Invalid individual conversation');
   if(kind==='self'&&memberCount===1&&id===conversationIdFor({...identity,kind,personIds:[identity.personId]}))return Object.freeze(clean);
   if(kind==='direct'&&memberCount===2&&isPersonId(row.peerId)&&row.peerId!==identity.personId&&id===conversationIdFor({...identity,kind,personIds:[identity.personId,row.peerId]}))return Object.freeze({...clean,peerId:row.peerId});

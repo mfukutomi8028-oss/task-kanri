@@ -95,5 +95,14 @@ test('Origin creates a canonical task and shares its reference from the detail',
     const t=window.__businessTest.base.readSnapshot().tasks.find(t=>t.title==='Synthetic task from a message');
     return window.__businessTest.requests[0].input.refs[0].recordId===t.id;
   })).toBe(true);
+  await page.evaluate(()=>window.WorkBoardDisplayController.selectMode('journal'));
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','journal');
+  await expect(dialog).not.toHaveAttribute('open','');
+  await page.evaluate(()=>window.WorkBoardDisplayController.selectMode('classic'));
+  await expect(page.locator('html')).toHaveAttribute('data-wb-display','classic');
+  await page.evaluate(()=>window.WorkBoardDisplayController.selectMode('modern'));
+  await expect(trigger).toBeVisible();
+  await expect(dialog).not.toHaveAttribute('open','');
   expect(errors).toEqual([]);
+
 });

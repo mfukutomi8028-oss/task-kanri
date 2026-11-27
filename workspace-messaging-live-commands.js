@@ -87,6 +87,12 @@ export function createMessagingLiveCommands({session,directory,api,personal,acti
       try{groupAttempt??={key,id:conversationIdFor({...actor,kind:'group',personIds:[actor.personId,...command.invitees],groupId:makeGroupId()})};}catch(_){return fail('invalid');}
       const result=await execute(groupAttempt.id,command);if(current(token)&&['ok','invalid','forbidden','limit'].includes(result.status))groupAttempt=null;return result;
     },
+    manageGroup(conversationId,command){
+      if(!isConversationId(conversationId)||!conversationId.startsWith('group_')||activeConversation()!==conversationId
+        ||!['rename','invite','removeMember','transferOwner','leave','setArchived'].includes(command?.type)
+        ||!Number.isSafeInteger(command.expectedRevision)||command.expectedRevision<1)return Promise.resolve(fail('invalid'));
+      return execute(conversationId,command);
+    },
     respondInvite(conversationId,accept){if(!current(generation))return Promise.resolve(fail('locked'));const invite=invitations.get(conversationId);if(!isConversationId(conversationId)||!invite||typeof accept!=='boolean')return Promise.resolve(fail('invalid'));return execute(conversationId,{type:'respondInvite',accept,expectedRevision:invite.revision});},
     dispose(){if(disposed)return;disposed=true;generation++;stop();stopUnread?.();actor=null;projection=null;roster.clear();invitations.clear();groupAttempt=null;listeners.clear();}
   });

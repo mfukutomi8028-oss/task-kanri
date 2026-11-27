@@ -9,14 +9,18 @@ test('cloud composition clears the authorized directory on disconnect and dispos
     const {mountCloudOriginMessaging}=await import('/origin-messaging-live.js');
     const root=document.createElement('div');root.id='liveCloud';document.body.append(root);
     const roomId='live-room',personId='p_'+'1'.repeat(32),uid='synthetic-uid';
-    const peerId='p_'+'2'.repeat(32),selfId='self_'+personId,directId='dm_'+personId+'_'+peerId;
+    const peerId='p_'+'2'.repeat(32),selfId='self_'+personId,directId='dm_'+personId+'_'+peerId,groupId='group_g_'+'a'.repeat(32);
+    const imageId='00000000-0000-4000-8000-000000000001';
+    const imageBytes=Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a0foAAAAASUVORK5CYII='),c=>c.charCodeAt(0));
+    const group={id:groupId,roomId,status:'active',kind:'group',title:'Synthetic group',revision:1,members:{[personId]:{active:true,joinedAt:1000,role:'owner'},[peerId]:{active:true,joinedAt:1000,role:'member'}}};
     const binding={uid,roomId,personId,displayName:'Synthetic',approved:true,active:true};
     const boardSnapshot={roomId,currentUser:'Synthetic',connectionMode:'remote-online',tasks:[],schedules:[]};
     const subscriptions=new Set(),calls=[],summaries=[],notices=[],sentRequests=[],sentRecords=new Map();
     let online=true,serviceEnabled=true,seedHistory=false,unread=2,marker='00000000-0000-4000-8000-000000000001';const unreadCalls=[];
     const bindingKey='messagingAccessV1/'+roomId+'/'+uid;
-    const value=path=>path==='.info/connected'?online:path==='messagingControlV1/enabled'?serviceEnabled:path===bindingKey?binding:
-      [selfId,directId].some(id=>path==='messagingV1/'+roomId+'/control/'+id+'/members/'+personId)?{active:true,joinedAt:1000,role:'member'}:
+    let groupVisible=false;
+    const value=path=>path==='.info/connected'?online:path==='messagingControlV1/enabled'?serviceEnabled:path===bindingKey?binding:path==='messagingV1/'+roomId+'/control/'+groupId?group:
+      [selfId,directId,groupId].some(id=>path==='messagingV1/'+roomId+'/control/'+id+'/members/'+personId)?{active:true,joinedAt:1000,role:'member'}:
       path==='messagingV1/'+roomId+'/activity/'+directId?marker:null;
     const snapshot=path=>({val:()=>value(path)});
     const sdk={db:{},ref:(_,path)=>path,get:async path=>snapshot(path),
@@ -32,7 +36,16 @@ test('cloud composition clears the authorized directory on disconnect and dispos
       calls.push(action);
       const scope={status:'ok',roomId,personId};
       if(action==='people')return Response.json({...scope,people:[{personId,displayName:'Synthetic'},{personId:peerId,displayName:'Peer'}]});
-      if(action==='directory')return Response.json({...scope,conversations:[{id:selfId,kind:'self',status:'active',role:'member',memberCount:1,joinedAt:1000,revision:1,controlUpdatedAt:1000},{id:directId,kind:'direct',peerId,status:'active',role:'member',memberCount:2,joinedAt:1000,revision:1,controlUpdatedAt:1000}],invites:[],hasMore:false,nextCursor:null});
+      if(action==='directory')return Response.json({...scope,conversations:[{id:selfId,kind:'self',status:'active',role:'member',memberCount:1,joinedAt:1000,revision:1,controlUpdatedAt:1000},{id:directId,kind:'direct',peerId,status:'active',role:'member',memberCount:2,joinedAt:1000,revision:1,controlUpdatedAt:1000},...(groupVisible?[{id:groupId,kind:'group',status:group.status,role:'owner',memberCount:2,joinedAt:1000,revision:group.revision,controlUpdatedAt:1000,title:group.title,participantIds:[personId,peerId]}]:[])],invites:[],hasMore:false,nextCursor:null});
+      if(action==='conversation'){
+        const {command}=payload;
+        if(payload.conversationId!==groupId||command.expectedRevision!==group.revision)return Response.json({status:'conflict'},{status:409});
+        if(command.type==='rename')group.title=command.title;
+        else if(command.type==='setArchived')group.status=command.archived?'archived':'active';
+        else throw Error('Unexpected command');
+        group.revision++;
+        return Response.json({status:'ok',conversationId:groupId,revision:group.revision,indexPending:false});
+      }
       if(action==='message'){
         const {requestId,input}=payload.command;
         const id='msg_'+personId+'_'+requestId;
@@ -40,20 +53,26 @@ test('cloud composition clears the authorized directory on disconnect and dispos
         sentRecords.set(id,input);
         return sentRequests.length===1?Response.json({status:'unavailable'},{status:503}):Response.json({status:'sent',id});
       }
+      if(action==='attachmentMetadata'){
+        return Response.json({status:'ok',items:payload.items.filter(item=>item.attachmentId===imageId).map(item=>({...item,filename:'synthetic.png',mime:'image/png',bytes:imageBytes.length}))});
+      }
+      if(action==='attachmentDownload'&&payload.attachmentId===imageId){
+        return new Response(imageBytes,{headers:{'Content-Type':'application/octet-stream','Content-Length':String(imageBytes.length),'X-Workboard-Filename':'synthetic.png','X-Workboard-Mime':'image/png'}});
+      }
       if(action==='history'){
-        const make=(index,body)=>({id:'msg_'+personId+'_q_'+index.toString(16).padStart(32,'0'),senderId:personId,createdAt:2000+index,body,refs:[],replyTo:null,revision:1,attachmentIds:[],confirmationRequested:false});
+        const make=(index,body)=>({id:'msg_'+personId+'_q_'+index.toString(16).padStart(32,'0'),senderId:personId,createdAt:2000+index,body,refs:[],replyTo:null,revision:1,attachmentIds:index===0?[imageId]:[],confirmationRequested:false});
         const messages=!seedHistory?[]:payload.before?[make(0,'Older searchable text')]:Array.from({length:50},(_,index)=>make(index+1,'Recent note '+index));
         return Response.json({status:'ok',joinedAt:1000,messages,nextCursor:messages.length===50?{id:messages[0].id,createdAt:messages[0].createdAt}:null,hasMore:messages.length===50});
       }
       if(action==='unread'){
-        const conversationId=payload.conversationId;if(![selfId,directId].includes(conversationId))throw Error('Unexpected conversation');
+        const conversationId=payload.conversationId;if(![selfId,directId,groupId].includes(conversationId))throw Error('Unexpected conversation');
         unreadCalls.push(conversationId);
-        return Response.json({...scope,conversationId,joinedAt:1000,unread:conversationId===selfId?0:unread,complete:true,muted:false,latestIncoming:conversationId===selfId?null:{id:'msg_'+peerId+'_q_'+String(unread).padStart(32,'0'),createdAt:2000+unread}});
+        return Response.json({...scope,conversationId,joinedAt:1000,unread:conversationId!==directId?0:unread,complete:true,muted:false,latestIncoming:conversationId!==directId?null:{id:'msg_'+peerId+'_q_'+String(unread).padStart(32,'0'),createdAt:2000+unread}});
       }
       throw Error('Unexpected request '+action);
     };
-    const handle=mountCloudOriginMessaging({root,endpoint:'https://example.invalid/messaging',sdk,auth,board,fetchImpl,keepNotificationSession:true,onSummary:s=>summaries.push(s),onNotification:kind=>notices.push(kind)});
-    window.__liveCloudTest={handle,calls,sentRequests,sentRecords,seedHistory(){seedHistory=true;},setService(value){serviceEnabled=value;for(const row of [...subscriptions])if(row.path==='messagingControlV1/enabled')row.fn(snapshot(row.path));},unreadCalls,selfId,directId,summaries,notices,incoming(){unread++;marker='00000000-0000-4000-8000-'+String(unread).padStart(12,'0');for(const row of [...subscriptions])if(row.path==='messagingV1/'+roomId+'/activity/'+directId)row.fn(snapshot(row.path));},disconnect(){online=false;for(const row of [...subscriptions])if(row.path==='.info/connected')row.fn(snapshot(row.path));},subscriptionCount:()=>subscriptions.size};
+    const handle=mountCloudOriginMessaging({root,endpoint:'https://example.invalid/messaging',sdk,auth,board,fetchImpl,attachmentsEnabled:true,keepNotificationSession:true,onSummary:s=>summaries.push(s),onNotification:kind=>notices.push(kind)});
+    window.__liveCloudTest={handle,calls,sentRequests,sentRecords,showGroup(){groupVisible=true;},seedHistory(){seedHistory=true;},setService(value){serviceEnabled=value;for(const row of [...subscriptions])if(row.path==='messagingControlV1/enabled')row.fn(snapshot(row.path));},unreadCalls,selfId,directId,summaries,notices,incoming(){unread++;marker='00000000-0000-4000-8000-'+String(unread).padStart(12,'0');for(const row of [...subscriptions])if(row.path==='messagingV1/'+roomId+'/activity/'+directId)row.fn(snapshot(row.path));},disconnect(){online=false;for(const row of [...subscriptions])if(row.path==='.info/connected')row.fn(snapshot(row.path));},subscriptionCount:()=>subscriptions.size};
   });
   const root=page.locator('#liveCloud');
   await expect(root.getByText('自分宛てメッセージ',{exact:true})).toBeVisible();
@@ -108,12 +127,40 @@ test('cloud composition clears the authorized directory on disconnect and dispos
   await expect(root.locator('.om-timeline')).toContainText('Older searchable text');
   await expect(root.locator('#om-message-search')).toHaveValue('Older searchable');
   await expect(root.locator('.om-search-bar .om-coverage')).toContainText('取得済み 51件');
+  await root.getByRole('button',{name:'共有データ',exact:true}).click();
+  await root.locator('#om-shared-filter').selectOption('image');
+  const showImage=root.getByRole('button',{name:'synthetic.png を表示'});
+  await expect(showImage).toBeVisible();
+  expect(await page.evaluate(()=>window.__liveCloudTest.calls.includes('attachmentDownload'))).toBe(false);
+  await showImage.click();
+  const image=root.getByRole('img',{name:'synthetic.png'});
+  await expect(image).toBeVisible();
+  await expect.poll(()=>image.evaluate(el=>el.naturalWidth)).toBe(1);
+  await root.getByRole('dialog',{name:'画像プレビュー'}).getByRole('button',{name:'閉じる'}).click();
+  await expect(image).toHaveCount(0);
   await page.evaluate(()=>window.__liveCloudTest.setService(false));
   await expect.poll(()=>page.evaluate(()=>window.__liveCloudTest.handle.getSnapshot().status)).toBe('locked');
   await expect(root.locator('.om-message')).toHaveCount(0);
   await expect(root.locator('#om-body')).toBeHidden();
   await page.evaluate(()=>window.__liveCloudTest.setService(true));
   await expect.poll(()=>page.evaluate(()=>window.__liveCloudTest.handle.getSnapshot().status)).toBe('bound');
+  await page.evaluate(()=>window.__liveCloudTest.showGroup());
+  await root.getByRole('button',{name:'更新',exact:true}).click();
+  await root.getByRole('button',{name:'Synthetic group',exact:true}).click();
+  await root.getByRole('button',{name:'会話設定',exact:true}).click();
+  await root.getByRole('button',{name:'グループ管理',exact:true}).click();
+  const groupDialog=root.getByRole('dialog',{name:'グループ管理'});
+  await expect(groupDialog.getByText('Peer（参加者）')).toBeVisible();
+  await groupDialog.getByRole('textbox',{name:'グループ名'}).fill('Renamed synthetic group');
+  await groupDialog.getByRole('button',{name:'名前を変更'}).click();
+  await expect(groupDialog.getByRole('textbox',{name:'グループ名'})).toHaveValue('Renamed synthetic group');
+  await groupDialog.getByRole('button',{name:'グループをアーカイブ'}).click();
+  await expect(groupDialog.getByRole('button',{name:'会話を再開'})).toBeVisible();
+  await expect(root.locator('.om-composer')).toBeHidden();
+  await groupDialog.getByRole('button',{name:'会話を再開'}).click();
+  await expect(groupDialog.getByRole('button',{name:'グループをアーカイブ'})).toBeVisible();
+  await groupDialog.getByRole('button',{name:'閉じる',exact:true}).click();
+  await expect(root.locator('.om-composer')).toBeVisible();
   expect(await page.evaluate(()=>window.__liveCloudTest.handle.hideWorkspace())).toBe(true);
   await page.evaluate(()=>window.__liveCloudTest.disconnect());
   await expect.poll(()=>page.evaluate(()=>window.__liveCloudTest.handle.getSnapshot().status)).toBe('locked');

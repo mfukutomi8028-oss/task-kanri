@@ -51,3 +51,8 @@
 .om-date-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .om-date-fields label{display:grid;gap:3px;min-width:0;font-size:12px}
 .om-date-fields input{inline-size:100%;min-inline-size:0}
+
+.om-group-operation{display:flex;gap:8px;flex-wrap:wrap}
+.om-group-operation input,.om-group-operation select{flex:1;min-inline-size:0}
+
+.om-image-preview{display:block;max-inline-size:100%;max-block-size:min(55vh,360px);margin:auto;object-fit:contain}

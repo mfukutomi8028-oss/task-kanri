@@ -1,10 +1,10 @@
+import {readApprovedMessagingActor} from './messaging-authorization.mjs';
 // Trusted attachment link and download boundary. An attachment claim is not a
 // grant to download: the live canonical message must contain the same ID.
 import {createHash} from 'node:crypto';
 import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId,messageIdFor} from '../workspace-messaging-core.js';
 const fail=status=>({status});
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);
-const uidKey=v=>typeof v==='string'&&v.length>0&&v.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
 const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(v);
 const ids=v=>Array.isArray(v)&&v.length>=1&&v.length<=5&&Array.from(v).every(uuid)&&new Set(v).size===v.length;
 const requestFields=new Set(['token','roomId','conversationId','expectedPersonId','messageId','attachmentId']);
@@ -18,13 +18,12 @@ const sameActor=(a,b)=>a!==null&&b!==null&&a.uid===b.uid&&a.personId===b.personI
 export function createMessagingAttachmentAccessService({verifyToken,readBinding,readControl,readMessage,readLedger,reserveDownload,readObject,claimBatch}={}){
   if([verifyToken,readBinding,readControl,readMessage,readLedger,reserveDownload,readObject,claimBatch].some(fn=>typeof fn!=='function'))throw new TypeError('Trusted attachment access adapters required');
   async function authorize({token,roomId,conversationId,expectedPersonId}){
-    let identity;try{identity=await verifyToken(token);}catch(_){return null;}
-    const uid=identity?.uid;if(!uidKey(uid))return null;
-    const binding=await readBinding({roomId,uid});
-    if(!record(binding)||binding.uid!==uid||binding.roomId!==roomId||binding.approved!==true||binding.active!==true||!isPersonId(binding.personId)||binding.personId!==expectedPersonId)return null;
-    const control=await readControl({roomId,conversationId}),member=control?.members?.[binding.personId];
+    const actor=await readApprovedMessagingActor({token,roomId,verifyToken,readBinding});
+    if(!actor||actor.personId!==expectedPersonId)return null;
+    const {uid,personId}=actor;
+    const control=await readControl({roomId,conversationId}),member=control?.members?.[personId];
     if(control?.id!==conversationId||control.roomId!==roomId||!['active','archived'].includes(control.status)||member?.active!==true||!isMessagingTimestamp(member.joinedAt))return null;
-    return {uid,personId:binding.personId,joinedAt:member.joinedAt};
+    return {uid,personId,joinedAt:member.joinedAt};
   }
   async function verifiedReference({roomId,conversationId,messageId,attachmentId},actor){
     const message=await readMessage({roomId,conversationId,messageId});
