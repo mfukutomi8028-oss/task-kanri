@@ -20,6 +20,14 @@ function isFullInfrastructure(file) {
     || /^(test-harness\/(run-protocol|static-server|run-firebase-browser|run-firebase-grep-audits-v480|run-firebase-audit-suites-v479)\.mjs)$/.test(file);
 }
 
+// Paths that can change messaging behavior or its Edge/Rules release surface.
+export function isMessagingPath(file) {
+  return isFullInfrastructure(file) || file === 'app.js' || file === 'config.js'
+    || /^(origin-messaging|workspace-messaging|origin-modern-v372)/.test(file)
+    || /^security\//.test(file) || /^firebase\.messaging/.test(file)
+    || /^tests\/origin-messaging-/.test(file) || /^test-harness\/(edge-|messaging-)/.test(file);
+}
+
 export function classifyPaths(changedFiles, eventName = 'pull_request') {
   if (!Array.isArray(changedFiles)) throw new TypeError('changedFiles must be an array');
   const files = [...new Set(changedFiles.map(p => String(p).trim()).filter(Boolean))];
@@ -28,8 +36,12 @@ export function classifyPaths(changedFiles, eventName = 'pull_request') {
   let fullBrowser = forceFull;
   let firebase = forceFull;
   let authorization = forceFull;
+  // Messaging release gate (Edge type check, boot smoke, retries-0 messaging
+  // browser specs on Chromium and WebKit): only for messaging-related changes.
+  let messaging = forceFull;
   const add = (...items) => items.forEach(item => targets.add(item));
   for (const file of files) {
+    if (isMessagingPath(file)) messaging = true;
     if (isFullInfrastructure(file) || file === 'app.js' || file === 'config.js') {
       fullBrowser = true; firebase = true; authorization = true;
       continue;
@@ -126,6 +138,7 @@ export function classifyPaths(changedFiles, eventName = 'pull_request') {
     browser: runBrowser,
     firebase,
     authorization,
+    messaging,
     fullBrowser,
     journalParallel,
     shardCount: shards.length,
@@ -144,6 +157,7 @@ function main() {
     browser: String(result.browser),
     firebase: String(result.firebase),
     authorization: String(result.authorization),
+    messaging: String(result.messaging),
     full_browser: String(result.fullBrowser),
     journal_parallel: String(result.journalParallel),
     shard_count: String(result.shardCount),

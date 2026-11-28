@@ -28,6 +28,7 @@ jobs:
       browser: ${{ steps.select.outputs.browser }}
       firebase: ${{ steps.select.outputs.firebase }}
       authorization: ${{ steps.select.outputs.authorization }}
+      messaging: ${{ steps.select.outputs.messaging }}
       full_browser: ${{ steps.select.outputs.full_browser }}
       journal_parallel: ${{ steps.select.outputs.journal_parallel }}
       shard_count: ${{ steps.select.outputs.shard_count }}
@@ -189,6 +190,17 @@ jobs:
     if: ${{ needs.scope.outputs.authorization == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      workboard-postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: workboard_messaging_test
+          POSTGRES_PASSWORD: workboard-local-ci
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d workboard_messaging_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -210,6 +222,13 @@ jobs:
           key: npm-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
       - name: Install test dependencies
         run: npm ci --no-audit --no-fund
+      - name: Messaging PostgreSQL concurrent budget and attachment fence
+        run: bash test-harness/messaging-postgres-regression.sh
+        env:
+          WORKBOARD_PG_TEST: '1'
+          PGPASSWORD: workboard-local-ci
+      - name: Messaging isolated access-boundary rules
+        run: npm run test:messaging:rules
       - name: Isolated Ver.568 candidate authorization rules
         run: npm run test:rules:v568
       - name: Ver.577 isolated lossless-schema read-only Rules
@@ -271,8 +290,63 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Messaging release gate added after review 4: the Edge entry must type-check
+  # with the pinned Deno and boot fail-closed, and the messaging screen specs
+  # must pass on Chromium and WebKit without retries.
+  messaging:
+    needs: scope
+    if: ${{ needs.scope.outputs.messaging == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Restore npm package cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
+      - name: Install test dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Setup Deno (pinned)
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - name: Restore Deno module cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: deno-${{ runner.os }}-2.9.6-${{ hashFiles('security/supabase/workboard-messaging/index.ts') }}
+      - name: Type-check the Edge entry
+        run: deno check --no-lock --node-modules-dir=none security/supabase/workboard-messaging/index.ts
+      - name: Boot the Edge entry and confirm it fails closed
+        run: node test-harness/edge-boot-smoke.mjs deno
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
+      - name: Messaging screen specs (Chromium and WebKit, no retries)
+        shell: bash
+        run: npx playwright test -c playwright.messaging.config.mjs 2>&1 | tee messaging-results.log
+      - name: Summarize messaging failures
+        if: failure()
+        run: node test-harness/ci-failure-digest.mjs messaging-results.log "Messaging release gate"
+      - name: Upload messaging report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: messaging-report-${{ github.run_id }}
+          path: |
+            playwright-report/
+            messaging-results.log
+            test-results/**/error-context.md
+          if-no-files-found: ignore
+          retention-days: 7
+
   regression:
-    needs: [scope, protocol, browser, authorization, firebase]
+    needs: [scope, protocol, browser, authorization, firebase, messaging]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -284,10 +358,12 @@ jobs:
           NEED_BROWSER: ${{ needs.scope.outputs.browser }}
           NEED_AUTHORIZATION: ${{ needs.scope.outputs.authorization }}
           NEED_FIREBASE: ${{ needs.scope.outputs.firebase }}
+          NEED_MESSAGING: ${{ needs.scope.outputs.messaging }}
           PROTOCOL_RESULT: ${{ needs.protocol.result }}
           BROWSER_RESULT: ${{ needs.browser.result }}
           AUTHORIZATION_RESULT: ${{ needs.authorization.result }}
           FIREBASE_RESULT: ${{ needs.firebase.result }}
+          MESSAGING_RESULT: ${{ needs.messaging.result }}
         shell: bash
         run: |
           set -euo pipefail
@@ -302,6 +378,7 @@ jobs:
             printf '| Browser | %s | %s |\n' "$NEED_BROWSER" "$BROWSER_RESULT"
             printf '| 認証・権限 | %s | %s |\n' "$NEED_AUTHORIZATION" "$AUTHORIZATION_RESULT"
             printf '| Firebase Emulator | %s | %s |\n' "$NEED_FIREBASE" "$FIREBASE_RESULT"
+            printf '| メッセージ公開ゲート | %s | %s |\n' "$NEED_MESSAGING" "$MESSAGING_RESULT"
             echo ''
             echo 'skipped は不要な検査として意図的に省略した場合のみ正常です。'
             echo '全項目の実検証は毎日03:00 JSTまたは手動実行で行います。'
@@ -310,7 +387,7 @@ jobs:
           if [[ "$SCOPE_RESULT" != success || "$PROTOCOL_RESULT" != success ]]; then
             echo 'Required scope or Protocol checks failed' >&2; exit 1
           fi
-          for entry in "browser:$NEED_BROWSER:$BROWSER_RESULT" "authorization:$NEED_AUTHORIZATION:$AUTHORIZATION_RESULT" "firebase:$NEED_FIREBASE:$FIREBASE_RESULT"; do
+          for entry in "browser:$NEED_BROWSER:$BROWSER_RESULT" "authorization:$NEED_AUTHORIZATION:$AUTHORIZATION_RESULT" "firebase:$NEED_FIREBASE:$FIREBASE_RESULT" "messaging:$NEED_MESSAGING:$MESSAGING_RESULT"; do
             IFS=: read -r label required actual <<< "$entry"
             if [[ "$required" == true && "$actual" != success ]]; then
               echo "::error title=Regression $label::$label required but ended in $actual"; exit 1

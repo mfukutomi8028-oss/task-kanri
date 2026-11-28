@@ -1,0 +1,344 @@
+// Theme-neutral client state. The transport must enforce authorization and
+// atomic persistence on the server. A bound UI session is not authorization.
+import {isPersonId,isMessagingRoomId,compareCursor,advanceReadCursor,messageIdFor,isConversationId,isMessageId,isMessagingTimestamp,validateRoomMessageInput,projectMessagingMessage} from './workspace-messaging-core.js';
+
+const PAGE_SIZE=50;
+// At most three pages are kept, so re-verifying the shown rows is always bounded.
+const SHOWN_MAX=150;
+const sameIdentity=(a,b)=>a?.roomId===b?.roomId&&a?.personId===b?.personId;
+const result=status=>({status});
+const emptyMessages=Object.freeze([]);
+const cursorOf=item=>({createdAt:item.createdAt,id:item.id});
+const sameCursor=(a,b)=>a!=null&&b!=null&&a.createdAt===b.createdAt&&a.id===b.id;
+const validMemberCursor=(value,joinedAt)=>isMessageId(value?.id)&&isMessagingTimestamp(value.createdAt)&&value.createdAt>joinedAt;
+const preferenceKeys=['favorite','muted','archived','pinned'];
+function decodePersonalState(value,joinedAt){
+  if(value?.status!=='ok'||!value.preferences||Object.keys(value.preferences).length!==preferenceKeys.length||preferenceKeys.some(key=>typeof value.preferences[key]!=='boolean')||value.cursor!==null&&!validMemberCursor(value.cursor,joinedAt))throw new TypeError('Invalid personal state');
+  return {preferences:Object.fromEntries(preferenceKeys.map(key=>[key,value.preferences[key]])),cursor:value.cursor===null?null:cursorOf(value.cursor)};
+}
+const immutable=value=>{
+  if(value!==null&&typeof value==='object'&&!Object.isFrozen(value)){
+    Object.values(value).forEach(immutable);Object.freeze(value);
+  }return value;
+};
+const safeMessage=(raw,roomId,joinedAt)=>immutable(projectMessagingMessage(raw,{roomId,joinedAt}));
+// Pages are 'page' (latest/older), 'around' (a window centred on a target) or
+// 'after' (newer messages following a window). Every kind is at most one page.
+function decodePage(page,roomId,{before=null,around=null,after=null,from=null}={}){
+  const windowed=around!==null,following=after!==null||from!==null;
+  if(!page||page.status!=='ok'||!isMessagingTimestamp(page.joinedAt)||!Array.isArray(page.messages)||page.messages.length>PAGE_SIZE
+      ||(windowed?page.messages.length<1||typeof page.hasMore!=='boolean'||typeof page.hasNewer!=='boolean'||!page.messages.some(m=>m?.id===around)
+        :following?typeof page.hasNewer!=='boolean'||page.hasNewer&&!page.messages.length
+        :page.hasMore!==(page.messages.length===PAGE_SIZE)))throw new TypeError('Invalid history page');
+  const messages=page.messages.map(item=>safeMessage(item,roomId,page.joinedAt));
+  for(let i=0;i<messages.length;i++){
+    if(i&&compareCursor(messages[i-1],messages[i])>=0||before&&compareCursor(messages[i],before)>=0||after&&compareCursor(messages[i],after)<=0||from&&compareCursor(messages[i],from)<0)throw new TypeError('Invalid history ordering');
+  }
+  if(new Set(messages.map(m=>m.id)).size!==messages.length)throw new TypeError('Duplicate history');
+  const newerCursor=(windowed||following)&&page.hasNewer?cursorOf(messages.at(-1)):null;
+  if((windowed||following)&&(newerCursor?!sameCursor(newerCursor,page.newerCursor):page.newerCursor!==null))throw new TypeError('Invalid history cursor');
+  if(following)return {joinedAt:page.joinedAt,messages,hasNewer:page.hasNewer,newerCursor};
+  const nextCursor=page.hasMore?cursorOf(messages[0]):null;
+  if(nextCursor?!sameCursor(nextCursor,page.nextCursor):page.nextCursor!==null)throw new TypeError('Invalid history cursor');
+  return {joinedAt:page.joinedAt,messages,hasMore:page.hasMore,nextCursor,hasNewer:windowed?page.hasNewer:false,newerCursor};
+}
+function mergeMessages(current,incoming){
+  const map=new Map(current.map(m=>[m.id,m]));
+  for(const item of incoming){
+    const old=map.get(item.id);
+    if(old&&(old.createdAt!==item.createdAt||old.senderId!==item.senderId))throw new TypeError('Immutable message identity changed');
+    if(!old||item.revision>=old.revision)map.set(item.id,item);
+  }
+  return [...map.values()].sort(compareCursor);
+}
+
+// Browser-memory only. The owner can survive a hidden view without retaining history.
+export function createMessagingDraftOwner(){
+  let scope=null;
+  const rows=new Map();
+  const occupied=({body,composer:c})=>Boolean(body||c&&(c.replyTo||c.refs.length||c.editing||c.files.length||c.confirmationRequested||c.attempt?.payload));
+  const clear=()=>{scope=null;rows.clear();};
+  return Object.freeze({
+    bind(uid,actor){
+      const next=JSON.stringify([uid,actor.roomId,actor.personId]);
+      if(scope!==next){rows.clear();scope=next;}
+    },
+    clear,
+    hasDrafts:()=>[...rows.values()].some(occupied),
+    forget(id){rows.delete(id);},
+    row(id,epoch,create=false){
+      if(scope===null)return null;
+      const entry=rows.get(id);
+      if(entry?.epoch===epoch)return entry;
+      if(entry)rows.delete(id);
+      if(!create)return null;
+      if(rows.size>=50){
+        for(const [key,value] of rows){
+          if(!occupied(value)){rows.delete(key);break;}
+        }
+      }
+      if(rows.size>=50)return null;
+      const row={epoch,body:'',version:0,composer:null};
+      rows.set(id,row);
+      return row;
+    },
+    canRetainFiles(current,files){
+      let bytes=files.reduce((sum,item)=>sum+item.file.size,0);
+      for(const row of rows.values())if(row.composer&&row.composer!==current){
+        for(const item of row.composer.files)bytes+=item.file.size;
+      }
+      return bytes<=25_000_000;
+    }
+  });
+}
+
+export function createMessagingStore({session,transport,draftOwner=null,getUid=()=>null}={}){
+  if(typeof session?.subscribe!=='function'||['readHistory','observeActivity','send','edit','remove','markRead'].some(k=>typeof transport?.[k]!=='function'))throw new TypeError('Messaging transport and session required');
+  const subscribers=new Set(),drafts=draftOwner??createMessagingDraftOwner(),cursors=new Map(),memberships=new Map(),pendingSends=new Map();
+  let identity=null,disposed=false,generation=0,stopActivity=null,stopSession=null,pageRequest=null,refreshQueued=false,rangeGeneration=0,verifying=false,verifyAgain=false,latestFirst=null;
+  let state=immutable({status:'locked',conversationId:null,messages:emptyMessages,joinedAt:null,hasMore:false,nextCursor:null,hasNewer:false,newerCursor:null,draft:'',readCursor:null,preferences:null,historyReset:false,busy:false,error:null});
+  const current=()=>state.conversationId&&identity?{roomId:identity.roomId,conversationId:state.conversationId}:null;
+  const stillCurrent=token=>!disposed&&generation===token;
+  const stillMember=(token,joinedAt)=>stillCurrent(token)&&state.joinedAt===joinedAt;
+  const safeCall=fn=>{try{fn?.();}catch(_){/* Cleanup cannot prevent locking. */}};
+  function publish(patch){
+    state=immutable({...state,...patch});const next=state;
+    for(const fn of [...subscribers]){if(state!==next)break;if(subscribers.has(fn))safeCall(()=>fn(next));}
+  }
+  function detach(){
+    generation++;rangeGeneration++;const stop=stopActivity;stopActivity=null;pageRequest=null;refreshQueued=false;verifyAgain=false;latestFirst=null;safeCall(stop);
+  }
+  function reset(status,conversationId=null){
+    publish({status,conversationId,messages:emptyMessages,joinedAt:null,hasMore:false,nextCursor:null,hasNewer:false,newerCursor:null,
+      draft:'',readCursor:null,preferences:null,
+      historyReset:false,busy:false,error:null});
+  }
+  function lockConversation(){
+    const id=state.conversationId;detach();if(id){cursors.delete(id);memberships.delete(id);}reset('forbidden');
+  }
+  function onIdentity(next){
+    if(disposed)return;
+    const bound=next?.status==='bound'&&isMessagingRoomId(next.roomId)&&isPersonId(next.personId)?{roomId:next.roomId,personId:next.personId}:null;
+    if(bound&&identity&&sameIdentity(identity,bound))return;
+    detach();identity=bound;if(bound)drafts.bind(getUid(),bound);else if(!draftOwner)drafts.clear();cursors.clear();memberships.clear();pendingSends.clear();reset(bound?'idle':'locked');
+  }
+  // kind 'around' replaces the loaded history with one window centred on a known
+  // target (however old), leaving an explicit unloaded gap to the latest page
+  // (hasNewer). kind 'newer' fills that gap one page at a time. At most
+  // SHOWN_MAX rows are kept: adding pages trims the far end and moves its
+  // cursor, so the shown range is always re-verifiable with a few reads.
+  function requestPage(kind,around=null){
+    const target=current();if(!target||disposed)return Promise.resolve(result('locked'));
+    if(kind==='around'&&(!isMessageId(around)||state.status!=='ready'))return Promise.resolve(result('invalid'));
+    if(kind==='around'&&state.messages.some(m=>m.id===around))return Promise.resolve(result('ok'));
+    if(kind==='older'&&!state.hasMore||kind==='newer'&&!state.hasNewer)return Promise.resolve(result('ignored'));
+    if(pageRequest)return pageRequest.kind===kind&&kind!=='around'?pageRequest.promise:Promise.resolve(result('busy'));
+    const before=kind==='older'?state.nextCursor:null,after=kind==='newer'?state.newerCursor:null,token=generation;
+    const ticket={kind,promise:null};pageRequest=ticket;
+    ticket.promise=Promise.resolve().then(async()=>{
+      if(!stillCurrent(token))return result('locked');
+      publish({busy:true,error:null,status:state.joinedAt===null?'loading':state.status});
+      if(!stillCurrent(token))return result('locked');
+      try{
+        const windowed=kind==='around';
+        const raw=await transport.readHistory(windowed?{...target,around}:kind==='newer'?{...target,after,limit:PAGE_SIZE}:{...target,before,limit:PAGE_SIZE});
+        if(!stillCurrent(token))return result('locked');
+        if(raw?.status==='forbidden'||raw?.status==='locked'){lockConversation();return result('forbidden');}
+        if(windowed&&raw?.status==='missing'){publish({busy:false});return result('missing');}
+        const page=decodePage(raw,target.roomId,{before,around:windowed?around:null,after});
+        const previousBoundary=memberships.get(target.conversationId);
+        const changedBoundary=previousBoundary!==undefined&&previousBoundary!==page.joinedAt;
+        memberships.set(target.conversationId,page.joinedAt);
+        if(changedBoundary){
+          drafts.forget(target.conversationId);cursors.delete(target.conversationId);rangeGeneration++;
+          // Purge the prior membership before any asynchronous personal-state read.
+          publish({status:'loading',messages:emptyMessages,joinedAt:page.joinedAt,hasMore:false,nextCursor:null,hasNewer:false,newerCursor:null,draft:'',readCursor:null,preferences:null,historyReset:true});
+          if(!stillCurrent(token))return result('locked');
+          // Only a latest page can establish a new membership's history.
+          if(kind!=='latest'){refreshQueued=true;return result(kind==='around'?'unavailable':'ok');}
+        }
+        let preferences=state.preferences;
+        // Only the active conversation needs its two small personal-state reads.
+        // Older history pages never trigger another personal-state download.
+        if(kind==='latest'&&typeof transport.readPersonalState==='function'){
+          const remote=await transport.readPersonalState({...target,personId:identity.personId,joinedAt:page.joinedAt});
+          if(!stillCurrent(token))return result('locked');
+          if(remote?.status==='forbidden'||remote?.status==='locked'){lockConversation();return result('forbidden');}
+          const personal=decodePersonalState(remote,page.joinedAt);preferences=personal.preferences;
+          if(personal.cursor!==null)cursors.set(target.conversationId,advanceReadCursor(cursors.get(target.conversationId)??null,personal.cursor));
+        }
+        rangeGeneration++;
+        if(kind==='newer'){
+          // Reaching the latest page closes the gap; the next activity merges live state.
+          let messages=mergeMessages(state.messages,page.messages),hasMore=state.hasMore,nextCursor=state.nextCursor;
+          if(messages.length>SHOWN_MAX){messages=messages.slice(-SHOWN_MAX);hasMore=true;nextCursor=cursorOf(messages[0]);}
+          publish({status:'ready',messages,hasMore,nextCursor,hasNewer:page.hasNewer,newerCursor:page.newerCursor,busy:false,error:null});
+          if(!page.hasNewer)refreshQueued=true;
+          return result('ok');
+        }
+        const existingIds=new Set(state.messages.map(m=>m.id));
+        const overlap=page.messages.some(m=>existingIds.has(m.id));
+        const replace=changedBoundary||state.joinedAt===null||kind==='around'||kind==='latest'&&!overlap;
+        const historyReset=changedBoundary||kind==='latest'&&state.messages.length>0&&!overlap;
+        let messages=replace?page.messages:mergeMessages(state.messages,page.messages);
+        const usePageCursor=replace||kind==='older';
+        let hasMore=usePageCursor?page.hasMore:state.hasMore,nextCursor=usePageCursor?page.nextCursor:state.nextCursor;
+        let hasNewer=kind==='around'?page.hasNewer:kind==='latest'?false:state.hasNewer,newerCursor=kind==='around'?page.newerCursor:kind==='latest'?null:state.newerCursor;
+        if(messages.length>SHOWN_MAX){
+          // An older page trims the newest rows (leaving a gap to the latest);
+          // a live latest page trims the oldest rows.
+          if(kind==='older'){messages=messages.slice(0,SHOWN_MAX);hasNewer=true;newerCursor=cursorOf(messages.at(-1));}
+          else{messages=messages.slice(-SHOWN_MAX);hasMore=true;nextCursor=cursorOf(messages[0]);}
+        }
+        if(kind==='latest')latestFirst=page.messages.length?cursorOf(page.messages[0]):null;
+        publish({status:'ready',messages,joinedAt:page.joinedAt,historyReset:state.historyReset||historyReset,hasMore,nextCursor,hasNewer,newerCursor,
+          draft:drafts.row(target.conversationId,page.joinedAt)?.body??'',readCursor:cursors.get(target.conversationId)??null,preferences,busy:false,error:null});
+        return result('ok');
+      }catch(_){
+        if(!stillCurrent(token))return result('locked');
+        publish({status:state.status==='loading'||state.joinedAt===null?'unavailable':state.status,error:'unavailable',busy:false});return result('unavailable');
+      }
+    }).finally(()=>{
+      if(pageRequest===ticket){pageRequest=null;if(stillCurrent(token)){if(state.busy)publish({busy:false});if(refreshQueued){refreshQueued=false;void refreshShown();}}}
+    });
+    return ticket.promise;
+  }
+  // Live activity re-verifies the rows on screen, with no anchor: one pass at a
+  // time; activity during a pass asks for exactly one more pass afterwards.
+  // A user action that changes the shown range wins: the pass stops and is
+  // simply run again later. A failed read stops the pass without retrying.
+  function onActivity(token){if(stillCurrent(token))void refreshShown();}
+  async function refreshShown(){
+    if(verifying){verifyAgain=true;return;}
+    verifying=true;
+    try{do{verifyAgain=false;await verifyShown();}while(verifyAgain&&!disposed);}
+    finally{verifying=false;}
+  }
+  async function verifyShown(){
+    const target=current();if(!target||disposed||state.status!=='ready')return;
+    const token=generation;
+    if(!state.hasNewer){
+      // Normal view: the latest page brings new rows and re-verifies the newest
+      // ones; older shown rows are then re-read backwards from it.
+      const latest=await requestPage('latest');
+      if(latest.status==='busy'){refreshQueued=true;return;}
+      if(latest.status!=='ok'||!stillCurrent(token)||state.hasNewer||!latestFirst)return;
+    }
+    const range=rangeGeneration,joinedAt=state.joinedAt,rows=state.messages;
+    const requests=state.hasNewer
+      // A gap is shown: re-read the whole shown range from fixed starting rows.
+      ?[0,PAGE_SIZE,2*PAGE_SIZE].filter(i=>i<rows.length).map(i=>({from:cursorOf(rows[i]),limit:PAGE_SIZE}))
+      // No gap: only rows older than the latest page still need a read.
+      :rows.some(m=>compareCursor(m,latestFirst)<0)?[{before:latestFirst,limit:PAGE_SIZE}]:[];
+    for(let i=0;i<requests.length;i++){
+      const query=requests[i];
+      if(!stillCurrent(token)||rangeGeneration!==range){verifyAgain=true;return;}
+      let raw;try{raw=await transport.readHistory({...target,...query});}catch(_){return;}
+      if(!stillCurrent(token))return;
+      if(rangeGeneration!==range){verifyAgain=true;return;}
+      if(raw?.status==='forbidden'||raw?.status==='locked'){lockConversation();return;}
+      // A cursor before a new join time: let the latest page apply the new membership once.
+      if(raw?.status==='missing'){void requestPage('latest');return;}
+      let page;try{page=decodePage(raw,target.roomId,query);}catch(_){return;}
+      if(page.joinedAt!==joinedAt){void requestPage('latest');return;}
+      // Merge only rows still shown now; trimmed rows never come back this way.
+      const shown=new Set(state.messages.map(m=>m.id));
+      publish({messages:mergeMessages(state.messages,page.messages.filter(m=>shown.has(m.id)))});
+      // Walk further back only while older shown rows remain unread.
+      if(query.before&&page.hasMore&&state.messages.some(m=>compareCursor(m,page.nextCursor)<0)&&requests.length<3)requests.push({before:page.nextCursor,limit:PAGE_SIZE});
+    }
+  }
+  function setActiveConversation(id){
+    if(disposed||!identity)return Promise.resolve(result('locked'));
+    if(id===null){detach();reset('idle');return Promise.resolve(result('ok'));}
+    if(!isConversationId(id))return Promise.resolve(result('invalid'));
+    if(state.conversationId===id)return requestPage('latest');
+    detach();const token=generation;reset('loading',id);
+    if(!stillCurrent(token))return Promise.resolve(result('locked'));
+    try{
+      const stop=transport.observeActivity(current(),()=>onActivity(token),()=>{if(stillCurrent(token))lockConversation();});
+      if(typeof stop!=='function')throw new TypeError('Missing activity disposer');
+      if(!stillCurrent(token)){safeCall(stop);return Promise.resolve(result('forbidden'));}stopActivity=stop;
+    }catch(_){if(stillCurrent(token))lockConversation();return Promise.resolve(result('unavailable'));}
+    return requestPage('latest');
+  }
+  function setDraft(body){
+    if(disposed||!current()||state.status!=='ready'||typeof body!=='string'||body.length>6000)return false;
+    const row=drafts.row(state.conversationId,state.joinedAt,true);
+    if(!row)return false;
+    row.body=body;row.version++;publish({draft:body});return true;
+  }
+  function send({conversationId,requestId,input,preserveDraft=false}={}){
+    const target=current();if(!target||disposed)return Promise.resolve(result('locked'));
+    if(conversationId!==target.conversationId||state.status!=='ready')return Promise.resolve(result('invalid'));
+    let normalized,expectedId;try{normalized=validateRoomMessageInput(input,target.roomId);expectedId=messageIdFor(identity.personId,requestId);}catch(_){return Promise.resolve(result('invalid'));}
+    const token=generation,joinedAt=state.joinedAt,bodyKey=JSON.stringify(normalized),key=conversationId+'/'+requestId;
+    const prior=pendingSends.get(key);if(prior)return prior.bodyKey===bodyKey?prior.promise:Promise.resolve(result('conflict'));
+    const draft=drafts.row(conversationId,joinedAt),version=draft?.version,entry={bodyKey,promise:null};pendingSends.set(key,entry);
+    entry.promise=(async()=>{
+      try{
+        const response=await transport.send({...target,requestId,input:normalized});
+        if(!stillMember(token,joinedAt))return result('locked');
+        if(response?.status==='locked'||response?.status==='forbidden'){lockConversation();return result('locked');}
+        if(response?.status==='sent'&&response.id===expectedId){
+          if(!preserveDraft&&draft&&draft.version===version&&draft===drafts.row(conversationId,joinedAt)&&draft.body===normalized.body){
+            draft.body='';draft.version++;publish({draft:''});
+          }
+          onActivity(token);return {status:'sent',id:response.id};
+        }
+        if(response?.status==='limit')return {status:'limit',retryAfter:response.retryAfter};
+        return result(['conflict','invalid'].includes(response?.status)?response.status:'failed');
+      }catch(_){return result(stillMember(token,joinedAt)?'failed':'locked');}
+      finally{if(pendingSends.get(key)===entry)pendingSends.delete(key);}
+    })();return entry.promise;
+  }
+  async function mutate(kind,{conversationId,messageId,expectedRevision,input}={}){
+    const target=current();if(!target||disposed)return result('locked');
+    if(conversationId!==target.conversationId||state.status!=='ready'||!isMessageId(messageId))return result('invalid');
+    const old=state.messages.find(m=>m.id===messageId);
+    if(!old||old.senderId!==identity.personId||old.deletedAt!=null)return result('forbidden');
+    if(old.revision!==expectedRevision)return result('conflict');
+    const token=generation,joinedAt=state.joinedAt,request={...target,messageId,expectedRevision};
+    if(kind==='edit')try{request.input=validateRoomMessageInput(input,target.roomId);}catch(_){return result('invalid');}
+    try{
+      const response=await transport[kind](request);
+      if(!stillMember(token,joinedAt))return result('locked');
+      if(response?.status==='locked'||response?.status==='forbidden'){lockConversation();return result('locked');}
+      if(response?.status!=='ok')return result(response?.status==='conflict'?'conflict':'failed');
+      const next=safeMessage(response.message,target.roomId,state.joinedAt);
+      if(next.id!==old.id||next.revision!==old.revision+1||kind==='remove'&&next.deletedAt==null||kind==='edit'&&next.deletedAt!=null)return result('failed');
+      publish({messages:mergeMessages(state.messages,[next])});return result('ok');
+    }catch(_){return result(stillMember(token,joinedAt)?'failed':'locked');}
+  }
+  async function markRead({conversationId,cursor,visible}={}){
+    if(visible!==true)return result('ignored');
+    // Never mark read across an unloaded gap: newer messages were not seen.
+    if(state.hasNewer)return result('ignored');
+    const target=current();if(!target||disposed)return result('locked');
+    if(conversationId!==target.conversationId||state.status!=='ready'||!state.messages.some(m=>sameCursor(m,cursor)))return result('invalid');
+    if(state.readCursor&&compareCursor(state.readCursor,cursor)>=0)return result('ignored');
+    const token=generation,joinedAt=state.joinedAt,requested=cursorOf(cursor);try{
+      const response=await transport.markRead({...target,personId:identity.personId,joinedAt,cursor:requested});
+      if(!stillMember(token,joinedAt))return result('locked');
+      if(response?.status==='locked'||response?.status==='forbidden'){lockConversation();return result('locked');}
+      if(response?.status!=='ok')return result('failed');
+      const committed=response.cursor??requested;
+      if(!validMemberCursor(committed,joinedAt)||compareCursor(committed,requested)<0)return result('failed');
+      const next=advanceReadCursor(state.readCursor,committed);cursors.set(conversationId,next);publish({readCursor:next});return result('ok');
+    }catch(_){return result(stillMember(token,joinedAt)?'failed':'locked');}
+  }
+  stopSession=session.subscribe(onIdentity);
+  if(typeof stopSession!=='function')throw new TypeError('Session subscription must be disposable');
+  return Object.freeze({getSnapshot:()=>state,subscribe(fn){if(typeof fn!=='function')throw new TypeError('Listener required');if(disposed){safeCall(()=>fn(state));return ()=>{};}subscribers.add(fn);safeCall(()=>fn(state));return ()=>subscribers.delete(fn);},
+    getComposer(){
+      if(state.status!=='ready')return null;
+      const row=drafts.row(state.conversationId,state.joinedAt,true);
+      if(!row)return null;
+      return row.composer??={refs:[],replyTo:null,editing:null,confirmationRequested:false,files:[],attachmentIds:[],fileVersion:0,attempt:null};
+    },
+    canRetainFiles:(current,files)=>drafts.canRetainFiles(current,files),
+    setActiveConversation,loadOlder:()=>requestPage('older'),loadAround:messageId=>requestPage('around',messageId),loadNewer:()=>requestPage('newer'),refreshLatest:()=>requestPage('latest'),setDraft,send,
+    edit:request=>mutate('edit',request),remove:request=>mutate('remove',request),markRead,
+    dispose(){if(disposed)return;disposed=true;detach();safeCall(stopSession);stopSession=null;identity=null;if(!draftOwner)drafts.clear();cursors.clear();memberships.clear();pendingSends.clear();reset('locked');subscribers.clear();}
+  });
+}

@@ -368,6 +368,13 @@ test('CI keeps Protocol mandatory, selects impacted suites, and protects nightly
   const authorization = section('authorization');
   const firebase = section('firebase');
   const gate = section('regression');
+  // Messaging release gate (review 4): Edge type check and boot, retries-0 specs.
+  const messaging = section('messaging');
+  assert.match(messaging, /needs: scope[\s\S]*if: \$\{\{ needs\.scope\.outputs\.messaging == 'true' \}\}/);
+  assert.match(messaging, /deno check --no-lock --node-modules-dir=none security\/supabase\/workboard-messaging\/index\.ts/);
+  assert.match(messaging, /node test-harness\/edge-boot-smoke\.mjs/);
+  assert.match(messaging, /npx playwright test -c playwright\.messaging\.config\.mjs/);
+  assert.match(read('playwright.messaging.config.mjs'), /retries: 0/);
 
   // Concurrent PR/main updates may supersede each other. The nightly full
   // check must use a distinct concurrency key and never be cancelled by push.
@@ -416,7 +423,7 @@ test('CI keeps Protocol mandatory, selects impacted suites, and protects nightly
   for (const name of ['scope', 'protocol', 'browser', 'authorization', 'firebase']) {
     assert.match(gate, new RegExp('needs\\.' + name + '\\.result'));
   }
-  assert.match(gate, /needs: \[scope, protocol, browser, authorization, firebase\]/);
+  assert.match(gate, /needs: \[scope, protocol, browser, authorization, firebase, messaging\]/);
   assert.match(gate, /if: \$\{\{ always\(\) \}\}/);
   assert.match(gate, /if \[\[ "\$SCOPE_RESULT" != success \|\| "\$PROTOCOL_RESULT" != success \]\]/);
   assert.match(gate, /if \[\[ "\$required" == true && "\$actual" != success \]\]/);

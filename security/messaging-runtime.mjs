@@ -1,0 +1,134 @@
+// Server runtime wiring. Configuration stays in secret storage; a disabled or
+// incomplete deployment cannot initialize an Admin client or read any records.
+import {readApprovedMessagingActor} from './messaging-authorization.mjs';
+import {createMessagingBudget} from './messaging-budget.mjs';
+import {isConversationId,isMessageId,isMessagingRoomId,isMessagingTimestamp,isPersonId} from '../workspace-messaging-core.js';
+const unavailable=()=>new Response(JSON.stringify({status:'unavailable'}),{status:503,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+function configuration(getEnv){
+  if(getEnv('WORKBOARD_MESSAGING_ENABLED')!=='true')return null;
+  const account=JSON.parse(getEnv('WORKBOARD_FIREBASE_SERVICE_ACCOUNT_JSON')||'null');
+  if(account?.type!=='service_account'||typeof account.project_id!=='string'||!/^[a-z][a-z0-9-]{4,62}$/.test(account.project_id)||typeof account.client_email!=='string'||!account.client_email.endsWith('.iam.gserviceaccount.com')||typeof account.private_key!=='string'||!account.private_key.startsWith('-----BEGIN PRIVATE KEY-----\n')||!account.private_key.includes('-----END PRIVATE KEY-----'))return null;
+  const projectId=account.project_id,rawUrl=getEnv('WORKBOARD_FIREBASE_DATABASE_URL'),dbUrl=new URL(rawUrl);
+  const instance=dbUrl.hostname.split('.')[0];
+  if(dbUrl.protocol!=='https:'||dbUrl.username||dbUrl.password||dbUrl.port||dbUrl.pathname!=='/'||dbUrl.search||dbUrl.hash||!(/^[a-z0-9-]+\.firebaseio\.com$/.test(dbUrl.hostname)||/^[a-z0-9-]+\.[a-z0-9-]+\.firebasedatabase\.app$/.test(dbUrl.hostname))||!(instance===projectId||instance===projectId+'-default-rtdb'))return null;
+  const allowedOrigins=(getEnv('WORKBOARD_MESSAGING_ALLOWED_ORIGINS')||'').split(',').map(s=>s.trim());
+  if(allowedOrigins.length<1||allowedOrigins.length>8||new Set(allowedOrigins).size!==allowedOrigins.length||allowedOrigins.some(origin=>{const url=new URL(origin);return url.protocol!=='https:'||url.origin!==origin||url.username||url.password;}))return null;
+  const hex=getEnv('WORKBOARD_MESSAGING_DIGEST_KEY_HEX');if(typeof hex!=='string'||!/^[a-f0-9]{64}$/i.test(hex))return null;
+  const digestKey=Uint8Array.from(hex.match(/../g),pair=>parseInt(pair,16));
+  return {projectId,databaseURL:rawUrl,account:{projectId,clientEmail:account.client_email,privateKey:account.private_key},allowedOrigins,digestKey};
+}
+function validActorOverride(override){
+  if(!override||typeof override!=='object'||Array.isArray(override)||Object.keys(override).some(k=>!['uid','token'].includes(k))||typeof override.uid!=='string'||override.uid.length<1||override.uid.length>128||/[.#$\/\[\]\u0000-\u001f\u007f]/.test(override.uid))return false;
+  const t=override.token;
+  if(!t||typeof t!=='object'||Array.isArray(t)||!isMessagingRoomId(t.roomId)||!isPersonId(t.personId)||!isConversationId(t.conversationId))return false;
+  if(t.workboardMessageMutationV1===true){
+    return Object.keys(t).every(k=>['workboardMessageMutationV1','roomId','conversationId','personId','joinedAt','messageId','controlRevision'].includes(k))&&isMessagingTimestamp(t.joinedAt)&&isMessageId(t.messageId)&&t.messageId.startsWith('msg_'+t.personId+'_')&&(t.controlRevision===undefined||Number.isSafeInteger(t.controlRevision)&&t.controlRevision>=1);
+  }
+  if(t.workboardConversationMutationV1===true){
+    return Object.keys(t).every(k=>['workboardConversationMutationV1','roomId','conversationId','personId','rosterRevision'].includes(k))&&Number.isSafeInteger(t.rosterRevision)&&t.rosterRevision>=1;
+  }
+  return false;
+}
+// Record links are deferred to the formal-login release; the reservation API
+// exists only when explicitly enabled (exact string 'true').
+const recordLinksEnabled=getEnv=>getEnv('WORKBOARD_MESSAGING_RECORD_LINKS_ENABLED')==='true';
+/**
+ * Adapter contract injected by the Edge entry (and by tests). Service factories
+ * receive the shared trusted Admin handles plus their own extra options.
+ * @typedef {{auth:any,database:any}} SharedAdmin
+ * @param {{
+ *   getEnv:(name:string)=>string|undefined,
+ *   cert:(account:any)=>any, initializeApp:(options:any,name:string)=>any,
+ *   getAuth:(app:any)=>any, getDatabase:(app:any)=>any, deleteApp:(app:any)=>Promise<void>,
+ *   createHistory:(options:SharedAdmin)=>any,
+ *   createMutation:(options:any)=>any,
+ *   createDirectory:(options:SharedAdmin)=>any,
+ *   createConversations:(options:any)=>any,
+ *   createApiHandler:(options:any)=>any,
+ *   createSupabase?:(url:string,key:string)=>any,
+ *   createAttachments?:(options:any)=>any,
+ *   createRecordOrigins?:(options:SharedAdmin)=>any,
+ *   fetchControl?:typeof fetch,
+ *   makeId?:()=>string
+ * }} adapters
+ */
+export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDatabase,deleteApp,createHistory,createMutation,createDirectory,createConversations,createApiHandler,createSupabase,createAttachments,createRecordOrigins,fetchControl=globalThis.fetch,makeId=()=>crypto.randomUUID()}={}){
+  if([getEnv,cert,initializeApp,getAuth,getDatabase,deleteApp,createHistory,createMutation,createDirectory,createConversations,createApiHandler,makeId].some(fn=>typeof fn!=='function'))throw new TypeError('Messaging runtime adapters required');
+  let startup;
+  async function boot(){
+    let app;
+    try{
+      const config=configuration(getEnv);if(!config)return null;
+      const options={projectId:config.projectId,databaseURL:config.databaseURL,credential:cert(config.account)};
+      app=initializeApp(options,'workboard-messaging-api-'+makeId());
+      const auth=getAuth(app),database=getDatabase(app);
+      // Each mutation has an isolated Rules-scoped database instance. Limit
+      // simultaneous instances to avoid exhausting the shared Firebase quota.
+      let activeActors=0;
+      async function withActorDatabase(override,operation){
+        if(!validActorOverride(override)||typeof operation!=='function')throw new TypeError('Invalid scoped database actor');
+        if(activeActors>=8)throw new Error('Scoped database capacity reached');
+        let actor;
+        activeActors++;
+        try{
+          actor=initializeApp({...options,databaseAuthVariableOverride:override},'workboard-messaging-actor-'+makeId());
+          return await operation(getDatabase(actor));
+        }finally{
+          try{if(actor)await deleteApp(actor);}finally{activeActors--;}
+        }
+      }
+      const url=getEnv('SUPABASE_URL'),key=getEnv('SUPABASE_SERVICE_ROLE_KEY');
+      if(typeof url!=='string'||!/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(url)||typeof key!=='string'||!key.trim()||typeof createSupabase!=='function')throw new TypeError('Trusted budget configuration required');
+      const supabase=createSupabase(url,key);
+      const {reserveRequest,reserveSend}=createMessagingBudget(supabase);
+      const authorizeRequest=({token,roomId})=>readApprovedMessagingActor({
+        token,roomId,verifyToken:value=>auth.verifyIdToken(value,true),
+        readBinding:async ({roomId,uid})=>(await database.ref('messagingAccessV1/'+roomId+'/'+uid).get()).val()
+      });
+      let accessToken=null,refreshingToken=null;
+      async function getControlToken(){
+        if(accessToken&&accessToken.refreshAt>Date.now())return accessToken.value;
+        refreshingToken??=Promise.resolve().then(async()=>{
+          const {access_token:value,expires_in:seconds}=await options.credential.getAccessToken();
+          if(typeof value!=='string'||!value)return null;
+          if(Number.isFinite(seconds)&&seconds>60)accessToken={value,refreshAt:Date.now()+(seconds-60)*1000};
+          return value;
+        }).finally(()=>{refreshingToken=null;});
+        return refreshingToken;
+      }
+      const controlURL=new URL('messagingControlV1/enabled.json',config.databaseURL);
+      async function checkAvailable(){
+        if(getEnv('WORKBOARD_MESSAGING_ENABLED')!=='true')return false;
+        const controller=new AbortController();
+        let timer;
+        try{
+          async function read(){
+            const access_token=await getControlToken();
+            if(controller.signal.aborted||typeof access_token!=='string'||!access_token)return false;
+            const response=await fetchControl(controlURL.href,{headers:{Authorization:'Bearer '+access_token,'Cache-Control':'no-cache, no-store'},signal:controller.signal,redirect:'error'});
+            if(response.status===401&&accessToken?.value===access_token)accessToken=null;
+            return response.ok&&await response.json()===true;
+          }
+          return await Promise.race([read(),new Promise(resolve=>{
+            timer=setTimeout(()=>{controller.abort();resolve(false);},3000);
+          })]);
+        }catch(_){return false;}finally{clearTimeout(timer);}
+      }
+      const shared={auth,database};
+      // Attachments are separately gated until the private bucket, RPCs and
+      // Firebase authorization have passed deployment verification.
+      let attachments=null;
+      if(getEnv('WORKBOARD_MESSAGING_ATTACHMENTS_ENABLED')==='true'){
+        if(typeof createAttachments!=='function')throw new TypeError('Trusted attachment configuration required');
+        attachments=createAttachments({...shared,supabase});
+        if([attachments?.upload,attachments?.download,attachments?.claim,attachments?.acquireSend].some(fn=>typeof fn!=='function'))throw new TypeError('Attachment services required');
+      }
+      const handler=createApiHandler({reserveRequest,checkAvailable,authorizeRequest,allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,reserveSend,...(attachments?{claimAttachments:attachments.claim,acquireAttachmentLease:attachments.acquireSend}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments,recordOrigins:recordLinksEnabled(getEnv)&&typeof createRecordOrigins==='function'?createRecordOrigins(shared):null});
+      if(typeof handler!=='function')throw new TypeError('Invalid API handler');
+      return handler;
+    }catch(_){if(app)try{await deleteApp(app);}catch(_){/* Do not expose startup errors or secrets. */}return null;}
+  }
+  return async function handle(request){
+    try{if(getEnv('WORKBOARD_MESSAGING_ENABLED')!=='true')return unavailable();startup??=boot();const handler=await startup;return handler?await handler(request):unavailable();}catch(_){return unavailable();}
+  };
+}

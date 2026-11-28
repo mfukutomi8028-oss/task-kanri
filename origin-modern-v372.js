@@ -451,8 +451,10 @@
         label.title='現在の公開バージョン Ver.'+release;
       }
     }
+    // Both the display observer and the Origin workspace own one entry handle.
+    let originMessagingEntry=null;
     const controller=window.WorkBoardDisplayController;
-    new MutationObserver(()=>{if(document.documentElement.dataset.wbDisplay!=='modern')document.body.style.overflow='';}).observe(document.documentElement,{attributes:true,attributeFilter:['data-wb-display']});
+    new MutationObserver(()=>{if(document.documentElement.dataset.wbDisplay!=='modern')document.body.style.overflow='';originMessagingEntry?.sync();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-wb-display']});
     
 'use strict';
 (function(){
@@ -799,17 +801,32 @@ async function send(command,label,{close=false,returnToTask=false}={}){
   setOriginTaskListWriteFeedback('saving',text+' ほかの更新操作は完了後に行えます。');
  }
  const savingPanel=Boolean((close||returnToTask)&&panelOpen&&panelMode==='edit');
+ const returnToMessaging=savingPanel&&$('#editForm')?.dataset.messagingSource==='true';
  const todoReturn=close&&savingPanel&&['todo.update','todo.delete'].includes(command.type)&&!panelReturnSearch
    ?captureOriginTodoListReturn(command.id):null;
  const beforeTodo=todoReturn?data.todos.find(item=>item.id===command.id):null;
  const previousScheduleDate=command.type==='schedule.update'&&view==='calendar'
    ?data.events.find(event=>event.id===command.id)?.date||'':'';
  if(savingPanel)markOriginEditorSaving(true,command);
+ // Create from a message: the board asks the messaging server for record ids
+ // that already carry the source link, after its own checks and confirmations.
+ // A retried save reuses the same request, so it receives the same ids.
+ // Record links are deferred (first release): unless explicitly enabled, a create
+ // from a message is an ordinary create, with no reservation, prompt or notice.
+ const createFromMessage=returnToMessaging&&['task.create','schedule.create','schedule.batch'].includes(command.type);
+ const linkType=createFromMessage&&originRecordLinksEnabled()?{'task.create':'task','schedule.create':'schedule','schedule.batch':'schedule'}[command.type]:null;
+ const dispatched=linkType&&typeof originMessagingEntry?.reserveRecordIds==='function'
+   ?{...command,reserveRecordIds:count=>originMessagingEntry.reserveRecordIds({roomId:snapshot.roomId,type:linkType,count})}:command;
  try{
    const result=command.type.startsWith('comment.')
      ?await window.WorkBoardOriginCommentBridge?.dispatch(command):command.type.startsWith('memo.')
-     ? await memoBridge?.dispatch?.(command) : await bridge.dispatch(command);
+     ? await memoBridge?.dispatch?.(command) : await bridge.dispatch(dispatched);
    if(result?.ok){
+     let linkNotice='';
+     if(createFromMessage)originMessagingEntry?.finishRecordDraft?.();
+     if(linkType){
+       if(result.linkStatus!=='linked')linkNotice=label+'。元メッセージへのリンクは付けずに保存しました。';
+     }
      if(command.type.startsWith('task.')&&command.startDate!==undefined){
        const latest=bridge.readSnapshot().tasks.find(x=>x.id===result.id);
        const starts=window.WorkBoardOriginStartBridge;
@@ -856,7 +873,8 @@ async function send(command,label,{close=false,returnToTask=false}={}){
          panelReturnAnchor=null;panelReturnSearch=null;scheduleGlobalReturn=null;
        }else restorePanelReturnPosition(returning.kind,returning.id);
      }
-     notify(label);return true;
+     if(returnToMessaging)void originMessagingEntry?.resume();
+     notify(linkNotice||label);return true;
    }
    if(result?.error==='cancelled'||result?.pending){
      if(taskListWrite&&result?.pending)
@@ -867,7 +885,9 @@ async function send(command,label,{close=false,returnToTask=false}={}){
    const conflict=['revision-or-state-mismatch','revision-or-relation-mismatch','conflict','owner-mismatch','not-found','remote-content-changed'].includes(result?.error);
    const todoInvalid=command.type.startsWith('todo.')&&result?.error==='invalid-input';
    const scheduleInvalid=command.type.startsWith('schedule.')&&result?.error==='invalid-input';
-   const msg=conflict
+   const msg=result?.error==='origin-link-unavailable'
+     ? '元メッセージへのリンクを付けられないため、保存を中止しました。入力内容は保持されています。接続を確認して、もう一度保存してください。'
+     : conflict
      ? '他端末で変更されました。入力内容を保持しています。最新の内容を確認してください。'
      : todoInvalid
        ? result.field==='memo'
@@ -3136,6 +3156,9 @@ function originPanelFooter(kind,id,editing,item){
      secondary=`<button type="button" class="secondary-button" data-action="todo-toggle" data-id="${safeId}">${item.done?'未完了に戻す':'完了にする'}</button><button type="button" class="secondary-button" data-action="todo-move" data-id="${safeId}" data-value="up" ${index<=0?'disabled':''}>上へ移動</button><button type="button" class="secondary-button" data-action="todo-move" data-id="${safeId}" data-value="down" ${index>=rows.length-1?'disabled':''}>下へ移動</button>`;
    }
    if(kind==='memos')secondary=`<button type="button" class="secondary-button" data-action="memo-task" data-id="${safeId}">タスクにする</button>`;
+   if(originMessagingEntry&&['tasks','events','memos'].includes(kind)){
+     secondary+='<button type="button" class="secondary-button" data-action="message-share" data-kind="'+kind+'" data-id="'+safeId+'">メッセージに共有</button>';
+   }
    if(kind==='events')secondary+=`<button type="button" class="secondary-button" data-action="schedule-copy" data-id="${safeId}">複製して作成</button>`;
  }
  const dangerous=editing&&id
@@ -3232,7 +3255,30 @@ function panelShow(kind,id,edit=false,seed={}){
  $('#sheet').innerHTML=sheetFrame('DETAIL · '+singular[kind],t.title,detailPager(kind,id)+originRelatedBackBar()+body,footer);
  }
  $('#sheet').dataset.readerKind=edit?'':kind;
+ if(!edit&&id&&(kind==='tasks'||kind==='events'))showOriginMessageLink(kind,id);
  $('#overlay').hidden=false;document.body.style.overflow='hidden';syncOriginEditorViewport();if(edit&&window.innerWidth>770)$('#editForm [name="title"]')?.focus();else $('#sheet .sheet-close')?.focus();
+}
+// An explicit "check the source message" action. Nothing connects to messaging
+// or reveals whether a link exists until the person asks and their own device
+// is approved; the record itself never depends on the link.
+const originMessageLinkNotice={
+ locked:'メッセージに接続できないため確認できません。端末の承認と接続を確認してください。',
+ retry:'元メッセージを確認できませんでした。接続を確認して、もう一度お試しください。',
+ unavailable:'確認できる元メッセージはありません。リンクがないか、閲覧できない会話です。'
+};
+function originRecordLinksEnabled(){return window.WORK_BOARD_MESSAGING?.recordLinksEnabled===true;}
+function showOriginMessageLink(kind,id){
+ const entry=originMessagingEntry;if(!originRecordLinksEnabled()||typeof entry?.openRecordLink!=='function')return;
+ const anchor=$('#sheet .detail-list');if(!anchor||$('#sheet .origin-message-link'))return;
+ const ref={roomId:snapshot.roomId,type:kind==='tasks'?'task':'schedule',recordId:id};
+ const button=document.createElement('button');button.type='button';button.className='origin-related-link origin-message-link';button.textContent='元メッセージを確認';
+ button.addEventListener('click',async()=>{
+  button.disabled=true;
+  const status=await entry.openRecordLink(ref).catch(()=>'retry');
+  button.disabled=false;
+  if(status!=='opened'){notify(originMessageLinkNotice[status]||originMessageLinkNotice.unavailable);if(button.isConnected&&status!=='locked')button.focus({preventScroll:true});}
+ });
+ anchor.after(button);
 }
 function formSnapshot(f){
  if(!f)return '';
@@ -3378,6 +3424,7 @@ function updateOriginDraftState(){
 function markOriginEditorSaving(saving,command){
  const form=$('#editForm'),indicator=$('#originDraftState');
  if(!form||panelMode!=='edit')return;
+ if(!saving&&form.dataset.messagingInvalidated==='true'){closePanel(true,false);return;}
  form.inert=saving;
  form.setAttribute('aria-busy',String(saving));
  if(indicator){
@@ -3477,6 +3524,7 @@ function closePanel(force=false,restoreFocus=true){
   restorePanelReturnPosition(origin?.kind||kind,origin?.id||id);
   detailTrail=[];
   if(returnToInbox)openOriginInbox(true);
+  else void originMessagingEntry?.resume();
   originInboxReturn=null;
  }else if(force){detailTrail=[];originInboxReturn=null;}
  return true;
@@ -3666,6 +3714,7 @@ function handleRoute(route){
  closeOriginInbox(false);
  closeOriginSettings();
  if(panelOpen&&!closePanel(false,false))return;
+ originMessagingEntry?.close(false);
  panelReturnAnchor=null;detailTrail=[];scheduleGlobalReturn=null;
  if(route===view){viewScrollPositions[view]=0;window.scrollTo({top:0,behavior:'instant'});return}
  viewScrollPositions[view]=window.scrollY;
@@ -4419,6 +4468,13 @@ function handleAction(el,event){const a=el.dataset.action,id=el.dataset.id,kind=
    return;
  }
  if(a==='new'){if(!closePanel(false,false))return;detailSequence=null;detailTrail=[];panelReturnSearch=null;panelReturnAnchor=null;scheduleGlobalReturn=null;closeCreateMenu();return panelShow(kind,null,true,{date:el.dataset.date||selectedDay})}
+ if(a==='message-share'){
+   const type={tasks:'task',events:'schedule',memos:'memo'}[kind];
+   if(panelOpen&&panelMode==='detail'&&panelKind===kind&&panelId===id&&type&&findItem(kind,id)){
+     void originMessagingEntry?.share({roomId:snapshot.roomId,type,recordId:id}).then(ok=>{if(!ok)notify('メッセージの共有先を開けませんでした。');});
+   }
+   return;
+ }
  if(a==='list-quick-edit'){
    const routes={tasks:'tasks',todos:'todos',memos:'notes'};
    if(panelOpen||routes[kind]!==view||!id||!findItem(kind,id))return;
@@ -4611,6 +4667,46 @@ if(a==='task-done'){toggleTaskDone(id,el);return}
  if(a==='undo')return;
 }
 setIconPlaceholders(mount);initTheme();selectOriginColorMode();syncSnapshot();render();
+// Installed only in an explicitly enabled release. Existing inbox, navigation
+// and canonical board storage remain independent of the messaging workspace.
+if(window.WORK_BOARD_MESSAGING?.enabled===true&&typeof bridge.getMessagingConnection==='function'){
+ Promise.all([import('./origin-messaging-entry.js'),import('./origin-messaging-live.js')]).then(([entry,cloud])=>{
+  const recordKind={task:'tasks',schedule:'events',memo:'memos'};
+  const canReadRecord=(ref,scope)=>{
+   const current=bridge.readSnapshot(),kind=recordKind[ref?.type];
+   return Boolean(kind&&current.connectionMode==='remote-online'&&current.roomId===scope?.roomId&&ref.roomId===current.roomId&&findItem(kind,ref.recordId));
+  };
+  originMessagingEntry=entry.installOriginMessagingEntry({
+   root:mount,anchor:$('#originInboxButton'),readConfig:()=>window.WORK_BOARD_MESSAGING,
+   isActive:()=>document.documentElement.dataset.wbDisplay==='modern',
+   cssUrl:new URL('origin-messaging.css?v='+window.WORK_BOARD_RELEASE_VERSION,document.baseURI).href,
+   connect:()=>bridge.getMessagingConnection(),mountCloud:cloud.mountCloudOriginMessaging,
+   onNotification:kind=>notify(kind==='invite'?'新しいグループ招待があります。':'新着メッセージがあります。'),
+   board:{readSnapshot:()=>bridge.readSnapshot(),readMemos:()=>memoBridge.readSnapshot(),subscribe:fn=>bridge.subscribe(fn),
+    canReadRecord,
+    closeMessagingDraft(){
+     const form=$('#editForm');
+     if(form?.dataset.messagingSource!=='true')return;
+     if(!busy){closePanel(true,false);return;}
+     form.dataset.messagingInvalidated='true';
+     form.inert=true;
+     form.style.visibility='hidden';
+    },
+    openBusinessDraft(draft,scope){
+     const current=bridge.readSnapshot(),kind={task:'tasks',schedule:'events'}[draft?.kind];
+     if(!kind||current.roomId!==scope?.roomId||draft.source?.roomId!==current.roomId||current.connectionMode!=='remote-online')return false;
+     closeOriginSettings();closeCreateMenu();closeSearch();
+     panelShow(kind,null,true,{title:draft.title,desc:draft.description??draft.memo,date:selectedDay});
+     const form=$('#editForm');
+     if(!form||form.dataset.kind!==kind||form.dataset.id)return false;
+     form.dataset.messagingSource='true';
+     return true;
+    },
+    openRecord(ref,scope){if(!canReadRecord(ref,scope))return false;closeOriginSettings();closeCreateMenu();closeSearch();panelShow(recordKind[ref.type],ref.recordId,false);return panelOpen&&panelKind===recordKind[ref.type]&&panelId===ref.recordId;}
+   }
+  });
+ }).catch(()=>{if(document.documentElement.dataset.wbDisplay==='modern')notify('\u30e1\u30c3\u30bb\u30fc\u30b8\u6a5f\u80fd\u3092\u8d77\u52d5\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f\u3002');});
+}
 // Subscriptions can arrive during Japanese IME composition. Defer only the
 // presentation refresh until compositionend (which already renders the final
 // committed query); always ingest the canonical snapshot immediately.
@@ -4978,6 +5074,7 @@ mount.addEventListener('touchend',e=>{
 },{passive:true});
 mount.addEventListener('touchcancel',()=>{detailSwipeStart=null},{passive:true});
 mount.addEventListener('keydown',e=>{
+ if(e.target.closest?.('.origin-message-host'))return;
  // Let the browser close an IME candidate menu without closing the editor.
  if(e.isComposing)return;
  const inboxDialog=$('#originInboxDialog');
