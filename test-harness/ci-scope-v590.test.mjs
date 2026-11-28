@@ -110,3 +110,14 @@ test('CI scope: results are deterministic, sorted and never include arbitrary sh
   assert.deepEqual(targets, [...new Set(targets)].sort());
   assert.ok(targets.every(file => /^tests\/[a-z0-9-]+\.spec\.mjs$/.test(file)));
 });
+
+test('messaging changes require the messaging release gate; unrelated changes skip it; scheduled runs always run it', () => {
+  for (const file of ['app.js', 'config.js', 'origin-messaging.js', 'workspace-messaging-store.js', 'origin-modern-v372.js',
+    'security/supabase/workboard-messaging/index.ts', 'security/database.rules.messaging.candidate.json',
+    'tests/origin-messaging-record-link.spec.mjs', 'test-harness/edge-boot-smoke.mjs', '.github/workflows/regression-checks.yml'])
+    assert.equal(classifyPaths([file]).messaging, true, file);
+  for (const file of ['docs/messaging-operations.md', 'tests/journal-display-v367.spec.mjs', 'README.md'])
+    assert.equal(classifyPaths([file]).messaging, false, file);
+  assert.equal(classifyPaths([], 'schedule').messaging, true);
+  assert.equal(classifyPaths([], 'workflow_dispatch').messaging, true);
+});

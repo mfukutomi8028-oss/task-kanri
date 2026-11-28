@@ -46,6 +46,9 @@ export function issueRecordId(now,random=bytes=>crypto.getRandomValues(new Uint8
   return prefix+suffix;
 }
 
+/**
+ * @param {{auth:any, database:any, serverTimestamp:unknown, clock?:()=>number, random?:(bytes:number)=>Uint8Array}} options
+ */
 export function createFirebaseMessagingRecordOriginService({auth,database,serverTimestamp,clock=Date.now,random=undefined}={}){
   if(typeof auth?.verifyIdToken!=='function'||typeof database?.ref!=='function'||serverTimestamp===undefined||typeof clock!=='function')throw new TypeError('Firebase Admin adapters required');
   const read=async path=>(await database.ref(path).get()).val();

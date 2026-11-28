@@ -93,7 +93,7 @@ export function createMessagingDraftOwner(){
 export function createMessagingStore({session,transport,draftOwner=null,getUid=()=>null}={}){
   if(typeof session?.subscribe!=='function'||['readHistory','observeActivity','send','edit','remove','markRead'].some(k=>typeof transport?.[k]!=='function'))throw new TypeError('Messaging transport and session required');
   const subscribers=new Set(),drafts=draftOwner??createMessagingDraftOwner(),cursors=new Map(),memberships=new Map(),pendingSends=new Map();
-  let identity=null,disposed=false,generation=0,stopActivity=null,stopSession=null,pageRequest=null,refreshQueued=false;
+  let identity=null,disposed=false,generation=0,stopActivity=null,stopSession=null,pageRequest=null,refreshQueued=false,windowAnchor=null;
   let state=immutable({status:'locked',conversationId:null,messages:emptyMessages,joinedAt:null,hasMore:false,nextCursor:null,hasNewer:false,newerCursor:null,draft:'',readCursor:null,preferences:null,historyReset:false,busy:false,error:null});
   const current=()=>state.conversationId&&identity?{roomId:identity.roomId,conversationId:state.conversationId}:null;
   const stillCurrent=token=>!disposed&&generation===token;
@@ -104,7 +104,7 @@ export function createMessagingStore({session,transport,draftOwner=null,getUid=(
     for(const fn of [...subscribers]){if(state!==next)break;if(subscribers.has(fn))safeCall(()=>fn(next));}
   }
   function detach(){
-    generation++;const stop=stopActivity;stopActivity=null;pageRequest=null;refreshQueued=false;safeCall(stop);
+    generation++;const stop=stopActivity;stopActivity=null;pageRequest=null;refreshQueued=false;windowAnchor=null;safeCall(stop);
   }
   function reset(status,conversationId=null){
     publish({status,conversationId,messages:emptyMessages,joinedAt:null,hasMore:false,nextCursor:null,hasNewer:false,newerCursor:null,
@@ -122,13 +122,16 @@ export function createMessagingStore({session,transport,draftOwner=null,getUid=(
   }
   // kind 'around' replaces the loaded history with one window centred on a known
   // target (however old), leaving an explicit unloaded gap to the latest page
-  // (hasNewer). kind 'newer' fills that gap one page at a time.
+  // (hasNewer). kind 'newer' fills that gap one page at a time. kind 'refresh'
+  // re-reads the shown window around its anchor and merges edits and deletions
+  // in place, keeping every cursor, the gap and the read suppression.
   function requestPage(kind,around=null){
     const target=current();if(!target||disposed)return Promise.resolve(result('locked'));
-    if(kind==='around'&&(!isMessageId(around)||state.status!=='ready'))return Promise.resolve(result('invalid'));
+    if(kind==='refresh'){if(!state.hasNewer||state.status!=='ready')return Promise.resolve(result('ignored'));around??=windowAnchor;}
+    if((kind==='around'||kind==='refresh')&&(!isMessageId(around)||state.status!=='ready'))return Promise.resolve(result('invalid'));
     if(kind==='around'&&state.messages.some(m=>m.id===around))return Promise.resolve(result('ok'));
     if(kind==='older'&&!state.hasMore||kind==='newer'&&!state.hasNewer)return Promise.resolve(result('ignored'));
-    if(pageRequest)return pageRequest.kind===kind&&kind!=='around'?pageRequest.promise:Promise.resolve(result('busy'));
+    if(pageRequest){if(kind==='refresh'){refreshQueued=true;return Promise.resolve(result('busy'));}return pageRequest.kind===kind&&kind!=='around'?pageRequest.promise:Promise.resolve(result('busy'));}
     const before=kind==='older'?state.nextCursor:null,after=kind==='newer'?state.newerCursor:null,token=generation;
     const ticket={kind,promise:null};pageRequest=ticket;
     ticket.promise=Promise.resolve().then(async()=>{
@@ -136,11 +139,12 @@ export function createMessagingStore({session,transport,draftOwner=null,getUid=(
       publish({busy:true,error:null,status:state.joinedAt===null?'loading':state.status});
       if(!stillCurrent(token))return result('locked');
       try{
-        const raw=await transport.readHistory(kind==='around'?{...target,around}:kind==='newer'?{...target,after,limit:PAGE_SIZE}:{...target,before,limit:PAGE_SIZE});
+        const windowed=kind==='around'||kind==='refresh';
+        const raw=await transport.readHistory(windowed?{...target,around}:kind==='newer'?{...target,after,limit:PAGE_SIZE}:{...target,before,limit:PAGE_SIZE});
         if(!stillCurrent(token))return result('locked');
         if(raw?.status==='forbidden'||raw?.status==='locked'){lockConversation();return result('forbidden');}
-        if(kind==='around'&&raw?.status==='missing'){publish({busy:false});return result('missing');}
-        const page=decodePage(raw,target.roomId,{before,around:kind==='around'?around:null,after});
+        if(windowed&&raw?.status==='missing'){publish({busy:false});return result('missing');}
+        const page=decodePage(raw,target.roomId,{before,around:windowed?around:null,after});
         const previousBoundary=memberships.get(target.conversationId);
         const changedBoundary=previousBoundary!==undefined&&previousBoundary!==page.joinedAt;
         memberships.set(target.conversationId,page.joinedAt);
@@ -162,6 +166,13 @@ export function createMessagingStore({session,transport,draftOwner=null,getUid=(
           const personal=decodePersonalState(remote,page.joinedAt);preferences=personal.preferences;
           if(personal.cursor!==null)cursors.set(target.conversationId,advanceReadCursor(cursors.get(target.conversationId)??null,personal.cursor));
         }
+        if(kind==='refresh'){
+          // Merge only: the shown range, its cursors and the gap stay as they are.
+          if(!state.hasNewer)return result('ignored');
+          publish({status:'ready',messages:mergeMessages(state.messages,page.messages.filter(m=>state.messages.some(s=>s.id===m.id))),busy:false,error:null});
+          windowAnchor=around;
+          return result('ok');
+        }
         if(kind==='newer'){
           // Reaching the latest page closes the gap; the next activity merges live state.
           publish({status:'ready',messages:mergeMessages(state.messages,page.messages),hasNewer:page.hasNewer,newerCursor:page.newerCursor,busy:false,error:null});
@@ -174,6 +185,7 @@ export function createMessagingStore({session,transport,draftOwner=null,getUid=(
         const historyReset=changedBoundary||kind==='latest'&&state.messages.length>0&&!overlap;
         const messages=replace?page.messages:mergeMessages(state.messages,page.messages);
         const usePageCursor=replace||kind==='older';
+        if(kind==='around')windowAnchor=around;else if(kind==='latest')windowAnchor=null;
         publish({status:'ready',messages,joinedAt:page.joinedAt,historyReset:state.historyReset||historyReset,
           hasMore:usePageCursor?page.hasMore:state.hasMore,nextCursor:usePageCursor?page.nextCursor:state.nextCursor,
           hasNewer:kind==='around'?page.hasNewer:kind==='latest'?false:state.hasNewer,newerCursor:kind==='around'?page.newerCursor:kind==='latest'?null:state.newerCursor,
@@ -184,13 +196,28 @@ export function createMessagingStore({session,transport,draftOwner=null,getUid=(
         publish({status:state.status==='loading'||state.joinedAt===null?'unavailable':state.status,error:'unavailable',busy:false});return result('unavailable');
       }
     }).finally(()=>{
-      if(pageRequest===ticket){pageRequest=null;if(stillCurrent(token)){if(state.busy)publish({busy:false});if(refreshQueued){refreshQueued=false;void requestPage('latest');}}}
+      // A queued update is decided when it runs: an older window is refreshed in
+      // place, never replaced by the latest page.
+      if(pageRequest===ticket){pageRequest=null;if(stillCurrent(token)){if(state.busy)publish({busy:false});if(refreshQueued){refreshQueued=false;void refreshShown();}}}
     });
     return ticket.promise;
   }
   // While an older window is shown, live activity must not replace it with the
-  // latest page; the unloaded gap stays visible until the person closes it.
-  function onActivity(token){if(!stillCurrent(token)||state.hasNewer)return;if(pageRequest)refreshQueued=true;else void requestPage('latest');}
+  // latest page; the unloaded gap stays visible until the person closes it, and
+  // edits or deletions inside the window are merged in place. Activity bursts are
+  // coalesced to one request in flight plus one queued.
+  function onActivity(token){if(!stillCurrent(token))return;if(pageRequest)refreshQueued=true;else void refreshShown();}
+  async function refreshShown(){
+    if(!state.hasNewer)return requestPage('latest');
+    const first=await requestPage('refresh');
+    if(first.status!=='missing'||!state.hasNewer)return first;
+    // The anchor was deleted (or hidden): re-anchor once on the nearest visible
+    // loaded message. A second miss keeps the shown window as it is.
+    const index=state.messages.findIndex(m=>m.id===windowAnchor);
+    const candidates=state.messages.map((m,i)=>({m,d:Math.abs(i-(index<0?state.messages.length>>1:index))})).filter(({m})=>m.id!==windowAnchor&&m.deletedAt==null).sort((a,b)=>a.d-b.d);
+    if(!candidates.length)return first;
+    return requestPage('refresh',candidates[0].m.id);
+  }
   function setActiveConversation(id){
     if(disposed||!identity)return Promise.resolve(result('locked'));
     if(id===null){detach();reset('idle');return Promise.resolve(result('ok'));}

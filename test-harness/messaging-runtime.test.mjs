@@ -107,3 +107,16 @@ test('concurrent cold stop checks share the OAuth refresh but each reads the sto
   assert.equal(refreshCalls,2);
   assert.equal(reads,10);
 });
+test('record links are deferred: the reservation service is wired only when explicitly enabled',async()=>{
+  const created=[];
+  const handlerOptions=async env=>{
+    const f=fixture(env);f.deps.createRecordOrigins=options=>{created.push(options);return {reserve:async()=>({status:'ok'})};};
+    await createMessagingRuntime(f.deps)(request());
+    return f.services.find(([kind])=>kind==='handler')[1];
+  };
+  assert.equal((await handlerOptions(base)).recordOrigins,null);
+  assert.equal((await handlerOptions({...base,WORKBOARD_MESSAGING_RECORD_LINKS_ENABLED:'yes'})).recordOrigins,null);
+  assert.equal(created.length,0);
+  assert.equal(typeof (await handlerOptions({...base,WORKBOARD_MESSAGING_RECORD_LINKS_ENABLED:'true'})).recordOrigins.reserve,'function');
+  assert.equal(created.length,1);
+});

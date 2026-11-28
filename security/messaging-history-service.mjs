@@ -10,7 +10,7 @@ const uidKey=value=>typeof value==='string'&&value.length>0&&value.length<=128&&
 const cursor=value=>isRecord(value)&&Object.keys(value).length===2&&isMessageId(value.id)&&isMessagingTimestamp(value.createdAt);
 const status=value=>({status:value});
 
-export function createMessagingHistoryService({verifyToken,readBinding,readMember,readPage,readWindow=null,readAfter=null}={}) {
+export function createMessagingHistoryService({verifyToken,readBinding,readMember,readPage,readWindow=null,readAfter=null,readTarget=null}={}) {
   if([verifyToken,readBinding,readMember,readPage].some(fn=>typeof fn!=='function'))throw new TypeError('Trusted history adapters required');
   async function authorize({token,roomId,conversationId}) {
     let identity;
@@ -30,7 +30,7 @@ export function createMessagingHistoryService({verifyToken,readBinding,readMembe
     const {token,roomId,conversationId,before=null,limit=50,expectedPersonId,around=null,after=null}=request;
     if(typeof token!=='string'||token.length<1||token.length>16384||!isMessagingRoomId(roomId)||!isConversationId(conversationId)
         ||expectedPersonId!==undefined&&!isPersonId(expectedPersonId)||!Number.isInteger(limit)||limit<1||limit>50||(before!==null&&!cursor(before))
-        ||around!==null&&(!isMessageId(around)||before!==null||after!==null||typeof readWindow!=='function')
+        ||around!==null&&(!isMessageId(around)||before!==null||after!==null||typeof readWindow!=='function'||typeof readTarget!=='function')
         ||after!==null&&(!cursor(after)||before!==null||typeof readAfter!=='function'))return status('invalid');
     try {
       const access=await authorize({token,roomId,conversationId});
@@ -64,6 +64,13 @@ export function createMessagingHistoryService({verifyToken,readBinding,readMembe
       // real deployments must additionally validate the revocation boundary.
       const latest=await authorize({token,roomId,conversationId});
       if(!latest||latest.uid!==access.uid||latest.personId!==access.personId||latest.joinedAt!==access.joinedAt)return status('forbidden');
+      // The window target is read again after re-authorization: a target deleted
+      // while the window was read is missing, never a success. A deletion after
+      // this read reaches the client through the activity refresh.
+      if(around!==null){
+        const target=await readTarget({roomId,conversationId,messageId:around});
+        if(!isRecord(target)||!isMessagingTimestamp(target.createdAt)||target.createdAt<=access.joinedAt||target.deletedAt!==undefined&&target.deletedAt!==null)return status('missing');
+      }
       const cursorOf=item=>({createdAt:item.createdAt,id:item.id});
       if(after!==null)return {status:'ok',joinedAt:access.joinedAt,messages,hasNewer:newerMore,newerCursor:newerMore&&messages.length?cursorOf(messages.at(-1)):null};
       const hasMore=olderMore??messages.length===limit;
@@ -88,6 +95,7 @@ export function createFirebaseMessagingHistoryService({auth,database}={}) {
     verifyToken:token=>auth.verifyIdToken(token,true),
     readBinding:({roomId,uid})=>read('messagingAccessV1/'+roomId+'/'+uid),
     readMember:({roomId,conversationId,personId})=>read('messagingV1/'+roomId+'/control/'+conversationId+'/members/'+personId),
+    readTarget:({roomId,conversationId,messageId})=>read('messagingV1/'+roomId+'/messages/'+conversationId+'/'+messageId),
     // Two bounded queries around the target, each with a one-row probe for more.
     async readWindow({roomId,conversationId,joinedAt,around,older,newer}) {
       const base='messagingV1/'+roomId+'/messages/'+conversationId;

@@ -1,6 +1,7 @@
 // Local operator only. Never expose credentials or this tool via Pages.
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {adminDeadlineMs,withAdminDeadline,AdminDeadlineError} from './messaging-admin-deadline.mjs';
 const production='task-kanri-2ad16',demo='demo-task-kanri-messaging';
 const roomValid=v=>typeof v==='string'&&v.length>=1&&v.length<=60&&v===v.trim()&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(v);
 const conversationValid=v=>typeof v==='string'&&/^(self_p_[0-9a-f]{32}|dm_p_[0-9a-f]{32}_p_[0-9a-f]{32}|group_g_[0-9a-f]{32})$/.test(v);
@@ -51,5 +52,10 @@ async function main(args){
   }finally{await deleteApp(app);}
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  try{await main(process.argv.slice(2));}catch(_){console.error('Directory maintenance failed; verify target, arguments and local Admin credentials.');process.exitCode=1;}
+  try{await withAdminDeadline(()=>main(process.argv.slice(2)),adminDeadlineMs(process.env));}
+  catch(error){
+    // A stalled database keeps SDK sockets open, so a timeout ends the process explicitly.
+    if(error instanceof AdminDeadlineError){console.error(error.message);process.exit(1);}
+    console.error('Directory maintenance failed; verify target, arguments and local Admin credentials.');process.exitCode=1;
+  }
 }

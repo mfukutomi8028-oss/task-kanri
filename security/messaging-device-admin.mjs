@@ -3,6 +3,7 @@ import {randomUUID} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createMessagingDeviceAdmin} from './messaging-device-admin-service.mjs';
+import {adminDeadlineMs,withAdminDeadline,AdminDeadlineError} from './messaging-admin-deadline.mjs';
 const production='task-kanri-2ad16',demo='demo-task-kanri-messaging';
 const commands=new Set(['register-person','approve-device','revoke-device']);
 const usage='Usage: node security/messaging-device-admin.mjs new-person-id | <register-person|approve-device|revoke-device> --project <project> --room <room> --person <p_id> [--name <display name>] [--uid <Firebase UID>] [--reactivate] [--apply] [--emulator]';
@@ -50,5 +51,10 @@ async function main(args){
   }finally{await deleteApp(app);}
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  try{await main(process.argv.slice(2));}catch(_){console.error('Device administration failed; verify arguments, project and local Admin credentials.');process.exitCode=1;}
+  try{await withAdminDeadline(()=>main(process.argv.slice(2)),adminDeadlineMs(process.env));}
+  catch(error){
+    // A stalled database keeps SDK sockets open, so a timeout ends the process explicitly.
+    if(error instanceof AdminDeadlineError){console.error(error.message);process.exit(1);}
+    console.error('Device administration failed; verify arguments, project and local Admin credentials.');process.exitCode=1;
+  }
 }

@@ -29,7 +29,30 @@ function validActorOverride(override){
   }
   return false;
 }
-export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDatabase,deleteApp,createHistory,createMutation,createDirectory,createConversations,createApiHandler,createSupabase,createAttachments,createRecordOrigins=null,fetchControl=globalThis.fetch,makeId=()=>crypto.randomUUID()}={}){
+// Record links are deferred to the formal-login release; the reservation API
+// exists only when explicitly enabled (exact string 'true').
+const recordLinksEnabled=getEnv=>getEnv('WORKBOARD_MESSAGING_RECORD_LINKS_ENABLED')==='true';
+/**
+ * Adapter contract injected by the Edge entry (and by tests). Service factories
+ * receive the shared trusted Admin handles plus their own extra options.
+ * @typedef {{auth:any,database:any}} SharedAdmin
+ * @param {{
+ *   getEnv:(name:string)=>string|undefined,
+ *   cert:(account:any)=>any, initializeApp:(options:any,name:string)=>any,
+ *   getAuth:(app:any)=>any, getDatabase:(app:any)=>any, deleteApp:(app:any)=>Promise<void>,
+ *   createHistory:(options:SharedAdmin)=>any,
+ *   createMutation:(options:any)=>any,
+ *   createDirectory:(options:SharedAdmin)=>any,
+ *   createConversations:(options:any)=>any,
+ *   createApiHandler:(options:any)=>any,
+ *   createSupabase?:(url:string,key:string)=>any,
+ *   createAttachments?:(options:any)=>any,
+ *   createRecordOrigins?:(options:SharedAdmin)=>any,
+ *   fetchControl?:typeof fetch,
+ *   makeId?:()=>string
+ * }} adapters
+ */
+export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDatabase,deleteApp,createHistory,createMutation,createDirectory,createConversations,createApiHandler,createSupabase,createAttachments,createRecordOrigins,fetchControl=globalThis.fetch,makeId=()=>crypto.randomUUID()}={}){
   if([getEnv,cert,initializeApp,getAuth,getDatabase,deleteApp,createHistory,createMutation,createDirectory,createConversations,createApiHandler,makeId].some(fn=>typeof fn!=='function'))throw new TypeError('Messaging runtime adapters required');
   let startup;
   async function boot(){
@@ -100,7 +123,7 @@ export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDat
         attachments=createAttachments({...shared,supabase});
         if([attachments?.upload,attachments?.download,attachments?.claim,attachments?.acquireSend].some(fn=>typeof fn!=='function'))throw new TypeError('Attachment services required');
       }
-      const handler=createApiHandler({reserveRequest,checkAvailable,authorizeRequest,allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,reserveSend,...(attachments?{claimAttachments:attachments.claim,acquireAttachmentLease:attachments.acquireSend}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments,recordOrigins:typeof createRecordOrigins==='function'?createRecordOrigins(shared):null});
+      const handler=createApiHandler({reserveRequest,checkAvailable,authorizeRequest,allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,reserveSend,...(attachments?{claimAttachments:attachments.claim,acquireAttachmentLease:attachments.acquireSend}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments,recordOrigins:recordLinksEnabled(getEnv)&&typeof createRecordOrigins==='function'?createRecordOrigins(shared):null});
       if(typeof handler!=='function')throw new TypeError('Invalid API handler');
       return handler;
     }catch(_){if(app)try{await deleteApp(app);}catch(_){/* Do not expose startup errors or secrets. */}return null;}

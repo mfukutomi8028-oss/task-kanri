@@ -11,20 +11,22 @@ const group='group_g_'+'d'.repeat(32),sourceId='msg_'+pA+'_q_'+'b'.repeat(32);
 const SERVER='__fakeMessagingServer',ORIGIN=process.env.WB_TEST_ORIGIN||'http://127.0.0.1:4173';
 const TITLE='Synthetic task from a message';
 
-async function boot(page,{user='Synthetic Startup',reload=false,width=1366,height=900}={}){
+// recordLinks: the deferred link feature is exercised only when explicitly enabled;
+// the first release keeps it off (config.js recordLinksEnabled:false).
+async function boot(page,{user='Synthetic Startup',reload=false,width=1366,height=900,recordLinks=true}={}){
   await page.setViewportSize({width,height});
   if(!reload){
     await page.route('**/*',route=>new URL(route.request().url()).origin===ORIGIN?route.continue():route.abort('blockedbyclient'));
-    await page.addInitScript(({room,user,endpoint})=>{
+    await page.addInitScript(({room,user,endpoint,recordLinks})=>{
       Object.defineProperty(window,'firebaseConfig',{configurable:true,get(){return null;},set(){}});
-      Object.defineProperty(window,'WORK_BOARD_MESSAGING',{configurable:true,get(){return Object.freeze({enabled:true,endpoint,attachmentsEnabled:true});},set(){}});
+      Object.defineProperty(window,'WORK_BOARD_MESSAGING',{configurable:true,get(){return Object.freeze({enabled:true,endpoint,attachmentsEnabled:true,recordLinksEnabled:recordLinks});},set(){}});
       localStorage.setItem('system-task-users:'+room,JSON.stringify([user]));
       localStorage.setItem('systemTaskUser',user);
       localStorage.setItem('systemTaskRoomId',room);
       // Every tab starts in the default display, so the synthetic backend is
       // installed before Origin captures the board bridge.
       for(const k of Object.keys(localStorage))if(k.startsWith('workBoardDisplayV356:'))localStorage.removeItem(k);
-    },{room,user,endpoint});
+    },{room,user,endpoint,recordLinks});
     await page.goto('/?room='+room,{waitUntil:'domcontentloaded'});
   }else{
     // Start the reload in the default display so the synthetic backend is
@@ -41,7 +43,12 @@ async function install(page,{personId=pA,member=true,approved=true,connected=tru
   await page.evaluate(({personId,member,approved,connected,unknownFirstCreate,group,sourceId,SERVER,pA,pB,endpoint})=>{
     const base=window.WorkBoardPaletteBridge,roomId=base.readSnapshot().roomId,uid='synthetic-'+personId.slice(2,8);
     const name=base.readSnapshot().currentUser;
-    const server=()=>JSON.parse(localStorage.getItem(SERVER)||'{"links":{},"origins":{},"deleted":false}');
+    const server=()=>JSON.parse(localStorage.getItem(SERVER)||'{"deleted":false}');
+    // Each link and reservation has its own key: tabs see localStorage changes
+    // asynchronously, so a shared read-modify-write blob would lose updates.
+    const LINK=SERVER+'|link|',ORIGIN_KEY=SERVER+'|origin|';
+    const entries=prefix=>Object.fromEntries(Object.keys(localStorage).filter(k=>k.startsWith(prefix)).map(k=>[k.slice(prefix.length),JSON.parse(localStorage.getItem(k))]));
+    const readLink=path=>JSON.parse(localStorage.getItem(LINK+path)||'null');
     const save=value=>localStorage.setItem(SERVER,JSON.stringify(value));
     const message={id:sourceId,senderId:pA,createdAt:2000,revision:1,body:'Synthetic task from a message\nReview summary',refs:[],attachmentIds:[],confirmationRequested:false,replyTo:null};
     const newers=Array.from({length:120},(_,i)=>({...message,id:'msg_'+pA+'_q_'+i.toString(16).padStart(32,'c'),createdAt:3000+i,body:'Newer synthetic note '+i}));
@@ -51,18 +58,18 @@ async function install(page,{personId=pA,member=true,approved=true,connected=tru
     const watchers=new Map();
     const notify=(path,value)=>{for(const fn of watchers.get(path)??[])fn({val:()=>value});};
     const binding=()=>({uid,roomId,personId,displayName:name,approved:state.approved,active:true});
-    const t=window.__businessTest={base,personId,reads:[],reserves:[],clientWrites:[],history:[],connections:0,
+    const t=window.__businessTest={base,personId,reads:[],reserves:[],dispatched:[],clientWrites:[],history:[],connections:0,
       setConnected(v){state.connected=v;notify('.info/connected',v);},
       revoke(){state.approved=false;notify('messagingAccessV1/'+roomId+'/'+uid,binding());},
       leave(){state.member=false;},
       failReserve(v){state.failReserve=v;},
       deleteSource(){const s=server();s.deleted=true;save(s);},
-      links:()=>server().links,origins:()=>server().origins};
+      links:()=>entries(LINK),origins:()=>entries(ORIGIN_KEY)};
     const linkReadable=()=>state.member&&!server().deleted;
     const firstCreate={pending:unknownFirstCreate};
     window.WorkBoardPaletteBridge={...base,readSnapshot:()=>({...base.readSnapshot(),connectionMode:'remote-online'}),subscribe:fn=>base.subscribe(s=>fn({...s,connectionMode:'remote-online'})),
       // Optionally lose the first create's response after the record was saved.
-      async dispatch(command){const result=await base.dispatch(command);if(firstCreate.pending&&command.type==='task.create'&&result?.ok){firstCreate.pending=false;return {ok:false,error:'transaction-aborted-or-invariant-failure'};}return result;},
+      async dispatch(command){t.dispatched.push(Object.keys(command));const result=await base.dispatch(command);if(firstCreate.pending&&command.type==='task.create'&&result?.ok){firstCreate.pending=false;return {ok:false,error:'transaction-aborted-or-invariant-failure'};}return result;},
       async getMessagingConnection(){
         t.connections++;
         const read=path=>{
@@ -71,7 +78,7 @@ async function install(page,{personId=pA,member=true,approved=true,connected=tru
           if(path==='messagingControlV1/enabled')return true;
           if(path==='messagingAccessV1/'+roomId+'/'+uid)return binding();
           if(path.endsWith('/members/'+personId))return state.member?{active:true,joinedAt:1000,role:'member'}:null;
-          if(path.includes('/recordLinks/')){const value=server().links[path]??null;if(value&&!linkReadable())throw denied();return value;}
+          if(path.includes('/recordLinks/')){const value=readLink(path);if(value&&!linkReadable())throw denied();return value;}
           if(path.endsWith('/'+message.id))return all()[0];
           return null;
         };
@@ -102,14 +109,14 @@ async function install(page,{personId=pA,member=true,approved=true,connected=tru
       if(action==='recordReserve'){
         t.reserves.push(payload);
         if(state.failReserve)return reply({status:'unavailable'},503);
-        const s=server(),source=all().find(m=>m.id===payload.messageId);
+        const source=all().find(m=>m.id===payload.messageId);
         if(!state.member||!source||source.deletedAt||payload.conversationId!==group||Object.keys(payload).some(k=>!['roomId','conversationId','messageId','requestId','recordType','count'].includes(k)))return reply({status:'forbidden'},403);
-        const mine=s.origins[personId]??={};
-        const known=mine[payload.requestId];
+        const originKey=ORIGIN_KEY+personId+'|'+payload.requestId;
+        const known=JSON.parse(localStorage.getItem(originKey)||'null');
         if(known)return known.messageId===payload.messageId&&known.recordType===payload.recordType&&known.ids.length===payload.count?reply({status:'ok',requestId:payload.requestId,recordType:payload.recordType,ids:known.ids}):reply({status:'conflict'},409);
         const ids=Array.from({length:payload.count},issue);
-        for(const id of ids)s.links['messagingV1/'+roomId+'/recordLinks/'+payload.recordType+'/'+id]={conversationId:group,messageId:payload.messageId,createdBy:personId,createdAt:5000};
-        mine[payload.requestId]={messageId:payload.messageId,recordType:payload.recordType,ids};save(s);
+        for(const id of ids)localStorage.setItem(LINK+'messagingV1/'+roomId+'/recordLinks/'+payload.recordType+'/'+id,JSON.stringify({conversationId:group,messageId:payload.messageId,createdBy:personId,createdAt:5000}));
+        localStorage.setItem(originKey,JSON.stringify({messageId:payload.messageId,recordType:payload.recordType,ids}));
         return reply({status:'ok',requestId:payload.requestId,recordType:payload.recordType,ids});
       }
       if(action==='history'){
@@ -137,7 +144,12 @@ async function install(page,{personId=pA,member=true,approved=true,connected=tru
 }
 const ui=page=>{const root=page.locator('#modernOriginRoot');return {root,trigger:root.locator('.origin-message-trigger'),dialog:root.locator('dialog.origin-message-host')};};
 async function openTask(page,title){
-  const {root}=ui(page);
+  const {root,dialog}=ui(page);
+  // After a save from a message the board returns to the open messaging dialog.
+  if(await dialog.evaluate(el=>el.open))await dialog.locator('.origin-message-dismiss').click();
+  // A detail left open (or restored after a reload) covers the navigation.
+  if(await root.locator('#overlay').isVisible())await root.locator('#sheet .sheet-close').click();
+  await expect(root.locator('#overlay')).toBeHidden();
   await root.locator('#desktopNav [data-route=tasks]').click();
   await root.locator('.origin-task-collection .item-name',{hasText:title}).click();
   return root.locator('#sheet .origin-message-link');
@@ -185,7 +197,7 @@ test('normal launch: a created task carries a server-issued link; the detail che
   expect(JSON.stringify(await page.evaluate(()=>window.__businessTest.links()))).not.toContain('Review summary');
   expect(await page.evaluate(()=>window.__businessTest.clientWrites)).toEqual([]);
   // Nothing about the message is kept in this browser.
-  expect(await page.evaluate(id=>Object.entries(localStorage).filter(([k,v])=>k!=='__fakeMessagingServer'&&(v.includes(id)||k.includes('pending-links'))).length,sourceId)).toBe(0);
+  expect(await page.evaluate(id=>Object.entries(localStorage).filter(([k,v])=>!k.startsWith('__fakeMessagingServer')&&(v.includes(id)||k.includes('pending-links'))).length,sourceId)).toBe(0);
   // Normal launch after a reload: messaging is not connected until asked.
   await boot(page,{reload:true});await install(page);
   const {dialog}=ui(page);
@@ -241,21 +253,27 @@ test('an unrelated existing record never gets a link; another authorized member 
   expect(await page.evaluate(()=>window.__businessTest.history.filter(h=>h.around).length)).toBe(0);
 });
 
-test('unapproved, offline and revoked devices are told to connect and never read the link; leaving or deleting hides it',async({page})=>{
-  test.setTimeout(120000);
-  await boot(page);await install(page);
-  await createTaskFromMessage(page);
-  await expect.poll(()=>taskIds(page)).toHaveLength(1);
-  for(const options of [{approved:false},{connected:false}]){
+for(const options of [{approved:false},{connected:false}]){
+  test((options.approved===false?'unapproved':'offline')+' device: told to connect and never reads the link',async({page})=>{
+    test.setTimeout(120000);
+    await boot(page);await install(page);
+    await createTaskFromMessage(page);
+    await expect.poll(()=>taskIds(page)).toHaveLength(1);
     await boot(page,{reload:true});await install(page,options);
     const {root,dialog}=ui(page);
     await (await openTask(page,TITLE)).click();
     await expect(root.getByText('メッセージに接続できないため確認できません。端末の承認と接続を確認してください。')).toBeVisible({timeout:20000});
     await expect(dialog.getByText(/未承認またはオフライン|接続できません/)).toBeVisible();
     expect(await page.evaluate(()=>window.__businessTest.reads.filter(p=>p.includes('/recordLinks/')))).toEqual([]);
-    await dialog.locator('.origin-message-dismiss').click();
-  }
-  // Revocation after the link was usable, then a reload while revoked.
+    expect(await taskIds(page)).toHaveLength(1);
+  });
+}
+
+test('revocation while open and a reload while revoked: told to connect, no further link reads',async({page})=>{
+  test.setTimeout(120000);
+  await boot(page);await install(page);
+  await createTaskFromMessage(page);
+  await expect.poll(()=>taskIds(page)).toHaveLength(1);
   await boot(page,{reload:true});await install(page);
   const {root,dialog}=ui(page);
   const check=await openTask(page,TITLE);
@@ -272,12 +290,18 @@ test('unapproved, offline and revoked devices are told to connect and never read
   await (await openTask(page,TITLE)).click();
   await expect(root.getByText('メッセージに接続できないため確認できません',{exact:false})).toBeVisible({timeout:20000});
   expect(await page.evaluate(()=>window.__businessTest.reads.filter(p=>p.includes('/recordLinks/')))).toEqual([]);
-  await dialog.locator('.origin-message-dismiss').click();
-  // Leaving the conversation or deleting the source hides it; the task stays.
+  expect(await taskIds(page)).toHaveLength(1);
+});
+
+test('leaving hides the link, rejoining restores it, deleting the source hides it; the task stays',async({page})=>{
+  test.setTimeout(120000);
+  await boot(page);await install(page);
+  await createTaskFromMessage(page);
+  await expect.poll(()=>taskIds(page)).toHaveLength(1);
   await boot(page,{reload:true});await install(page,{member:false});
+  const {root,dialog}=ui(page);
   await (await openTask(page,TITLE)).click();
   await expect(root.getByText('確認できる元メッセージはありません',{exact:false})).toBeVisible();
-  // Rejoining (a fresh membership on this device) restores access to the same link.
   await boot(page,{reload:true});await install(page);
   await (await openTask(page,TITLE)).click();
   await expect(dialog.locator('.om-message[data-message-id="'+sourceId+'"]')).toBeFocused();
@@ -421,3 +445,44 @@ for(const width of [320,390]){
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   });
 }
+
+test('first release (links deferred): creating from a message is an ordinary create with no reservation, prompt, notice or link button',async({page})=>{
+  test.setTimeout(120000);
+  await boot(page,{recordLinks:false});await install(page);
+  const {root,dialog}=ui(page);
+  const prompts=[];page.on('dialog',d=>{prompts.push(d.message());void d.accept();});
+  await createTaskFromMessage(page);
+  await expect.poll(()=>taskIds(page)).toHaveLength(1);
+  await expect(root.getByText('元メッセージへのリンク',{exact:false})).toHaveCount(0);
+  // A single schedule and a three-day batch from the same message.
+  const createSchedule=async batch=>{
+    const msg=await openSource(page);
+    await msg.getByRole('button',{name:'その他',exact:true}).click();
+    await dialog.getByRole('button',{name:'予定を作成',exact:true}).click();
+    const form=root.locator('#editForm[data-kind="events"]');
+    await expect(form.locator('[name=title]')).toHaveValue(TITLE);
+    if(batch){
+      await form.locator('.origin-batch-options summary').click();
+      await form.locator('[name=batchEnabled]').check();
+      await form.locator('[name=batchCount]').fill(String(batch));
+      await form.getByRole('button',{name:'作成日を確認'}).click();
+      await expect(form.locator('#originBatchReview')).toContainText(batch+'件の作成日');
+    }
+    await root.locator('#sheet button[form=editForm]').click();
+  };
+  const scheduleCount=()=>page.evaluate(title=>window.__businessTest.base.readSnapshot().schedules.filter(s=>s.title===title).length,TITLE);
+  await createSchedule(0);await expect.poll(scheduleCount).toBe(1);
+  await createSchedule(3);await expect.poll(scheduleCount).toBe(4);
+  expect(await page.evaluate(()=>window.__businessTest.reserves.length)).toBe(0);
+  expect(await linkKeys(page)).toEqual([]);
+  // The board never receives a reservation callback.
+  const dispatched=await page.evaluate(()=>window.__businessTest.dispatched);
+  expect(dispatched.length).toBeGreaterThanOrEqual(3);
+  expect(dispatched.some(keys=>keys.includes('reserveRecordIds'))).toBe(false);
+  // Only the board's own overlap confirmation may appear, never a link prompt.
+  expect(prompts.some(m=>m.includes('リンク'))).toBe(false);
+  // No "check the source message" button on the created task's detail.
+  const check=await openTask(page,TITLE);
+  await expect(root.locator('#sheet .detail-list')).toBeVisible();
+  await expect(check).toHaveCount(0);
+});

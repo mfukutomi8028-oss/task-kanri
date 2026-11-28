@@ -92,7 +92,7 @@ test('a jump reads one bounded window around any target, never the whole span to
   const records=Array.from({length:5200},(_,i)=>row(i+2));
   const windows=[],afters=[];
   const base={verifyToken:async token=>token==='tokenA'?{uid:'uidA'}:null,readBinding:async()=>okBinding(),readMember:async()=>okMember(),readPage:async()=>[]};
-  const service=createMessagingHistoryService({...base,
+  const service=createMessagingHistoryService({...base,readTarget:async request=>structuredClone(records.find(r=>r.id===request.messageId)??null),
     readWindow:async request=>{
       windows.push(request);const index=records.findIndex(r=>r.id===request.around);
       if(index<0)return {status:'missing'};
@@ -126,7 +126,7 @@ test('a jump reads one bounded window around any target, never the whole span to
   assert.deepEqual(await service.readHistory({...call,around:msgId(99999)}),{status:'missing'});
   // A pre-join cursor or a window without its target is never accepted.
   assert.deepEqual(await service.readHistory({...call,after:{createdAt:900,id:msgId(1)},limit:50}),{status:'missing'});
-  const lying=createMessagingHistoryService({...base,readWindow:async()=>({status:'ok',records:[records[5]],hasMore:false,hasNewer:false})});
+  const lying=createMessagingHistoryService({...base,readTarget:async()=>records[4],readWindow:async()=>({status:'ok',records:[records[5]],hasMore:false,hasNewer:false})});
   assert.deepEqual(await lying.readHistory({...call,around:records[4].id}),{status:'unavailable'});
   // Mixed or unsupported modes are invalid, never a silent page.
   assert.deepEqual(await service.readHistory({...call,around:records[4].id,before:{createdAt:2000,id:msgId(3)}}),{status:'invalid'});
@@ -136,7 +136,26 @@ test('a jump reads one bounded window around any target, never the whole span to
 test('a window is authorized again before it is returned',async()=>{
   let active=true;
   const records=Array.from({length:80},(_,i)=>row(i+2));
-  const service=createMessagingHistoryService({verifyToken:async()=>({uid:'uidA'}),readBinding:async()=>({...okBinding(),active}),readMember:async()=>okMember(),readPage:async()=>[],
+  const service=createMessagingHistoryService({verifyToken:async()=>({uid:'uidA'}),readBinding:async()=>({...okBinding(),active}),readMember:async()=>okMember(),readPage:async()=>[],readTarget:async()=>records[40],
     readWindow:async request=>{active=false;const index=records.findIndex(r=>r.id===request.around);return {status:'ok',records:structuredClone(records.slice(index-3,index+3)),hasMore:true,hasNewer:true};}});
   assert.deepEqual(await service.readHistory({...call,around:records[40].id}),{status:'forbidden'});
+});
+test('a target deleted while its window is read is reported as missing, never as success',async()=>{
+  const records=Array.from({length:80},(_,i)=>row(i+2));
+  let deleted=false;const reads=[];
+  const service=createMessagingHistoryService({verifyToken:async()=>({uid:'uidA'}),readBinding:async()=>okBinding(),readMember:async()=>okMember(),readPage:async()=>[],
+    readWindow:async request=>{const index=records.findIndex(r=>r.id===request.around);deleted=true;return {status:'ok',records:structuredClone(records.slice(index-3,index+3)),hasMore:true,hasNewer:true};},
+    // The target is read again after the window, right before the response.
+    readTarget:async request=>{reads.push(request);const target=records.find(r=>r.id===request.messageId);return deleted?{...target,deletedAt:5000}:target;}});
+  assert.deepEqual(await service.readHistory({...call,around:records[40].id}),{status:'missing'});
+  assert.deepEqual(reads,[{roomId:room,conversationId:group,messageId:records[40].id}]);
+  // A target that disappears entirely is missing too.
+  const gone=createMessagingHistoryService({verifyToken:async()=>({uid:'uidA'}),readBinding:async()=>okBinding(),readMember:async()=>okMember(),readPage:async()=>[],
+    readWindow:async request=>{const index=records.findIndex(r=>r.id===request.around);return {status:'ok',records:structuredClone(records.slice(index-3,index+3)),hasMore:true,hasNewer:true};},
+    readTarget:async()=>null});
+  assert.deepEqual(await gone.readHistory({...call,around:records[40].id}),{status:'missing'});
+  // Without a target reader a window cannot be served.
+  const unchecked=createMessagingHistoryService({verifyToken:async()=>({uid:'uidA'}),readBinding:async()=>okBinding(),readMember:async()=>okMember(),readPage:async()=>[],
+    readWindow:async request=>{const index=records.findIndex(r=>r.id===request.around);return {status:'ok',records:structuredClone(records.slice(index-3,index+3)),hasMore:true,hasNewer:true};}});
+  assert.deepEqual(await unchecked.readHistory({...call,around:records[40].id}),{status:'invalid'});
 });

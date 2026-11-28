@@ -124,6 +124,13 @@ export function createMessagingMutationService({verifyToken,readBinding,readCont
 // The factory must create a server-only Admin database instance with this exact
 // databaseAuthVariableOverride and dispose it after the callback. Never mint a
 // client authentication token containing this reserved service scope.
+/**
+ * @param {{
+ *   auth:any, database:any, withActorDatabase:any, digestKey:Uint8Array, clock?:()=>number,
+ *   claimAttachments?:any, reserveSend?:any, acquireAttachmentLease?:any,
+ *   diagnostic?:((event:{stage:string,kind:string})=>void)|null
+ * }} options
+ */
 export function createFirebaseMessagingMutationService({auth,database,withActorDatabase,digestKey,clock,claimAttachments=null,reserveSend=null,acquireAttachmentLease=null,diagnostic=null}={}){
   if(typeof auth?.verifyIdToken!=='function'||typeof database?.ref!=='function'||typeof withActorDatabase!=='function')throw new TypeError('Scoped Firebase adapters required');
   const read=async path=>(await database.ref(path).get()).val();

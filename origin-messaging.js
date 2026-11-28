@@ -382,6 +382,10 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   }
   async function renderTimeline({older=false}={}){
     const generation=++renderGeneration,c=context(),beforeHeight=timeline.scrollHeight,beforeTop=timeline.scrollTop,nearBottom=beforeHeight-beforeTop-timeline.clientHeight<90;
+    // Element-based position for an older window: edits or deletion placeholders
+    // above the view change heights, so keep the first visible message in place.
+    const viewTop=timeline.getBoundingClientRect().top,pinned=[...timeline.querySelectorAll('[data-message-id]')].find(n=>n.getBoundingClientRect().bottom>viewTop);
+    const pin=pinned?{id:pinned.dataset.messageId,offset:pinned.getBoundingClientRect().top-viewTop}:null;
     if(!c){timeline.replaceChildren(el('div','om-empty',state.status==='loading'?'会話を読み込み中…':state.status==='forbidden'||state.status==='locked'?'この会話は利用できません。':'会話を選ぶか、新規メッセージを作成してください。'));return;}
     const dates=historyDates.read(),searching=Boolean(query||dates.from!==null||dates.to!==null);
     const matches=searching?(await searchLoadedMessages(state.messages,{query,context:c,resolver,resolvePerson,...dates})).matches.slice().reverse():state.messages;
@@ -397,7 +401,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
       gap.append(el('p','','ここから最新までのメッセージは未取得です。'),button('新しいメッセージを読み込む',async()=>{await store.loadNewer();},'om-outline'),button('最新に戻る',async()=>{await store.refreshLatest();timeline.scrollTop=timeline.scrollHeight;},'om-outline'));
       timeline.append(gap);
     }
-    if(older)timeline.scrollTop=beforeTop+timeline.scrollHeight-beforeHeight;else if(state.hasNewer)timeline.scrollTop=beforeTop;else if(nearBottom||lastId!==state.conversationId)timeline.scrollTop=timeline.scrollHeight;else{timeline.scrollTop=beforeTop;$('.om-newer').hidden=false;}
+    if(older)timeline.scrollTop=beforeTop+timeline.scrollHeight-beforeHeight;else if(state.hasNewer){timeline.scrollTop=beforeTop;const again=pin&&timeline.querySelector('[data-message-id="'+pin.id+'"]');if(again)timeline.scrollTop+=again.getBoundingClientRect().top-timeline.getBoundingClientRect().top-pin.offset;}else if(nearBottom||lastId!==state.conversationId)timeline.scrollTop=timeline.scrollHeight;else{timeline.scrollTop=beforeTop;$('.om-newer').hidden=false;}
     scheduleVisibleRead();
   }
   // Capacity is fetched on demand (shared panel open / attach click) and cached for 60s.

@@ -240,10 +240,12 @@ test('a jump shows one bounded window with an explicit gap; activity never repla
     assert.ok(snap.messages.length<=50);assert.equal(snap.messages.some(m=>m.id===target.id),true);
     assert.equal(snap.hasNewer,true);assert.equal(snap.hasMore,true);
   }
-  // Live activity keeps the window; marking read across the gap is refused.
+  // Live activity refreshes the window in place (one request around its anchor,
+  // never the latest page); marking read across the gap is refused.
   const shown=f.store.getSnapshot().messages,calls=f.calls.length;
-  f.watches.at(-1).changed();await flush();
-  assert.equal(f.calls.length,calls);assert.equal(f.store.getSnapshot().messages,shown);
+  f.watches.at(-1).changed();await flush();await flush();
+  assert.equal(f.calls.length,calls+1);assert.ok(f.calls.at(-1).around);assert.equal(f.calls.slice(calls).some(q=>!q.around),false);
+  assert.deepEqual(f.store.getSnapshot().messages.map(m=>m.id),shown.map(m=>m.id));assert.equal(f.store.getSnapshot().hasNewer,true);
   assert.deepEqual(await f.store.markRead({conversationId:c,cursor:cursor(shown.at(-1)),visible:true}),{status:'ignored'});
   assert.equal(reads.length,0);
   // Older and newer pages extend the window around the target.
@@ -280,5 +282,79 @@ test('a window response without its target or with inconsistent cursors is rejec
   lie='cursor';
   assert.deepEqual(await f.store.loadAround(id(45)),{status:'unavailable'});
   assert.equal(f.store.getSnapshot().hasNewer,false);
+  f.store.dispose();
+});
+test('an older window reflects deletions and edits by others in place, keeps its gap and never marks read',async()=>{
+  const records=Array.from({length:400},(_,i)=>message(i+1));
+  const windowOf=index=>{const older=records.slice(Math.max(0,index-25),index),newer=records.slice(index+1,index+27);
+    const list=[...older.slice(-24),records[index],...newer.slice(0,25)];
+    return {status:'ok',joinedAt:1000,messages:structuredClone(list),hasMore:older.length>24,nextCursor:older.length>24?cursor(list[0]):null,hasNewer:newer.length>25,newerCursor:newer.length>25?cursor(list.at(-1)):null};};
+  const reads=[];
+  const f=fixture({records,readHook(q){
+    if(q.around){const index=records.findIndex(m=>m.id===q.around);return index<0||records[index].deletedAt?{status:'missing'}:windowOf(index);}
+    const matches=records.filter(m=>!q.before||m.createdAt<q.before.createdAt).slice(-q.limit);
+    return {status:'ok',joinedAt:1000,messages:structuredClone(matches),hasMore:matches.length===q.limit,nextCursor:matches.length===q.limit?cursor(matches[0]):null};
+  },markReadHook(q){reads.push(q);return {status:'ok',cursor:q.cursor};}});
+  await f.store.setActiveConversation(c);
+  const anchor=records[100];
+  assert.deepEqual(await f.store.loadAround(anchor.id),{status:'ok'});
+  // Another member deletes one message and edits another inside the window.
+  records[95]={...records[95],revision:2,deletedAt:7000,body:undefined};
+  records[105]={...records[105],revision:2,body:'edited elsewhere',editedAt:7000};
+  const before=f.calls.length;
+  f.watches.at(-1).changed();await flush();await flush();
+  const snap=f.store.getSnapshot();
+  assert.equal(f.calls.length-before,1);assert.equal(f.calls.at(-1).around,anchor.id);
+  assert.equal(snap.messages.find(m=>m.id===records[95].id).deletedAt,7000);
+  assert.equal(snap.messages.find(m=>m.id===records[105].id).body,'edited elsewhere');
+  assert.equal(snap.hasNewer,true);assert.equal(snap.messages.some(m=>m.id===records.at(-1).id),false);
+  assert.deepEqual(await f.store.markRead({conversationId:c,cursor:cursor(snap.messages.at(-1)),visible:true}),{status:'ignored'});
+  // The anchor itself is deleted: the window re-anchors on a nearby visible message.
+  records[100]={...records[100],revision:2,deletedAt:8000,body:undefined};
+  f.watches.at(-1).changed();await flush();await flush();await flush();
+  const after=f.store.getSnapshot();
+  assert.equal(after.messages.find(m=>m.id===anchor.id).deletedAt,8000);
+  assert.equal(after.hasNewer,true);
+  assert.equal(reads.length,0);
+  f.store.dispose();
+});
+test('window refresh races: activity during a jump, cursors after older pages, bursts and a deleted anchor neighbourhood',async()=>{
+  const records=Array.from({length:400},(_,i)=>message(i+1));
+  let gate=null;
+  const windowOf=index=>{const older=records.slice(Math.max(0,index-25),index),newer=records.slice(index+1,index+27);
+    const list=[...older.slice(-24),records[index],...newer.slice(0,25)];
+    return {status:'ok',joinedAt:1000,messages:structuredClone(list),hasMore:older.length>24,nextCursor:older.length>24?cursor(list[0]):null,hasNewer:newer.length>25,newerCursor:newer.length>25?cursor(list.at(-1)):null};};
+  const f=fixture({records,async readHook(q){
+    if(gate)await gate.promise;
+    if(q.around){const index=records.findIndex(m=>m.id===q.around);return index<0||records[index].deletedAt?{status:'missing'}:windowOf(index);}
+    const matches=records.filter(m=>!q.before||m.createdAt<q.before.createdAt).slice(-q.limit);
+    return {status:'ok',joinedAt:1000,messages:structuredClone(matches),hasMore:matches.length===q.limit,nextCursor:matches.length===q.limit?cursor(matches[0]):null};
+  }});
+  await f.store.setActiveConversation(c);
+  // Activity arriving while the jump is still loading never moves to the latest page.
+  gate=deferred();const jump=f.store.loadAround(records[200].id);await flush();
+  f.watches.at(-1).changed();await flush();
+  gate.resolve();gate=null;await jump;for(let i=0;i<6;i++)await flush();
+  let snap=f.store.getSnapshot();
+  assert.equal(snap.hasNewer,true);assert.equal(snap.messages.some(m=>m.id===records.at(-1).id),false);
+  assert.equal(f.calls.some(q=>!q.around&&!q.before&&f.calls.indexOf(q)>0),false);
+  // After an older page, a refresh keeps both cursors and the loaded range.
+  await f.store.loadOlder();
+  snap=f.store.getSnapshot();const kept={next:snap.nextCursor,newer:snap.newerCursor,ids:snap.messages.map(m=>m.id)};
+  f.watches.at(-1).changed();for(let i=0;i<6;i++)await flush();
+  snap=f.store.getSnapshot();
+  assert.deepEqual(snap.nextCursor,kept.next);assert.deepEqual(snap.newerCursor,kept.newer);assert.deepEqual(snap.messages.map(m=>m.id),kept.ids);
+  // A burst of activity is coalesced into at most two requests.
+  const before=f.calls.length;gate=deferred();
+  for(let i=0;i<10;i++)f.watches.at(-1).changed();
+  await flush();gate.resolve();gate=null;for(let i=0;i<10;i++)await flush();
+  assert.ok(f.calls.length-before<=2,'requests: '+(f.calls.length-before));
+  // The anchor and its nearest neighbour are both deleted: one retry, then the window stays.
+  records[200]={...records[200],revision:2,deletedAt:9000,body:undefined};
+  for(let i=0;i<400;i++)if(i!==200&&!records[i].deletedAt)records[i]={...records[i],revision:2,deletedAt:9000,body:undefined};
+  const start=f.calls.length;
+  f.watches.at(-1).changed();for(let i=0;i<10;i++)await flush();
+  assert.ok(f.calls.length-start<=2,'requests: '+(f.calls.length-start));
+  assert.deepEqual(f.store.getSnapshot().messages.map(m=>m.id),kept.ids);assert.equal(f.store.getSnapshot().hasNewer,true);
   f.store.dispose();
 });

@@ -12,7 +12,11 @@ window.firebaseConfig = {
 
 // Public configuration only. Do not include service-role keys or Firebase credentials.
 // First release stays disabled until live authorization and deployment verification.
-window.WORK_BOARD_MESSAGING = Object.freeze({ enabled: false, endpoint: '', attachmentsEnabled: false });
+// recordLinksEnabled: links from tasks/schedules to their source message are
+// deferred to the formal-login release (docs/messaging-record-origin-design.md).
+// Keep false; enable only together with WORKBOARD_MESSAGING_RECORD_LINKS_ENABLED
+// on the Edge function, after review findings I1-I3 are resolved.
+window.WORK_BOARD_MESSAGING = Object.freeze({ enabled: false, endpoint: '', attachmentsEnabled: false, recordLinksEnabled: false });
 
 // Ver.241: CSSは宣言順を保ったまま並列読込し、JSは依存順を守って逐次読込する。
 // version表示はrelease manifestを唯一の値ソースとして、通常起動・復帰時ともこのloaderが同期する。

@@ -811,7 +811,10 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  // Create from a message: the board asks the messaging server for record ids
  // that already carry the source link, after its own checks and confirmations.
  // A retried save reuses the same request, so it receives the same ids.
- const linkType=returnToMessaging?{'task.create':'task','schedule.create':'schedule','schedule.batch':'schedule'}[command.type]:null;
+ // Record links are deferred (first release): unless explicitly enabled, a create
+ // from a message is an ordinary create, with no reservation, prompt or notice.
+ const createFromMessage=returnToMessaging&&['task.create','schedule.create','schedule.batch'].includes(command.type);
+ const linkType=createFromMessage&&originRecordLinksEnabled()?{'task.create':'task','schedule.create':'schedule','schedule.batch':'schedule'}[command.type]:null;
  const dispatched=linkType&&typeof originMessagingEntry?.reserveRecordIds==='function'
    ?{...command,reserveRecordIds:count=>originMessagingEntry.reserveRecordIds({roomId:snapshot.roomId,type:linkType,count})}:command;
  try{
@@ -820,8 +823,8 @@ async function send(command,label,{close=false,returnToTask=false}={}){
      ? await memoBridge?.dispatch?.(command) : await bridge.dispatch(dispatched);
    if(result?.ok){
      let linkNotice='';
+     if(createFromMessage)originMessagingEntry?.finishRecordDraft?.();
      if(linkType){
-       originMessagingEntry?.finishRecordDraft?.();
        if(result.linkStatus!=='linked')linkNotice=label+'。元メッセージへのリンクは付けずに保存しました。';
      }
      if(command.type.startsWith('task.')&&command.startDate!==undefined){
@@ -3263,8 +3266,9 @@ const originMessageLinkNotice={
  retry:'元メッセージを確認できませんでした。接続を確認して、もう一度お試しください。',
  unavailable:'確認できる元メッセージはありません。リンクがないか、閲覧できない会話です。'
 };
+function originRecordLinksEnabled(){return window.WORK_BOARD_MESSAGING?.recordLinksEnabled===true;}
 function showOriginMessageLink(kind,id){
- const entry=originMessagingEntry;if(typeof entry?.openRecordLink!=='function')return;
+ const entry=originMessagingEntry;if(!originRecordLinksEnabled()||typeof entry?.openRecordLink!=='function')return;
  const anchor=$('#sheet .detail-list');if(!anchor||$('#sheet .origin-message-link'))return;
  const ref={roomId:snapshot.roomId,type:kind==='tasks'?'task':'schedule',recordId:id};
  const button=document.createElement('button');button.type='button';button.className='origin-related-link origin-message-link';button.textContent='元メッセージを確認';

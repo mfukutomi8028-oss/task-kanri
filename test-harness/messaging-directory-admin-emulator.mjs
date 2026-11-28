@@ -19,9 +19,18 @@ const controls={
 const initial={control:controls,directoryIndex:{[b]:{[g1]:{revision:2,state:'member'}}}};
 const sentinel={control:{[g1]:{...controls[g1],roomId:otherRoom}}};
 const cli=fileURLToPath(new URL('../security/messaging-directory-admin.mjs',import.meta.url)),run=promisify(execFile);
+// The CLI ends by itself within its own deadline (WORKBOARD_ADMIN_DEADLINE_MS,
+// 20 s by default); the harness timeout is only a backstop. A failure names the
+// call, its duration and stderr so a stalled emulator is distinguishable.
 async function invoke(...args){
-  const {stdout}=await run(process.execPath,[cli,'--project',projectId,'--room',roomId,'--emulator',...args],{encoding:'utf8',timeout:30000,maxBuffer:65536,windowsHide:true});
-  return JSON.parse(stdout.trim());
+  const started=Date.now();
+  try{
+    const {stdout}=await run(process.execPath,[cli,'--project',projectId,'--room',roomId,'--emulator',...args],{encoding:'utf8',timeout:45000,maxBuffer:65536,windowsHide:true});
+    return JSON.parse(stdout.trim());
+  }catch(error){
+    error.message='Directory CLI '+args.join(' ')+' failed after '+(Date.now()-started)+' ms (killed='+Boolean(error.killed)+', exit='+error.code+'): '+String(error.stderr||'').trim()+'\n'+error.message;
+    throw error;
+  }
 }
 const expected={projectId,roomId};
 let ownsRoom=false,ownsOther=false;
