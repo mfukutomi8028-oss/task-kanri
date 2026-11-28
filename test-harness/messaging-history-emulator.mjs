@@ -83,6 +83,15 @@ try{
     // Later sections expect only the original fixture conversations.
     await db.ref(root+'/control/'+big).remove();await db.ref(root+'/messages/'+big).remove();
   }
+  // Inclusive range reads (review 5): start at the given row among tied
+  // timestamps, never before the join time, one page with a probe for more.
+  const fromTie=await service.readHistory({...call,from:{id:msgId(5),createdAt:1050},limit:3});
+  assert.equal(fromTie.status,'ok');assert.deepEqual(fromTie.messages.map(m=>m.id),[5,6,7].map(msgId));
+  assert.equal(fromTie.hasNewer,true);assert.deepEqual(fromTie.newerCursor,{id:msgId(7),createdAt:1050});
+  const afterTie=await service.readHistory({...call,after:{id:msgId(5),createdAt:1050},limit:3});
+  assert.deepEqual(afterTie.messages.map(m=>m.id),[6,7,8].map(msgId));
+  assert.deepEqual(await service.readHistory({...call,from:{id:msgId(0),createdAt:1000},limit:3}),{status:'missing'});
+  assert.deepEqual(await service.readHistory({...call,from:{id:msgId(5),createdAt:1050},limit:3,token:bob.idToken}),{status:'forbidden'});
   console.log('MESSAGING_HISTORY_WINDOW_OK');
   for(const patch of [{token:bob.idToken},{token:unknown.idToken},{token:'forged'},{roomId:'other'}]){
     assert.deepEqual(await service.readHistory({...call,...patch}),{status:'forbidden'});

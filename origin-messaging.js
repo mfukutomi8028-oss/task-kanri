@@ -382,15 +382,13 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   }
   async function renderTimeline({older=false}={}){
     const generation=++renderGeneration,c=context(),beforeHeight=timeline.scrollHeight,beforeTop=timeline.scrollTop,nearBottom=beforeHeight-beforeTop-timeline.clientHeight<90;
-    // Element-based position for an older window: edits or deletion placeholders
-    // above the view change heights, so keep the first visible message in place.
     const viewTop=timeline.getBoundingClientRect().top,pinned=[...timeline.querySelectorAll('[data-message-id]')].find(n=>n.getBoundingClientRect().bottom>viewTop);
     const pin=pinned?{id:pinned.dataset.messageId,offset:pinned.getBoundingClientRect().top-viewTop}:null;
     if(!c){timeline.replaceChildren(el('div','om-empty',state.status==='loading'?'会話を読み込み中…':state.status==='forbidden'||state.status==='locked'?'この会話は利用できません。':'会話を選ぶか、新規メッセージを作成してください。'));return;}
     const dates=historyDates.read(),searching=Boolean(query||dates.from!==null||dates.to!==null);
     const matches=searching?(await searchLoadedMessages(state.messages,{query,context:c,resolver,resolvePerson,...dates})).matches.slice().reverse():state.messages;
     if(disposed||generation!==renderGeneration||!messageContextValid(c))return;timeline.replaceChildren();
-    searchCoverage.textContent=searching?'取得済み '+state.messages.length+'件から表示 '+matches.length+'件。'+(state.hasMore?'以前の履歴を追加できます。':'取得可能な履歴の先頭です。')+(state.hasNewer?'表示中の範囲より新しいメッセージは未取得のため、検索対象外です。':''):'';
+    searchCoverage.textContent=searching?'表示中の範囲（最大150件）の '+state.messages.length+'件から表示 '+matches.length+'件。'+(state.hasMore?'以前の履歴を追加できます。':'取得可能な履歴の先頭です。')+(state.hasNewer?'表示中の範囲より新しいメッセージは未取得のため、検索対象外です。':''):'';
     if(state.hasMore)timeline.append(button(searching?'以前の履歴を追加して検索':'以前のメッセージを表示',async()=>{await store.loadOlder();},'om-load-more'));
     if(!matches.length)timeline.append(el('div','om-empty',searching?'読み込んだ履歴に一致するメッセージがありません。':'まだメッセージがありません。最初のメッセージを送信しましょう。'));
     let lastDay='';for(const m of matches){const day=dateText(m.createdAt);if(day!==lastDay){timeline.append(el('div','om-date',day));lastDay=day;}timeline.append(renderMessage(m,c));}
@@ -401,7 +399,12 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
       gap.append(el('p','','ここから最新までのメッセージは未取得です。'),button('新しいメッセージを読み込む',async()=>{await store.loadNewer();},'om-outline'),button('最新に戻る',async()=>{await store.refreshLatest();timeline.scrollTop=timeline.scrollHeight;},'om-outline'));
       timeline.append(gap);
     }
-    if(older)timeline.scrollTop=beforeTop+timeline.scrollHeight-beforeHeight;else if(state.hasNewer){timeline.scrollTop=beforeTop;const again=pin&&timeline.querySelector('[data-message-id="'+pin.id+'"]');if(again)timeline.scrollTop+=again.getBoundingClientRect().top-timeline.getBoundingClientRect().top-pin.offset;}else if(nearBottom||lastId!==state.conversationId)timeline.scrollTop=timeline.scrollHeight;else{timeline.scrollTop=beforeTop;$('.om-newer').hidden=false;}
+    // Rows can be added or trimmed at either end (at most 150 are kept) and edited
+    // in place, so the first visible message is kept where it was on screen.
+    const restorePin=()=>{timeline.scrollTop=beforeTop;const again=pin&&timeline.querySelector('[data-message-id="'+pin.id+'"]');if(again)timeline.scrollTop+=again.getBoundingClientRect().top-timeline.getBoundingClientRect().top-pin.offset;return Boolean(again);};
+    if(lastId!==state.conversationId||!older&&!state.hasNewer&&nearBottom)timeline.scrollTop=timeline.scrollHeight;
+    else if(older){if(!restorePin())timeline.scrollTop=beforeTop+timeline.scrollHeight-beforeHeight;}
+    else{restorePin();if(!state.hasNewer)$('.om-newer').hidden=false;}
     scheduleVisibleRead();
   }
   // Capacity is fetched on demand (shared panel open / attach click) and cached for 60s.

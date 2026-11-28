@@ -224,6 +224,7 @@ test('a jump shows one bounded window with an explicit gap; activity never repla
   const reads=[];
   const f=fixture({records,readHook(q){
     if(q.around){const index=records.findIndex(m=>m.id===q.around);return index<0?{status:'missing'}:windowOf(index);}
+    if(q.from){const next=records.filter(m=>m.createdAt>q.from.createdAt||m.createdAt===q.from.createdAt&&m.id>=q.from.id).slice(0,q.limit+1),list=next.slice(0,q.limit);return {status:'ok',joinedAt:1000,messages:structuredClone(list),hasNewer:next.length>q.limit,newerCursor:next.length>q.limit?cursor(list.at(-1)):null};}
     if(q.after){const index=records.findIndex(m=>m.id===q.after.id),next=records.slice(index+1,index+q.limit+2),list=next.slice(0,q.limit);
       return {status:'ok',joinedAt:1000,messages:structuredClone(list),hasNewer:next.length>q.limit,newerCursor:next.length>q.limit?cursor(list.at(-1)):null};}
     const matches=records.filter(m=>!q.before||m.createdAt<q.before.createdAt).slice(-q.limit);
@@ -240,11 +241,11 @@ test('a jump shows one bounded window with an explicit gap; activity never repla
     assert.ok(snap.messages.length<=50);assert.equal(snap.messages.some(m=>m.id===target.id),true);
     assert.equal(snap.hasNewer,true);assert.equal(snap.hasMore,true);
   }
-  // Live activity refreshes the window in place (one request around its anchor,
-  // never the latest page); marking read across the gap is refused.
+  // Live activity re-verifies the shown window in place (one bounded range read
+  // from its first row, never the latest page); marking read across the gap is refused.
   const shown=f.store.getSnapshot().messages,calls=f.calls.length;
-  f.watches.at(-1).changed();await flush();await flush();
-  assert.equal(f.calls.length,calls+1);assert.ok(f.calls.at(-1).around);assert.equal(f.calls.slice(calls).some(q=>!q.around),false);
+  f.watches.at(-1).changed();for(let i=0;i<6;i++)await flush();
+  assert.equal(f.calls.length,calls+1);assert.deepEqual(f.calls.at(-1).from,cursor(shown[0]));
   assert.deepEqual(f.store.getSnapshot().messages.map(m=>m.id),shown.map(m=>m.id));assert.equal(f.store.getSnapshot().hasNewer,true);
   assert.deepEqual(await f.store.markRead({conversationId:c,cursor:cursor(shown.at(-1)),visible:true}),{status:'ignored'});
   assert.equal(reads.length,0);
@@ -292,6 +293,7 @@ test('an older window reflects deletions and edits by others in place, keeps its
   const reads=[];
   const f=fixture({records,readHook(q){
     if(q.around){const index=records.findIndex(m=>m.id===q.around);return index<0||records[index].deletedAt?{status:'missing'}:windowOf(index);}
+    if(q.from){const next=records.filter(m=>m.createdAt>q.from.createdAt||m.createdAt===q.from.createdAt&&m.id>=q.from.id).slice(0,q.limit+1),list=next.slice(0,q.limit);return {status:'ok',joinedAt:1000,messages:structuredClone(list),hasNewer:next.length>q.limit,newerCursor:next.length>q.limit?cursor(list.at(-1)):null};}
     const matches=records.filter(m=>!q.before||m.createdAt<q.before.createdAt).slice(-q.limit);
     return {status:'ok',joinedAt:1000,messages:structuredClone(matches),hasMore:matches.length===q.limit,nextCursor:matches.length===q.limit?cursor(matches[0]):null};
   },markReadHook(q){reads.push(q);return {status:'ok',cursor:q.cursor};}});
@@ -304,14 +306,16 @@ test('an older window reflects deletions and edits by others in place, keeps its
   const before=f.calls.length;
   f.watches.at(-1).changed();await flush();await flush();
   const snap=f.store.getSnapshot();
-  assert.equal(f.calls.length-before,1);assert.equal(f.calls.at(-1).around,anchor.id);
+  assert.equal(f.calls.length-before,1);assert.ok(f.calls.at(-1).from,'a range read, not an anchor read');
   assert.equal(snap.messages.find(m=>m.id===records[95].id).deletedAt,7000);
   assert.equal(snap.messages.find(m=>m.id===records[105].id).body,'edited elsewhere');
   assert.equal(snap.hasNewer,true);assert.equal(snap.messages.some(m=>m.id===records.at(-1).id),false);
   assert.deepEqual(await f.store.markRead({conversationId:c,cursor:cursor(snap.messages.at(-1)),visible:true}),{status:'ignored'});
-  // The anchor itself is deleted: the window re-anchors on a nearby visible message.
+  // The jump target itself is deleted: the range read reflects it with no extra request.
   records[100]={...records[100],revision:2,deletedAt:8000,body:undefined};
-  f.watches.at(-1).changed();await flush();await flush();await flush();
+  const beforeTarget=f.calls.length;
+  f.watches.at(-1).changed();for(let i=0;i<6;i++)await flush();
+  assert.equal(f.calls.length-beforeTarget,1);
   const after=f.store.getSnapshot();
   assert.equal(after.messages.find(m=>m.id===anchor.id).deletedAt,8000);
   assert.equal(after.hasNewer,true);
@@ -327,6 +331,7 @@ test('window refresh races: activity during a jump, cursors after older pages, b
   const f=fixture({records,async readHook(q){
     if(gate)await gate.promise;
     if(q.around){const index=records.findIndex(m=>m.id===q.around);return index<0||records[index].deletedAt?{status:'missing'}:windowOf(index);}
+    if(q.from){const next=records.filter(m=>m.createdAt>q.from.createdAt||m.createdAt===q.from.createdAt&&m.id>=q.from.id).slice(0,q.limit+1),list=next.slice(0,q.limit);return {status:'ok',joinedAt:1000,messages:structuredClone(list),hasNewer:next.length>q.limit,newerCursor:next.length>q.limit?cursor(list.at(-1)):null};}
     const matches=records.filter(m=>!q.before||m.createdAt<q.before.createdAt).slice(-q.limit);
     return {status:'ok',joinedAt:1000,messages:structuredClone(matches),hasMore:matches.length===q.limit,nextCursor:matches.length===q.limit?cursor(matches[0]):null};
   }});
@@ -337,24 +342,216 @@ test('window refresh races: activity during a jump, cursors after older pages, b
   gate.resolve();gate=null;await jump;for(let i=0;i<6;i++)await flush();
   let snap=f.store.getSnapshot();
   assert.equal(snap.hasNewer,true);assert.equal(snap.messages.some(m=>m.id===records.at(-1).id),false);
-  assert.equal(f.calls.some(q=>!q.around&&!q.before&&f.calls.indexOf(q)>0),false);
+  // No latest-page read after the jump (only window and range reads).
+  assert.equal(f.calls.slice(1).some(q=>!q.around&&!q.before&&!q.from&&!q.after),false);
   // After an older page, a refresh keeps both cursors and the loaded range.
   await f.store.loadOlder();
   snap=f.store.getSnapshot();const kept={next:snap.nextCursor,newer:snap.newerCursor,ids:snap.messages.map(m=>m.id)};
   f.watches.at(-1).changed();for(let i=0;i<6;i++)await flush();
   snap=f.store.getSnapshot();
   assert.deepEqual(snap.nextCursor,kept.next);assert.deepEqual(snap.newerCursor,kept.newer);assert.deepEqual(snap.messages.map(m=>m.id),kept.ids);
-  // A burst of activity is coalesced into at most two requests.
+  // A burst of activity is coalesced into at most two passes (each pass reads
+  // the shown rows in pages of 50).
   const before=f.calls.length;gate=deferred();
   for(let i=0;i<10;i++)f.watches.at(-1).changed();
   await flush();gate.resolve();gate=null;for(let i=0;i<10;i++)await flush();
-  assert.ok(f.calls.length-before<=2,'requests: '+(f.calls.length-before));
-  // The anchor and its nearest neighbour are both deleted: one retry, then the window stays.
+  assert.ok(f.calls.length-before<=2*Math.ceil(kept.ids.length/50),'requests: '+(f.calls.length-before));
+  // The jump target and every neighbour are deleted: one pass, no chained reads.
   records[200]={...records[200],revision:2,deletedAt:9000,body:undefined};
   for(let i=0;i<400;i++)if(i!==200&&!records[i].deletedAt)records[i]={...records[i],revision:2,deletedAt:9000,body:undefined};
   const start=f.calls.length;
   f.watches.at(-1).changed();for(let i=0;i<10;i++)await flush();
-  assert.ok(f.calls.length-start<=2,'requests: '+(f.calls.length-start));
-  assert.deepEqual(f.store.getSnapshot().messages.map(m=>m.id),kept.ids);assert.equal(f.store.getSnapshot().hasNewer,true);
+  assert.ok(f.calls.length-start<=Math.ceil(kept.ids.length/50),'requests: '+(f.calls.length-start));
+  assert.deepEqual(f.store.getSnapshot().messages.map(m=>m.id),kept.ids);
+  assert.equal(f.store.getSnapshot().messages.every(m=>m.deletedAt!=null),true);assert.equal(f.store.getSnapshot().hasNewer,true);
   f.store.dispose();
+});
+// Review 5: shown rows are re-verified as a bounded range (no anchor), at most
+// 150 rows are kept, and refresh passes never chain.
+function rangeFixture({total=400}={}){
+  const records=Array.from({length:total},(_,i)=>message(i+1));
+  let gate=null,fail=null,failCall=null;
+  const cmp=(m,c0)=>m.createdAt-c0.createdAt||(m.id<c0.id?-1:m.id>c0.id?1:0);
+  const page=(list,{hasMore,nextCursor,hasNewer,newerCursor})=>({status:'ok',joinedAt:1000,messages:structuredClone(list),...(hasMore!==undefined?{hasMore,nextCursor}:{}),...(hasNewer!==undefined?{hasNewer,newerCursor}:{})});
+  const f=fixture({records,async readHook(q){
+    if(gate)await gate.promise;
+    if(fail){const status=fail;fail=null;return {status};}
+    if(failCall!==null&&f.calls.length===failCall){failCall=null;return {status:'unavailable'};}
+    if(q.around){const i=records.findIndex(m=>m.id===q.around);if(i<0||records[i].deletedAt)return {status:'missing'};
+      const older=records.slice(Math.max(0,i-25),i),newer=records.slice(i+1,i+27),list=[...older.slice(-24),records[i],...newer.slice(0,25)];
+      return page(list,{hasMore:older.length>24,nextCursor:older.length>24?cursor(list[0]):null,hasNewer:newer.length>25,newerCursor:newer.length>25?cursor(list.at(-1)):null});}
+    if(q.from||q.after){const c0=q.from??q.after,next=records.filter(m=>q.from?cmp(m,c0)>=0:cmp(m,c0)>0).slice(0,q.limit+1),list=next.slice(0,q.limit);
+      return page(list,{hasNewer:next.length>q.limit,newerCursor:next.length>q.limit?cursor(list.at(-1)):null});}
+    const matches=records.filter(m=>!q.before||cmp(m,q.before)<0).slice(-q.limit);
+    return page(matches,{hasMore:matches.length===q.limit,nextCursor:matches.length===q.limit?cursor(matches[0]):null});
+  }});
+  const del=i=>{records[i]={...records[i],revision:records[i].revision+1,deletedAt:9000,body:undefined};};
+  const edit=(i,body)=>{records[i]={...records[i],revision:records[i].revision+1,body,editedAt:9000};};
+  const notify=()=>f.watches.at(-1).changed();
+  const settle=async()=>{for(let i=0;i<30;i++)await flush();};
+  return {f,records,del,edit,notify,settle,pause(){gate=deferred();return gate;},release(){const g=gate;gate=null;g?.resolve();},failNext(status){fail=status;},failCallAfter(k){failCall=f.calls.length+k;}};
+}
+test('review5: deletions and edits in added older pages are reflected (window), within three requests per pass',async()=>{
+  const r=rangeFixture();
+  await r.f.store.setActiveConversation(c);
+  await r.f.store.loadAround(r.records[250].id);await r.f.store.loadOlder();await r.f.store.loadOlder();
+  const before=r.f.store.getSnapshot();
+  assert.equal(before.messages.length,150);assert.equal(before.hasNewer,true);
+  const oldest=r.records.findIndex(m=>m.id===before.messages[0].id);
+  r.del(oldest+3);r.edit(oldest+70,'edited in the middle page');r.del(oldest+140);
+  const start=r.f.calls.length;r.notify();await r.settle();
+  const snap=r.f.store.getSnapshot(),row=i=>snap.messages.find(m=>m.id===r.records[i].id);
+  assert.equal(row(oldest+3).deletedAt,9000);assert.equal(row(oldest+70).body,'edited in the middle page');assert.equal(row(oldest+140).deletedAt,9000);
+  assert.ok(r.f.calls.length-start<=3,'requests: '+(r.f.calls.length-start));
+  assert.equal(r.f.calls.slice(start).some(q=>q.around),false,'no anchor re-read');
+  assert.deepEqual(snap.messages.map(m=>m.id),before.messages.map(m=>m.id));
+  assert.deepEqual(snap.nextCursor,before.nextCursor);assert.deepEqual(snap.newerCursor,before.newerCursor);assert.equal(snap.hasNewer,true);
+  assert.deepEqual(await r.f.store.markRead({conversationId:c,cursor:cursor(snap.messages.at(-1)),visible:true}),{status:'ignored'});
+  r.f.store.dispose();
+});
+test('review5: an older page added in the normal view is re-verified too',async()=>{
+  const r=rangeFixture({total:120});
+  await r.f.store.setActiveConversation(c);await r.f.store.loadOlder();
+  const snap0=r.f.store.getSnapshot();assert.equal(snap0.messages.length,100);assert.equal(snap0.hasNewer,false);
+  r.del(30);r.edit(90,'edited in the latest page');
+  const start=r.f.calls.length;r.notify();await r.settle();
+  const snap=r.f.store.getSnapshot();
+  assert.equal(snap.messages.find(m=>m.id===r.records[30].id).deletedAt,9000);
+  assert.equal(snap.messages.find(m=>m.id===r.records[90].id).body,'edited in the latest page');
+  assert.ok(r.f.calls.length-start<=3,'requests: '+(r.f.calls.length-start));
+  r.f.store.dispose();
+});
+test('review5: the anchor and its neighbours deleted under overlapping notifications settle in at most two passes',async()=>{
+  const r=rangeFixture();
+  await r.f.store.setActiveConversation(c);await r.f.store.loadAround(r.records[200].id);
+  const start=r.f.calls.length;
+  r.pause();r.notify();await flush();
+  for(const i of [198,199,200,201,202])r.del(i);
+  for(let i=0;i<10;i++)r.notify();
+  r.release();await r.settle();
+  const snap=r.f.store.getSnapshot();
+  for(const i of [198,199,200,201,202])assert.equal(snap.messages.find(m=>m.id===r.records[i].id).deletedAt,9000);
+  assert.ok(r.f.calls.length-start<=2,'requests: '+(r.f.calls.length-start));
+  assert.equal(snap.hasNewer,true);
+  r.f.store.dispose();
+});
+test('review5: at most 150 rows are kept; the far end is trimmed with consistent cursors and gap',async()=>{
+  const r=rangeFixture();
+  await r.f.store.setActiveConversation(c);await r.f.store.loadAround(r.records[250].id);
+  for(let i=0;i<3;i++)await r.f.store.loadOlder();
+  let snap=r.f.store.getSnapshot();
+  assert.equal(snap.messages.length,150);assert.equal(snap.hasNewer,true);assert.deepEqual(snap.newerCursor,cursor(snap.messages.at(-1)));
+  assert.equal(snap.hasMore,true);assert.deepEqual(snap.nextCursor,cursor(snap.messages[0]));
+  for(let i=0;i<3;i++)await r.f.store.loadNewer();
+  snap=r.f.store.getSnapshot();
+  assert.ok(snap.messages.length<=150);assert.equal(snap.hasMore,true);assert.deepEqual(snap.nextCursor,cursor(snap.messages[0]));
+  for(let i=1;i<snap.messages.length;i++)assert.ok(snap.messages[i-1].createdAt<snap.messages[i].createdAt);
+  // The normal view becomes a window with a gap once older pages exceed the cap.
+  const n=rangeFixture();
+  await n.f.store.setActiveConversation(c);for(let i=0;i<3;i++)await n.f.store.loadOlder();
+  const normal=n.f.store.getSnapshot();
+  assert.equal(normal.messages.length,150);assert.equal(normal.hasNewer,true);assert.deepEqual(normal.newerCursor,cursor(normal.messages.at(-1)));
+  r.f.store.dispose();n.f.store.dispose();
+});
+test('review5: a failed refresh keeps the display without retrying; the next notification recovers',async()=>{
+  const r=rangeFixture();
+  await r.f.store.setActiveConversation(c);await r.f.store.loadAround(r.records[200].id);
+  r.del(205);r.failNext('unavailable');
+  const start=r.f.calls.length;r.notify();await r.settle();
+  assert.equal(r.f.calls.length-start,1,'no retry after a failure');
+  assert.equal(r.f.store.getSnapshot().messages.find(m=>m.id===r.records[205].id).deletedAt??null,null);
+  assert.equal(r.f.store.getSnapshot().status,'ready');
+  r.notify();await r.settle();
+  assert.equal(r.f.store.getSnapshot().messages.find(m=>m.id===r.records[205].id).deletedAt,9000);
+  r.f.store.dispose();
+});
+test('review5: revocation during a refresh locks the conversation and shows no history',async()=>{
+  const r=rangeFixture();
+  await r.f.store.setActiveConversation(c);await r.f.store.loadAround(r.records[200].id);
+  r.failNext('forbidden');r.notify();await r.settle();
+  const snap=r.f.store.getSnapshot();
+  assert.equal(snap.status,'forbidden');assert.equal(snap.messages.length,0);
+  r.f.store.dispose();
+});
+test('review5: rows at every page boundary of a 150-row window are re-verified (no gaps between range reads)',async()=>{
+  const r=rangeFixture();
+  await r.f.store.setActiveConversation(c);
+  await r.f.store.loadAround(r.records[250].id);await r.f.store.loadOlder();await r.f.store.loadOlder();
+  const shown=r.f.store.getSnapshot().messages,base=r.records.findIndex(m=>m.id===shown[0].id);
+  const offsets=[0,49,50,99,100,149];
+  for(const o of offsets)r.del(base+o);
+  const start=r.f.calls.length;r.notify();await r.settle();
+  const snap=r.f.store.getSnapshot();
+  for(const o of offsets)assert.equal(snap.messages.find(m=>m.id===r.records[base+o].id).deletedAt,9000,'offset '+o);
+  assert.equal(r.f.calls.length-start,3);
+  r.f.store.dispose();
+});
+test('review5: normal view at the cap with new messages and a deletion keeps 150 rows and verifies all of them',async()=>{
+  const r=rangeFixture({total:300});
+  await r.f.store.setActiveConversation(c);await r.f.store.loadOlder();await r.f.store.loadOlder();
+  let snap=r.f.store.getSnapshot();assert.equal(snap.messages.length,150);assert.equal(snap.hasNewer,false);
+  // Ten new messages arrive and an older shown row is deleted.
+  for(let i=0;i<10;i++)r.records.push(message(301+i));
+  const oldest=r.records.findIndex(m=>m.id===snap.messages[0].id);
+  r.del(oldest+20);
+  const start=r.f.calls.length;r.notify();await r.settle();
+  snap=r.f.store.getSnapshot();
+  assert.equal(snap.messages.length,150);assert.equal(snap.hasNewer,false);
+  assert.equal(snap.messages.at(-1).id,r.records.at(-1).id);
+  assert.equal(snap.hasMore,true);assert.deepEqual(snap.nextCursor,cursor(snap.messages[0]));
+  assert.equal(snap.messages.find(m=>m.id===r.records[oldest+20].id).deletedAt,9000);
+  assert.ok(r.f.calls.length-start<=3,'requests: '+(r.f.calls.length-start));
+  r.f.store.dispose();
+});
+test('review5: a user action during a pass wins; the pass stops, nothing trimmed comes back, and it runs again once',async()=>{
+  const r=rangeFixture();
+  await r.f.store.setActiveConversation(c);await r.f.store.loadAround(r.records[250].id);await r.f.store.loadOlder();
+  r.del(r.records.findIndex(m=>m.id===r.f.store.getSnapshot().messages[60].id));
+  r.pause();r.notify();await flush();
+  // The person adds another older page while the pass waits on the network.
+  const older=r.f.store.loadOlder();
+  r.release();await older;await r.settle();
+  const snap=r.f.store.getSnapshot();
+  assert.equal(snap.messages.length,150);
+  for(let i=1;i<snap.messages.length;i++)assert.ok(snap.messages[i-1].createdAt<snap.messages[i].createdAt);
+  assert.equal(snap.messages.filter(m=>m.deletedAt===9000).length,1,'the deletion is reflected after the rerun');
+  // Switching conversation during a pass sends nothing for the old conversation afterwards.
+  r.pause();r.notify();await flush();
+  const switched=r.f.store.setActiveConversation(d);
+  const callsAtSwitch=r.f.calls.length;
+  r.release();await switched;await r.settle();
+  assert.equal(r.f.calls.slice(callsAtSwitch).some(q=>q.conversationId===c),false);
+  r.f.store.dispose();
+});
+test('review5: a pass that meets a new join time reads the latest page once; a mid-pass failure keeps what was merged',async()=>{
+  // First range page succeeds, the second fails: the first page's change stays, no retry.
+  const g=rangeFixture();
+  await g.f.store.setActiveConversation(c);await g.f.store.loadAround(g.records[250].id);await g.f.store.loadOlder();
+  const rows=g.f.store.getSnapshot().messages,b0=g.records.findIndex(m=>m.id===rows[0].id);
+  g.del(b0+5);g.del(b0+75);
+  const s0=g.f.calls.length;
+  g.failCallAfter(2);g.notify();await g.settle();
+  const after=g.f.store.getSnapshot();
+  assert.equal(after.messages.find(m=>m.id===g.records[b0+5].id).deletedAt,9000);
+  assert.equal(after.messages.find(m=>m.id===g.records[b0+75].id).deletedAt??null,null);
+  assert.equal(g.f.calls.length-s0,2,'no retry after the failed second read');
+  assert.equal(after.status,'ready');
+  // A new join time seen mid-pass: the pass reads the latest page exactly once.
+  g.failNext('missing');
+  const s1=g.f.calls.length;g.notify();await g.settle();
+  const tail=g.f.calls.slice(s1);
+  assert.equal(tail.filter(q=>!q.from&&!q.before&&!q.around&&!q.after).length,1);
+  g.f.store.dispose();
+});
+test('review5: after trimming, loading newer pages continues seamlessly from the trimmed edge',async()=>{
+  const r=rangeFixture();
+  await r.f.store.setActiveConversation(c);await r.f.store.loadAround(r.records[250].id);
+  for(let i=0;i<3;i++)await r.f.store.loadOlder();
+  const trimmedEdge=r.f.store.getSnapshot().messages.at(-1);
+  await r.f.store.loadNewer();
+  const snap=r.f.store.getSnapshot(),i0=snap.messages.findIndex(m=>m.id===trimmedEdge.id);
+  assert.ok(i0>=0);
+  const ids=snap.messages.map(m=>m.id),expected=r.records.slice(r.records.findIndex(m=>m.id===ids[0]),r.records.findIndex(m=>m.id===ids[0])+ids.length).map(m=>m.id);
+  assert.deepEqual(ids,expected,'contiguous with the records');
+  r.f.store.dispose();
 });

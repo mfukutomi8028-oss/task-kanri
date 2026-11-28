@@ -91,3 +91,13 @@ test('unapproved requests never reach the messaging budget, control reader or se
   assert.deepEqual(effects,[]);
   assert.deepEqual(f.calls,[]);
 });
+test('review5: the browser transport forwards the inclusive range cursor and the history modes unchanged',async()=>{
+  const f=fixture(),api=createMessagingApiTransport({endpoint,session:f.session,getToken:async()=>token,fetchImpl:f.fetchImpl});
+  const from={id:'msg_'+p+'_q_'+'c'.repeat(32),createdAt:2000};
+  await api.readHistory({roomId,conversationId,from,limit:50});
+  await api.readHistory({roomId,conversationId,after:from,limit:50});
+  await api.readHistory({roomId,conversationId,around:from.id});
+  const history=f.calls.filter(([kind])=>kind==='history').map(([,input])=>{const {token:_t,expectedPersonId:_e,...rest}=input;return rest;});
+  assert.deepEqual(history,[{roomId,conversationId,from,limit:50},{roomId,conversationId,after:from,limit:50},{roomId,conversationId,around:from.id}]);
+  api.dispose();
+});

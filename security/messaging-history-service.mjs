@@ -1,7 +1,9 @@
 // Trusted server-side history boundary. Never import this into the browser.
 import {isMessagingRoomId,isPersonId,compareCursor,isConversationId,isMessageId,isMessagingTimestamp,projectMessagingMessage} from '../workspace-messaging-core.js';
 
-const requestFields=new Set(['token','roomId','conversationId','before','limit','expectedPersonId','around','after']);
+// 'from' is an inclusive cursor: clients re-verify the rows they show starting
+// at a shown row. 'after' is exclusive. Both return newer rows, one page each.
+const requestFields=new Set(['token','roomId','conversationId','before','limit','expectedPersonId','around','after','from']);
 // A jump reads only a window around the target (24 older, the target, 25 newer):
 // one page, independent of how far the target is from the latest message.
 export const HISTORY_WINDOW_OLDER=24,HISTORY_WINDOW_NEWER=25;
@@ -27,11 +29,12 @@ export function createMessagingHistoryService({verifyToken,readBinding,readMembe
   }
   async function readHistory(request) {
     if(!isRecord(request)||Object.keys(request).some(field=>!requestFields.has(field)))return status('invalid');
-    const {token,roomId,conversationId,before=null,limit=50,expectedPersonId,around=null,after=null}=request;
+    const {token,roomId,conversationId,before=null,limit=50,expectedPersonId,around=null,after=null,from=null}=request;
     if(typeof token!=='string'||token.length<1||token.length>16384||!isMessagingRoomId(roomId)||!isConversationId(conversationId)
         ||expectedPersonId!==undefined&&!isPersonId(expectedPersonId)||!Number.isInteger(limit)||limit<1||limit>50||(before!==null&&!cursor(before))
-        ||around!==null&&(!isMessageId(around)||before!==null||after!==null||typeof readWindow!=='function'||typeof readTarget!=='function')
-        ||after!==null&&(!cursor(after)||before!==null||typeof readAfter!=='function'))return status('invalid');
+        ||around!==null&&(!isMessageId(around)||before!==null||after!==null||from!==null||typeof readWindow!=='function'||typeof readTarget!=='function')
+        ||after!==null&&(!cursor(after)||before!==null||from!==null||typeof readAfter!=='function')
+        ||from!==null&&(!cursor(from)||before!==null||typeof readAfter!=='function'))return status('invalid');
     try {
       const access=await authorize({token,roomId,conversationId});
       if(!access||expectedPersonId!==undefined&&access.personId!==expectedPersonId)return status('forbidden');
@@ -45,9 +48,10 @@ export function createMessagingHistoryService({verifyToken,readBinding,readMembe
         if(view?.status!=='ok'||!Array.isArray(view.records)||view.records.length<1||view.records.length>HISTORY_WINDOW_OLDER+1+HISTORY_WINDOW_NEWER
           ||typeof view.hasMore!=='boolean'||typeof view.hasNewer!=='boolean'||!view.records.some(item=>item?.id===around))return status('unavailable');
         records=view.records;olderMore=view.hasMore;newerMore=view.hasNewer;
-      }else if(after!==null){
-        if(after.createdAt<=access.joinedAt)return status('missing');
-        const page=await readAfter({roomId,conversationId,joinedAt:access.joinedAt,after,limit});
+      }else if(after!==null||from!==null){
+        const start=after??from;
+        if(start.createdAt<=access.joinedAt)return status('missing');
+        const page=await readAfter({roomId,conversationId,joinedAt:access.joinedAt,after:start,inclusive:from!==null,limit});
         if(page?.status!=='ok'||!Array.isArray(page.records)||page.records.length>limit||typeof page.hasNewer!=='boolean')return status('unavailable');
         records=page.records;newerMore=page.hasNewer;
       }else records=await readPage({roomId,conversationId,joinedAt:access.joinedAt,before,limit});
@@ -55,24 +59,24 @@ export function createMessagingHistoryService({verifyToken,readBinding,readMembe
       const messages=[];const ids=new Set();
       for(const raw of records){
         const item=projectMessagingMessage(raw,{roomId,joinedAt:access.joinedAt});
-        if(before&&compareCursor(item,before)>=0||after&&compareCursor(item,after)<=0)return status('unavailable');
+        if(before&&compareCursor(item,before)>=0||after&&compareCursor(item,after)<=0||from&&compareCursor(item,from)<0)return status('unavailable');
         if(ids.has(item.id)||messages.length&&compareCursor(messages.at(-1),item)>=0)return status('unavailable');
         ids.add(item.id);messages.push(item);
       }
-      // Do not return records if access was revoked/reassigned while reading.
-      // The final check is not a transactional guarantee against all races;
-      // real deployments must additionally validate the revocation boundary.
-      const latest=await authorize({token,roomId,conversationId});
-      if(!latest||latest.uid!==access.uid||latest.personId!==access.personId||latest.joinedAt!==access.joinedAt)return status('forbidden');
-      // The window target is read again after re-authorization: a target deleted
-      // while the window was read is missing, never a success. A deletion after
-      // this read reaches the client through the activity refresh.
+      // The window target is read again after the window: a target deleted while
+      // the window was read is missing, never a success.
       if(around!==null){
         const target=await readTarget({roomId,conversationId,messageId:around});
         if(!isRecord(target)||!isMessagingTimestamp(target.createdAt)||target.createdAt<=access.joinedAt||target.deletedAt!==undefined&&target.deletedAt!==null)return status('missing');
       }
+      // Last step before answering, after every database read: the device
+      // binding, person, membership and join time must still be the same, or no
+      // history is returned. This is not a transactional guarantee against all
+      // races; real deployments must additionally validate the revocation boundary.
+      const latest=await authorize({token,roomId,conversationId});
+      if(!latest||latest.uid!==access.uid||latest.personId!==access.personId||latest.joinedAt!==access.joinedAt)return status('forbidden');
       const cursorOf=item=>({createdAt:item.createdAt,id:item.id});
-      if(after!==null)return {status:'ok',joinedAt:access.joinedAt,messages,hasNewer:newerMore,newerCursor:newerMore&&messages.length?cursorOf(messages.at(-1)):null};
+      if(after!==null||from!==null)return {status:'ok',joinedAt:access.joinedAt,messages,hasNewer:newerMore,newerCursor:newerMore&&messages.length?cursorOf(messages.at(-1)):null};
       const hasMore=olderMore??messages.length===limit;
       const nextCursor=hasMore?cursorOf(messages[0]):null;
       if(around!==null){
@@ -106,8 +110,9 @@ export function createFirebaseMessagingHistoryService({auth,database}={}) {
       const later=rows(await database.ref(base).orderByChild('createdAt').startAfter(target.createdAt,around).limitToFirst(newer+1).get());
       return {status:'ok',records:[...before.slice(-older),{...target,id:around},...later.slice(0,newer)],hasMore:before.length>older,hasNewer:later.length>newer};
     },
-    async readAfter({roomId,conversationId,after,limit}) {
-      const snapshot=await database.ref('messagingV1/'+roomId+'/messages/'+conversationId).orderByChild('createdAt').startAfter(after.createdAt,after.id).limitToFirst(limit+1).get();
+    async readAfter({roomId,conversationId,after,inclusive=false,limit}) {
+      const ordered=database.ref('messagingV1/'+roomId+'/messages/'+conversationId).orderByChild('createdAt');
+      const snapshot=await (inclusive?ordered.startAt(after.createdAt,after.id):ordered.startAfter(after.createdAt,after.id)).limitToFirst(limit+1).get();
       const records=[];snapshot.forEach(child=>{records.push({...child.val(),id:child.key});return false;});
       return {status:'ok',records:records.slice(0,limit),hasNewer:records.length>limit};
     },

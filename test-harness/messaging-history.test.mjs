@@ -159,3 +159,54 @@ test('a target deleted while its window is read is reported as missing, never as
     readWindow:async request=>{const index=records.findIndex(r=>r.id===request.around);return {status:'ok',records:structuredClone(records.slice(index-3,index+3)),hasMore:true,hasNewer:true};}});
   assert.deepEqual(await unchecked.readHistory({...call,around:records[40].id}),{status:'invalid'});
 });
+test('history is never returned when access changes during any of its database reads, including the target re-check',async()=>{
+  const records=Array.from({length:80},(_,i)=>row(i+2));
+  for(const change of ['revoke','leave','rejoin','rebind']){
+    let binding=okBinding(),member=okMember();
+    const apply={revoke:()=>{binding={...binding,active:false};},leave:()=>{member={...member,active:false};},rejoin:()=>{member={...member,joinedAt:1500};},rebind:()=>{binding={...binding,personId:bob};}}[change];
+    const service=createMessagingHistoryService({verifyToken:async()=>({uid:'uidA'}),readBinding:async()=>structuredClone(binding),readMember:async()=>structuredClone(member),readPage:async()=>[],
+      readWindow:async request=>{const index=records.findIndex(r=>r.id===request.around);return {status:'ok',records:structuredClone(records.slice(index-3,index+3)),hasMore:true,hasNewer:true};},
+      // Access changes while the last database read (the target re-check) is in flight.
+      readTarget:async request=>{apply();return structuredClone(records.find(r=>r.id===request.messageId));}});
+    assert.deepEqual(await service.readHistory({...call,around:records[40].id}),{status:'forbidden'},change);
+  }
+});
+test('review5: the inclusive range read starts at the given row, respects ties and the join time, and rejects bad pages',async()=>{
+  const records=Array.from({length:120},(_,i)=>row(i+2)).map((r,i)=>i>=40&&i<44?{...r,createdAt:1042}:r);
+  const cmp=(a,b)=>a.createdAt-b.createdAt||(a.id<b.id?-1:a.id>b.id?1:0);
+  const reads=[];
+  const base={verifyToken:async()=>({uid:'uidA'}),readBinding:async()=>okBinding(),readMember:async()=>okMember(),readPage:async()=>[]};
+  const service=createMessagingHistoryService({...base,readAfter:async request=>{reads.push(request);
+    const next=records.filter(r=>request.inclusive?cmp(r,request.after)>=0:cmp(r,request.after)>0).slice(0,request.limit+1);
+    return {status:'ok',records:structuredClone(next.slice(0,request.limit)),hasNewer:next.length>request.limit};}});
+  const tie={createdAt:1042,id:records[42].id};
+  const page=await service.readHistory({...call,from:tie,limit:50});
+  assert.equal(page.status,'ok');assert.equal(page.messages[0].id,records[42].id);assert.equal(page.messages.length,50);
+  assert.equal(page.hasNewer,true);assert.deepEqual(page.newerCursor,{createdAt:page.messages.at(-1).createdAt,id:page.messages.at(-1).id});
+  assert.equal(reads[0].inclusive,true);
+  const after=await service.readHistory({...call,after:tie,limit:50});
+  assert.equal(after.messages[0].id,records[43].id);assert.equal(reads[1].inclusive,false);
+  // Join boundary, mixed modes and pages outside the range.
+  assert.deepEqual(await service.readHistory({...call,from:{createdAt:1000,id:records[0].id},limit:50}),{status:'missing'});
+  for(const bad of [{from:tie,before:tie},{from:tie,after:tie},{from:tie,around:records[5].id},{from:{createdAt:1042},limit:50}])
+    assert.deepEqual(await service.readHistory({...call,...bad}),{status:'invalid'});
+  const lying=createMessagingHistoryService({...base,readAfter:async()=>({status:'ok',records:[records[10]],hasNewer:false})});
+  assert.deepEqual(await lying.readHistory({...call,from:tie,limit:50}),{status:'unavailable'});
+  const tooMany=createMessagingHistoryService({...base,readAfter:async()=>({status:'ok',records:structuredClone(records.slice(50,52)),hasNewer:false})});
+  assert.deepEqual(await tooMany.readHistory({...call,from:{createdAt:records[50].createdAt,id:records[50].id},limit:1}),{status:'unavailable'});
+});
+test('review5: every history mode re-checks access after its last database read',async()=>{
+  const records=Array.from({length:120},(_,i)=>row(i+2));
+  for(const mode of ['page','after','from','around']){
+    const order=[];let binding=okBinding();
+    const revokeOnRead=fn=>async request=>{const out=await fn(request);order.push('read');binding={...binding,active:false};return out;};
+    const service=createMessagingHistoryService({verifyToken:async()=>({uid:'uidA'}),readBinding:async()=>{order.push('binding');return structuredClone(binding);},readMember:async()=>okMember(),
+      readPage:revokeOnRead(async()=>structuredClone(records.slice(-5))),
+      readAfter:revokeOnRead(async()=>({status:'ok',records:structuredClone(records.slice(60,65)),hasNewer:false})),
+      readWindow:async request=>{order.push('window');const i=records.findIndex(r=>r.id===request.around);return {status:'ok',records:structuredClone(records.slice(i-2,i+3)),hasMore:true,hasNewer:true};},
+      readTarget:revokeOnRead(async request=>structuredClone(records.find(r=>r.id===request.messageId)))});
+    const request={page:{},after:{after:{createdAt:records[59].createdAt,id:records[59].id},limit:50},from:{from:{createdAt:records[60].createdAt,id:records[60].id},limit:50},around:{around:records[40].id}}[mode];
+    assert.deepEqual(await service.readHistory({...call,...request}),{status:'forbidden'},mode);
+    assert.equal(order.at(-1),'binding',mode+': the access check is the last step');
+  }
+});

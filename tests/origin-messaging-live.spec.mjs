@@ -127,7 +127,7 @@ test('cloud composition clears the authorized directory on disconnect and dispos
   await root.getByRole('button',{name:'以前の履歴を追加して検索'}).click();
   await expect(root.locator('.om-timeline')).toContainText('Older searchable text');
   await expect(root.locator('#om-message-search')).toHaveValue('Older searchable');
-  await expect(root.locator('.om-search-bar .om-coverage')).toContainText('取得済み 51件');
+  await expect(root.locator('.om-search-bar .om-coverage')).toContainText('表示中の範囲（最大150件）の 51件');
   await root.getByRole('button',{name:'共有データ',exact:true}).click();
   await root.locator('#om-shared-filter').selectOption('image');
   const showImage=root.getByRole('button',{name:'synthetic.png を表示'});
