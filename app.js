@@ -6096,9 +6096,10 @@ async function copyScheduleOccurrences(source, dates, sourceIsDraft = false, iss
   // Each batch gets a unique identity, never inferred from matching titles.
   // Single-occurrence copies remain ordinary independent schedules.
   const seriesId = dates.length > 1 ? "copy-" + generateScheduleId() : "";
-  // Ids issued by the messaging server for a create-from-message keep their link.
   const items = dates.map((date, index) =>
-    scheduleCopyDraftForDate(source, date, issuedIds ? issuedIds[index] : generateScheduleId(), timestamp + index, seriesId)).filter(Boolean);
+    scheduleCopyDraftForDate(source, date, generateScheduleId(), timestamp + index, seriesId)).filter(Boolean)
+    // Ids issued by the messaging server for a create-from-message keep their link.
+    .map((item, index) => issuedIds ? { ...item, id: issuedIds[index] } : item);
   if (items.length !== dates.length) return { ok: false, error: "invalid-copy-date" };
   const affectedPaths = items.map(item => `rooms/${ROOM_ID}/schedules/${item.id}`);
 

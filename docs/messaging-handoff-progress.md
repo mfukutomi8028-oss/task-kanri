@@ -19,7 +19,7 @@
 
 - 第3回独立レビュー（337e6ac1、REVISE）対応：[再設計書](messaging-record-origin-design.md) に原因・データフロー・実装前の設計レビューを記録。恒久リンクはサーバーが発行した記録IDにだけ作成時に付く（`recordReserve`）。古い履歴は対象中心のウィンドウ（最大50件）と未取得区間の明示。端末側の保留リンクは廃止。指摘ごとの根拠は [照合表](messaging-review-crosscheck.md) の第3回欄。上記の第2回対応のうち、ブラウザからのリンク書き込み、保留リンクの端末保存、`until` 範囲取得はこれで置き換え済み。
   - 旧版から新版への移行：旧候補のリンク・保留データは本番未適用のため、移行データはない。旧保留データ（localStorage）は起動時に削除する。
-  - 検証（修正前→修正後）：新しいRules検査は旧Rulesで失敗し（承認済み利用者が既存の無関係な記録へリンクを作成できた）、新Rulesで全区分合格。実SDKのEmulatorでは作成予約（`MESSAGING_RECORD_ORIGIN_EMULATOR_OK`）と5,200件の履歴ウィンドウ（`MESSAGING_HISTORY_WINDOW_OK`）が合格。メッセージ系Nodeは302件合格（新規5件は旧コードで失敗）。画面検査は Chromium 32件・WebKit 26件（320px・390px を含む）が合格し、新規の画面検査10件は旧337e6acで全件失敗した。
+  - 検証（修正前→修正後）：新しいRules検査は旧Rulesで失敗し（承認済み利用者が既存の無関係な記録へリンクを作成できた）、新Rulesで全区分合格。実SDKのEmulatorでは作成予約（`MESSAGING_RECORD_ORIGIN_EMULATOR_OK`）と5,200件の履歴ウィンドウ（`MESSAGING_HISTORY_WINDOW_OK`）が合格。メッセージ系Nodeは302件合格（新規5件は旧コードで失敗）。画面検査は Chromium 32件・WebKit 26件（320px・390px を含む）が合格し、新規の画面検査10件は旧337e6acで全件失敗した。Protocol 1,429件（LF作業コピー）合格。
 
 ## 公開前の必須検証（最終検査までに対応）
 - 全体のProtocol検査はLF作業コピーで実行する（Windowsの改行CRLF作業コピーでは既存の22件が改行差で失敗するため）。
