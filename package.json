@@ -15,7 +15,7 @@
     "demo:auth:ui:v580": "firebase emulators:exec --only auth,database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/staged-auth-ui-v580/server.mjs\"",
     "test:migration:v582": "firebase emulators:exec --only database --project demo-task-kanri-v568 --config firebase.v568.candidate.json \"node test-harness/migration-roundtrip-v582-emulator.mjs\"",
     "test:firebase:sticky:v659": "firebase emulators:exec --only database --project demo-task-kanri \"node test-harness/personal-sticky-noauth-emulator-v659.mjs\"",
-    "test:messaging:rules": "firebase emulators:exec --only auth,database --project demo-task-kanri-messaging --config firebase.messaging.candidate.json \"node test-harness/messaging-rules-emulator.mjs && node test-harness/messaging-history-emulator.mjs && node test-harness/messaging-device-admin-emulator.mjs && node test-harness/messaging-directory-admin-emulator.mjs\""
+    "test:messaging:rules": "firebase emulators:exec --only auth,database --project demo-task-kanri-messaging --config firebase.messaging.candidate.json \"node test-harness/messaging-rules-emulator.mjs && node test-harness/messaging-history-emulator.mjs && node test-harness/messaging-record-origin-emulator.mjs && node test-harness/messaging-device-admin-emulator.mjs && node test-harness/messaging-directory-admin-emulator.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",

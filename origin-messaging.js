@@ -386,11 +386,18 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
     const dates=historyDates.read(),searching=Boolean(query||dates.from!==null||dates.to!==null);
     const matches=searching?(await searchLoadedMessages(state.messages,{query,context:c,resolver,resolvePerson,...dates})).matches.slice().reverse():state.messages;
     if(disposed||generation!==renderGeneration||!messageContextValid(c))return;timeline.replaceChildren();
-    searchCoverage.textContent=searching?'取得済み '+state.messages.length+'件から表示 '+matches.length+'件。'+(state.hasMore?'以前の履歴を追加できます。':'取得可能な履歴の先頭です。'):'';
+    searchCoverage.textContent=searching?'取得済み '+state.messages.length+'件から表示 '+matches.length+'件。'+(state.hasMore?'以前の履歴を追加できます。':'取得可能な履歴の先頭です。')+(state.hasNewer?'表示中の範囲より新しいメッセージは未取得のため、検索対象外です。':''):'';
     if(state.hasMore)timeline.append(button(searching?'以前の履歴を追加して検索':'以前のメッセージを表示',async()=>{await store.loadOlder();},'om-load-more'));
     if(!matches.length)timeline.append(el('div','om-empty',searching?'読み込んだ履歴に一致するメッセージがありません。':'まだメッセージがありません。最初のメッセージを送信しましょう。'));
     let lastDay='';for(const m of matches){const day=dateText(m.createdAt);if(day!==lastDay){timeline.append(el('div','om-date',day));lastDay=day;}timeline.append(renderMessage(m,c));}
-    if(older)timeline.scrollTop=beforeTop+timeline.scrollHeight-beforeHeight;else if(nearBottom||lastId!==state.conversationId)timeline.scrollTop=timeline.scrollHeight;else{timeline.scrollTop=beforeTop;$('.om-newer').hidden=false;}
+    // An older window shown after a jump: the unloaded span up to the latest
+    // message is explicit, and is filled only when the person asks.
+    if(state.hasNewer){
+      const gap=el('div','om-gap');gap.setAttribute('role','note');
+      gap.append(el('p','','ここから最新までのメッセージは未取得です。'),button('新しいメッセージを読み込む',async()=>{await store.loadNewer();},'om-outline'),button('最新に戻る',async()=>{await store.refreshLatest();timeline.scrollTop=timeline.scrollHeight;},'om-outline'));
+      timeline.append(gap);
+    }
+    if(older)timeline.scrollTop=beforeTop+timeline.scrollHeight-beforeHeight;else if(state.hasNewer)timeline.scrollTop=beforeTop;else if(nearBottom||lastId!==state.conversationId)timeline.scrollTop=timeline.scrollHeight;else{timeline.scrollTop=beforeTop;$('.om-newer').hidden=false;}
     scheduleVisibleRead();
   }
   // Capacity is fetched on demand (shared panel open / attach click) and cached for 60s.
@@ -465,7 +472,7 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
     }catch(_){if(current())node.replaceChildren(el('p','om-empty-small','共有データを取得できません。もう一度開いてください。'));}
   }
   let readFrame=0;
-  function scheduleVisibleRead(){cancelAnimationFrame(readFrame);readFrame=requestAnimationFrame(()=>{const c=context();if(!c||state.status!=='ready'||document.visibilityState!=='visible'||timeline.clientHeight===0||query||historyDates.fields.some(field=>field.value))return;const rect=timeline.getBoundingClientRect(),nodes=[...timeline.querySelectorAll('[data-message-id]')];const visible=nodes.filter(n=>{const r=n.getBoundingClientRect();return r.bottom>rect.top&&r.top<rect.bottom;}).at(-1);const m=state.messages.find(x=>x.id===visible?.dataset.messageId);if(m)void store.markRead({conversationId:c.conversationId,cursor:{id:m.id,createdAt:m.createdAt},visible:true});});}
+  function scheduleVisibleRead(){cancelAnimationFrame(readFrame);readFrame=requestAnimationFrame(()=>{const c=context();if(!c||state.status!=='ready'||state.hasNewer||document.visibilityState!=='visible'||timeline.clientHeight===0||query||historyDates.fields.some(field=>field.value))return;const rect=timeline.getBoundingClientRect(),nodes=[...timeline.querySelectorAll('[data-message-id]')];const visible=nodes.filter(n=>{const r=n.getBoundingClientRect();return r.bottom>rect.top&&r.top<rect.bottom;}).at(-1);const m=state.messages.find(x=>x.id===visible?.dataset.messageId);if(m)void store.markRead({conversationId:c.conversationId,cursor:{id:m.id,createdAt:m.createdAt},visible:true});});}
   function renderState(next){const previous=state;state=next;renderUsage();if(previewUrl&&previous.messages!==next.messages)closeDialog();const identityChanged=syncListIdentity();if(previous.conversationId!==state.conversationId||previous.joinedAt!==state.joinedAt&&previous.joinedAt!==null)closeDialog();renderHeader();const ready=state.status==='ready'&&Boolean(context());composer.hidden=!ready||archivedGroup();body.disabled=!ready||sendPending;sendButton.disabled=!ready||sendPending;if(!context()&&(state.status==='locked'||state.status==='forbidden')){closeDialog();dialogContent.replaceChildren();if(state.status==='locked'){conversations=[];listGeneration++;renderList();}shared.hidden=true;shell.dataset.shared='false';}
     if(state.conversationId!==lastId){body.value=state.draft||'';renderList();}else if(body.value!==state.draft)body.value=state.draft;
     if(ready)renderComposeContext();
@@ -535,6 +542,8 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
         input=attempt.payload;
       }
       const result=editing?await store.edit({conversationId:c.conversationId,...editing,input}):await store.send({conversationId:c.conversationId,requestId:attempt.id,input,preserveDraft});
+      // Sending from an older window returns to the latest messages, where the new one appears.
+      if(result?.status==='sent'&&store.getSnapshot().hasNewer)void store.refreshLatest();
       if(!current()){
         if(result.status==='locked'&&state.status==='forbidden')notice('利用権限を確認できません。会話を開き直してください。');
         return;
@@ -566,10 +575,9 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
   for(const field of historyDates.fields)field.addEventListener('change',()=>{expandHistory(true);void renderTimeline();});
   for(const field of sharedDates.fields)field.addEventListener('change',()=>{sharedAttachmentOffset=0;void renderShared();});
   const stopStore=store.subscribe(renderState),stopList=commands.subscribe?.(options=>void reloadList(options));
-  // Loads the target by id in one bounded request (with everything newer that is
-  // not loaded yet, so history stays contiguous). An unloaded, deleted or too old
-  // target is never reported as success.
-  async function loadUntil(c,messageId){
+  // Loads one bounded window centred on the target (however old it is). An
+  // unloaded, deleted or forbidden target is never reported as success.
+  async function loadWindow(c,messageId){
     let requested=false,waits=0;
     for(;;){
       const snap=store.getSnapshot();
@@ -577,16 +585,15 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
       const found=snap.messages.find(m=>m.id===messageId);
       if(found)return found.deletedAt==null?{status:'ok',loaded:requested}:{status:'missing'};
       if(requested)return {status:'unavailable'};
-      const loaded=await store.loadUntil(messageId);
+      const loaded=await store.loadAround(messageId);
       if(loaded?.status==='busy'){if(++waits>100)return {status:'unavailable'};await new Promise(resolve=>setTimeout(resolve,50));continue;}
-      if(loaded?.status==='missing'||loaded?.status==='too-far')return {status:loaded.status};
+      if(loaded?.status==='missing')return {status:'missing'};
       if(loaded?.status!=='ok')return {status:'unavailable'};
       requested=true;
     }
   }
   let lastJump='unavailable';
   const jumpNotice={missing:'対象のメッセージは削除されたか、閲覧できません。',
-    'too-far':'対象のメッセージが古いため移動できません。最新のメッセージを表示しています。',
     unavailable:'対象のメッセージを読み込めませんでした。最新のメッセージを表示しています。'};
   function focusMessage(messageId){const target=timeline.querySelector('[data-message-id="'+messageId+'"]');if(!target)return false;target.scrollIntoView({block:'center'});target.tabIndex=-1;target.focus({preventScroll:true});return true;}
   async function openMessage(conversationId,messageId){
@@ -596,9 +603,9 @@ export function mountOriginMessaging({root,store,session,commands,resolver,readB
     const ready=()=>{const now=context();return now&&now.conversationId===conversationId?now:null;};
     if(!ready())await new Promise(resolve=>{let stop=null;const finish=()=>{clearTimeout(timer);stop?.();resolve();};const timer=setTimeout(finish,10000);stop=store.subscribe(()=>queueMicrotask(()=>{if(ready()||['forbidden','locked'].includes(store.getSnapshot().status)||disposed)finish();}));});
     const c=ready();if(!c){lastJump='unavailable';return false;}
-    const jump=await loadUntil(c,messageId);lastJump=jump.status;
+    const jump=await loadWindow(c,messageId);lastJump=jump.status;
     if(jump.status!=='ok'||!messageContextValid(c)){if(messageContextValid(c))notice(jumpNotice[jump.status]||jumpNotice.unavailable);return false;}
     await renderTimeline();return messageContextValid(c)&&focusMessage(messageId);
   }
-  return {open:openConversation,openMessage,share,announce,lastJump:()=>lastJump,async restoreLocation(location){if(disposed||!context()||state.conversationId!==location?.conversationId||!isMessageId(location.messageId)||typeof location.query!=='string'||!Number.isFinite(location.scrollTop)||location.scrollTop<0)return false;const c=context();const jump=await loadUntil(c,location.messageId);if(jump.status!=='ok'){if(messageContextValid(c))notice(jumpNotice[jump.status]||jumpNotice.unavailable);return false;}query=location.query;search.value=query;const dates=Array.isArray(location.dates)&&location.dates.length===historyDates.fields.length?location.dates:null;historyDates.fields.forEach((field,i)=>{field.value=dates?.[i]??'';});expandHistory(Boolean(query||dates?.some(Boolean)));shell.dataset.mobileView='chat';await renderTimeline();if(!messageContextValid(c))return false;if(!jump.loaded){timeline.scrollTop=location.scrollTop;const target=timeline.querySelector('[data-message-id="'+location.messageId+'"]');if(!target)return false;target.tabIndex=-1;target.focus({preventScroll:true});return true;}return focusMessage(location.messageId);},dispose(){disposed=true;cancelAnimationFrame(readFrame);listGeneration++;renderGeneration++;sharedGeneration++;stopStore?.();stopList?.();if(!summaryOwner)notifications.dispose();resolver.clear?.();closeDialog();shell.remove();}};
+  return {open:openConversation,openMessage,share,announce,lastJump:()=>lastJump,async restoreLocation(location){if(disposed||!context()||state.conversationId!==location?.conversationId||!isMessageId(location.messageId)||typeof location.query!=='string'||!Number.isFinite(location.scrollTop)||location.scrollTop<0)return false;const c=context();const jump=await loadWindow(c,location.messageId);if(jump.status!=='ok'){if(messageContextValid(c))notice(jumpNotice[jump.status]||jumpNotice.unavailable);return false;}query=location.query;search.value=query;const dates=Array.isArray(location.dates)&&location.dates.length===historyDates.fields.length?location.dates:null;historyDates.fields.forEach((field,i)=>{field.value=dates?.[i]??'';});expandHistory(Boolean(query||dates?.some(Boolean)));shell.dataset.mobileView='chat';await renderTimeline();if(!messageContextValid(c))return false;if(!jump.loaded){timeline.scrollTop=location.scrollTop;const target=timeline.querySelector('[data-message-id="'+location.messageId+'"]');if(!target)return false;target.tabIndex=-1;target.focus({preventScroll:true});return true;}return focusMessage(location.messageId);},dispose(){disposed=true;cancelAnimationFrame(readFrame);listGeneration++;renderGeneration++;sharedGeneration++;stopStore?.();stopList?.();if(!summaryOwner)notifications.dispose();resolver.clear?.();closeDialog();shell.remove();}};
 }

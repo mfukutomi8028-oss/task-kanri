@@ -2,8 +2,11 @@
 // remain in their existing owners. No sign-in or subscriptions when disabled.
 import {createOriginMessagingLauncher,connectFirebaseMessagingAuth,resolveMessagingLaunchConfig} from './origin-messaging-launcher.js';
 import {createMessagingDraftOwner} from './workspace-messaging-store.js';
+import {removeLegacyPendingLinks} from './workspace-messaging-record-links.js';
 const context=s=>JSON.stringify([s?.roomId,s?.currentUser]);
 export function installOriginMessagingEntry({root,anchor,readConfig,board,connect,mountCloud,cssUrl,isActive=()=>true,onNotification=()=>{}}={}){
+  // Remove link intents an earlier candidate stored in this browser, at Origin start.
+  removeLegacyPendingLinks(globalThis.localStorage);
   if(typeof readConfig!=='function'||!resolveMessagingLaunchConfig(readConfig()))return null;
   if(!root||!anchor?.parentNode||['readSnapshot','readMemos','canReadRecord','openRecord','subscribe'].some(k=>typeof board?.[k]!=='function')||typeof connect!=='function'||typeof mountCloud!=='function'||typeof isActive!=='function'||typeof onNotification!=='function')throw new TypeError('Origin host adapters required');
   const make=(tag,cls,text)=>{const e=document.createElement(tag);e.className=cls;if(text!==undefined)e.textContent=text;return e;};
@@ -87,14 +90,16 @@ export function installOriginMessagingEntry({root,anchor,readConfig,board,connec
   trigger.addEventListener('click',()=>void open());dismiss.addEventListener('click',()=>close());dialog.addEventListener('cancel',event=>{if(event.target===dialog){event.preventDefault();close();}});dialog.addEventListener('close',()=>{if(!dialog.open&&!suspended&&workspaceOpen)close();});
   const stop=board.subscribe(sync);sync();
   return Object.freeze({open,close,resume,sync,
-    linkRecords:refs=>launcher.getHandle()?.linkRecords?.(refs)??Promise.resolve(false),
+    // Server-issued ids for a create-from-message draft (links already attached).
+    reserveRecordIds:request=>launcher.getHandle()?.reserveRecordIds?.(request)??Promise.resolve({status:'none'}),
+    finishRecordDraft:()=>launcher.getHandle()?.finishRecordDraft?.(),
     // Opens messaging only on this explicit request. The dialog itself shows
     // approval or offline state; nothing about the link is read before binding.
     async openRecordLink(ref){
       if(!usable()||await board.canReadRecord(ref,{roomId:ref.roomId})!==true)return 'unavailable';
       if(await open()!==true||!current()||!dialog.open)return 'locked';
       const status=await (launcher.getHandle()?.openRecordLink?.(ref)??'unavailable');
-      if(['unavailable','pending','retry'].includes(status)&&current()&&dialog.open&&!suspended)close(false);
+      if(['unavailable','retry'].includes(status)&&current()&&dialog.open&&!suspended)close(false);
       return status;
     },
     async share(ref){

@@ -5,7 +5,7 @@ import {isPersonId,isMessagingRoomId} from '../workspace-messaging-core.js';
 import {createMessagingAttachmentHttp} from './messaging-attachment-http.mjs';
 const MAX_BODY_BYTES=65536,MAX_TOKEN=16384;
 const record=v=>v!==null&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);
-const codes=Object.freeze({ok:200,sent:200,invalid:400,forbidden:403,conflict:409,stale:409,limit:429,missing:404,'too-far':422,unavailable:503});
+const codes=Object.freeze({ok:200,sent:200,invalid:400,forbidden:403,conflict:409,stale:409,full:409,limit:429,missing:404,unavailable:503});
 async function readJson(request){
   const advertised=request.headers.get('Content-Length');if(advertised!==null&&Number(advertised)>MAX_BODY_BYTES)return {error:413};
   if(!request.body)return {error:400};
@@ -19,7 +19,10 @@ async function readJson(request){
 function workUnits(action,payload){
   const bounded=(value,max)=>Number.isInteger(value)&&value>=1&&value<=max?value:max;
   if(action==='directory')return 4+3*bounded(payload.limit,100);
-  if(action==='history')return payload.until?8+300:8+bounded(payload.limit,50);
+  // A target-centred window is one page (at most 50 messages), however old the target is.
+  if(action==='history')return payload.around?8+50:8+bounded(payload.limit,50);
+  // Every request stays within the per-request budget cap (304 units).
+  if(action==='recordReserve')return 24+bounded(payload.count,200);
   if(action==='attachmentMetadata')return 10+3*bounded(payload.items?.length,20);
   if(action==='attachmentUsage')return 12;
   if(action==='unread')return 130;
@@ -27,14 +30,14 @@ function workUnits(action,payload){
   if(action==='attachmentUpload'||action==='attachmentDownload')return 64;
   return 24;
 }
-export function createMessagingApiHandler({allowedOrigins,history,mutation,directory,conversations,attachments=null,reserveRequest=null,checkAvailable=null,authorizeRequest=null}={}){
+export function createMessagingApiHandler({allowedOrigins,history,mutation,directory,conversations,attachments=null,recordOrigins=null,reserveRequest=null,checkAvailable=null,authorizeRequest=null}={}){
   if(!Array.isArray(allowedOrigins)||!allowedOrigins.length||allowedOrigins.some(origin=>{try{const url=new URL(origin);return url.protocol!=='https:'||url.origin!==origin;}catch(_){return true;}}))throw new TypeError('Explicit HTTPS origins required');
   if(checkAvailable!==null&&typeof checkAvailable!=='function')throw new TypeError('Invalid messaging stop control');
   if(authorizeRequest!==null&&typeof authorizeRequest!=='function')throw new TypeError('Invalid messaging request authorization');
   if(reserveRequest!==null&&(typeof reserveRequest!=='function'||!authorizeRequest))throw new TypeError('Invalid messaging request budget');
   const origins=new Set(allowedOrigins);
   const attachmentHttp=attachments===null?null:createMessagingAttachmentHttp({attachments});
-  const operations={history:history?.readHistory,message:mutation?.mutate,directory:directory?.readDirectory,unread:directory?.readUnread,people:conversations?.readPeople,conversation:conversations?.execute,...(typeof attachments?.metadata==='function'?{attachmentMetadata:attachments.metadata}:{}),...(typeof attachments?.usage==='function'?{attachmentUsage:attachments.usage}:{})};
+  const operations={history:history?.readHistory,message:mutation?.mutate,directory:directory?.readDirectory,unread:directory?.readUnread,people:conversations?.readPeople,conversation:conversations?.execute,...(typeof attachments?.metadata==='function'?{attachmentMetadata:attachments.metadata}:{}),...(typeof attachments?.usage==='function'?{attachmentUsage:attachments.usage}:{}),...(recordOrigins?{recordReserve:recordOrigins.reserve}:{})};
   if(Object.values(operations).some(fn=>typeof fn!=='function'))throw new TypeError('Messaging services required');
   return async function handle(request){
     const origin=request.headers.get('Origin'),allowed=origins.has(origin);

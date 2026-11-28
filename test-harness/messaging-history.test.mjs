@@ -87,27 +87,56 @@ test('the bound UI person assertion must match the token before history is queri
   const f=fixture();assert.deepEqual(await f.service.readHistory({...call,expectedPersonId:bob}),{status:'forbidden'});assert.equal(f.queries.length,0);
   assert.equal((await f.service.readHistory({...call,expectedPersonId:alice})).status,'ok');
 });
-test('range history loads a known target and everything newer in one capped read',async()=>{
-  const records=Array.from({length:400},(_,i)=>row(i+2));
-  const ranges=[];
+test('a jump reads one bounded window around any target, never the whole span to the latest',async()=>{
+  // 5,200 messages: targets 300, 301 and 4,950 messages away from the latest.
+  const records=Array.from({length:5200},(_,i)=>row(i+2));
+  const windows=[],afters=[];
   const base={verifyToken:async token=>token==='tokenA'?{uid:'uidA'}:null,readBinding:async()=>okBinding(),readMember:async()=>okMember(),readPage:async()=>[]};
-  const service=createMessagingHistoryService({...base,readRange:async request=>{
-    ranges.push(request);const index=records.findIndex(r=>r.id===request.until);
-    if(index<0)return {status:'missing'};
-    const slice=records.slice(index).filter(r=>!request.before||r.createdAt<request.before.createdAt);
-    if(slice.length>request.max)return {status:'too-far'};
-    return {status:'ok',records:structuredClone(slice),hasMore:index>0};
-  }});
-  const before={createdAt:records[350].createdAt,id:records[350].id};
-  const r=await service.readHistory({...call,before,until:records[100].id});
-  assert.equal(r.status,'ok');assert.equal(r.messages.length,250);assert.equal(r.messages[0].id,records[100].id);
-  assert.equal(r.hasMore,true);assert.deepEqual(r.nextCursor,{createdAt:records[100].createdAt,id:records[100].id});
-  assert.equal(ranges[0].max,300);assert.equal(ranges[0].joinedAt,1000);
-  assert.deepEqual(await service.readHistory({...call,before,until:msgId(9999)}),{status:'missing'});
-  assert.deepEqual(await service.readHistory({...call,until:records[0].id}),{status:'too-far'});
-  // The range must start at the target itself.
-  const lying=createMessagingHistoryService({...base,readRange:async()=>({status:'ok',records:[records[5]],hasMore:false})});
-  assert.deepEqual(await lying.readHistory({...call,until:records[4].id}),{status:'unavailable'});
-  // Without a trusted range reader the request is invalid, never a silent page.
-  assert.deepEqual(await createMessagingHistoryService(base).readHistory({...call,until:records[4].id}),{status:'invalid'});
+  const service=createMessagingHistoryService({...base,
+    readWindow:async request=>{
+      windows.push(request);const index=records.findIndex(r=>r.id===request.around);
+      if(index<0)return {status:'missing'};
+      const older=records.slice(Math.max(0,index-request.older-1),index),newer=records.slice(index+1,index+request.newer+2);
+      return {status:'ok',records:structuredClone([...older.slice(-request.older),records[index],...newer.slice(0,request.newer)]),hasMore:older.length>request.older,hasNewer:newer.length>request.newer};
+    },
+    readAfter:async request=>{
+      afters.push(request);const index=records.findIndex(r=>r.id===request.after.id);
+      const next=records.slice(index+1,index+request.limit+2);
+      return {status:'ok',records:structuredClone(next.slice(0,request.limit)),hasNewer:next.length>request.limit};
+    }});
+  for(const distance of [300,301,4950]){
+    const target=records[records.length-1-distance];
+    const r=await service.readHistory({...call,around:target.id});
+    assert.equal(r.status,'ok');assert.ok(r.messages.length<=50);
+    assert.equal(r.messages[24].id,target.id);assert.equal(r.hasMore,true);assert.equal(r.hasNewer,true);
+    assert.deepEqual(r.nextCursor,{createdAt:r.messages[0].createdAt,id:r.messages[0].id});
+    assert.deepEqual(r.newerCursor,{createdAt:r.messages.at(-1).createdAt,id:r.messages.at(-1).id});
+    // The unloaded gap is filled one page at a time.
+    const next=await service.readHistory({...call,after:r.newerCursor,limit:50});
+    assert.equal(next.status,'ok');assert.equal(next.messages.length,50);assert.equal(next.hasNewer,true);
+    assert.equal(next.messages[0].createdAt>r.messages.at(-1).createdAt,true);
+  }
+  assert.equal(windows.every(w=>w.older===24&&w.newer===25&&w.joinedAt===1000),true);
+  // The window at the very start of the history has nothing older.
+  const first=await service.readHistory({...call,around:records[0].id});
+  assert.equal(first.hasMore,false);assert.equal(first.nextCursor,null);assert.equal(first.messages[0].id,records[0].id);
+  // The last page after a window reaches the latest message.
+  const tail=await service.readHistory({...call,after:{createdAt:records.at(-3).createdAt,id:records.at(-3).id},limit:50});
+  assert.equal(tail.messages.length,2);assert.equal(tail.hasNewer,false);assert.equal(tail.newerCursor,null);
+  assert.deepEqual(await service.readHistory({...call,around:msgId(99999)}),{status:'missing'});
+  // A pre-join cursor or a window without its target is never accepted.
+  assert.deepEqual(await service.readHistory({...call,after:{createdAt:900,id:msgId(1)},limit:50}),{status:'missing'});
+  const lying=createMessagingHistoryService({...base,readWindow:async()=>({status:'ok',records:[records[5]],hasMore:false,hasNewer:false})});
+  assert.deepEqual(await lying.readHistory({...call,around:records[4].id}),{status:'unavailable'});
+  // Mixed or unsupported modes are invalid, never a silent page.
+  assert.deepEqual(await service.readHistory({...call,around:records[4].id,before:{createdAt:2000,id:msgId(3)}}),{status:'invalid'});
+  assert.deepEqual(await createMessagingHistoryService(base).readHistory({...call,around:records[4].id}),{status:'invalid'});
+  assert.deepEqual(await service.readHistory({...call,until:records[4].id}),{status:'invalid'});
+});
+test('a window is authorized again before it is returned',async()=>{
+  let active=true;
+  const records=Array.from({length:80},(_,i)=>row(i+2));
+  const service=createMessagingHistoryService({verifyToken:async()=>({uid:'uidA'}),readBinding:async()=>({...okBinding(),active}),readMember:async()=>okMember(),readPage:async()=>[],
+    readWindow:async request=>{active=false;const index=records.findIndex(r=>r.id===request.around);return {status:'ok',records:structuredClone(records.slice(index-3,index+3)),hasMore:true,hasNewer:true};}});
+  assert.deepEqual(await service.readHistory({...call,around:records[40].id}),{status:'forbidden'});
 });

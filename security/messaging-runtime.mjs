@@ -29,7 +29,7 @@ function validActorOverride(override){
   }
   return false;
 }
-export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDatabase,deleteApp,createHistory,createMutation,createDirectory,createConversations,createApiHandler,createSupabase,createAttachments,fetchControl=globalThis.fetch,makeId=()=>crypto.randomUUID()}={}){
+export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDatabase,deleteApp,createHistory,createMutation,createDirectory,createConversations,createApiHandler,createSupabase,createAttachments,createRecordOrigins=null,fetchControl=globalThis.fetch,makeId=()=>crypto.randomUUID()}={}){
   if([getEnv,cert,initializeApp,getAuth,getDatabase,deleteApp,createHistory,createMutation,createDirectory,createConversations,createApiHandler,makeId].some(fn=>typeof fn!=='function'))throw new TypeError('Messaging runtime adapters required');
   let startup;
   async function boot(){
@@ -100,7 +100,7 @@ export function createMessagingRuntime({getEnv,cert,initializeApp,getAuth,getDat
         attachments=createAttachments({...shared,supabase});
         if([attachments?.upload,attachments?.download,attachments?.claim,attachments?.acquireSend].some(fn=>typeof fn!=='function'))throw new TypeError('Attachment services required');
       }
-      const handler=createApiHandler({reserveRequest,checkAvailable,authorizeRequest,allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,reserveSend,...(attachments?{claimAttachments:attachments.claim,acquireAttachmentLease:attachments.acquireSend}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments});
+      const handler=createApiHandler({reserveRequest,checkAvailable,authorizeRequest,allowedOrigins:config.allowedOrigins,history:createHistory(shared),mutation:createMutation({...shared,withActorDatabase,digestKey:config.digestKey,reserveSend,...(attachments?{claimAttachments:attachments.claim,acquireAttachmentLease:attachments.acquireSend}:{})}),directory:createDirectory(shared).directory,conversations:createConversations({...shared,withActorDatabase}),attachments,recordOrigins:typeof createRecordOrigins==='function'?createRecordOrigins(shared):null});
       if(typeof handler!=='function')throw new TypeError('Invalid API handler');
       return handler;
     }catch(_){if(app)try{await deleteApp(app);}catch(_){/* Do not expose startup errors or secrets. */}return null;}

@@ -57,6 +57,13 @@ test('Origin creates a canonical task and shares its reference from the detail',
         if(action==='directory')return Promise.resolve(Response.json({...scope,conversations:[{id:conversationId,kind:'self',status:'active',role:'member',memberCount:1,joinedAt:1000,revision:1,controlUpdatedAt:1000}],invites:[],hasMore:false,nextCursor:null}));
         if(action==='unread')return Promise.resolve(Response.json({...scope,conversationId,joinedAt:1000,unread:0,complete:true,muted:false,latestIncoming:null}));
         if(action==='history')return Promise.resolve(Response.json({status:'ok',joinedAt:1000,messages:sentMessage?[message,sentMessage]:[message],nextCursor:null,hasMore:false}));
+        // The server issues a fresh record id for a create from this message.
+        if(action==='recordReserve'){
+          const {payload}=JSON.parse(options.body);
+          const chars='-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+          const ids=Array.from({length:payload.count},()=>'-'+Array.from(crypto.getRandomValues(new Uint8Array(19)),b=>chars[b%64]).join(''));
+          return Promise.resolve(Response.json({status:'ok',requestId:payload.requestId,recordType:payload.recordType,ids}));
+        }
         if(action==='message'){
           const {payload}=JSON.parse(options.body);
           window.__businessTest.requests.push(payload.command);

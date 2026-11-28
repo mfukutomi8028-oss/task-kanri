@@ -808,21 +808,21 @@ async function send(command,label,{close=false,returnToTask=false}={}){
  const previousScheduleDate=command.type==='schedule.update'&&view==='calendar'
    ?data.events.find(event=>event.id===command.id)?.date||'':'';
  if(savingPanel)markOriginEditorSaving(true,command);
+ // Create from a message: the board asks the messaging server for record ids
+ // that already carry the source link, after its own checks and confirmations.
+ // A retried save reuses the same request, so it receives the same ids.
+ const linkType=returnToMessaging?{'task.create':'task','schedule.create':'schedule','schedule.batch':'schedule'}[command.type]:null;
+ const dispatched=linkType&&typeof originMessagingEntry?.reserveRecordIds==='function'
+   ?{...command,reserveRecordIds:count=>originMessagingEntry.reserveRecordIds({roomId:snapshot.roomId,type:linkType,count})}:command;
  try{
    const result=command.type.startsWith('comment.')
      ?await window.WorkBoardOriginCommentBridge?.dispatch(command):command.type.startsWith('memo.')
-     ? await memoBridge?.dispatch?.(command) : await bridge.dispatch(command);
+     ? await memoBridge?.dispatch?.(command) : await bridge.dispatch(dispatched);
    if(result?.ok){
-     // Link right after the records exist, before any follow-up save can fail:
-     // a later start-date retry updates the same task and must not lose the link.
      let linkNotice='';
-     if(returnToMessaging){
-       const linkType={'task.create':'task','schedule.create':'schedule','schedule.batch':'schedule'}[command.type];
-       const ids=command.type==='schedule.batch'?(Array.isArray(result.ids)?result.ids:[]):result.id?[result.id]:[];
-       if(linkType&&ids.length&&typeof originMessagingEntry?.linkRecords==='function'){
-         const linked=await originMessagingEntry.linkRecords(ids.map(recordId=>({roomId:snapshot.roomId,type:linkType,recordId}))).catch(()=>false);
-         if(linked!==true)linkNotice=label+'。元メッセージへのリンクは未保存です。接続後に自動で再保存します。詳細の「元メッセージを確認」からも再試行できます。';
-       }
+     if(linkType){
+       originMessagingEntry?.finishRecordDraft?.();
+       if(result.linkStatus!=='linked')linkNotice=label+'。元メッセージへのリンクは付けずに保存しました。';
      }
      if(command.type.startsWith('task.')&&command.startDate!==undefined){
        const latest=bridge.readSnapshot().tasks.find(x=>x.id===result.id);
@@ -882,7 +882,9 @@ async function send(command,label,{close=false,returnToTask=false}={}){
    const conflict=['revision-or-state-mismatch','revision-or-relation-mismatch','conflict','owner-mismatch','not-found','remote-content-changed'].includes(result?.error);
    const todoInvalid=command.type.startsWith('todo.')&&result?.error==='invalid-input';
    const scheduleInvalid=command.type.startsWith('schedule.')&&result?.error==='invalid-input';
-   const msg=conflict
+   const msg=result?.error==='origin-link-unavailable'
+     ? '元メッセージへのリンクを付けられないため、保存を中止しました。入力内容は保持されています。接続を確認して、もう一度保存してください。'
+     : conflict
      ? '他端末で変更されました。入力内容を保持しています。最新の内容を確認してください。'
      : todoInvalid
        ? result.field==='memo'
@@ -3258,7 +3260,6 @@ function panelShow(kind,id,edit=false,seed={}){
 // is approved; the record itself never depends on the link.
 const originMessageLinkNotice={
  locked:'メッセージに接続できないため確認できません。端末の承認と接続を確認してください。',
- pending:'元メッセージへのリンクは未保存です。接続を確認して、もう一度「元メッセージを確認」を押してください。',
  retry:'元メッセージを確認できませんでした。接続を確認して、もう一度お試しください。',
  unavailable:'確認できる元メッセージはありません。リンクがないか、閲覧できない会話です。'
 };

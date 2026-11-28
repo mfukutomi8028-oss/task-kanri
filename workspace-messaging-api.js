@@ -7,7 +7,7 @@ const same=(a,b)=>a===null&&b===null||a!==null&&b!==null&&a.roomId===b.roomId&&a
 const MAX_FILE_BYTES=5000000;
 const validFileSize=v=>Number.isSafeInteger(v)&&v>=1&&v<=MAX_FILE_BYTES;
 const safeFilename=v=>typeof v==='string'&&v===v.trim()&&Array.from(v).length>=1&&Array.from(v).length<=200&&!/[\\/:\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/.test(v);
-const codes=Object.freeze({ok:200,sent:200,invalid:400,forbidden:403,conflict:409,stale:409,limit:429,expired:409,'storage-limit':429,'daily-limit':429,missing:404,'too-far':422,unavailable:503});
+const codes=Object.freeze({ok:200,sent:200,invalid:400,forbidden:403,conflict:409,stale:409,limit:429,expired:409,'storage-limit':429,'daily-limit':429,full:409,missing:404,unavailable:503});
 export function createMessagingApiTransport({endpoint,session,getToken,fetchImpl=globalThis.fetch}={}){
   let url;try{url=new URL(endpoint);}catch(_){throw new TypeError('HTTPS endpoint required');}
   if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash||typeof session?.subscribe!=='function'||typeof session?.getSnapshot!=='function'||typeof getToken!=='function'||typeof fetchImpl!=='function')throw new TypeError('HTTPS endpoint and bound session required');
@@ -50,6 +50,7 @@ export function createMessagingApiTransport({endpoint,session,getToken,fetchImpl
       if(value.status==='ok'&&action==='unread'&&value.conversationId!==payload.conversationId)return fail('unavailable');
       if(action==='attachmentUpload'&&value.status==='ok'&&(!isMessagingAttachmentId(value.attachmentId)||value.filename!==payload.filename||value.mime!==payload.mime||value.bytes!==payload.declaredBytes))return fail('unavailable');
       if(action==='attachmentUsage'&&value.status==='ok'&&!['globalBytes','personBytes','conversationBytes','dailyBytes','limitBytes','warnBytes','cleanupBytes','dailyLimitBytes'].every(key=>Number.isSafeInteger(value[key])&&value[key]>=0))return fail('unavailable');
+      if(action==='recordReserve'&&value.status==='ok'&&(value.requestId!==payload.requestId||value.recordType!==payload.recordType||!Array.isArray(value.ids)||value.ids.length!==payload.count||new Set(value.ids).size!==value.ids.length||!value.ids.every(id=>typeof id==='string'&&/^-[0-9A-Za-z_-]{19}$/.test(id))))return fail('unavailable');
       return value;
     }catch(_){return fail(current()?'unavailable':'locked');}finally{clearTimeout(timeout);active.delete(controller);}
   }
@@ -61,7 +62,9 @@ export function createMessagingApiTransport({endpoint,session,getToken,fetchImpl
     readAttachmentMetadata:({roomId,conversationId,items}={})=>isConversationId(conversationId)&&Array.isArray(items)&&items.length>=1&&items.length<=20?invoke('attachmentMetadata',{roomId,conversationId,items}):Promise.resolve(fail('invalid')),
     readAttachmentUsage:({roomId,conversationId}={})=>isConversationId(conversationId)?invoke('attachmentUsage',{roomId,conversationId}):Promise.resolve(fail('invalid')),
     downloadAttachment:({roomId,conversationId,messageId,attachmentId}={})=>isConversationId(conversationId)&&isMessageId(messageId)&&isMessagingAttachmentId(attachmentId)?invoke('attachmentDownload',{roomId,conversationId,messageId,attachmentId}):Promise.resolve(fail('invalid')),
-    readHistory:({roomId,conversationId,before=null,limit=50,until=null}={})=>invoke('history',until===null?{roomId,conversationId,before,limit}:{roomId,conversationId,before,limit,until}),
+    readHistory:({roomId,conversationId,before=null,limit=50,around=null,after=null}={})=>invoke('history',around!==null?{roomId,conversationId,around}:after!==null?{roomId,conversationId,after,limit}:{roomId,conversationId,before,limit}),
+    // Record links: the server issues record ids for one source message and links only those.
+    reserveRecords:({roomId,conversationId,messageId,requestId,recordType,count}={})=>isConversationId(conversationId)&&isMessageId(messageId)&&/^q_[0-9a-f]{32}$/.test(requestId??'')&&['task','schedule'].includes(recordType)&&Number.isInteger(count)&&count>=1&&count<=200?invoke('recordReserve',{roomId,conversationId,messageId,requestId,recordType,count}):Promise.resolve(fail('invalid')),
     send:({roomId,conversationId,requestId,input}={})=>invoke('message',{roomId,conversationId,command:{type:'send',requestId,input}}),
     edit:({roomId,conversationId,messageId,expectedRevision,input}={})=>invoke('message',{roomId,conversationId,command:{type:'edit',messageId,expectedRevision,input}}),
     remove:({roomId,conversationId,messageId,expectedRevision}={})=>invoke('message',{roomId,conversationId,command:{type:'remove',messageId,expectedRevision}}),

@@ -1,15 +1,16 @@
 // Trusted server-side history boundary. Never import this into the browser.
 import {isMessagingRoomId,isPersonId,compareCursor,isConversationId,isMessageId,isMessagingTimestamp,projectMessagingMessage} from '../workspace-messaging-core.js';
 
-const requestFields=new Set(['token','roomId','conversationId','before','limit','expectedPersonId','until']);
-// One bounded range read replaces sequential paging when jumping to a known message.
-export const HISTORY_RANGE_MAX=300;
+const requestFields=new Set(['token','roomId','conversationId','before','limit','expectedPersonId','around','after']);
+// A jump reads only a window around the target (24 older, the target, 25 newer):
+// one page, independent of how far the target is from the latest message.
+export const HISTORY_WINDOW_OLDER=24,HISTORY_WINDOW_NEWER=25;
 const isRecord=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const uidKey=value=>typeof value==='string'&&value.length>0&&value.length<=128&&!/[.#$/\[\]\u0000-\u001f\u007f]/.test(value);
 const cursor=value=>isRecord(value)&&Object.keys(value).length===2&&isMessageId(value.id)&&isMessagingTimestamp(value.createdAt);
 const status=value=>({status:value});
 
-export function createMessagingHistoryService({verifyToken,readBinding,readMember,readPage,readRange=null}={}) {
+export function createMessagingHistoryService({verifyToken,readBinding,readMember,readPage,readWindow=null,readAfter=null}={}) {
   if([verifyToken,readBinding,readMember,readPage].some(fn=>typeof fn!=='function'))throw new TypeError('Trusted history adapters required');
   async function authorize({token,roomId,conversationId}) {
     let identity;
@@ -26,28 +27,35 @@ export function createMessagingHistoryService({verifyToken,readBinding,readMembe
   }
   async function readHistory(request) {
     if(!isRecord(request)||Object.keys(request).some(field=>!requestFields.has(field)))return status('invalid');
-    const {token,roomId,conversationId,before=null,limit=50,expectedPersonId,until=null}=request;
+    const {token,roomId,conversationId,before=null,limit=50,expectedPersonId,around=null,after=null}=request;
     if(typeof token!=='string'||token.length<1||token.length>16384||!isMessagingRoomId(roomId)||!isConversationId(conversationId)
         ||expectedPersonId!==undefined&&!isPersonId(expectedPersonId)||!Number.isInteger(limit)||limit<1||limit>50||(before!==null&&!cursor(before))
-        ||until!==null&&(!isMessageId(until)||typeof readRange!=='function'))return status('invalid');
+        ||around!==null&&(!isMessageId(around)||before!==null||after!==null||typeof readWindow!=='function')
+        ||after!==null&&(!cursor(after)||before!==null||typeof readAfter!=='function'))return status('invalid');
     try {
       const access=await authorize({token,roomId,conversationId});
       if(!access||expectedPersonId!==undefined&&access.personId!==expectedPersonId)return status('forbidden');
       // The server, not the caller, supplies the join boundary and the query cap.
-      let records,rangeMore=null;
-      if(until!==null){
+      let records,olderMore=null,newerMore=null;
+      if(around!==null){
         // The target must be a visible (post-join, not deleted) message of this
         // conversation; anything else is reported as missing, never as success.
-        const range=await readRange({roomId,conversationId,joinedAt:access.joinedAt,until,before,max:HISTORY_RANGE_MAX});
-        if(range?.status==='missing'||range?.status==='too-far')return status(range.status);
-        if(range?.status!=='ok'||!Array.isArray(range.records)||range.records.length<1||range.records.length>HISTORY_RANGE_MAX||typeof range.hasMore!=='boolean'||range.records[0]?.id!==until)return status('unavailable');
-        records=range.records;rangeMore=range.hasMore;
+        const view=await readWindow({roomId,conversationId,joinedAt:access.joinedAt,around,older:HISTORY_WINDOW_OLDER,newer:HISTORY_WINDOW_NEWER});
+        if(view?.status==='missing')return status('missing');
+        if(view?.status!=='ok'||!Array.isArray(view.records)||view.records.length<1||view.records.length>HISTORY_WINDOW_OLDER+1+HISTORY_WINDOW_NEWER
+          ||typeof view.hasMore!=='boolean'||typeof view.hasNewer!=='boolean'||!view.records.some(item=>item?.id===around))return status('unavailable');
+        records=view.records;olderMore=view.hasMore;newerMore=view.hasNewer;
+      }else if(after!==null){
+        if(after.createdAt<=access.joinedAt)return status('missing');
+        const page=await readAfter({roomId,conversationId,joinedAt:access.joinedAt,after,limit});
+        if(page?.status!=='ok'||!Array.isArray(page.records)||page.records.length>limit||typeof page.hasNewer!=='boolean')return status('unavailable');
+        records=page.records;newerMore=page.hasNewer;
       }else records=await readPage({roomId,conversationId,joinedAt:access.joinedAt,before,limit});
-      if(!Array.isArray(records)||until===null&&records.length>limit)return status('unavailable');
+      if(!Array.isArray(records)||around===null&&records.length>limit)return status('unavailable');
       const messages=[];const ids=new Set();
       for(const raw of records){
         const item=projectMessagingMessage(raw,{roomId,joinedAt:access.joinedAt});
-        if(before&&compareCursor(item,before)>=0)return status('unavailable');
+        if(before&&compareCursor(item,before)>=0||after&&compareCursor(item,after)<=0)return status('unavailable');
         if(ids.has(item.id)||messages.length&&compareCursor(messages.at(-1),item)>=0)return status('unavailable');
         ids.add(item.id);messages.push(item);
       }
@@ -56,8 +64,14 @@ export function createMessagingHistoryService({verifyToken,readBinding,readMembe
       // real deployments must additionally validate the revocation boundary.
       const latest=await authorize({token,roomId,conversationId});
       if(!latest||latest.uid!==access.uid||latest.personId!==access.personId||latest.joinedAt!==access.joinedAt)return status('forbidden');
-      const hasMore=rangeMore??messages.length===limit;
-      const nextCursor=hasMore?{createdAt:messages[0].createdAt,id:messages[0].id}:null;
+      const cursorOf=item=>({createdAt:item.createdAt,id:item.id});
+      if(after!==null)return {status:'ok',joinedAt:access.joinedAt,messages,hasNewer:newerMore,newerCursor:newerMore&&messages.length?cursorOf(messages.at(-1)):null};
+      const hasMore=olderMore??messages.length===limit;
+      const nextCursor=hasMore?cursorOf(messages[0]):null;
+      if(around!==null){
+        if(messages.find(item=>item.id===around)?.deletedAt!=null)return status('missing');
+        return {status:'ok',joinedAt:access.joinedAt,messages,nextCursor,hasMore,hasNewer:newerMore,newerCursor:newerMore?cursorOf(messages.at(-1)):null};
+      }
       return {status:'ok',joinedAt:access.joinedAt,messages,nextCursor,hasMore};
     }catch(_){return status('unavailable');}
   }
@@ -74,20 +88,20 @@ export function createFirebaseMessagingHistoryService({auth,database}={}) {
     verifyToken:token=>auth.verifyIdToken(token,true),
     readBinding:({roomId,uid})=>read('messagingAccessV1/'+roomId+'/'+uid),
     readMember:({roomId,conversationId,personId})=>read('messagingV1/'+roomId+'/control/'+conversationId+'/members/'+personId),
-    // Reads [target, before) in one capped query plus a one-row probe for older history.
-    async readRange({roomId,conversationId,joinedAt,until,before,max}) {
+    // Two bounded queries around the target, each with a one-row probe for more.
+    async readWindow({roomId,conversationId,joinedAt,around,older,newer}) {
       const base='messagingV1/'+roomId+'/messages/'+conversationId;
-      const target=await read(base+'/'+until);
+      const target=await read(base+'/'+around);
       if(!isRecord(target)||!isMessagingTimestamp(target.createdAt)||target.createdAt<=joinedAt||target.deletedAt!==undefined&&target.deletedAt!==null)return {status:'missing'};
-      if(before&&compareCursor({createdAt:target.createdAt,id:until},before)>=0)return {status:'missing'};
-      let query=database.ref(base).orderByChild('createdAt').startAt(target.createdAt,until);
-      if(before)query=query.endBefore(before.createdAt,before.id);
-      const snapshot=await query.limitToFirst(max+1).get();
-      const records=[];
-      snapshot.forEach(child=>{records.push({...child.val(),id:child.key});return false;});
-      if(records.length>max)return {status:'too-far'};
-      const older=await database.ref(base).orderByChild('createdAt').startAt(joinedAt+1).endBefore(target.createdAt,until).limitToLast(1).get();
-      return {status:'ok',records,hasMore:older.exists()};
+      const rows=snapshot=>{const list=[];snapshot.forEach(child=>{list.push({...child.val(),id:child.key});return false;});return list;};
+      const before=rows(await database.ref(base).orderByChild('createdAt').startAt(joinedAt+1).endBefore(target.createdAt,around).limitToLast(older+1).get());
+      const later=rows(await database.ref(base).orderByChild('createdAt').startAfter(target.createdAt,around).limitToFirst(newer+1).get());
+      return {status:'ok',records:[...before.slice(-older),{...target,id:around},...later.slice(0,newer)],hasMore:before.length>older,hasNewer:later.length>newer};
+    },
+    async readAfter({roomId,conversationId,after,limit}) {
+      const snapshot=await database.ref('messagingV1/'+roomId+'/messages/'+conversationId).orderByChild('createdAt').startAfter(after.createdAt,after.id).limitToFirst(limit+1).get();
+      const records=[];snapshot.forEach(child=>{records.push({...child.val(),id:child.key});return false;});
+      return {status:'ok',records:records.slice(0,limit),hasNewer:records.length>limit};
     },
     async readPage({roomId,conversationId,joinedAt,before,limit}) {
       if(before&&before.createdAt<=joinedAt)return [];

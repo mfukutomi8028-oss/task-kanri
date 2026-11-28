@@ -216,32 +216,69 @@ test('a send denial hides the draft until the same membership is reauthorized',a
   assert.equal(f.store.getComposer().attempt.payload.body,'immutable retry');
   f.store.dispose();
 });
-test('loadUntil fetches the target and the gap in one request and never reports an absent target',async()=>{
-  const records=Array.from({length:400},(_,i)=>message(i+1));
+test('a jump shows one bounded window with an explicit gap; activity never replaces it and reads never cross it',async()=>{
+  const records=Array.from({length:5200},(_,i)=>message(i+1));
+  const windowOf=index=>{const older=records.slice(Math.max(0,index-25),index),newer=records.slice(index+1,index+27);
+    const list=[...older.slice(-24),records[index],...newer.slice(0,25)];
+    return {status:'ok',joinedAt:1000,messages:structuredClone(list),hasMore:older.length>24,nextCursor:older.length>24?cursor(list[0]):null,hasNewer:newer.length>25,newerCursor:newer.length>25?cursor(list.at(-1)):null};};
+  const reads=[];
   const f=fixture({records,readHook(q){
-    const list=records;
-    if(q.until){
-      const index=list.findIndex(m=>m.id===q.until);if(index<0)return {status:'missing'};
-      const slice=list.slice(index).filter(m=>!q.before||m.createdAt<q.before.createdAt);
-      if(slice.length>300)return {status:'too-far'};
-      return {status:'ok',joinedAt:1000,messages:structuredClone(slice),hasMore:index>0,nextCursor:index>0?cursor(slice[0]):null};
+    if(q.around){const index=records.findIndex(m=>m.id===q.around);return index<0?{status:'missing'}:windowOf(index);}
+    if(q.after){const index=records.findIndex(m=>m.id===q.after.id),next=records.slice(index+1,index+q.limit+2),list=next.slice(0,q.limit);
+      return {status:'ok',joinedAt:1000,messages:structuredClone(list),hasNewer:next.length>q.limit,newerCursor:next.length>q.limit?cursor(list.at(-1)):null};}
+    const matches=records.filter(m=>!q.before||m.createdAt<q.before.createdAt).slice(-q.limit);
+    return {status:'ok',joinedAt:1000,messages:structuredClone(matches),hasMore:matches.length===q.limit,nextCursor:matches.length===q.limit?cursor(matches[0]):null};
+  },markReadHook(q){reads.push(q);return {status:'ok',cursor:q.cursor};}});
+  await f.store.setActiveConversation(c);
+  assert.deepEqual(await f.store.loadAround(id(99999)),{status:'missing'});
+  for(const distance of [300,301,4950]){
+    await f.store.refreshLatest();
+    const target=records[records.length-1-distance],before=f.calls.length;
+    assert.deepEqual(await f.store.loadAround(target.id),{status:'ok'});
+    assert.equal(f.calls.length-before,1);
+    const snap=f.store.getSnapshot();
+    assert.ok(snap.messages.length<=50);assert.equal(snap.messages.some(m=>m.id===target.id),true);
+    assert.equal(snap.hasNewer,true);assert.equal(snap.hasMore,true);
+  }
+  // Live activity keeps the window; marking read across the gap is refused.
+  const shown=f.store.getSnapshot().messages,calls=f.calls.length;
+  f.watches.at(-1).changed();await flush();
+  assert.equal(f.calls.length,calls);assert.equal(f.store.getSnapshot().messages,shown);
+  assert.deepEqual(await f.store.markRead({conversationId:c,cursor:cursor(shown.at(-1)),visible:true}),{status:'ignored'});
+  assert.equal(reads.length,0);
+  // Older and newer pages extend the window around the target.
+  await f.store.loadOlder();assert.equal(f.store.getSnapshot().messages.length,100);
+  await f.store.loadNewer();assert.equal(f.store.getSnapshot().messages.length,150);assert.equal(f.store.getSnapshot().hasNewer,true);
+  // Returning to the latest closes the gap; reading works again.
+  await f.store.refreshLatest();
+  const latest=f.store.getSnapshot();
+  assert.equal(latest.hasNewer,false);assert.equal(latest.messages.at(-1).id,records.at(-1).id);assert.equal(latest.messages.length,50);
+  assert.deepEqual(await f.store.markRead({conversationId:c,cursor:cursor(latest.messages.at(-1)),visible:true}),{status:'ok'});
+  // An already loaded target needs no request.
+  const count=f.calls.length;assert.deepEqual(await f.store.loadAround(latest.messages[10].id),{status:'ok'});assert.equal(f.calls.length,count);
+  // A window near the latest closes its gap with the last newer page.
+  await f.store.loadAround(records.at(-60).id);
+  assert.equal(f.store.getSnapshot().hasNewer,true);
+  await f.store.loadNewer();await flush();
+  assert.equal(f.store.getSnapshot().hasNewer,false);assert.equal(f.store.getSnapshot().messages.at(-1).id,records.at(-1).id);
+  f.store.dispose();
+});
+test('a window response without its target or with inconsistent cursors is rejected',async()=>{
+  const records=Array.from({length:120},(_,i)=>message(i+1));
+  let lie='target';
+  const f=fixture({records,readHook(q){
+    if(q.around){
+      const list=records.slice(10,20);
+      if(lie==='target')return {status:'ok',joinedAt:1000,messages:structuredClone(list),hasMore:true,nextCursor:cursor(list[0]),hasNewer:true,newerCursor:cursor(list.at(-1))};
+      return {status:'ok',joinedAt:1000,messages:structuredClone(records.slice(40,50)),hasMore:true,nextCursor:cursor(records[40]),hasNewer:true,newerCursor:null};
     }
-    const matches=list.filter(m=>!q.before||m.createdAt<q.before.createdAt).slice(-q.limit);
+    const matches=records.filter(m=>!q.before||m.createdAt<q.before.createdAt).slice(-q.limit);
     return {status:'ok',joinedAt:1000,messages:structuredClone(matches),hasMore:matches.length===q.limit,nextCursor:matches.length===q.limit?cursor(matches[0]):null};
   }});
   await f.store.setActiveConversation(c);
-  assert.deepEqual(await f.store.loadUntil(id(9999)),{status:'missing'});
-  assert.deepEqual(await f.store.loadUntil(id(10)),{status:'too-far'});
-  assert.equal(f.store.getSnapshot().messages.length,50);
-  const before=f.calls.length;
-  assert.deepEqual(await f.store.loadUntil(id(200)),{status:'ok'});
-  assert.equal(f.calls.length-before,1);
-  const snap=f.store.getSnapshot();
-  assert.equal(snap.messages[0].id,id(200));assert.equal(snap.messages.length,201);
-  assert.equal(snap.hasMore,true);assert.deepEqual(snap.nextCursor,cursor(snap.messages[0]));
-  // History stays contiguous: the next older page continues right before the target.
-  await f.store.loadOlder();assert.equal(f.store.getSnapshot().messages[0].id,id(150));
-  // Already loaded targets need no request.
-  const count=f.calls.length;assert.deepEqual(await f.store.loadUntil(id(300)),{status:'ok'});assert.equal(f.calls.length,count);
+  assert.deepEqual(await f.store.loadAround(id(45)),{status:'unavailable'});
+  lie='cursor';
+  assert.deepEqual(await f.store.loadAround(id(45)),{status:'unavailable'});
+  assert.equal(f.store.getSnapshot().hasNewer,false);
   f.store.dispose();
 });

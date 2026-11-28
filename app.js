@@ -6091,13 +6091,14 @@ function syncScheduleCopyPreview() {
   note.dataset.level = result.dates.length >= SCHEDULE_COPY_LARGE_WARNING || conflictsByDate.size ? "warning" : "info";
 }
 
-async function copyScheduleOccurrences(source, dates, sourceIsDraft = false) {
+async function copyScheduleOccurrences(source, dates, sourceIsDraft = false, issuedIds = null) {
   const timestamp = Date.now();
   // Each batch gets a unique identity, never inferred from matching titles.
   // Single-occurrence copies remain ordinary independent schedules.
   const seriesId = dates.length > 1 ? "copy-" + generateScheduleId() : "";
+  // Ids issued by the messaging server for a create-from-message keep their link.
   const items = dates.map((date, index) =>
-    scheduleCopyDraftForDate(source, date, generateScheduleId(), timestamp + index, seriesId)).filter(Boolean);
+    scheduleCopyDraftForDate(source, date, issuedIds ? issuedIds[index] : generateScheduleId(), timestamp + index, seriesId)).filter(Boolean);
   if (items.length !== dates.length) return { ok: false, error: "invalid-copy-date" };
   const affectedPaths = items.map(item => `rooms/${ROOM_ID}/schedules/${item.id}`);
 
@@ -13057,6 +13058,42 @@ function previewPaletteScheduleCopyV372(command) {
   };
 }
 
+// Create-from-message: after every local check and confirmation, ask the
+// messaging server for fresh record ids that already carry the source link.
+// Without a reservation the record is saved exactly as before, without a link.
+const ORIGIN_ISSUED_ID = /^-[0-9A-Za-z_-]{19}$/;
+async function reserveOriginRecordIdsV372(command, count) {
+  if (typeof command.reserveRecordIds !== "function") return { ids: null, linkStatus: "none" };
+  try {
+    const reserved = await command.reserveRecordIds(count);
+    const ids = reserved?.ids;
+    if (Array.isArray(ids) && ids.length === count && new Set(ids).size === count
+      && ids.every(id => typeof id === "string" && ORIGIN_ISSUED_ID.test(id))) return { ids, linkStatus: "linked" };
+    return originLinkFallbackV372(["forbidden", "locked", "full", "limit"].includes(reserved?.status) ? reserved.status : "unavailable");
+  } catch (_) { return originLinkFallbackV372("unavailable"); }
+}
+// The person decides: save without the link, or keep the input and retry later.
+function originLinkFallbackV372(status) {
+  const reason = status === "full" ? "元メッセージへのリンクの予約が上限（7日間で50件）に達しています。"
+    : status === "limit" ? "メッセージ機能の利用上限に達しています。"
+    : status === "forbidden" || status === "locked" ? "元メッセージを参照できないか、この端末がメッセージに接続できません。"
+    : "メッセージに接続できません。";
+  if (!confirm(reason + "\n元メッセージへのリンクを付けられません。リンクなしで保存しますか？\n（キャンセルすると入力内容を保持したまま保存を中止します）"))
+    return { ids: null, linkStatus: status, abort: true };
+  return { ids: null, linkStatus: status };
+}
+// After an unknown save result, a retry with the same issued id finds the record
+// it already created instead of creating a second one.
+async function originIssuedRecordsExistV372(collection, ids) {
+  try {
+    for (const id of ids) {
+      const value = (await get(ref(state.db, `rooms/${ROOM_ID}/${collection}/${id}`))).val();
+      if (!value || value.createdBy !== getCurrentUser()) return false;
+    }
+    return true;
+  } catch (_) { return false; }
+}
+
 async function writePaletteScheduleV372(command) {
   if (!paletteScheduleOwnerV372(command))
     return { ok:false, error:"owner-mismatch" };
@@ -13088,9 +13125,16 @@ async function writePaletteScheduleV372(command) {
   if (!paletteScheduleOwnerV372(command)
     || (editing && normalizeRevision(state.schedules.find(item=>item.id===id)?.revision) !== revision))
     return { ok:false, error:"revision-or-relation-mismatch" };
+  const origin = editing ? { ids:null, linkStatus:"none" } : await reserveOriginRecordIdsV372(command, 1);
+  if (origin.abort) return { ok:false, error:"origin-link-unavailable", linkStatus:origin.linkStatus };
+  const savedId = origin.ids ? origin.ids[0] : id;
+  if (origin.ids) schedule.id = savedId;
   schedule.lastChange = makeScheduleChangeInfo(existing, schedule);
   const result = await persistSchedule(schedule);
-  return result.ok ? { ok:true, id } : result;
+  if (result.ok) return { ok:true, id:savedId, linkStatus:origin.linkStatus };
+  if (origin.ids && result.error === "revision-or-relation-mismatch" && await originIssuedRecordsExistV372("schedules", origin.ids))
+    return { ok:true, id:savedId, linkStatus:origin.linkStatus, existed:true };
+  return result;
 }
 
 async function copyPaletteScheduleV372(command) {
@@ -13114,8 +13158,13 @@ async function copyPaletteScheduleV372(command) {
   });
   if (parsed.error) return {ok:false,error:parsed.error};
   if (!paletteScheduleOwnerV372(command)) return {ok:false,error:"owner-mismatch"};
-  const result = await copyScheduleOccurrences(parsed.source, preview.dates, parsed.sourceIsDraft);
-  return result.ok ? {ok:true,count:preview.count,ids:result.createdIds||[]} : result;
+  const origin = command.type === "schedule.batch" ? await reserveOriginRecordIdsV372(command, preview.dates.length) : { ids:null, linkStatus:"none" };
+  if (origin.abort) return { ok:false, error:"origin-link-unavailable", linkStatus:origin.linkStatus };
+  const result = await copyScheduleOccurrences(parsed.source, preview.dates, parsed.sourceIsDraft, origin.ids);
+  if (result.ok) return {ok:true,count:preview.count,ids:result.createdIds||[],linkStatus:origin.linkStatus};
+  if (origin.ids && result.error === "revision-or-relation-mismatch" && await originIssuedRecordsExistV372("schedules", origin.ids))
+    return {ok:true,count:preview.count,ids:origin.ids,linkStatus:origin.linkStatus,existed:true};
+  return result;
 }
 
 // Palette NEXT shares the canonical business writers, including optimistic
@@ -13125,7 +13174,7 @@ async function savePaletteNextTaskV370(command) {
   if (String(command.ownerRoom || '') !== ROOM_ID
     || String(command.ownerUser || '') !== getCurrentUser())
     return { ok: false, error: 'owner-mismatch' };
-  const id = editing ? String(command.id || '') : generateId();
+  let id = editing ? String(command.id || '') : generateId();
   const existing = editing ? state.tasks.find(item => item.id === id) : null;
   if (editing && !existing) return { ok: false, error: 'not-found' };
   if (!editing && command.id) return { ok: false, error: 'invalid-id' };
@@ -13166,6 +13215,13 @@ async function savePaletteNextTaskV370(command) {
     ? {recurrence:existing?.recurrence||'none',rule:existing?.recurrenceRule||{}}
     : originTaskRecurrence(command,existing);
   if (recurrenceConfig.error) return {ok:false,...recurrenceConfig};
+  const origin = editing ? { ids:null, linkStatus:"none" } : await reserveOriginRecordIdsV372(command, 1);
+  if (origin.abort) return { ok:false, error:'origin-link-unavailable', linkStatus:origin.linkStatus };
+  if (origin.ids) {
+    id = origin.ids[0];
+    // A retry after an unknown result: the issued id was already created here.
+    if (state.tasks.some(item => item.id === id)) return { ok:true, id, linkStatus:origin.linkStatus, existed:true };
+  }
   const now = Date.now();
   const draft = normalizeTask({
     ...existing, id, title, description, assignee, status, priority, category,
@@ -13192,7 +13248,10 @@ async function savePaletteNextTaskV370(command) {
   const result = editing
     ? await commitTaskDraft('task-form', existing, draft)
     : await persistTask(draft);
-  return result.ok ? { ok: true, id } : result;
+  if (result.ok) return { ok: true, id, linkStatus: origin.linkStatus };
+  if (origin.ids && result.error === 'revision-or-relation-mismatch' && await originIssuedRecordsExistV372('tasks', origin.ids))
+    return { ok: true, id, linkStatus: origin.linkStatus, existed: true };
+  return result;
 }
 
 // JOURNAL presentation/navigation boundary. Read-only task selection and

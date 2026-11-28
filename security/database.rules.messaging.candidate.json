@@ -143,25 +143,13 @@
           "$type": {
             "$recordId": {
               ".read": "root.child('messagingControlV1').child('enabled').val() === true && auth != null && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('approved').val() === true && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('active').val() === true && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('uid').val() === auth.uid && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('roomId').val() === $roomId && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val().matches(/^p_[0-9a-f]{32}$/) && ($type === 'task' || $type === 'schedule') && (!data.exists() || (root.child('messagingV1').child($roomId).child('control').child(data.child('conversationId').val()).child('members').child(root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val()).child('active').val() === true && root.child('messagingV1').child($roomId).child('control').child(data.child('conversationId').val()).child('members').child(root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val()).child('joinedAt').isNumber() && root.child('messagingV1').child($roomId).child('messages').child(data.child('conversationId').val()).child(data.child('messageId').val()).child('createdAt').isNumber() && root.child('messagingV1').child($roomId).child('messages').child(data.child('conversationId').val()).child(data.child('messageId').val()).child('createdAt').val() > root.child('messagingV1').child($roomId).child('control').child(data.child('conversationId').val()).child('members').child(root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val()).child('joinedAt').val() && !root.child('messagingV1').child($roomId).child('messages').child(data.child('conversationId').val()).child(data.child('messageId').val()).child('deletedAt').exists()))",
-              ".write": "root.child('messagingControlV1').child('enabled').val() === true && auth != null && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('approved').val() === true && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('active').val() === true && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('uid').val() === auth.uid && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('roomId').val() === $roomId && root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val().matches(/^p_[0-9a-f]{32}$/) && ($type === 'task' || $type === 'schedule') && !data.exists() && newData.exists() && newData.child('createdBy').val() === root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val() && root.child('messagingV1').child($roomId).child('control').child(newData.child('conversationId').val()).child('members').child(root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val()).child('active').val() === true && root.child('messagingV1').child($roomId).child('control').child(newData.child('conversationId').val()).child('members').child(root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val()).child('joinedAt').isNumber() && root.child('messagingV1').child($roomId).child('messages').child(newData.child('conversationId').val()).child(newData.child('messageId').val()).child('createdAt').isNumber() && root.child('messagingV1').child($roomId).child('messages').child(newData.child('conversationId').val()).child(newData.child('messageId').val()).child('createdAt').val() > root.child('messagingV1').child($roomId).child('control').child(newData.child('conversationId').val()).child('members').child(root.child('messagingAccessV1').child($roomId).child(auth.uid).child('personId').val()).child('joinedAt').val() && !root.child('messagingV1').child($roomId).child('messages').child(newData.child('conversationId').val()).child(newData.child('messageId').val()).child('deletedAt').exists() && (($type === 'task' && root.child('rooms').child($roomId).child('tasks').child($recordId).exists()) || ($type === 'schedule' && root.child('rooms').child($roomId).child('schedules').child($recordId).exists()))",
-              ".validate": "newData.hasChildren(['conversationId','messageId','createdBy','createdAt']) && newData.child('conversationId').val().matches(/^(self_p_[0-9a-f]{32}|dm_p_[0-9a-f]{32}_p_[0-9a-f]{32}|group_g_[0-9a-f]{32})$/) && newData.child('messageId').val().matches(/^msg_p_[0-9a-f]{32}_q_[0-9a-f]{32}$/) && newData.child('createdBy').val().matches(/^p_[0-9a-f]{32}$/) && newData.child('createdAt').val() === now",
-              "conversationId": {
-                ".validate": "newData.isString()"
-              },
-              "messageId": {
-                ".validate": "newData.isString()"
-              },
-              "createdBy": {
-                ".validate": "newData.isString()"
-              },
-              "createdAt": {
-                ".validate": "newData.isNumber()"
-              },
-              "$other": {
-                ".validate": false
-              }
+              ".write": false
             }
           }
+        },
+        "recordOrigins": {
+          ".read": false,
+          ".write": false
         }
       }
     },

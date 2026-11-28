@@ -49,15 +49,41 @@ try{
   assert.equal(JSON.stringify(newest).includes('Removed text'),false);
   assert.equal(JSON.stringify(newest).includes('Removed title'),false);
   assert.deepEqual(newest.messages.find(m=>m.id===msgId(55)),{id:msgId(55),senderId:p,createdAt:1050,revision:1,deletedAt:1100});
-  // Jump to a known message: one capped range read keeps history contiguous with tied timestamps.
-  const range=await service.readHistory({...call,before:newest.nextCursor,until:msgId(3)});
-  assert.equal(range.status,'ok');assert.deepEqual(range.messages.map(m=>m.id),[3,4,5,6].map(msgId));
-  assert.equal(range.hasMore,true);assert.deepEqual(range.nextCursor,{id:msgId(3),createdAt:1050});
-  const first=await service.readHistory({...call,until:msgId(2),before:{id:msgId(4),createdAt:1050}});
-  assert.deepEqual(first.messages.map(m=>m.id),[2,3].map(msgId));assert.equal(first.hasMore,false);
-  for(const target of [msgId(0),msgId(55),msgId(999)])assert.deepEqual(await service.readHistory({...call,until:target}),{status:'missing'});
-  assert.deepEqual(await service.readHistory({...call,until:msgId(3),token:bob.idToken}),{status:'forbidden'});
-  console.log('MESSAGING_HISTORY_RANGE_OK');
+  // Jump to a known message: one bounded window around it, however far it is
+  // from the latest message, with tied timestamps at the join boundary.
+  const tied=await service.readHistory({...call,around:msgId(3)});
+  assert.equal(tied.status,'ok');assert.equal(tied.messages[1].id,msgId(3));
+  assert.deepEqual(tied.messages.slice(0,2).map(m=>m.id),[2,3].map(msgId));
+  assert.equal(tied.hasMore,false);assert.equal(tied.nextCursor,null);assert.equal(tied.hasNewer,true);
+  for(const target of [msgId(0),msgId(55),msgId(999)])assert.deepEqual(await service.readHistory({...call,around:target}),{status:'missing'});
+  assert.deepEqual(await service.readHistory({...call,around:msgId(3),token:bob.idToken}),{status:'forbidden'});
+  {
+    const big='group_g_'+'9'.repeat(32),bigMessages={},total=5200;
+    for(let i=0;i<total;i++)bigMessages[msgId(10000+i)]={senderId:p,createdAt:2000+i,revision:1,body:'Long history '+i};
+    bigMessages[msgId(10000+total-1-4000)].deletedAt=9000;
+    await db.ref(root+'/control/'+big).set({kind:'group',status:'active',members:{[p]:{active:true,joinedAt:1999,role:'member'}}});
+    await db.ref(root+'/messages/'+big).set(bigMessages);
+    const bigCall={...call,conversationId:big};
+    for(const distance of [300,301,4950]){
+      const target=msgId(10000+total-1-distance);
+      const view=await service.readHistory({...bigCall,around:target});
+      assert.equal(view.status,'ok');assert.equal(view.messages.length,50);assert.equal(view.messages[24].id,target);
+      assert.equal(view.hasMore,true);assert.equal(view.hasNewer,true);
+      assert.deepEqual(view.newerCursor,{id:view.messages.at(-1).id,createdAt:view.messages.at(-1).createdAt});
+      const next=await service.readHistory({...bigCall,after:view.newerCursor,limit:50});
+      assert.equal(next.status,'ok');assert.equal(next.messages.length,50);assert.equal(next.messages[0].createdAt,view.messages.at(-1).createdAt+1);
+      const older=await service.readHistory({...bigCall,before:view.nextCursor});
+      assert.equal(older.messages.at(-1).createdAt,view.messages[0].createdAt-1);
+    }
+    assert.deepEqual(await service.readHistory({...bigCall,around:msgId(10000+total-1-4000)}),{status:'missing'});
+    const end=await service.readHistory({...bigCall,after:{id:msgId(10000+total-3),createdAt:2000+total-3},limit:50});
+    assert.equal(end.messages.length,2);assert.equal(end.hasNewer,false);assert.equal(end.newerCursor,null);
+    const start=await service.readHistory({...bigCall,around:msgId(10000)});
+    assert.equal(start.messages[0].id,msgId(10000));assert.equal(start.hasMore,false);
+    // Later sections expect only the original fixture conversations.
+    await db.ref(root+'/control/'+big).remove();await db.ref(root+'/messages/'+big).remove();
+  }
+  console.log('MESSAGING_HISTORY_WINDOW_OK');
   for(const patch of [{token:bob.idToken},{token:unknown.idToken},{token:'forged'},{roomId:'other'}]){
     assert.deepEqual(await service.readHistory({...call,...patch}),{status:'forbidden'});
   }
